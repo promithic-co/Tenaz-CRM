@@ -1,12 +1,12 @@
 #!/bin/bash
-# Aria PostgreSQL Restore Script
+# Tenaz CRM PostgreSQL Restore Script
 # Usage: bash restore.sh [backup_file.sql.gz]
-# Example: bash restore.sh /opt/aria/backups/db_20260320_030000.sql.gz
+# Example: bash restore.sh /srv/tenaz/backups/db_20260320_030000.sql.gz
 
 set -e
 
-BACKUP_DIR="/opt/aria/backups"
-ENV_FILE="/opt/aria/.env"
+BACKUP_DIR="/srv/tenaz/backups"
+ENV_FILE="/srv/tenaz/.env"
 
 # Accept backup file as argument or show latest available
 BACKUP_FILE="${1:-}"
@@ -54,7 +54,7 @@ if [ -z "$PG_CONTAINER" ]; then
 fi
 
 echo "[1/3] Stopping application workers..."
-docker exec "$(docker ps -q -f name=aria_aria | head -1)" php artisan down 2>/dev/null || true
+docker exec "$(docker ps -q -f name=tenaz_tenaz | head -1)" php artisan down 2>/dev/null || true
 
 echo "[2/3] Restoring database..."
 PGPASSWORD="$DB_PASSWORD" docker exec -e PGPASSWORD="$DB_PASSWORD" "$PG_CONTAINER" \
@@ -66,8 +66,8 @@ gunzip -c "$BACKUP_FILE" | PGPASSWORD="$DB_PASSWORD" docker exec -i -e PGPASSWOR
     psql -U "$DB_USERNAME" "$DB_DATABASE"
 
 echo "[3/3] Bringing application back up..."
-docker exec "$(docker ps -q -f name=aria_aria | head -1)" php artisan up 2>/dev/null || true
+docker exec "$(docker ps -q -f name=tenaz_tenaz | head -1)" php artisan up 2>/dev/null || true
 
 echo ""
 echo "Restore complete! Database has been restored from: $BACKUP_FILE"
-echo "Consider running: docker exec \$(docker ps -q -f name=aria_aria) php artisan migrate"
+echo "Consider running: docker exec \$(docker ps -q -f name=tenaz_tenaz) php artisan migrate"

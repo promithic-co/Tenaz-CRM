@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  aria:
-    # Image must be built first: docker build -t aria:latest . (see deploy.sh)
-    image: ${REGISTRY:-}aria:${TAG:-latest}
+  tenaz:
+    # Image must be built first: docker build -t tenaz:latest . (see deploy.sh)
+    image: ${REGISTRY:-}tenaz:${TAG:-latest}
     # Env vars are expanded by deploy.sh (exports from .env before running this)
 
     environment:
@@ -99,26 +99,26 @@ services:
         - "traefik.docker.network=network_public"
 
         # HTTP → HTTPS redirect
-        - "traefik.http.routers.aria-http.rule=Host(`agent.promithic.com.br`)"
-        - "traefik.http.routers.aria-http.entrypoints=web"
-        - "traefik.http.routers.aria-http.middlewares=redirect-to-https"
+        - "traefik.http.routers.tenaz-http.rule=Host(`agent.promithic.com.br`)"
+        - "traefik.http.routers.tenaz-http.entrypoints=web"
+        - "traefik.http.routers.tenaz-http.middlewares=redirect-to-https"
 
         # HTTPS
-        - "traefik.http.routers.aria.rule=Host(`agent.promithic.com.br`)"
-        - "traefik.http.routers.aria.entrypoints=websecure"
-        - "traefik.http.routers.aria.tls=true"
-        - "traefik.http.routers.aria.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.tenaz.rule=Host(`agent.promithic.com.br`)"
+        - "traefik.http.routers.tenaz.entrypoints=websecure"
+        - "traefik.http.routers.tenaz.tls=true"
+        - "traefik.http.routers.tenaz.tls.certresolver=letsencryptresolver"
 
         # Health check
-        - "traefik.http.services.aria.loadbalancer.server.port=80"
-        - "traefik.http.services.aria.loadbalancer.healthcheck.path=/up"
-        - "traefik.http.services.aria.loadbalancer.healthcheck.interval=30s"
+        - "traefik.http.services.tenaz.loadbalancer.server.port=80"
+        - "traefik.http.services.tenaz.loadbalancer.healthcheck.path=/up"
+        - "traefik.http.services.tenaz.loadbalancer.healthcheck.interval=30s"
 
         # Sticky sessions for WebSocket (Reverb) compatibility
-        - "traefik.http.services.aria.loadbalancer.sticky.cookie=true"
-        - "traefik.http.services.aria.loadbalancer.sticky.cookie.name=aria_srv"
-        - "traefik.http.services.aria.loadbalancer.sticky.cookie.secure=true"
-        - "traefik.http.services.aria.loadbalancer.sticky.cookie.httponly=true"
+        - "traefik.http.services.tenaz.loadbalancer.sticky.cookie=true"
+        - "traefik.http.services.tenaz.loadbalancer.sticky.cookie.name=tenaz_srv"
+        - "traefik.http.services.tenaz.loadbalancer.sticky.cookie.secure=true"
+        - "traefik.http.services.tenaz.loadbalancer.sticky.cookie.httponly=true"
 
 networks:
   network_public:

@@ -1,13 +1,13 @@
 #!/bin/bash
-# Aria PostgreSQL Backup Script
-# Add to crontab: 0 3 * * * /opt/aria/backup.sh >> /var/log/aria-backup.log 2>&1
+# Tenaz CRM PostgreSQL Backup Script
+# Add to crontab: 0 3 * * * /srv/tenaz/backup.sh >> /var/log/tenaz-backup.log 2>&1
 
 set -e
 
-BACKUP_DIR="/opt/aria/backups"
+BACKUP_DIR="/srv/tenaz/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RETENTION_DAYS=30
-ENV_FILE="/opt/aria/.env"
+ENV_FILE="/srv/tenaz/.env"
 
 # Read DB credentials from .env
 DB_HOST=$(grep -E '^DB_HOST=' "$ENV_FILE" 2>/dev/null | cut -d= -f2-)
@@ -51,6 +51,6 @@ if [ "$DELETED" -gt 0 ]; then
 fi
 
 # Optional: upload to S3/Wasabi (uncomment and configure)
-# aws s3 cp "$BACKUP_DIR/db_${TIMESTAMP}.sql.gz" "s3://aria-backups/db_${TIMESTAMP}.sql.gz"
+# aws s3 cp "$BACKUP_DIR/db_${TIMESTAMP}.sql.gz" "s3://tenaz-backups/db_${TIMESTAMP}.sql.gz"
 
 echo "[$(date -Iseconds)] Backup script finished."

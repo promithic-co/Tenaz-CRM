@@ -4,16 +4,16 @@
 
 set -e
 
-APP_DIR="/opt/aria"
-STACK_NAME="aria"
-ENV_FILE="/opt/aria/.env"
-LOCK_FILE="/tmp/aria-deploy.lock"
+APP_DIR="/srv/tenaz"
+STACK_NAME="tenaz"
+ENV_FILE="/srv/tenaz/.env"
+LOCK_FILE="/tmp/tenaz-deploy.lock"
 
 # Allow only one deploy at a time (prevents loop when build triggers another process)
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
     echo "Another deploy is already running (lock: $LOCK_FILE). Exiting."
-    echo "Blocked PID=$$ PPID=$PPID at $(date -Iseconds)" >> /tmp/aria-deploy-blocked.log
+    echo "Blocked PID=$$ PPID=$PPID at $(date -Iseconds)" >> /tmp/tenaz-deploy-blocked.log
     echo "  To see what started this: ps -p $PPID -o pid,ppid,cmd"
     exit 1
 fi
@@ -50,7 +50,7 @@ docker build --no-cache \
     --build-arg VITE_REVERB_HOST="${APP_URL#https://}" \
     --build-arg VITE_REVERB_PORT=443 \
     --build-arg VITE_REVERB_SCHEME=https \
-    -t aria:latest .
+    -t tenaz:latest .
 
 # 5. Export env vars for stack (safe: grep/cut only — no sourcing)
 # docker stack deploy expands ${VAR} from this shell; container needs DB_*, APP_KEY, etc.
@@ -75,7 +75,7 @@ docker stack deploy \
 
 # Force Swarm to use the newly built image (same tag = no auto-update otherwise)
 echo "Forcing service update to use new image..."
-docker service update --force "${STACK_NAME}_aria" 2>/dev/null || true
+docker service update --force "${STACK_NAME}_tenaz" 2>/dev/null || true
 
 # 7. Run migrations via docker exec no primeiro container running
 # Estratégia: aguarda até 3 min por um container em estado Running, então executa migrate.
@@ -84,8 +84,8 @@ echo ""
 echo "[4/5] Waiting for a running container to execute migrations..."
 CONTAINER_ID=""
 for i in $(seq 1 24); do
-    # Filtra apenas containers do serviço aria que estejam em estado running
-    CID=$(docker ps --filter "name=${STACK_NAME}_aria" --filter "status=running" -q | head -1)
+    # Filtra apenas containers do serviço tenaz que estejam em estado running
+    CID=$(docker ps --filter "name=${STACK_NAME}_tenaz" --filter "status=running" -q | head -1)
     if [ -n "$CID" ]; then
         CONTAINER_ID="$CID"
         echo "  Container found: $CONTAINER_ID"
@@ -105,16 +105,16 @@ if [ -n "$CONTAINER_ID" ]; then
     docker exec "$CONTAINER_ID" php artisan cache:clear
 else
     echo "WARNING: No running container found after 2 minutes."
-    echo "Run manually: docker exec \$(docker ps -q -f name=${STACK_NAME}_aria) php artisan migrate --force"
+    echo "Run manually: docker exec \$(docker ps -q -f name=${STACK_NAME}_tenaz) php artisan migrate --force"
 fi
 
 echo ""
 echo "[5/5] Deploy complete."
-docker service ps "${STACK_NAME}_aria" --no-trunc | head -5
+docker service ps "${STACK_NAME}_tenaz" --no-trunc | head -5
 
 echo ""
 echo "Recent logs:"
-docker service logs "${STACK_NAME}_aria" --tail 20 2>/dev/null || true
+docker service logs "${STACK_NAME}_tenaz" --tail 20 2>/dev/null || true
 
 echo ""
 echo "Test: curl -s https://agent.promithic.com.br/up"

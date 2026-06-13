@@ -1,13 +1,13 @@
 #!/bin/bash
-# Rebuild ARIA image and update Docker Swarm service
+# Rebuild Tenaz CRM image and update Docker Swarm service
 set -e
 
 cd "$(dirname "$0")"
 
-echo "Building image aria:latest..."
-docker build -t aria:latest .
+echo "Building image tenaz:latest..."
+docker build -t tenaz:latest .
 
-echo "Updating aria_aria service..."
-docker service update --image aria:latest aria_aria --force
+echo "Updating tenaz_tenaz service..."
+docker service update --image tenaz:latest tenaz_tenaz --force
 
 echo "Done. Queue workers will restart with new code."
