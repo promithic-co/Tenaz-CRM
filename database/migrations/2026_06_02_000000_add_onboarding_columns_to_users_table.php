@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TenantRole;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -23,10 +24,10 @@ return new class extends Migration
         // Matches agents by tenant_id (not user_id): the tenant may have agents
         // assigned to other members, but the owner is still considered complete (D-22).
         $ownerUserIds = DB::table('tenant_user')
-            ->where('role', \App\Enums\TenantRole::Owner->value)
+            ->where('role', TenantRole::Owner->value)
             ->whereExists(function ($q) {
                 $q->select(DB::raw(1))->from('agents')
-                    ->whereColumn('agents.tenant_id', 'tenant_user.tenant_id')
+                    ->whereRaw('agents.tenant_id = CAST(tenant_user.tenant_id AS TEXT)')
                     ->whereNull('agents.deleted_at');
             })
             ->pluck('user_id')->unique()->all();
