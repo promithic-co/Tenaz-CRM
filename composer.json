@@ -19,7 +19,7 @@
         "laravel/reverb": "^1.8",
         "laravel/tinker": "^2.10.1",
         "laravel/wayfinder": "^0.1.9",
-        "predis/predis": "3.4",
+        "predis/predis": "^3.4",
         "sentry/sentry-laravel": "^4.22",
         "twilio/sdk": "^8.11"
     },
