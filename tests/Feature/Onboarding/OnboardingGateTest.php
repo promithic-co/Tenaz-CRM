@@ -4,10 +4,11 @@ use App\Enums\TenantRole;
 use App\Models\Agent;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 // ---------------------------------------------------------------------------
 // Helper: create an incomplete tenant owner (onboarded_at = null, no super-admin)
@@ -72,6 +73,33 @@ test('regular user bypasses gate and reaches dashboard', function () {
     $this->actingAs($user->fresh())
         ->get('/dashboard')
         ->assertOk();
+});
+
+test('incomplete owner reaches dashboard when onboarding is disabled', function () {
+    config(['onboarding.enabled' => false]);
+    $owner = makeIncompleteOwner();
+
+    $this->actingAs($owner)
+        ->get('/dashboard')
+        ->assertOk();
+});
+
+test('incomplete owner reaches settings/profile when onboarding is disabled', function () {
+    config(['onboarding.enabled' => false]);
+    $owner = makeIncompleteOwner();
+
+    $this->actingAs($owner)
+        ->get('/settings/profile')
+        ->assertOk();
+});
+
+test('incomplete owner is still redirected when onboarding is enabled', function () {
+    config(['onboarding.enabled' => true]);
+    $owner = makeIncompleteOwner();
+
+    $this->actingAs($owner)
+        ->get('/dashboard')
+        ->assertRedirect('/onboarding');
 });
 
 test('super-admin bypasses gate even with null onboarded_at', function () {
@@ -169,19 +197,19 @@ test('default factory user onboardingAgent is null', function () {
 });
 
 test('onboarding_agent_id is not in fillable', function () {
-    $user = new User();
+    $user = new User;
 
     expect(in_array('onboarding_agent_id', $user->getFillable()))->toBeFalse();
 });
 
 test('onboarded_at is not in fillable', function () {
-    $user = new User();
+    $user = new User;
 
     expect(in_array('onboarded_at', $user->getFillable()))->toBeFalse();
 });
 
 test('onboarding_whatsapp_skipped_at is not in fillable', function () {
-    $user = new User();
+    $user = new User;
 
     expect(in_array('onboarding_whatsapp_skipped_at', $user->getFillable()))->toBeFalse();
 });
