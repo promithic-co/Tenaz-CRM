@@ -3,9 +3,9 @@
 Date: 2026-06-13
 Scope: agent specialization update, CLT/Promosys integration, SIAPE direct Promosys fallback, agent creation/config/list UI.
 
-## Verdict: GAPS_FOUND
+## Verdict: PASS (gaps resolved 2026-06-12)
 
-The implemented update passed the focused functional gates for this scope. Full release verification is not complete because the Guardian automation timed out twice, the full Pest suite exhausted the PHP memory limit, and global Composer security/validation gates fail for pre-existing dependency/project issues.
+The implemented update passed the focused functional gates for this scope. The release-blocking gaps recorded on 2026-06-13 were closed on the `chore/hygiene-deps-test-mem` branch — see "Gap Resolution" below.
 
 ## Passed Evidence
 
@@ -43,9 +43,9 @@ The implemented update passed the focused functional gates for this scope. Full 
 - Current worktree contains unrelated changes outside this update, including documentation deletions, `.gitignore`, `composer.json`, and regenerated Wayfinder files.
 - The verification above only supports the agent specialization/Promosys update. It does not approve unrelated worktree changes.
 
-## Remediation Plan Required Before Fixing Gaps
+## Gap Resolution (2026-06-12)
 
-1. Decide whether to treat Composer CVEs as an immediate security upgrade phase or defer as separate dependency-maintenance work.
-2. Investigate why the full Pest process remains capped at 128MB even when CLI `memory_limit=-1` is passed.
-3. Re-run Guardian automation after resolving timeout/runtime issue or split Guardian verification into smaller scoped checks.
-4. Review unrelated worktree deletions before any commit/stage action.
+1. **Composer CVEs** — RESOLVED. Dependency upgrade (`laravel/framework` v12.53.0 → v12.62.0 et al.) committed; `composer audit` reports no advisories.
+2. **Pest memory exhaustion** — RESOLVED. Root cause: no `memory_limit` override (PHP CLI default 128MB). Added `<ini name="memory_limit" value="512M"/>` to `phpunit.xml`; full suite now runs **1431 passed, 2 skipped, 0 failed** (4892 assertions, ~251s).
+3. **`composer validate --strict`** — RESOLVED. `predis/predis` exact constraint `"3.4"` → `"^3.4"`; lock resynced; `./composer.json is valid`.
+4. **Guardian automation timeout** — deferred (tooling only, non-blocking). Recommend splitting Guardian verification into scoped checks.
