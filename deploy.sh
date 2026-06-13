@@ -19,11 +19,11 @@ if ! flock -n 9; then
 fi
 
 echo "=============================="
-echo " Deploy: ARIA"
+echo " Deploy: Tenaz CRM"
 echo "=============================="
 
 # 1. Go to app directory
-cd "$APP_DIR" || { echo "ERROR: directory $APP_DIR not found. Run first:"; echo "  git clone https://github.com/promithic-co/ARIA.git $APP_DIR"; exit 1; }
+cd "$APP_DIR" || { echo "ERROR: directory $APP_DIR not found. Run first:"; echo "  git clone https://github.com/promithic-co/Tenaz-CRM.git $APP_DIR"; exit 1; }
 
 # 2. Pull latest code
 echo "[1/5] Pulling latest code from GitHub..."
