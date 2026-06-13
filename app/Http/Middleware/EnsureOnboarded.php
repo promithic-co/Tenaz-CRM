@@ -12,13 +12,19 @@ class EnsureOnboarded
      * Handle an incoming request.
      *
      * Redirects incomplete tenant owners to /onboarding.
-     * Bypasses: super-admins, invited administrators, regular users,
-     * and owners who have already completed onboarding (onboarded_at is set).
+     * Bypasses: every request when onboarding is disabled (config
+     * onboarding.enabled = false), super-admins, invited administrators,
+     * regular users, and owners who have already completed onboarding
+     * (onboarded_at is set).
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if (! config('onboarding.enabled', true)) {
+            return $next($request);
+        }
+
         $user = $request->user();
 
         if ($user && ! $user->is_super_admin && $user->isOwner() && $user->onboarded_at === null) {
