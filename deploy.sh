@@ -52,6 +52,10 @@ docker build --no-cache \
     --build-arg VITE_REVERB_SCHEME=https \
     -t tenaz:latest .
 
+# Build landing site image (static nginx — tenazcrm.com.br)
+echo "[2b/5] Building landing image..."
+docker build -t tenaz-landing:latest -f docker/landing.Dockerfile .
+
 # 5. Export env vars for stack (safe: grep/cut only — no sourcing)
 # docker stack deploy expands ${VAR} from this shell; container needs DB_*, APP_KEY, etc.
 export_env_from_file() {
@@ -76,6 +80,7 @@ docker stack deploy \
 # Force Swarm to use the newly built image (same tag = no auto-update otherwise)
 echo "Forcing service update to use new image..."
 docker service update --force "${STACK_NAME}_tenaz" 2>/dev/null || true
+docker service update --force "${STACK_NAME}_landing" 2>/dev/null || true
 
 # 7. Run migrations via docker exec no primeiro container running
 # Estratégia: aguarda até 3 min por um container em estado Running, então executa migrate.
@@ -117,4 +122,5 @@ echo "Recent logs:"
 docker service logs "${STACK_NAME}_tenaz" --tail 20 2>/dev/null || true
 
 echo ""
-echo "Test: curl -s https://agent.promithic.com.br/up"
+echo "Test app:     curl -s https://app.tenazcrm.com.br/up"
+echo "Test landing: curl -sI https://tenazcrm.com.br/"

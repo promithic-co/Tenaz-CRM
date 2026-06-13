@@ -10,9 +10,9 @@ services:
       APP_NAME: "Tenaz CRM"
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_URL: https://agent.promithic.com.br
+      APP_URL: https://app.tenazcrm.com.br
       APP_KEY: ${APP_KEY}
-      ASSET_URL: https://agent.promithic.com.br
+      ASSET_URL: https://app.tenazcrm.com.br
 
       DB_CONNECTION: pgsql
       DB_HOST: ${DB_HOST}
@@ -99,12 +99,12 @@ services:
         - "traefik.docker.network=network_public"
 
         # HTTP → HTTPS redirect
-        - "traefik.http.routers.tenaz-http.rule=Host(`agent.promithic.com.br`)"
+        - "traefik.http.routers.tenaz-http.rule=Host(`app.tenazcrm.com.br`)"
         - "traefik.http.routers.tenaz-http.entrypoints=web"
         - "traefik.http.routers.tenaz-http.middlewares=redirect-to-https"
 
         # HTTPS
-        - "traefik.http.routers.tenaz.rule=Host(`agent.promithic.com.br`)"
+        - "traefik.http.routers.tenaz.rule=Host(`app.tenazcrm.com.br`)"
         - "traefik.http.routers.tenaz.entrypoints=websecure"
         - "traefik.http.routers.tenaz.tls=true"
         - "traefik.http.routers.tenaz.tls.certresolver=letsencryptresolver"
@@ -119,6 +119,61 @@ services:
         - "traefik.http.services.tenaz.loadbalancer.sticky.cookie.name=tenaz_srv"
         - "traefik.http.services.tenaz.loadbalancer.sticky.cookie.secure=true"
         - "traefik.http.services.tenaz.loadbalancer.sticky.cookie.httponly=true"
+
+  landing:
+    # Static marketing site (landing/). Built by deploy.sh: docker build -t tenaz-landing:latest -f docker/landing.Dockerfile .
+    image: ${REGISTRY:-}tenaz-landing:${TAG:-latest}
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    networks:
+      - network_public
+
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+      update_config:
+        parallelism: 1
+        delay: 15s
+        order: start-first
+        failure_action: rollback
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_public"
+
+        # www → apex redirect (301)
+        - "traefik.http.middlewares.landing-www-to-apex.redirectregex.regex=^https?://www\\.tenazcrm\\.com\\.br/(.*)"
+        - "traefik.http.middlewares.landing-www-to-apex.redirectregex.replacement=https://tenazcrm.com.br/$${1}"
+        - "traefik.http.middlewares.landing-www-to-apex.redirectregex.permanent=true"
+
+        # HTTP → HTTPS redirect (apex + www)
+        - "traefik.http.routers.landing-http.rule=Host(`tenazcrm.com.br`) || Host(`www.tenazcrm.com.br`)"
+        - "traefik.http.routers.landing-http.entrypoints=web"
+        - "traefik.http.routers.landing-http.middlewares=redirect-to-https"
+
+        # HTTPS
+        - "traefik.http.routers.landing.rule=Host(`tenazcrm.com.br`) || Host(`www.tenazcrm.com.br`)"
+        - "traefik.http.routers.landing.entrypoints=websecure"
+        - "traefik.http.routers.landing.tls=true"
+        - "traefik.http.routers.landing.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.landing.middlewares=landing-www-to-apex"
+
+        - "traefik.http.services.landing.loadbalancer.server.port=80"
 
 networks:
   network_public:

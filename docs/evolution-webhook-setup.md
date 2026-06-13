@@ -5,7 +5,7 @@ Connect an Evolution API instance (e.g. **Amec2**) to ARIA so incoming WhatsApp 
 ## Prerequisites
 
 - Instance connected in Evolution API (e.g. at https://api.promithic.com.br/manager/)
-- ARIA deployed at https://agent.promithic.com.br
+- ARIA deployed at https://app.tenazcrm.com.br
 - `EVOLUTION_API_URL` and `EVOLUTION_API_KEY` set in ARIA `.env`
 
 ---
@@ -33,15 +33,15 @@ Point Evolution API to ARIA's webhook so incoming messages are forwarded.
 
 | Instance | Webhook URL |
 |----------|-------------|
-| Amec1 | `https://agent.promithic.com.br/api/webhook/whatsapp/Amec1` |
-| Amec6 | `https://agent.promithic.com.br/api/webhook/whatsapp/Amec6` |
-| (any) | `https://agent.promithic.com.br/api/webhook/whatsapp/{InstanceName}` |
+| Amec1 | `https://app.tenazcrm.com.br/api/webhook/whatsapp/Amec1` |
+| Amec6 | `https://app.tenazcrm.com.br/api/webhook/whatsapp/Amec6` |
+| (any) | `https://app.tenazcrm.com.br/api/webhook/whatsapp/{InstanceName}` |
 
 ### Option A: Evolution Manager UI
 
 For **each** instance, in the Webhook section:
 
-- **URL:** `https://agent.promithic.com.br/api/webhook/whatsapp/<InstanceName>` (e.g. `.../Amec1` or `.../Amec6`)
+- **URL:** `https://app.tenazcrm.com.br/api/webhook/whatsapp/<InstanceName>` (e.g. `.../Amec1` or `.../Amec6`)
 - **Events:** Enable `MESSAGES_UPSERT`
 - **Enabled:** Yes
 
@@ -54,7 +54,7 @@ curl -X POST "https://api.promithic.com.br/webhook/set/Amec1" \
   -H "apikey: YOUR_EVOLUTION_API_KEY" \
   -d '{
     "webhook": {
-      "url": "https://agent.promithic.com.br/api/webhook/whatsapp/Amec1",
+      "url": "https://app.tenazcrm.com.br/api/webhook/whatsapp/Amec1",
       "events": ["MESSAGES_UPSERT"],
       "enabled": true,
       "webhookByEvents": true,
@@ -70,7 +70,7 @@ curl -X POST "https://api.promithic.com.br/webhook/set/Amec6" \
   -H "apikey: YOUR_EVOLUTION_API_KEY" \
   -d '{
     "webhook": {
-      "url": "https://agent.promithic.com.br/api/webhook/whatsapp/Amec6",
+      "url": "https://app.tenazcrm.com.br/api/webhook/whatsapp/Amec6",
       "events": ["MESSAGES_UPSERT"],
       "enabled": true,
       "webhookByEvents": true,
@@ -106,5 +106,5 @@ Replace `YOUR_EVOLUTION_API_KEY` with your Evolution API key. Use the same base 
 ## Instance Name Reference
 
 - Evolution API instance names (e.g. **Amec1**, **Amec6**) must match ARIA and the path in the webhook URL.
-- Webhook URL per instance: `https://agent.promithic.com.br/api/webhook/whatsapp/{InstanceName}`
+- Webhook URL per instance: `https://app.tenazcrm.com.br/api/webhook/whatsapp/{InstanceName}`
 - Required event: `MESSAGES_UPSERT`

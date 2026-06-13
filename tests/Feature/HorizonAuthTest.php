@@ -16,15 +16,15 @@ describe('Horizon Auth Gate', function () {
     });
 
     test('allows user whose email is in admin list', function () {
-        config(['credflow.admin_emails' => ['admin@promithic.com.br']]);
+        config(['credflow.admin_emails' => ['admin@tenazcrm.com.br']]);
 
-        $user = User::factory()->create(['email' => 'admin@promithic.com.br']);
+        $user = User::factory()->create(['email' => 'admin@tenazcrm.com.br']);
 
         $this->assertTrue(Gate::forUser($user)->allows('viewHorizon'));
     });
 
     test('denies user whose email is not in admin list', function () {
-        config(['credflow.admin_emails' => ['admin@promithic.com.br']]);
+        config(['credflow.admin_emails' => ['admin@tenazcrm.com.br']]);
 
         $user = User::factory()->create(['email' => 'other@example.com']);
 

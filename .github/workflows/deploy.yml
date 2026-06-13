@@ -72,45 +72,20 @@ jobs:
       cancel-in-progress: false
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ secrets.REGISTRY_HOST }}
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
-      - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ secrets.REGISTRY_HOST }}/aria:latest
-            ${{ secrets.REGISTRY_HOST }}/aria:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.REGISTRY_HOST }}/aria:cache
-          cache-to: type=registry,ref=${{ secrets.REGISTRY_HOST }}/aria:cache,mode=max
-
+      # Single deploy path: SSH into the VPS and run deploy.sh, which pulls
+      # main, builds the app + landing images, deploys the Swarm stack, and
+      # runs migrations. Swarm update_config.failure_action handles rollback.
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 30m
           script: |
-            cd /opt/aria
-            export TAG=${{ github.sha }}
-            export REGISTRY="${{ secrets.REGISTRY_HOST }}/"
-            docker pull ${REGISTRY}aria:${TAG}
-            docker stack deploy -c docker-stack.yml aria --with-registry-auth
-            echo "Waiting for rollout (30s)..."
-            sleep 30
-            docker service ls --filter name=aria_aria
+            cd /srv/tenaz
+            git pull origin main
+            bash deploy.sh
 
       - name: Verify deployment health
         uses: appleboy/ssh-action@v1
@@ -119,17 +94,26 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            ok=0
             for i in $(seq 1 6); do
-              if curl -sf https://agent.promithic.com.br/up > /dev/null 2>&1; then
-                echo "Health check passed on attempt $i"
-                exit 0
+              if curl -sf https://app.tenazcrm.com.br/up > /dev/null 2>&1; then
+                echo "App health check passed on attempt $i"
+                ok=1
+                break
               fi
-              echo "Attempt $i failed, retrying in 10s..."
+              echo "App attempt $i failed, retrying in 10s..."
               sleep 10
             done
-            echo "Health checks failed — rolling back"
-            docker service rollback aria_aria
-            exit 1
+            if [ "$ok" -ne 1 ]; then
+              echo "App health checks failed"
+              exit 1
+            fi
+            if curl -sf -o /dev/null https://tenazcrm.com.br/; then
+              echo "Landing health check passed"
+            else
+              echo "Landing health check failed"
+              exit 1
+            fi
 
       - name: Notify on failure
         if: failure()
