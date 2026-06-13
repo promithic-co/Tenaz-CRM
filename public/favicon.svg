@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+<title id="title">Tenaz CRM</title>
+<desc id="desc">Tenaz CRM primary T mark.</desc>
+<path fill="#05070b" d="M30 48h68l15 39-10 18H30c-5 0-8-3-8-8V56c0-5 3-8 8-8Z"/>
+<path fill="#05070b" d="M158 48h68c5 0 8 3 8 8v41c0 5-3 8-8 8h-73l-10-18 15-39Z"/>
+<path fill="#05070b" d="M84 87h23l16 43h10l16-43h23v132c0 17-11 28-28 28h-32c-17 0-28-11-28-28V87Z"/>
+</svg>

@@ -1,0 +1,56 @@
+# Dependencies
+/node_modules
+/vendor
+/auth.json
+
+# Build artifacts
+/public/build
+/public/hot
+/public/storage
+/bootstrap/ssr
+/.phpunit.cache
+.phpunit.result.cache
+
+# Laravel runtime
+/storage/*.key
+/storage/pail
+
+# Environment & secrets (NEVER commit)
+.env
+.env.*
+!.env.example
+.env.backup
+.env.production
+.env.production.vps
+Homestead.json
+Homestead.yaml
+
+# OS / editor
+.DS_Store
+.idea
+.fleet
+.nova
+.vscode
+.zed
+.cursor
+.phpactor.json
+npm-debug.log
+yarn-error.log
+debug.log
+
+# AI tooling / agents (not needed to run app)
+/.claude
+/.codex
+/.cursor
+/.gemini
+/.agents
+/.understand-anything
+
+# Planning & engineering artifacts (internal, not shipped)
+/.planning
+/.engineering
+
+# Scratch / one-off scripts
+/test_eval.php
+reset.php
+update.php

@@ -1,0 +1,2413 @@
+<!doctype html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>CredFlow IA - CRM com IA para operações de crédito</title>
+        <meta
+            name="description"
+            content="CredFlow IA e um CRM vertical para crédito com WhatsApp Business API oficial, agentes de IA, follow-up automatico e pipeline comercial para correspondentes bancarios."
+        />
+        <meta name="robots" content="index, follow" />
+        <meta
+            property="og:title"
+            content="CredFlow IA - CRM com IA para operações de crédito"
+        />
+        <meta
+            property="og:description"
+            content="WhatsApp oficial, agentes de IA especialistas e CRM para organizar leads de crédito do primeiro contato ao fechamento."
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://home.promithic.com.br" />
+        <meta name="theme-color" content="#f4f0e8" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+            rel="stylesheet"
+        />
+        <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+        <style>
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            :root {
+                --paper: #f5f3ee;
+                --paper-strong: #fffdf7;
+                --ink: #101a15;
+                --ink-soft: #4f5c55;
+                --muted: #747a73;
+                --line: #ddd8ce;
+                --line-strong: #b9b1a4;
+                --field: #ece8df;
+                --green: #115a43;
+                --green-deep: #083829;
+                --lime: #c8f169;
+                --amber: #d88923;
+                --rose: #af4b44;
+                --white: #fffdf8;
+                --shadow: 0 24px 70px rgba(8, 56, 41, 0.14);
+                --font-display:
+                    'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+                --font-body:
+                    'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+                --max-w: 1180px;
+                --radius: 8px;
+            }
+
+            html {
+                scroll-behavior: smooth;
+            }
+
+            body {
+                min-width: 320px;
+                background:
+                    radial-gradient(
+                        circle at 26% 12%,
+                        rgba(200, 241, 105, 0.18),
+                        transparent 28%
+                    ),
+                    linear-gradient(
+                        90deg,
+                        rgba(8, 56, 41, 0.055) 1px,
+                        transparent 1px
+                    ),
+                    linear-gradient(
+                        0deg,
+                        rgba(8, 56, 41, 0.04) 1px,
+                        transparent 1px
+                    ),
+                    var(--paper);
+                background-size: 42px 42px;
+                color: var(--ink);
+                font-family: var(--font-body);
+                line-height: 1.5;
+                -webkit-font-smoothing: antialiased;
+            }
+
+            body::before {
+                content: '';
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                z-index: 100;
+                opacity: 0.34;
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.18'/%3E%3C/svg%3E");
+                mix-blend-mode: multiply;
+            }
+
+            a {
+                color: inherit;
+                text-decoration: none;
+            }
+            button,
+            input,
+            textarea {
+                font: inherit;
+            }
+
+            .skip-link {
+                position: absolute;
+                top: -100%;
+                left: 16px;
+                z-index: 200;
+                border: 1px solid var(--ink);
+                background: var(--lime);
+                color: var(--ink);
+                padding: 9px 14px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 800;
+            }
+            .skip-link:focus {
+                top: 16px;
+            }
+
+            .container {
+                width: min(var(--max-w), calc(100% - 40px));
+                margin: 0 auto;
+            }
+
+            .site-nav {
+                position: sticky;
+                top: 0;
+                z-index: 50;
+                border-bottom: 1px solid rgba(22, 32, 25, 0.16);
+                background: rgba(244, 240, 232, 0.88);
+                backdrop-filter: blur(18px);
+                -webkit-backdrop-filter: blur(18px);
+            }
+
+            .nav-inner {
+                min-height: 70px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 20px;
+            }
+
+            .brand {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                font-weight: 800;
+                letter-spacing: 0;
+                color: var(--ink);
+            }
+
+            .brand-mark {
+                width: 34px;
+                height: 34px;
+                display: grid;
+                place-items: center;
+                border: 1px solid var(--ink);
+                border-radius: 50%;
+                background: var(--lime);
+                color: var(--ink);
+                font-family: var(--font-display);
+                font-size: 18px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .nav-links {
+                display: none;
+                align-items: center;
+                gap: 22px;
+                color: var(--ink-soft);
+                font-size: 13px;
+                font-weight: 800;
+                text-transform: uppercase;
+            }
+
+            .nav-links a:hover {
+                color: var(--ink);
+            }
+
+            .nav-cta,
+            .btn-primary,
+            .btn-secondary,
+            .btn-submit {
+                min-height: 44px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 9px;
+                border-radius: 8px;
+                font-weight: 800;
+                line-height: 1;
+                transition:
+                    transform 160ms ease,
+                    box-shadow 160ms ease,
+                    background 160ms ease,
+                    color 160ms ease;
+                cursor: pointer;
+            }
+
+            .nav-cta,
+            .btn-primary,
+            .btn-submit {
+                border: 1px solid var(--green-deep);
+                background: var(--green-deep);
+                color: var(--white);
+                box-shadow:
+                    4px 4px 0 var(--lime),
+                    0 12px 24px rgba(8, 56, 41, 0.16);
+            }
+
+            .nav-cta {
+                padding: 0 16px;
+                font-size: 13px;
+            }
+            .btn-primary {
+                padding: 0 20px;
+            }
+
+            .btn-primary:hover,
+            .btn-submit:hover,
+            .nav-cta:hover {
+                transform: translaté(-2px, -2px);
+                box-shadow: 6px 6px 0 var(--lime);
+                background: var(--green);
+            }
+
+            .btn-secondary {
+                border: 1px solid var(--line-strong);
+                background: rgba(255, 253, 248, 0.74);
+                color: var(--ink);
+                padding: 0 18px;
+                box-shadow: 0 12px 26px rgba(8, 56, 41, 0.08);
+            }
+
+            .btn-secondary:hover {
+                border-color: var(--ink);
+                background: var(--white);
+                transform: translaté(-1px, -1px);
+            }
+
+            .hero {
+                min-height: calc(100vh - 70px);
+                padding: 74px 0 36px;
+                display: flex;
+                align-items: center;
+                overflow: hidden;
+            }
+
+            .hero-grid {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                gap: 42px;
+                align-items: center;
+            }
+
+            .eyebrow {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                width: fit-content;
+                border: 1px solid var(--line-strong);
+                background: rgba(255, 253, 248, 0.76);
+                padding: 10px 15px;
+                border-radius: 999px;
+                color: var(--green-deep);
+                font-size: 13px;
+                font-weight: 800;
+                text-transform: uppercase;
+                box-shadow: 0 14px 30px rgba(8, 56, 41, 0.08);
+            }
+
+            h1 {
+                max-width: 760px;
+                margin-top: 24px;
+                color: var(--ink);
+                font-family: var(--font-display);
+                font-size: clamp(58px, 9vw, 112px);
+                font-weight: 800;
+                letter-spacing: 0;
+                line-height: 0.92;
+            }
+
+            .hero-sub {
+                max-width: 640px;
+                margin-top: 26px;
+                color: var(--ink-soft);
+                font-size: clamp(18px, 2.1vw, 22px);
+                line-height: 1.62;
+            }
+
+            .hero-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 14px;
+                margin-top: 34px;
+            }
+
+            .hero-note {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-top: 18px;
+                color: var(--muted);
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+            .hero-note span {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .conversion-points {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 10px;
+                max-width: 650px;
+                margin-top: 24px;
+            }
+
+            .conversion-point {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 10px;
+                align-items: start;
+                border: 1px solid rgba(22, 32, 25, 0.18);
+                border-radius: 7px;
+                background: rgba(255, 253, 248, 0.7);
+                padding: 12px;
+                color: var(--ink-soft);
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+            .conversion-point i {
+                color: var(--green-deep);
+                margin-top: 1px;
+            }
+
+            .conversion-point strong {
+                display: block;
+                color: var(--ink);
+                font-size: 13px;
+                line-height: 1.25;
+            }
+
+            .conversion-point span {
+                display: block;
+                margin-top: 3px;
+            }
+
+            .product-scene {
+                position: relative;
+                min-height: 560px;
+            }
+
+            .pipeline-card,
+            .chat-card,
+            .metric-ticket {
+                border: 1px solid var(--ink);
+                border-radius: var(--radius);
+                background: var(--white);
+                box-shadow: var(--shadow);
+            }
+
+            .pipeline-card {
+                position: relative;
+                z-index: 2;
+                padding: 16px;
+                transform: rotaté(1.4deg);
+            }
+
+            .window-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                border-bottom: 1px solid var(--line);
+                padding-bottom: 12px;
+                color: var(--ink-soft);
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+            }
+
+            .dots {
+                display: flex;
+                gap: 6px;
+            }
+            .dots span {
+                width: 9px;
+                height: 9px;
+                border-radius: 50%;
+                background: var(--line-strong);
+            }
+            .dots span:nth-child(1) {
+                background: var(--rose);
+            }
+            .dots span:nth-child(2) {
+                background: var(--amber);
+            }
+            .dots span:nth-child(3) {
+                background: var(--green);
+            }
+
+            .pipeline-board {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(130px, 1fr));
+                gap: 10px;
+                padding-top: 14px;
+                overflow: hidden;
+            }
+
+            .lane {
+                min-height: 290px;
+                border: 1px solid var(--line);
+                border-radius: 6px;
+                background: #f7f2e8;
+                padding: 10px;
+            }
+
+            .lane h3 {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                color: var(--ink-soft);
+                font-size: 11px;
+                font-weight: 900;
+                text-transform: uppercase;
+                margin-bottom: 10px;
+            }
+
+            .lane h3 span {
+                border-radius: 999px;
+                background: var(--field);
+                padding: 2px 7px;
+                color: var(--ink);
+            }
+
+            .lead-card {
+                border: 1px solid var(--line);
+                border-radius: 6px;
+                background: var(--white);
+                padding: 10px;
+                margin-bottom: 9px;
+            }
+
+            .lead-card strong {
+                display: block;
+                color: var(--ink);
+                font-size: 13px;
+                line-height: 1.3;
+            }
+
+            .lead-card small {
+                display: block;
+                margin-top: 5px;
+                color: var(--muted);
+                font-size: 11px;
+                font-weight: 700;
+            }
+
+            .lead-status {
+                display: inline-flex;
+                margin-top: 9px;
+                border-radius: 999px;
+                background: #e5f2cf;
+                color: var(--green-deep);
+                padding: 4px 7px;
+                font-size: 10px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            .chat-card {
+                position: absolute;
+                right: -8px;
+                bottom: 42px;
+                z-index: 3;
+                width: min(300px, 78vw);
+                padding: 14px;
+                transform: rotaté(-3deg);
+            }
+
+            .chat-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                border-bottom: 1px solid var(--line);
+                padding-bottom: 10px;
+                font-size: 12px;
+                font-weight: 900;
+            }
+
+            .chat-bubble {
+                width: fit-content;
+                max-width: 88%;
+                margin-top: 12px;
+                border-radius: 12px;
+                padding: 10px 12px;
+                font-size: 12px;
+                line-height: 1.45;
+            }
+
+            .chat-bubble.in {
+                background: var(--field);
+                color: var(--ink-soft);
+            }
+            .chat-bubble.out {
+                margin-left: auto;
+                background: var(--green-deep);
+                color: var(--white);
+            }
+
+            .metric-ticket {
+                position: absolute;
+                left: 18px;
+                bottom: 0;
+                z-index: 4;
+                padding: 16px;
+                width: 220px;
+                background: var(--lime);
+                transform: rotaté(-2deg);
+            }
+
+            .metric-ticket span {
+                display: block;
+                color: var(--green-deep);
+                font-size: 11px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            .metric-ticket strong {
+                display: block;
+                margin-top: 6px;
+                font-family: var(--font-display);
+                font-size: 38px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .section {
+                padding: 96px 0;
+                border-top: 1px solid rgba(22, 32, 25, 0.12);
+            }
+
+            .section.dark {
+                background: var(--green-deep);
+                color: var(--white);
+            }
+
+            .section-header {
+                max-width: 760px;
+                margin-bottom: 42px;
+            }
+
+            .section-label {
+                color: var(--green);
+                font-size: 12px;
+                font-weight: 900;
+                letter-spacing: 0;
+                text-transform: uppercase;
+                margin-bottom: 10px;
+            }
+
+            .dark .section-label {
+                color: var(--lime);
+            }
+
+            .section-title {
+                color: inherit;
+                font-family: var(--font-display);
+                font-size: clamp(42px, 6vw, 72px);
+                font-weight: 800;
+                letter-spacing: 0;
+                line-height: 1.02;
+            }
+
+            .section-sub {
+                max-width: 660px;
+                margin-top: 18px;
+                color: var(--ink-soft);
+                font-size: 18px;
+                line-height: 1.7;
+            }
+
+            .dark .section-sub {
+                color: rgba(255, 253, 248, 0.72);
+            }
+
+            .section-header.split {
+                display: grid;
+                grid-template-columns: minmax(0, 0.9fr) minmax(280px, 0.7fr);
+                gap: 28px;
+                max-width: none;
+                align-items: end;
+            }
+
+            .section-kicker {
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: rgba(255, 253, 248, 0.72);
+                padding: 18px;
+                color: var(--ink-soft);
+                font-size: 14px;
+                font-weight: 700;
+            }
+
+            .section-kicker strong {
+                display: block;
+                margin-bottom: 6px;
+                color: var(--ink);
+                font-size: 15px;
+            }
+
+            .proof-strip {
+                display: grid;
+                grid-template-columns: 1fr;
+                border: 1px solid var(--ink);
+                border-radius: var(--radius);
+                background: var(--white);
+                overflow: hidden;
+            }
+
+            .proof-item {
+                padding: 24px;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .proof-item:last-child {
+                border-bottom: none;
+            }
+            .proof-item strong {
+                display: block;
+                font-family: var(--font-display);
+                font-size: 38px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .proof-item span {
+                display: block;
+                margin-top: 8px;
+                color: var(--ink-soft);
+                font-size: 14px;
+                font-weight: 700;
+            }
+
+            .problem-layout {
+                display: grid;
+                grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+                gap: 44px;
+                align-items: start;
+            }
+
+            .quote-panel {
+                position: sticky;
+                top: 100px;
+                border: 1px solid var(--ink);
+                border-radius: var(--radius);
+                background: var(--amber);
+                padding: 28px;
+                color: var(--ink);
+                box-shadow: 10px 10px 0 rgba(22, 32, 25, 0.1);
+            }
+
+            .quote-panel p {
+                font-family: var(--font-display);
+                font-size: clamp(34px, 4vw, 52px);
+                font-weight: 800;
+                line-height: 1.04;
+            }
+
+            .quote-panel span {
+                display: block;
+                margin-top: 20px;
+                font-size: 13px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            .pain-list {
+                display: grid;
+                gap: 14px;
+            }
+
+            .pain-item,
+            .pillar,
+            .step,
+            .contact-card,
+            .layer-card,
+            .plan-card,
+            .faq-item,
+            .compliance-card {
+                border: 1px solid var(--ink);
+                border-radius: var(--radius);
+                background: var(--white);
+            }
+
+            .pain-item {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 18px;
+                padding: 22px;
+            }
+
+            .icon-tile {
+                width: 44px;
+                height: 44px;
+                display: grid;
+                place-items: center;
+                border: 1px solid var(--line-strong);
+                border-radius: 6px;
+                background: var(--field);
+                color: var(--green-deep);
+            }
+
+            .pain-item h3,
+            .pillar h3,
+            .step h3 {
+                color: var(--ink);
+                font-size: 18px;
+                line-height: 1.3;
+                margin-bottom: 8px;
+            }
+
+            .pain-item p,
+            .pillar p,
+            .step p {
+                color: var(--ink-soft);
+                font-size: 15px;
+                line-height: 1.65;
+            }
+
+            .pillar-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+            }
+
+            .pillar {
+                padding: 24px;
+                min-height: 280px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                transition:
+                    transform 180ms ease,
+                    box-shadow 180ms ease;
+            }
+
+            .pillar:hover {
+                transform: translaté(-4px, -4px);
+                box-shadow: 8px 8px 0 var(--lime);
+            }
+
+            .pillar-number {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 34px;
+                color: var(--muted);
+                font-size: 12px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            .layer-stack {
+                display: grid;
+                gap: 12px;
+            }
+
+            .layer-card {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 18px;
+                padding: 22px;
+                box-shadow: 8px 8px 0 rgba(17, 90, 67, 0.08);
+            }
+
+            .layer-number {
+                width: 52px;
+                height: 52px;
+                display: grid;
+                place-items: center;
+                border: 1px solid var(--ink);
+                border-radius: 6px;
+                background: var(--lime);
+                color: var(--green-deep);
+                font-family: var(--font-display);
+                font-size: 28px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .layer-card h3,
+            .plan-card h3,
+            .faq-item h3,
+            .compliance-card h3 {
+                color: var(--ink);
+                font-size: 19px;
+                line-height: 1.3;
+                margin-bottom: 8px;
+            }
+
+            .layer-card p,
+            .plan-card p,
+            .faq-item p,
+            .compliance-card p {
+                color: var(--ink-soft);
+                font-size: 15px;
+                line-height: 1.65;
+            }
+
+            .feature-list {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 12px;
+            }
+
+            .feature-list span {
+                border: 1px solid var(--line);
+                border-radius: 999px;
+                background: var(--field);
+                padding: 5px 9px;
+                color: var(--green-deep);
+                font-size: 11px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            .plan-grid,
+            .compliance-grid,
+            .faq-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+            }
+
+            .plan-card,
+            .compliance-card,
+            .faq-item {
+                padding: 24px;
+            }
+
+            .plan-card.featured {
+                background: var(--green-deep);
+                color: var(--white);
+                box-shadow: 8px 8px 0 var(--lime);
+            }
+
+            .plan-card.featured h3,
+            .plan-card.featured p {
+                color: var(--white);
+            }
+
+            .plan-price {
+                display: block;
+                margin: 18px 0 12px;
+                color: var(--green-deep);
+                font-family: var(--font-display);
+                font-size: 32px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .plan-card.featured .plan-price {
+                color: var(--lime);
+            }
+
+            .plan-card ul {
+                display: grid;
+                gap: 9px;
+                margin-top: 18px;
+                list-style: none;
+            }
+
+            .plan-card li {
+                color: var(--ink-soft);
+                font-size: 14px;
+                font-weight: 700;
+                line-height: 1.45;
+            }
+
+            .plan-card.featured li {
+                color: rgba(255, 253, 248, 0.76);
+            }
+
+            .legal-note {
+                margin-top: 18px;
+                color: var(--muted);
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+            .checkbox-field {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 10px;
+                align-items: start;
+                margin: 2px 0 16px;
+                color: var(--ink-soft);
+                font-size: 13px;
+                font-weight: 700;
+                line-height: 1.45;
+            }
+
+            .checkbox-field input {
+                width: 18px;
+                height: 18px;
+                margin-top: 1px;
+                accent-color: var(--green-deep);
+            }
+
+            .checkbox-field a {
+                color: var(--green-deep);
+                text-decoration: underline;
+                text-underline-offset: 3px;
+            }
+
+            .followup-band {
+                display: grid;
+                grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+                gap: 42px;
+                align-items: center;
+            }
+
+            .cadence {
+                border: 1px solid rgba(255, 253, 248, 0.28);
+                border-radius: var(--radius);
+                background: rgba(255, 253, 248, 0.06);
+                padding: 20px;
+            }
+
+            .cadence-row {
+                display: grid;
+                grid-template-columns: 74px 1fr auto;
+                gap: 14px;
+                align-items: center;
+                border-bottom: 1px solid rgba(255, 253, 248, 0.16);
+                padding: 16px 0;
+            }
+
+            .cadence-row:last-child {
+                border-bottom: none;
+            }
+            .cadence-row span {
+                color: var(--lime);
+                font-family: var(--font-display);
+                font-size: 24px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .cadence-row strong {
+                display: block;
+                color: var(--white);
+                font-size: 15px;
+            }
+
+            .cadence-row small {
+                color: rgba(255, 253, 248, 0.64);
+                font-size: 12px;
+                font-weight: 700;
+            }
+
+            .cadence-row em {
+                border: 1px solid rgba(200, 241, 105, 0.4);
+                border-radius: 999px;
+                color: var(--lime);
+                padding: 5px 9px;
+                font-size: 11px;
+                font-style: normal;
+                font-weight: 900;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }
+
+            .steps-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+            }
+
+            .step {
+                padding: 24px;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .step::before {
+                content: attr(data-step);
+                position: absolute;
+                right: 16px;
+                top: 8px;
+                color: rgba(17, 90, 67, 0.12);
+                font-family: var(--font-display);
+                font-size: 92px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .step .icon-tile {
+                margin-bottom: 58px;
+                background: var(--lime);
+                border-color: var(--ink);
+            }
+
+            .contact-layout {
+                display: grid;
+                grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1fr);
+                gap: 44px;
+                align-items: start;
+            }
+
+            .contact-card {
+                padding: 24px;
+                box-shadow: 10px 10px 0 rgba(17, 90, 67, 0.12);
+            }
+
+            .contact-list {
+                display: grid;
+                gap: 12px;
+                margin-top: 24px;
+            }
+
+            .contact-list span {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: var(--ink-soft);
+                font-size: 14px;
+                font-weight: 700;
+            }
+
+            .form-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 14px;
+            }
+
+            .form-group {
+                margin-bottom: 14px;
+            }
+            .form-group.full {
+                grid-column: 1 / -1;
+            }
+
+            label {
+                display: block;
+                margin-bottom: 7px;
+                color: var(--ink-soft);
+                font-size: 12px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            input,
+            select,
+            textarea {
+                width: 100%;
+                border: 1px solid var(--line-strong);
+                border-radius: 6px;
+                background: var(--paper-strong);
+                color: var(--ink);
+                padding: 13px 14px;
+                outline: none;
+                transition:
+                    border-color 140ms ease,
+                    box-shadow 140ms ease,
+                    background 140ms ease;
+            }
+
+            textarea {
+                min-height: 128px;
+                resize: vertical;
+            }
+            input::placeholder,
+            select,
+            textarea::placeholder {
+                color: #9b968b;
+            }
+
+            input:focus,
+            select:focus,
+            textarea:focus {
+                border-color: var(--green);
+                background: var(--white);
+                box-shadow: 0 0 0 4px rgba(200, 241, 105, 0.48);
+            }
+
+            input.is-error,
+            select.is-error,
+            textarea.is-error {
+                border-color: var(--rose);
+                box-shadow: 0 0 0 4px rgba(175, 75, 68, 0.16);
+            }
+
+            .field-error {
+                display: none;
+                margin-top: 6px;
+                color: var(--rose);
+                font-size: 12px;
+                font-weight: 800;
+            }
+            .field-error.visible {
+                display: block;
+            }
+
+            .btn-submit {
+                width: 100%;
+                border-radius: 6px;
+                padding: 0 18px;
+                margin-top: 6px;
+            }
+
+            .btn-submit:disabled {
+                opacity: 0.68;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: 4px 4px 0 var(--lime);
+            }
+
+            .spinner {
+                width: 18px;
+                height: 18px;
+                border: 2px solid rgba(255, 255, 255, 0.34);
+                border-top-color: var(--white);
+                border-radius: 50%;
+                animation: spin 700ms linear infinite;
+                display: none;
+            }
+            .btn-submit.loading .spinner {
+                display: block;
+            }
+            .btn-submit.loading .btn-label {
+                display: none;
+            }
+            @keyframes spin {
+                to {
+                    transform: rotaté(360deg);
+                }
+            }
+
+            .form-success {
+                display: none;
+                border: 1px solid var(--green);
+                border-radius: var(--radius);
+                background: #e5f2cf;
+                padding: 24px;
+            }
+
+            .form-success.visible {
+                display: block;
+            }
+            .form-success h3 {
+                color: var(--green-deep);
+                font-size: 20px;
+                margin-bottom: 8px;
+            }
+            .form-success p {
+                color: var(--ink-soft);
+            }
+
+            footer {
+                border-top: 1px solid rgba(22, 32, 25, 0.16);
+                background: var(--ink);
+                color: var(--white);
+                padding: 32px 0;
+            }
+
+            .footer-inner {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 20px;
+                flex-wrap: wrap;
+            }
+
+            .footer-copy {
+                color: rgba(255, 253, 248, 0.68);
+                font-size: 13px;
+            }
+            .footer-links {
+                display: flex;
+                gap: 18px;
+            }
+            .footer-links a {
+                color: rgba(255, 253, 248, 0.76);
+                font-size: 13px;
+                font-weight: 800;
+            }
+            .footer-links a:hover {
+                color: var(--lime);
+            }
+
+            .fade-up {
+                opacity: 0;
+                transform: translatéY(20px);
+                transition:
+                    opacity 520ms ease,
+                    transform 520ms ease;
+            }
+            .fade-up.visible {
+                opacity: 1;
+                transform: translatéY(0);
+            }
+
+            :focus-visible {
+                outline: 3px solid var(--amber);
+                outline-offset: 3px;
+            }
+
+            @media (min-width: 880px) {
+                .nav-links {
+                    display: flex;
+                }
+                .hero-grid {
+                    grid-template-columns:
+                        minmax(0, 1.04fr)
+                        minmax(410px, 0.96fr);
+                }
+                .proof-strip {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+                .conversion-points {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+                .proof-item {
+                    border-bottom: none;
+                    border-right: 1px solid var(--line);
+                }
+                .proof-item:last-child {
+                    border-right: none;
+                }
+            }
+
+            @media (max-width: 980px) {
+                .problem-layout,
+                .followup-band,
+                .contact-layout,
+                .section-header.split {
+                    grid-template-columns: 1fr;
+                }
+
+                .quote-panel {
+                    position: static;
+                }
+                .pillar-grid,
+                .steps-grid,
+                .plan-grid,
+                .compliance-grid,
+                .faq-grid {
+                    grid-template-columns: 1fr;
+                }
+                .pillar {
+                    min-height: auto;
+                }
+                .product-scene {
+                    min-height: 520px;
+                }
+            }
+
+            @media (max-width: 640px) {
+                .container {
+                    width: min(100% - 28px, var(--max-w));
+                }
+                .nav-inner {
+                    min-height: 62px;
+                }
+                .brand-mark {
+                    width: 30px;
+                    height: 30px;
+                    font-size: 19px;
+                }
+                .nav-cta {
+                    min-height: 40px;
+                    padding: 0 12px;
+                }
+                .hero {
+                    min-height: auto;
+                    padding-top: 50px;
+                }
+                h1 {
+                    font-size: clamp(48px, 17vw, 74px);
+                }
+                .product-scene {
+                    min-height: 470px;
+                    margin-top: 4px;
+                }
+                .pipeline-card {
+                    padding: 12px;
+                    transform: none;
+                }
+                .pipeline-board {
+                    grid-template-columns: 1fr;
+                    max-height: 310px;
+                    overflow: hidden;
+                }
+                .lane {
+                    min-height: auto;
+                }
+                .chat-card {
+                    right: 0;
+                    bottom: 42px;
+                    width: 260px;
+                }
+                .metric-ticket {
+                    left: 0;
+                    width: 190px;
+                }
+                .section {
+                    padding: 70px 0;
+                }
+                .pain-item {
+                    grid-template-columns: 1fr;
+                }
+                .layer-card {
+                    grid-template-columns: 1fr;
+                }
+                .cadence-row {
+                    grid-template-columns: 58px 1fr;
+                }
+                .cadence-row em {
+                    grid-column: 2;
+                    width: fit-content;
+                }
+                .form-grid {
+                    grid-template-columns: 1fr;
+                }
+                .footer-inner {
+                    align-items: flex-start;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                *,
+                *::before,
+                *::after {
+                    animation-duration: 0.001ms !important;
+                    animation-iteration-count: 1 !important;
+                    scroll-behavior: auto !important;
+                    transition-duration: 0.001ms !important;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <a href="#main" class="skip-link">Pular para o conteúdo principal</a>
+
+        <nav
+            class="site-nav"
+            role="navigation"
+            aria-label="Navegação principal"
+        >
+            <div class="nav-inner container">
+                <a
+                    href="./index.html"
+                    class="brand"
+                    aria-label="CredFlow IA - página inicial"
+                >
+                    <span class="brand-mark" aria-hidden="true">C</span>
+                    <span>CredFlow IA</span>
+                </a>
+                <div class="nav-links" aria-label="Secoes da página">
+                    <a href="#produto">Produto</a>
+                    <a href="#funciona">Como funciona</a>
+                    <a href="#recursos">Recursos</a>
+                    <a href="#planos">Planos</a>
+                    <a href="#compliance">Compliance</a>
+                    <a href="#faq">FAQ</a>
+                    <a href="#contato">Contato</a>
+                </div>
+                <a href="https://agent.promithic.com.br" class="nav-cta">
+                    Entrar no sistema
+                    <i
+                        data-lucide="arrow-right"
+                        width="15"
+                        height="15"
+                        aria-hidden="true"
+                    ></i>
+                </a>
+            </div>
+        </nav>
+
+        <main id="main">
+            <section class="hero" aria-labelledby="hero-title">
+                <div class="hero-grid container">
+                    <div>
+                        <div class="eyebrow">
+                            <i
+                                data-lucide="sparkles"
+                                width="15"
+                                height="15"
+                                aria-hidden="true"
+                            ></i>
+                            CRM COM IA INTEGRADA
+                        </div>
+                        <h1 id="hero-title">Nenhum lead perdido</h1>
+                        <p class="hero-sub">
+                            O CredFlow IA atende leads em segundos, qualifica
+                            pelo WhatsApp Business API oficial, registra tudo no
+                            funil e aciona follow-ups até a oportunidade
+                            avan&ccedil;ar.
+                        </p>
+                        <div class="hero-actions">
+                            <a href="#contato" class="btn-primary">
+                                Agendar diagnóstico
+                                <i
+                                    data-lucide="arrow-up-right"
+                                    width="18"
+                                    height="18"
+                                    aria-hidden="true"
+                                ></i>
+                            </a>
+                            <a href="#funciona" class="btn-secondary">
+                                Ver como funciona
+                                <i
+                                    data-lucide="play"
+                                    width="17"
+                                    height="17"
+                                    aria-hidden="true"
+                                ></i>
+                            </a>
+                        </div>
+                        <p class="hero-note">
+                            <span
+                                ><i
+                                    data-lucide="check"
+                                    width="15"
+                                    height="15"
+                                    aria-hidden="true"
+                                ></i
+                                >Sem cartao de crédito</span
+                            >
+                            <span
+                                ><i
+                                    data-lucide="clock-3"
+                                    width="15"
+                                    height="15"
+                                    aria-hidden="true"
+                                ></i
+                                >Setup guiado para WhatsApp oficial</span
+                            >
+                        </p>
+                        <div
+                            class="conversion-points"
+                            aria-label="Motivos para agendar uma conversa"
+                        >
+                            <div class="conversion-point">
+                                <i
+                                    data-lucide="zap"
+                                    width="18"
+                                    height="18"
+                                    aria-hidden="true"
+                                ></i>
+                                <div>
+                                    <strong
+                                        >Resposta antes do lead sumir</strong
+                                    >
+                                    <span
+                                        >IA assume o primeiro contato e coleta o
+                                        contexto essencial.</span
+                                    >
+                                </div>
+                            </div>
+                            <div class="conversion-point">
+                                <i
+                                    data-lucide="list-checks"
+                                    width="18"
+                                    height="18"
+                                    aria-hidden="true"
+                                ></i>
+                                <div>
+                                    <strong
+                                        >Pipeline com prioridade clara</strong
+                                    >
+                                    <span
+                                        >Status, histórico, operador e proxima
+                                        acao no mesmo painel.</span
+                                    >
+                                </div>
+                            </div>
+                            <div class="conversion-point">
+                                <i
+                                    data-lucide="repeat"
+                                    width="18"
+                                    height="18"
+                                    aria-hidden="true"
+                                ></i>
+                                <div>
+                                    <strong
+                                        >Follow-up que não depende de
+                                        memoria</strong
+                                    >
+                                    <span
+                                        >Cadencias persistentes pausam quando o
+                                        lead responde.</span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="product-scene"
+                        aria-label="Previa visual do CRM CredFlow IA"
+                    >
+                        <div class="pipeline-card">
+                            <div class="window-bar">
+                                <div class="dots" aria-hidden="true">
+                                    <span></span><span></span><span></span>
+                                </div>
+                                <span>Fila comercial ao vivo</span>
+                            </div>
+                            <div class="pipeline-board">
+                                <div class="lane">
+                                    <h3>Entrada <span>18</span></h3>
+                                    <div class="lead-card">
+                                        <strong
+                                            >Maria A. - Contrato novo</strong
+                                        >
+                                        <small>Veio do anuncio ha 2 min</small>
+                                        <span class="lead-status"
+                                            >Coletando perfil</span
+                                        >
+                                    </div>
+                                    <div class="lead-card">
+                                        <strong
+                                            >Jose P. - Credito
+                                            trabalhador</strong
+                                        >
+                                        <small>Quer simular parcela hoje</small>
+                                        <span class="lead-status"
+                                            >Em qualificação</span
+                                        >
+                                    </div>
+                                </div>
+                                <div class="lane">
+                                    <h3>Retomada <span>42</span></h3>
+                                    <div class="lead-card">
+                                        <strong>Ana C. - Portabilidade</strong>
+                                        <small>Comparando parcela atual</small>
+                                        <span class="lead-status"
+                                            >Enviar oferta</span
+                                        >
+                                    </div>
+                                    <div class="lead-card">
+                                        <strong
+                                            >Carlos R. - Refinanciamento</strong
+                                        >
+                                        <small
+                                            >Lead respondeu apos retomada</small
+                                        >
+                                        <span class="lead-status"
+                                            >Operador avisado</span
+                                        >
+                                    </div>
+                                </div>
+                                <div class="lane">
+                                    <h3>Negociacao <span>9</span></h3>
+                                    <div class="lead-card">
+                                        <strong>Lucia M. - Consorcio</strong>
+                                        <small>Escolheu faixa de crédito</small>
+                                        <span class="lead-status"
+                                            >Proxima acao</span
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="chat-card"
+                            aria-label="Exemplo de conversa automatizada"
+                        >
+                            <div class="chat-header">
+                                <span>WhatsApp oficial</span>
+                                <i
+                                    data-lucide="badge-check"
+                                    width="16"
+                                    height="16"
+                                    aria-hidden="true"
+                                ></i>
+                            </div>
+                            <div class="chat-bubble in">
+                                Oi, quero fazer um contrato novo. Consigo ver
+                                uma simulacao?
+                            </div>
+                            <div class="chat-bubble out">
+                                Claro. Vou confirmar seu perfil e te mostrar as
+                                opcoes disponíveis.
+                            </div>
+                            <div class="chat-bubble out">
+                                Se fizer sentido, deixo um consultor com o
+                                histórico completo para continuar.
+                            </div>
+                        </div>
+
+                        <div
+                            class="metric-ticket"
+                            aria-label="Indicador de follow-up"
+                        >
+                            <span>Leads parados</span>
+                            <strong>-63%</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" aria-label="Indicadores da plataforma">
+                <div class="container">
+                    <div class="proof-strip fade-up">
+                        <div class="proof-item">
+                            <strong>30s</strong>
+                            <span
+                                >Tempo alvo para primeira resposta quando o lead
+                                entra quente.</span
+                            >
+                        </div>
+                        <div class="proof-item">
+                            <strong>1 painel</strong>
+                            <span
+                                >CRM, histórico, status do funil e gestão do
+                                time no mesmo fluxo.</span
+                            >
+                        </div>
+                        <div class="proof-item">
+                            <strong>24/7</strong>
+                            <span
+                                >Qualificacao e follow-up rodando mesmo fora do
+                                horario comercial.</span
+                            >
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                class="section"
+                id="produto"
+                aria-labelledby="product-title"
+            >
+                <div class="problem-layout container">
+                    <div class="quote-panel fade-up">
+                        <p>
+                            O lead de crédito não espera. Quem responde primeiro
+                            entra na conversa.
+                        </p>
+                        <span
+                            >CredFlow IA organiza atendimento, IA e CRM no mesmo
+                            fluxo.</span
+                        >
+                    </div>
+                    <div>
+                        <div class="section-header">
+                            <p class="section-label">Produto</p>
+                            <h2 class="section-title" id="product-title">
+                                Um CRM vertical para correspondentes bancarios.
+                            </h2>
+                            <p class="section-sub">
+                                Diferente de CRMs genericos e disparadores
+                                isolados, o CredFlow IA combina WhatsApp
+                                oficial, agentes especialistas em crédito,
+                                pipeline, histórico e follow-up em uma operação
+                                rastreavel.
+                            </p>
+                        </div>
+                        <div class="pain-list">
+                            <article class="pain-item fade-up">
+                                <div class="icon-tile" aria-hidden="true">
+                                    <i
+                                        data-lucide="shield-check"
+                                        width="22"
+                                        height="22"
+                                    ></i>
+                                </div>
+                                <div>
+                                    <h3>WhatsApp Business API oficial</h3>
+                                    <p>
+                                        Onboarding guiado, templates aprovados e
+                                        operação preparada para reduzir risco de
+                                        bloqueio por uso de canais não oficiais.
+                                    </p>
+                                </div>
+                            </article>
+                            <article class="pain-item fade-up">
+                                <div class="icon-tile" aria-hidden="true">
+                                    <i
+                                        data-lucide="bot"
+                                        width="22"
+                                        height="22"
+                                    ></i>
+                                </div>
+                                <div>
+                                    <h3>Agentes de IA para crédito</h3>
+                                    <p>
+                                        Atendimento 24/7 para qualificar,
+                                        coletar dados essenciais, entender audio
+                                        e imagem e encaminhar o lead com
+                                        contexto.
+                                    </p>
+                                </div>
+                            </article>
+                            <article class="pain-item fade-up">
+                                <div class="icon-tile" aria-hidden="true">
+                                    <i
+                                        data-lucide="kanban-square"
+                                        width="22"
+                                        height="22"
+                                    ></i>
+                                </div>
+                                <div>
+                                    <h3>CRM para não perder follow-up</h3>
+                                    <p>
+                                        Kanban, status automatizados, histórico
+                                        unificado, atribuicao de operadores e
+                                        proxima acao clara para cada lead.
+                                    </p>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                class="section"
+                id="funciona"
+                aria-labelledby="steps-title"
+            >
+                <div class="container">
+                    <div class="section-header split">
+                        <div>
+                            <p class="section-label">Como funciona</p>
+                            <h2 class="section-title" id="steps-title">
+                                Do anuncio ao atendimento humano, sem perder
+                                contexto.
+                            </h2>
+                        </div>
+                        <p class="section-kicker">
+                            <strong>Fluxo comercial simples.</strong>
+                            O objetivo da IA não e prometer crédito: e
+                            responder, qualificar, organizar e avisar o time no
+                            momento certo.
+                        </p>
+                    </div>
+                    <div class="steps-grid">
+                        <article class="step fade-up" data-step="1">
+                            <div class="icon-tile" aria-hidden="true">
+                                <i
+                                    data-lucide="megaphone"
+                                    width="22"
+                                    height="22"
+                                ></i>
+                            </div>
+                            <h3>Lead entra pelo WhatsApp</h3>
+                            <p>
+                                Contatos vindos de campanhas, listas ou canais
+                                próprios chegam no fluxo oficial da operação.
+                            </p>
+                        </article>
+                        <article class="step fade-up" data-step="2">
+                            <div class="icon-tile" aria-hidden="true">
+                                <i data-lucide="bot" width="22" height="22"></i>
+                            </div>
+                            <h3>A IA qualifica e registra</h3>
+                            <p>
+                                O agente coleta intencao, convênio, dados
+                                necessários e histórico, sempre dentro das
+                                regras da operação.
+                            </p>
+                        </article>
+                        <article class="step fade-up" data-step="3">
+                            <div class="icon-tile" aria-hidden="true">
+                                <i
+                                    data-lucide="panel-top"
+                                    width="22"
+                                    height="22"
+                                ></i>
+                            </div>
+                            <h3>CRM prioriza a proxima acao</h3>
+                            <p>
+                                O lead aparece no Kanban com status, operador,
+                                origem, conversas e follow-ups em andamento.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                class="section"
+                id="recursos"
+                aria-labelledby="features-title"
+            >
+                <div class="container">
+                    <div class="section-header">
+                        <p class="section-label">Recursos</p>
+                        <h2 class="section-title" id="features-title">
+                            Tres camadas para escalar atendimento sem inflar
+                            equipe.
+                        </h2>
+                        <p class="section-sub">
+                            A estratégia do CredFlow IA e modular: canais
+                            oficiais, CRM com orquestracao e agentes
+                            especialistas por produto de crédito.
+                        </p>
+                    </div>
+                    <div class="layer-stack">
+                        <article class="layer-card fade-up">
+                            <div class="layer-number">1</div>
+                            <div>
+                                <h3>Infra + canais</h3>
+                                <p>
+                                    WhatsApp Business API oficial, templates,
+                                    disparo controlado, webhooks e base para
+                                    operar com rastreabilidade.
+                                </p>
+                                <div class="feature-list">
+                                    <span>WhatsApp oficial</span>
+                                    <span>Templates Meta</span>
+                                    <span>Disparo controlado</span>
+                                    <span>Webhooks</span>
+                                </div>
+                            </div>
+                        </article>
+                        <article class="layer-card fade-up">
+                            <div class="layer-number">2</div>
+                            <div>
+                                <h3>CRM + orquestracao</h3>
+                                <p>
+                                    Pipeline, Kanban, histórico, status
+                                    automatizados, multiusuário, permissões e
+                                    handoff humano-IA.
+                                </p>
+                                <div class="feature-list">
+                                    <span>Kanban</span>
+                                    <span>Historico unificado</span>
+                                    <span>Permissoes</span>
+                                    <span>Follow-up</span>
+                                </div>
+                            </div>
+                        </article>
+                        <article class="layer-card fade-up">
+                            <div class="layer-number">3</div>
+                            <div>
+                                <h3>Agentes especialistas</h3>
+                                <p>
+                                    Agentes para INSS, SIAPE, FGTS e CLT, com
+                                    possibilidade de evoluir para outros
+                                    produtos quando a operação estiver pronta.
+                                </p>
+                                <div class="feature-list">
+                                    <span>INSS</span>
+                                    <span>SIAPE</span>
+                                    <span>FGTS</span>
+                                    <span>CLT</span>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                class="section dark"
+                id="followup"
+                aria-labelledby="followup-title"
+            >
+                <div class="followup-band container">
+                    <div>
+                        <p class="section-label">Follow-up</p>
+                        <h2 class="section-title" id="followup-title">
+                            Seus concorrentes desistem no segundo contato.
+                            CredFlow IA não.
+                        </h2>
+                        <p class="section-sub">
+                            A maioria das vendas exige varias tentativas. O
+                            CredFlow IA retoma conversas paradas, reativa leads
+                            frios e pausa a cadencia quando o lead responde ou
+                            quando seu time assume.
+                        </p>
+                    </div>
+                    <div
+                        class="cadence fade-up"
+                        aria-label="Exemplo de cadencia de follow-up"
+                    >
+                        <div class="cadence-row">
+                            <span>D0</span>
+                            <div>
+                                <strong>Qualificacao imediata</strong>
+                                <small
+                                    >Primeira resposta e coleta de contexto pelo
+                                    WhatsApp oficial.</small
+                                >
+                            </div>
+                            <em>Agora</em>
+                        </div>
+                        <div class="cadence-row">
+                            <span>D1</span>
+                            <div>
+                                <strong>Retomada contextual</strong>
+                                <small
+                                    >Mensagem muda conforme etapa, histórico e
+                                    resposta anterior.</small
+                                >
+                            </div>
+                            <em>Automatico</em>
+                        </div>
+                        <div class="cadence-row">
+                            <span>D7</span>
+                            <div>
+                                <strong>Reativacao de oportunidade</strong>
+                                <small
+                                    >Lead frio volta para o funil antes de
+                                    morrer na base.</small
+                                >
+                            </div>
+                            <em>Persistente</em>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="planos" aria-labelledby="plans-title">
+                <div class="container">
+                    <div class="section-header">
+                        <p class="section-label">Planos</p>
+                        <h2 class="section-title" id="plans-title">
+                            Planos sob consulta, de acordo com volume e
+                            operação.
+                        </h2>
+                        <p class="section-sub">
+                            O diagnóstico define o melhor pacote para seu
+                            momento: solo, equipe em crescimento ou operação com
+                            multiplas contas e integrações.
+                        </p>
+                    </div>
+                    <div class="plan-grid">
+                        <article class="plan-card fade-up">
+                            <h3>Starter</h3>
+                            <p>Para correspondente solo ou pequena operação.</p>
+                            <strong class="plan-price">Sob consulta</strong>
+                            <ul>
+                                <li>CRM + WhatsApp oficial</li>
+                                <li>1 agente IA para qualificação</li>
+                                <li>Follow-up automatico essencial</li>
+                                <li>Pipeline para 1-3 operadores</li>
+                            </ul>
+                        </article>
+                        <article class="plan-card featured fade-up">
+                            <h3>Growth</h3>
+                            <p>Para equipes que precisam organizar volume.</p>
+                            <strong class="plan-price">Sob consulta</strong>
+                            <ul>
+                                <li>Multioperador e permissões</li>
+                                <li>Dashboard e acompanhamento por campanha</li>
+                                <li>
+                                    Disparo controlado e cadencias avancadas
+                                </li>
+                                <li>Suporte a audio e imagem no atendimento</li>
+                            </ul>
+                        </article>
+                        <article class="plan-card fade-up">
+                            <h3>Scale</h3>
+                            <p>
+                                Para operações maiores e integrações proprias.
+                            </p>
+                            <strong class="plan-price">Sob consulta</strong>
+                            <ul>
+                                <li>Múltiplas contas WhatsApp</li>
+                                <li>API, webhooks e integrações</li>
+                                <li>Agentes por convênio ou produto</li>
+                                <li>Suporte prioritario de implantação</li>
+                            </ul>
+                        </article>
+                    </div>
+                    <p class="legal-note">
+                        Planos e recursos finais dependem do volume de leads,
+                        canais utilizados, templates e necessidades de
+                        integração.
+                    </p>
+                </div>
+            </section>
+
+            <section
+                class="section"
+                id="compliance"
+                aria-labelledby="compliance-title"
+            >
+                <div class="container">
+                    <div class="section-header">
+                        <p class="section-label">Compliance</p>
+                        <h2 class="section-title" id="compliance-title">
+                            Preparado para uma operação comercial revisável.
+                        </h2>
+                        <p class="section-sub">
+                            A landing deixa claro quem opera, quais canais são
+                            usados e como o visitante pode acessar termos,
+                            privacidade e contato antes de enviar dados.
+                        </p>
+                    </div>
+                    <div class="compliance-grid">
+                        <article class="compliance-card fade-up">
+                            <h3>WhatsApp oficial</h3>
+                            <p>
+                                Uso de WhatsApp Business API oficial, janela de
+                                atendimento e templates aprovados para retomadas
+                                fora da janela permitida.
+                            </p>
+                        </article>
+                        <article class="compliance-card fade-up">
+                            <h3>LGPD e consentimento</h3>
+                            <p>
+                                Formulário com aceite de política de
+                                privacidade, uso de dados para contato comercial
+                                e acesso visível aos documentos legais.
+                            </p>
+                        </article>
+                        <article class="compliance-card fade-up">
+                            <h3>Identificacao</h3>
+                            <p>
+                                Produto CredFlow IA, contato
+                                atendimento@promithic.com.br e documentos legais
+                                públicados na página.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="faq" aria-labelledby="faq-title">
+                <div class="container">
+                    <div class="section-header">
+                        <p class="section-label">FAQ</p>
+                        <h2 class="section-title" id="faq-title">
+                            Perguntas comuns antes do diagnóstico.
+                        </h2>
+                    </div>
+                    <div class="faq-grid">
+                        <article class="faq-item fade-up">
+                            <h3>O CredFlow IA substitui meu CRM atual?</h3>
+                            <p>
+                                Não necessáriamente. Ele pode complementar a
+                                operação atual com atendimento, follow-up e
+                                funil especializado para crédito.
+                            </p>
+                        </article>
+                        <article class="faq-item fade-up">
+                            <h3>A ferramenta promete aprovação de crédito?</h3>
+                            <p>
+                                Não. O produto organiza atendimento e
+                                qualificação. Analise, elegibilidade e aprovação
+                                dependem das regras da instituição financeira.
+                            </p>
+                        </article>
+                        <article class="faq-item fade-up">
+                            <h3>Posso acessar o sistema atual?</h3>
+                            <p>
+                                Sim. O acesso operacional continua em
+                                agent.promithic.com.br. Esta página é apenas a
+                                home pública do produto.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                class="section"
+                id="contato"
+                aria-labelledby="contact-title"
+            >
+                <div class="contact-layout container">
+                    <div>
+                        <p class="section-label">Acesso antecipado</p>
+                        <h2 class="section-title" id="contact-title">
+                            Veja onde sua operação esta perdendo leads.
+                        </h2>
+                        <p class="section-sub">
+                            Em uma conversa curta, mapeamos canais, volume,
+                            tempo de resposta e pontos de fuga do funil. Depois
+                            indicamos como ligar o CredFlow IA a operação atual.
+                        </p>
+                        <div
+                            class="contact-list"
+                            aria-label="Informacoes de contato"
+                        >
+                            <span
+                                ><i
+                                    data-lucide="calendar-check"
+                                    width="17"
+                                    height="17"
+                                    aria-hidden="true"
+                                ></i
+                                >Retorno em até 1 dia util</span
+                            >
+                            <span
+                                ><i
+                                    data-lucide="shield-check"
+                                    width="17"
+                                    height="17"
+                                    aria-hidden="true"
+                                ></i
+                                >Uso da API oficial do WhatsApp Business</span
+                            >
+                            <span
+                                ><i
+                                    data-lucide="mail"
+                                    width="17"
+                                    height="17"
+                                    aria-hidden="true"
+                                ></i
+                                >atendimento@promithic.com.br</span
+                            >
+                        </div>
+                    </div>
+
+                    <div class="contact-card">
+                        <form
+                            id="contact-form"
+                            novalidate
+                            aria-label="Formulário de contato"
+                        >
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="nome">Nome *</label>
+                                    <input
+                                        type="text"
+                                        id="nome"
+                                        name="nome"
+                                        placeholder="Seu nome"
+                                        autocomplete="name"
+                                        required
+                                        aria-required="true"
+                                        aria-describedby="nome-error"
+                                    />
+                                    <span
+                                        class="field-error"
+                                        id="nome-error"
+                                        role="alert"
+                                        >Informe seu nome.</span
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="empresa">Empresa</label>
+                                    <input
+                                        type="text"
+                                        id="empresa"
+                                        name="empresa"
+                                        placeholder="Nome da operação"
+                                        autocomplete="organization"
+                                    />
+                                </div>
+                                <div class="form-group full">
+                                    <label for="whatsapp">WhatsApp *</label>
+                                    <input
+                                        type="tel"
+                                        id="whatsapp"
+                                        name="whatsapp"
+                                        placeholder="(11) 99999-9999"
+                                        autocomplete="tel"
+                                        required
+                                        aria-required="true"
+                                        aria-describedby="whatsapp-error"
+                                    />
+                                    <span
+                                        class="field-error"
+                                        id="whatsapp-error"
+                                        role="alert"
+                                        >Informe seu WhatsApp.</span
+                                    >
+                                </div>
+                                <div class="form-group full">
+                                    <label for="volume"
+                                        >Volume mensal de leads</label
+                                    >
+                                    <select id="volume" name="volume">
+                                        <option value="">
+                                            Selecione uma faixa
+                                        </option>
+                                        <option value="Ate 200 leads">
+                                            Ate 200 leads
+                                        </option>
+                                        <option value="200 a 1000 leads">
+                                            200 a 1000 leads
+                                        </option>
+                                        <option value="Mais de 1000 leads">
+                                            Mais de 1000 leads
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="form-group full">
+                                    <label for="operacao"
+                                        >Operacao principal</label
+                                    >
+                                    <select id="operacao" name="operacao">
+                                        <option value="">
+                                            Selecione o foco da operação
+                                        </option>
+                                        <option value="INSS">INSS</option>
+                                        <option value="SIAPE">SIAPE</option>
+                                        <option value="CLT">CLT</option>
+                                        <option value="FGTS">FGTS</option>
+                                        <option value="Multiproduto">
+                                            Multiproduto
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="form-group full">
+                                    <label for="mensagem">Mensagem</label>
+                                    <textarea
+                                        id="mensagem"
+                                        name="mensagem"
+                                        placeholder="Conte sobre seu volume de leads, canais e principal gargalo."
+                                    ></textarea>
+                                </div>
+                            </div>
+                            <label class="checkbox-field" for="privacy-consent">
+                                <input
+                                    type="checkbox"
+                                    id="privacy-consent"
+                                    name="privacy-consent"
+                                    required
+                                    aria-required="true"
+                                    aria-describedby="privacy-error"
+                                />
+                                <span>
+                                    Li e aceito a
+                                    <a href="/politica"
+                                        >Política de Privacidade</a
+                                    >
+                                    e os
+                                    <a href="/termos">Termos de Uso</a>
+                                    e autorizo contato comercial sobre o
+                                    CredFlow IA.
+                                </span>
+                            </label>
+                            <span
+                                class="field-error"
+                                id="privacy-error"
+                                role="alert"
+                                >Aceite a política para enviar.</span
+                            >
+                            <button
+                                type="submit"
+                                class="btn-submit"
+                                id="submit-btn"
+                            >
+                                <span class="spinner" aria-hidden="true"></span>
+                                <span class="btn-label"
+                                    >Quero diagnóstico do funil</span
+                                >
+                            </button>
+                        </form>
+                        <div
+                            class="form-success"
+                            id="form-success"
+                            role="status"
+                            aria-live="polite"
+                            aria-atomic="true"
+                        >
+                            <h3>Pedido recebido.</h3>
+                            <p>
+                                Nossa equipe vai entrar em contato pelo WhatsApp
+                                informado.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <div class="footer-inner container">
+                <p class="footer-copy">
+                    &copy; 2026 CredFlow IA. Todos os direitos reservados.
+                </p>
+                <nav class="footer-links" aria-label="Links legais">
+                    <a href="/politica">Política de Privacidade</a>
+                    <a href="/termos">Termos de Uso</a>
+                    <a href="https://agent.promithic.com.br"
+                        >Entrar no sistema</a
+                    >
+                </nav>
+            </div>
+        </footer>
+
+        <script>
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+
+            const observer = new IntersectionObserver(
+                (entries) => {
+                    entries.forEach((entry) => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                },
+                { threshold: 0.08 },
+            );
+
+            document
+                .querySelectorAll('.fade-up')
+                .forEach((element) => observer.observe(element));
+
+            const form = document.getElementById('contact-form');
+            const submitBtn = document.getElementById('submit-btn');
+            const successBox = document.getElementById('form-success');
+
+            function validateField(inputId, errorId, message) {
+                const input = document.getElementById(inputId);
+                const error = document.getElementById(errorId);
+                const empty = !input.value.trim();
+                input.classList.toggle('is-error', empty);
+                error.classList.toggle('visible', empty);
+                if (empty) {
+                    error.textContent = message;
+                }
+                return !empty;
+            }
+
+            document.getElementById('nome').addEventListener('blur', () => {
+                validateField('nome', 'nome-error', 'Informe seu nome.');
+            });
+
+            document.getElementById('whatsapp').addEventListener('blur', () => {
+                validateField(
+                    'whatsapp',
+                    'whatsapp-error',
+                    'Informe seu WhatsApp.',
+                );
+            });
+
+            document
+                .getElementById('privacy-consent')
+                .addEventListener('change', () => {
+                    const consent = document.getElementById('privacy-consent');
+                    const error = document.getElementById('privacy-error');
+                    error.classList.toggle('visible', !consent.checked);
+                });
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const nomeOk = validateField(
+                    'nome',
+                    'nome-error',
+                    'Informe seu nome.',
+                );
+                const whatsappOk = validateField(
+                    'whatsapp',
+                    'whatsapp-error',
+                    'Informe seu WhatsApp.',
+                );
+                const consent = document.getElementById('privacy-consent');
+                const privacyError = document.getElementById('privacy-error');
+                const consentOk = consent.checked;
+                privacyError.classList.toggle('visible', !consentOk);
+
+                if (!nomeOk || !whatsappOk || !consentOk) {
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.classList.add('loading');
+                submitBtn.setAttribute('aria-busy', 'true');
+
+                const nome = document.getElementById('nome').value.trim();
+                const empresa = document.getElementById('empresa').value.trim();
+                const whatsapp = document
+                    .getElementById('whatsapp')
+                    .value.trim();
+                const volume = document.getElementById('volume').value.trim();
+                const operacao = document
+                    .getElementById('operacao')
+                    .value.trim();
+                const mensagem = document
+                    .getElementById('mensagem')
+                    .value.trim();
+
+                await new Promise((resolve) => setTimeout(resolve, 700));
+
+                const body = encodeURIComponent(
+                    `Nome: ${nome}\nEmpresa: ${empresa || '-'}\nWhatsApp: ${whatsapp}\nVolume mensal de leads: ${volume || '-'}\nOperação principal: ${operacao || '-'}\nAceite LGPD: sim\n\n${mensagem || '(sem mensagem)'}`,
+                );
+
+                window.location.href = `mailto:atendimento@promithic.com.br?subject=Diagnóstico CredFlow IA - ${encodeURIComponent(nome)}&body=${body}`;
+
+                form.style.display = 'none';
+                successBox.classList.add('visible');
+            });
+        </script>
+    </body>
+</html>

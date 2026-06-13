@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Tenaz CRM app icon</title>
+  <desc id="desc">Deep navy rounded app icon with a black Tenaz T mark and electric blue edge glow.</desc>
+  <defs>
+    <linearGradient id="bg" x1="104" x2="920" y1="80" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#152948"/>
+      <stop offset=".46" stop-color="#08162b"/>
+      <stop offset="1" stop-color="#020712"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="256" x2="768" y1="210" y2="780" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#161a20"/>
+      <stop offset=".58" stop-color="#07090f"/>
+      <stop offset="1" stop-color="#020308"/>
+    </linearGradient>
+    <filter id="icon-shadow" x="-25%" y="-25%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="28" stdDeviation="24" flood-color="#000000" flood-opacity=".45"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#ffffff" flood-opacity=".12"/>
+    </filter>
+    <filter id="blue-glow" x="-25%" y="-25%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#1b6cff" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="208" fill="url(#bg)"/>
+  <path fill="#1b6cff" opacity=".12" d="M142 820c176-70 430-70 740 0v74H142v-74Z"/>
+  <g transform="translate(216 176) scale(2.32)">
+    <g fill="none" stroke="#1b6cff" stroke-linejoin="round" stroke-width="3.5" filter="url(#blue-glow)">
+      <path d="M30 48h68l15 39-10 18H30c-5 0-8-3-8-8V56c0-5 3-8 8-8Z"/>
+      <path d="M158 48h68c5 0 8 3 8 8v41c0 5-3 8-8 8h-73l-10-18 15-39Z"/>
+      <path d="M84 87h23l16 43h10l16-43h23v132c0 17-11 28-28 28h-32c-17 0-28-11-28-28V87Z"/>
+    </g>
+    <g fill="url(#mark)" filter="url(#icon-shadow)">
+      <path d="M30 48h68l15 39-10 18H30c-5 0-8-3-8-8V56c0-5 3-8 8-8Z"/>
+      <path d="M158 48h68c5 0 8 3 8 8v41c0 5-3 8-8 8h-73l-10-18 15-39Z"/>
+      <path d="M84 87h23l16 43h10l16-43h23v132c0 17-11 28-28 28h-32c-17 0-28-11-28-28V87Z"/>
+    </g>
+  </g>
+</svg>

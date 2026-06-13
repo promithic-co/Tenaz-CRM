@@ -1,0 +1,125 @@
+version: '3.8'
+
+services:
+  aria:
+    # Image must be built first: docker build -t aria:latest . (see deploy.sh)
+    image: ${REGISTRY:-}aria:${TAG:-latest}
+    # Env vars are expanded by deploy.sh (exports from .env before running this)
+
+    environment:
+      APP_NAME: "Tenaz CRM"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: https://agent.promithic.com.br
+      APP_KEY: ${APP_KEY}
+      ASSET_URL: https://agent.promithic.com.br
+
+      DB_CONNECTION: pgsql
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      REDIS_CLIENT: predis
+      # Must be Redis service name on Swarm (not 127.0.0.1 from .env)
+      REDIS_HOST: redis_redis
+      REDIS_PORT: "6379"
+
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      TENAZ_API_KEY: ${TENAZ_API_KEY:-}
+      CREDFLOW_API_KEY: ${CREDFLOW_API_KEY:-}
+
+      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-}
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-}
+      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:-}
+      EVOLUTION_WEBHOOK_SECRET: ${EVOLUTION_WEBHOOK_SECRET:-}
+      META_APP_ID: ${META_APP_ID:-}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-}
+      META_APP_CONFIG_ID: ${META_APP_CONFIG_ID:-}
+      META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION:-v23.0}
+      TENAZ_WEBHOOK_CONSULTA: ${TENAZ_WEBHOOK_CONSULTA:-}
+      TENAZ_WEBHOOK_ESCALAR: ${TENAZ_WEBHOOK_ESCALAR:-}
+      TENAZ_WEBHOOK_REGISTRAR: ${TENAZ_WEBHOOK_REGISTRAR:-}
+      CREDFLOW_WEBHOOK_CONSULTA: ${CREDFLOW_WEBHOOK_CONSULTA:-}
+      CREDFLOW_WEBHOOK_ESCALAR: ${CREDFLOW_WEBHOOK_ESCALAR:-}
+      CREDFLOW_WEBHOOK_REGISTRAR: ${CREDFLOW_WEBHOOK_REGISTRAR:-}
+
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: ${REVERB_APP_ID:-tenaz-crm}
+      REVERB_APP_KEY: ${REVERB_APP_KEY}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET}
+      REVERB_HOST: "0.0.0.0"
+      REVERB_PORT: "8080"
+      REVERB_SCHEME: http
+
+      SESSION_DRIVER: redis
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      LOG_CHANNEL: stderr
+      LOG_LEVEL: info
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    networks:
+      - network_public
+
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+        failure_action: rollback
+        monitor: 60s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_public"
+
+        # HTTP → HTTPS redirect
+        - "traefik.http.routers.aria-http.rule=Host(`agent.promithic.com.br`)"
+        - "traefik.http.routers.aria-http.entrypoints=web"
+        - "traefik.http.routers.aria-http.middlewares=redirect-to-https"
+
+        # HTTPS
+        - "traefik.http.routers.aria.rule=Host(`agent.promithic.com.br`)"
+        - "traefik.http.routers.aria.entrypoints=websecure"
+        - "traefik.http.routers.aria.tls=true"
+        - "traefik.http.routers.aria.tls.certresolver=letsencryptresolver"
+
+        # Health check
+        - "traefik.http.services.aria.loadbalancer.server.port=80"
+        - "traefik.http.services.aria.loadbalancer.healthcheck.path=/up"
+        - "traefik.http.services.aria.loadbalancer.healthcheck.interval=30s"
+
+        # Sticky sessions for WebSocket (Reverb) compatibility
+        - "traefik.http.services.aria.loadbalancer.sticky.cookie=true"
+        - "traefik.http.services.aria.loadbalancer.sticky.cookie.name=aria_srv"
+        - "traefik.http.services.aria.loadbalancer.sticky.cookie.secure=true"
+        - "traefik.http.services.aria.loadbalancer.sticky.cookie.httponly=true"
+
+networks:
+  network_public:
+    external: true

@@ -1,0 +1,26 @@
+<script setup lang="ts">
+import type { HTMLAttributes } from 'vue';
+
+defineOptions({
+    inheritAttrs: false,
+});
+
+type Props = {
+    className?: HTMLAttributes['class'];
+};
+
+defineProps<Props>();
+</script>
+
+<template>
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 256 256"
+        :class="className"
+        v-bind="$attrs"
+    >
+        <path fill="currentColor" d="M30 48h68l15 39-10 18H30c-5 0-8-3-8-8V56c0-5 3-8 8-8Z" />
+        <path fill="currentColor" d="M158 48h68c5 0 8 3 8 8v41c0 5-3 8-8 8h-73l-10-18 15-39Z" />
+        <path fill="currentColor" d="M84 87h23l16 43h10l16-43h23v132c0 17-11 28-28 28h-32c-17 0-28-11-28-28V87Z" />
+    </svg>
+</template>

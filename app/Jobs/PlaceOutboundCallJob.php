@@ -1,0 +1,90 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\VoiceCampaignCall;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
+class PlaceOutboundCallJob implements ShouldQueue
+{
+    use Queueable;
+
+    public int $tries = 3;
+
+    public int $timeout = 30;
+
+    public function __construct(
+        public readonly VoiceCampaignCall $voiceCampaignCall,
+    ) {
+        $this->onQueue('campaigns');
+    }
+
+    /** @return array<int, int> */
+    public function backoff(): array
+    {
+        return [5, 15, 30];
+    }
+
+    public function handle(): void
+    {
+        $call = $this->voiceCampaignCall->load('voiceCampaign');
+        $voiceCampaign = $call->voiceCampaign;
+
+        if (! $voiceCampaign->isSending()) {
+            Log::info('PlaceOutboundCallJob: campaign not sending, aborting', [
+                'call_id' => $call->id,
+                'campaign_status' => $voiceCampaign->status,
+            ]);
+
+            return;
+        }
+
+        $client = new \Twilio\Rest\Client(
+            config('services.twilio.sid'),
+            config('services.twilio.token')
+        );
+
+        $twilioCall = $client->calls->create(
+            $call->phone,
+            config('services.twilio.phone_number'),
+            [
+                'url' => route('ivr.script', $call),
+                'statusCallback' => route('ivr.status', $call),
+                'statusCallbackEvent' => ['completed', 'busy', 'no-answer', 'failed'],
+                'statusCallbackMethod' => 'POST',
+                'method' => 'POST',
+                'timeout' => 30,
+            ]
+        );
+
+        $call->update([
+            'call_sid' => $twilioCall->sid,
+            'status' => 'calling',
+            'called_at' => now(),
+        ]);
+
+        Log::info('ivr.call_placed', [
+            'call_id' => $call->id,
+            'call_sid' => $twilioCall->sid,
+            'phone' => $call->phone,
+            'campaign_id' => $voiceCampaign->id,
+        ]);
+    }
+
+    public function failed(Throwable $e): void
+    {
+        $call = $this->voiceCampaignCall;
+
+        $call->update(['status' => 'failed']);
+        $call->voiceCampaign()->increment('total_failed');
+
+        Log::error('PlaceOutboundCallJob.failed', [
+            'call_id' => $call->id,
+            'phone' => $call->phone,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1464 220" role="img" aria-labelledby="title desc">
+  <title id="title">Tenaz CRM visual system pattern</title>
+  <desc id="desc">Deep navy visual pattern with repeated Tenaz T marks in muted navy, electric blue, and white.</desc>
+  <defs>
+    <linearGradient id="pattern-bg" x1="0" x2="1464" y1="0" y2="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#07162c"/>
+      <stop offset=".58" stop-color="#061225"/>
+      <stop offset="1" stop-color="#030914"/>
+    </linearGradient>
+    <linearGradient id="mark-blue" x1="0" x2="0" y1="0" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#246fff"/>
+      <stop offset="1" stop-color="#073aaa"/>
+    </linearGradient>
+    <linearGradient id="mark-muted" x1="0" x2="0" y1="0" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#263b70"/>
+      <stop offset="1" stop-color="#132245"/>
+    </linearGradient>
+    <g id="tenaz-mark">
+      <path d="M30 48h68l15 39-10 18H30c-5 0-8-3-8-8V56c0-5 3-8 8-8Z"/>
+      <path d="M158 48h68c5 0 8 3 8 8v41c0 5-3 8-8 8h-73l-10-18 15-39Z"/>
+      <path d="M84 87h23l16 43h10l16-43h23v132c0 17-11 28-28 28h-32c-17 0-28-11-28-28V87Z"/>
+    </g>
+  </defs>
+  <rect width="1464" height="220" rx="8" fill="url(#pattern-bg)"/>
+  <g opacity=".62" fill="url(#mark-muted)">
+    <use href="#tenaz-mark" transform="translate(-42 12) scale(.44)"/>
+    <use href="#tenaz-mark" transform="translate(136 14) scale(.44)"/>
+    <use href="#tenaz-mark" transform="translate(356 14) scale(.44)"/>
+    <use href="#tenaz-mark" transform="translate(586 14) scale(.44)"/>
+    <use href="#tenaz-mark" transform="translate(814 14) scale(.44)"/>
+    <use href="#tenaz-mark" transform="translate(1038 14) scale(.44)"/>
+    <use href="#tenaz-mark" transform="translate(1262 14) scale(.44)"/>
+  </g>
+  <g opacity=".36" fill="#263b70">
+    <use href="#tenaz-mark" transform="translate(64 94) scale(.28)"/>
+    <use href="#tenaz-mark" transform="translate(284 94) scale(.28)"/>
+    <use href="#tenaz-mark" transform="translate(626 94) scale(.28)"/>
+    <use href="#tenaz-mark" transform="translate(956 94) scale(.28)"/>
+    <use href="#tenaz-mark" transform="translate(1188 94) scale(.28)"/>
+  </g>
+  <g fill="url(#mark-blue)">
+    <use href="#tenaz-mark" transform="translate(78 112) scale(.38)"/>
+    <use href="#tenaz-mark" transform="translate(488 112) scale(.38)"/>
+    <use href="#tenaz-mark" transform="translate(1068 14) scale(.44)"/>
+    <use href="#tenaz-mark" transform="translate(1368 112) scale(.38)"/>
+  </g>
+  <g fill="#ffffff">
+    <use href="#tenaz-mark" transform="translate(278 112) scale(.38)"/>
+    <use href="#tenaz-mark" transform="translate(712 112) scale(.38)"/>
+    <use href="#tenaz-mark" transform="translate(1180 112) scale(.38)"/>
+  </g>
+</svg>

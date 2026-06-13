@@ -1,0 +1,160 @@
+<?php
+
+use App\Jobs\SyncMetaTemplatesJob;
+use App\Models\WhatsappInstance;
+use App\Models\WhatsappTemplate;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Http;
+
+uses(RefreshDatabase::class);
+
+it('skips when instance id does not exist', function () {
+    Http::fake();
+
+    (new SyncMetaTemplatesJob(99999))->handle();
+
+    Http::assertNothingSent();
+});
+
+it('syncs Meta templates with encrypted token + 60s timeout', function () {
+    $user = userWithTenant();
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenant_id,
+        'meta_access_token' => 'my-secret-token',
+    ]);
+
+    Http::fake(['*' => Http::response(['data' => [], 'paging' => []], 200)]);
+
+    (new SyncMetaTemplatesJob($instance->id))->handle();
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), 'message_templates')
+            && $request->hasHeader('Authorization', 'Bearer my-secret-token');
+    });
+});
+
+it('paginates Graph API results', function () {
+    $user = userWithTenant();
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenant_id,
+    ]);
+
+    $tpl1 = ['id' => 'tpl_1', 'name' => 'template_page_one', 'status' => 'APPROVED', 'category' => 'MARKETING', 'language' => 'pt_BR', 'components' => []];
+    $tpl2 = ['id' => 'tpl_2', 'name' => 'template_page_two', 'status' => 'APPROVED', 'category' => 'MARKETING', 'language' => 'pt_BR', 'components' => []];
+
+    Http::fakeSequence()
+        ->push(['data' => [$tpl1], 'paging' => ['next' => 'https://graph.facebook.com/v23.0/next']], 200)
+        ->push(['data' => [$tpl2], 'paging' => []], 200);
+
+    (new SyncMetaTemplatesJob($instance->id))->handle();
+
+    Http::assertSentCount(2);
+    expect(WhatsappTemplate::where('kind', 'meta_hsm')->count())->toBe(2);
+});
+
+it('test_sync_meta_templates_job_upserts_templates', function () {
+    $user = userWithTenant();
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenant_id,
+    ]);
+
+    $templates = [
+        ['id' => 'tpl_a', 'name' => 'template_alpha', 'status' => 'APPROVED', 'category' => 'MARKETING', 'language' => 'pt_BR', 'components' => []],
+        ['id' => 'tpl_b', 'name' => 'template_beta', 'status' => 'APPROVED', 'category' => 'UTILITY', 'language' => 'pt_BR', 'components' => []],
+        ['id' => 'tpl_c', 'name' => 'template_gamma', 'status' => 'PENDING', 'category' => 'MARKETING', 'language' => 'en', 'components' => []],
+    ];
+
+    Http::fake(['*' => Http::response(['data' => $templates, 'paging' => []], 200)]);
+    (new SyncMetaTemplatesJob($instance->id))->handle();
+    expect(WhatsappTemplate::where('kind', 'meta_hsm')->count())->toBe(3);
+
+    // Second run with same data must not duplicate
+    Http::fake(['*' => Http::response(['data' => $templates, 'paging' => []], 200)]);
+    (new SyncMetaTemplatesJob($instance->id))->handle();
+    expect(WhatsappTemplate::where('kind', 'meta_hsm')->count())->toBe(3);
+});
+
+it('test_sync_meta_templates_job_extracts_variables_count', function () {
+    $user = userWithTenant();
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenant_id,
+    ]);
+
+    Http::fake(['*' => Http::response([
+        'data' => [[
+            'id' => 'tpl_vars',
+            'name' => 'template_with_vars',
+            'status' => 'APPROVED',
+            'category' => 'MARKETING',
+            'language' => 'pt_BR',
+            'components' => [
+                ['type' => 'BODY', 'text' => 'Olá {{1}}, sua oferta é {{2}}'],
+            ],
+        ]],
+        'paging' => [],
+    ], 200)]);
+
+    (new SyncMetaTemplatesJob($instance->id))->handle();
+
+    $template = WhatsappTemplate::where('name', 'template_with_vars')->first();
+    expect($template->variables_count)->toBe(2);
+});
+
+it('syncs Meta template components and counts variables outside body', function () {
+    $user = userWithTenant();
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenant_id,
+    ]);
+
+    $components = [
+        ['type' => 'HEADER', 'format' => 'TEXT', 'text' => 'Oferta {{1}}'],
+        ['type' => 'BODY', 'text' => 'Olá {{2}}, use {{3}}'],
+        ['type' => 'FOOTER', 'text' => 'Rodapé'],
+    ];
+
+    Http::fake(['*' => Http::response([
+        'data' => [[
+            'id' => 'tpl_components',
+            'name' => 'template_with_header_vars',
+            'status' => 'REJECTED',
+            'category' => 'MARKETING',
+            'language' => 'pt_BR',
+            'quality_score' => ['score' => 'RED'],
+            'rejected_reason' => 'INVALID_FORMAT',
+            'components' => $components,
+        ]],
+        'paging' => [],
+    ], 200)]);
+
+    (new SyncMetaTemplatesJob($instance->id))->handle();
+
+    $template = WhatsappTemplate::where('name', 'template_with_header_vars')->first();
+    expect($template->components_json)->toBe($components);
+    expect($template->variables_count)->toBe(3);
+    expect($template->quality_score)->toBe('RED');
+    expect($template->rejected_reason)->toBe('INVALID_FORMAT');
+});
+
+it('test_templates_sync_button_dispatches_job', function () {
+    Bus::fake([SyncMetaTemplatesJob::class]);
+
+    $user = userWithTenant();
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenant_id,
+    ]);
+
+    $this->actingAs($user)->post('/templates/sync-meta', [
+        'whatsapp_instance_id' => $instance->id,
+    ]);
+
+    Bus::assertDispatched(SyncMetaTemplatesJob::class,
+        fn ($job) => $job->instanceId === $instance->id
+    );
+});

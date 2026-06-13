@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Tenaz CRM logo asset board</title>
+  <desc id="desc">Presentation board showing the Tenaz CRM primary logo, wordmark, reverse logo, app icon, and visual system pattern.</desc>
+  <defs>
+    <linearGradient id="navy-panel" x1="0" x2="1064" y1="0" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#07162c"/>
+      <stop offset=".58" stop-color="#061225"/>
+      <stop offset="1" stop-color="#030914"/>
+    </linearGradient>
+    <linearGradient id="icon-bg" x1="0" x2="188" y1="0" y2="188" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#152948"/>
+      <stop offset=".48" stop-color="#08162b"/>
+      <stop offset="1" stop-color="#020712"/>
+    </linearGradient>
+    <linearGradient id="app-mark" x1="0" x2="0" y1="0" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#15191f"/>
+      <stop offset="1" stop-color="#020308"/>
+    </linearGradient>
+    <linearGradient id="blue-mark" x1="0" x2="0" y1="0" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#246fff"/>
+      <stop offset="1" stop-color="#073aaa"/>
+    </linearGradient>
+    <linearGradient id="muted-mark" x1="0" x2="0" y1="0" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#263b70"/>
+      <stop offset="1" stop-color="#132245"/>
+    </linearGradient>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#02050d" flood-opacity=".18"/>
+    </filter>
+    <filter id="mark-shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="9" stdDeviation="10" flood-color="#02050d" flood-opacity=".2"/>
+    </filter>
+    <filter id="icon-shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#000000" flood-opacity=".34"/>
+    </filter>
+    <filter id="blue-glow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#1b6cff" flood-opacity=".52"/>
+    </filter>
+    <g id="tenaz-mark">
+      <path d="M30 48h68l15 39-10 18H30c-5 0-8-3-8-8V56c0-5 3-8 8-8Z"/>
+      <path d="M158 48h68c5 0 8 3 8 8v41c0 5-3 8-8 8h-73l-10-18 15-39Z"/>
+      <path d="M84 87h23l16 43h10l16-43h23v132c0 17-11 28-28 28h-32c-17 0-28-11-28-28V87Z"/>
+    </g>
+    <g id="label-one">
+      <circle cx="0" cy="0" r="16" fill="#030a20"/>
+      <text x="0" y="6" text-anchor="middle" fill="#ffffff" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="800">1</text>
+    </g>
+  </defs>
+  <rect width="1536" height="1024" fill="#ffffff"/>
+
+  <g font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif" fill="#070b1a">
+    <g transform="translate(54 56)">
+      <use href="#label-one"/>
+      <text x="36" y="9" font-size="24" font-weight="800">Primary Logo</text>
+    </g>
+    <g transform="translate(612 56)">
+      <circle cx="0" cy="0" r="16" fill="#030a20"/>
+      <text x="0" y="6" text-anchor="middle" fill="#ffffff" font-size="18" font-weight="800">2</text>
+      <text x="36" y="9" font-size="24" font-weight="800">Wordmark</text>
+    </g>
+    <g transform="translate(78 456)">
+      <circle cx="0" cy="0" r="16" fill="#ffffff"/>
+      <text x="0" y="6" text-anchor="middle" fill="#070b1a" font-size="18" font-weight="800">3</text>
+      <text x="36" y="9" fill="#ffffff" font-size="22" font-weight="800">Reverse</text>
+    </g>
+    <g transform="translate(1146 446)">
+      <circle cx="0" cy="0" r="16" fill="#030a20"/>
+      <text x="0" y="6" text-anchor="middle" fill="#ffffff" font-size="18" font-weight="800">4</text>
+      <text x="32" y="9" font-size="22" font-weight="800">App Icon</text>
+    </g>
+    <g transform="translate(56 734)">
+      <circle cx="0" cy="0" r="16" fill="#030a20"/>
+      <text x="0" y="6" text-anchor="middle" fill="#ffffff" font-size="18" font-weight="800">5</text>
+      <text x="36" y="9" font-size="22" font-weight="800">Visual System</text>
+    </g>
+  </g>
+
+  <g transform="translate(120 102) scale(1.2)" fill="#05070b" filter="url(#mark-shadow)">
+    <use href="#tenaz-mark"/>
+  </g>
+
+  <g transform="translate(660 150)">
+    <g transform="translate(0 0) scale(.58)" fill="#05070b" filter="url(#mark-shadow)">
+      <use href="#tenaz-mark"/>
+    </g>
+    <text x="176" y="122" fill="#05070b" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="90" font-weight="700">Tenaz</text>
+    <text x="538" y="122" fill="#05070b" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="84" font-weight="400">CRM</text>
+  </g>
+
+  <g transform="translate(38 420)" filter="url(#soft-shadow)">
+    <rect width="1064" height="260" rx="8" fill="url(#navy-panel)"/>
+    <g transform="translate(224 60) scale(.58)" fill="#ffffff" filter="url(#mark-shadow)">
+      <use href="#tenaz-mark"/>
+    </g>
+    <text x="454" y="164" fill="#ffffff" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="88" font-weight="700">Tenaz</text>
+    <text x="790" y="164" fill="#ffffff" font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="82" font-weight="400">CRM</text>
+  </g>
+
+  <g transform="translate(1176 476)" filter="url(#soft-shadow)">
+    <rect width="188" height="188" rx="38" fill="url(#icon-bg)"/>
+    <path fill="#1b6cff" opacity=".12" d="M12 160c34-14 91-14 164 0v18H12v-18Z"/>
+    <g transform="translate(24 34) scale(.55)">
+      <g fill="none" stroke="#1b6cff" stroke-linejoin="round" stroke-width="4" filter="url(#blue-glow)">
+        <use href="#tenaz-mark"/>
+      </g>
+      <g fill="url(#app-mark)" filter="url(#icon-shadow)">
+        <use href="#tenaz-mark"/>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(38 766)" filter="url(#soft-shadow)">
+    <rect width="1464" height="220" rx="8" fill="url(#navy-panel)"/>
+    <g opacity=".62" fill="url(#muted-mark)">
+      <use href="#tenaz-mark" transform="translate(-42 12) scale(.44)"/>
+      <use href="#tenaz-mark" transform="translate(136 14) scale(.44)"/>
+      <use href="#tenaz-mark" transform="translate(356 14) scale(.44)"/>
+      <use href="#tenaz-mark" transform="translate(586 14) scale(.44)"/>
+      <use href="#tenaz-mark" transform="translate(814 14) scale(.44)"/>
+      <use href="#tenaz-mark" transform="translate(1038 14) scale(.44)"/>
+      <use href="#tenaz-mark" transform="translate(1262 14) scale(.44)"/>
+    </g>
+    <g opacity=".36" fill="#263b70">
+      <use href="#tenaz-mark" transform="translate(64 94) scale(.28)"/>
+      <use href="#tenaz-mark" transform="translate(284 94) scale(.28)"/>
+      <use href="#tenaz-mark" transform="translate(626 94) scale(.28)"/>
+      <use href="#tenaz-mark" transform="translate(956 94) scale(.28)"/>
+      <use href="#tenaz-mark" transform="translate(1188 94) scale(.28)"/>
+    </g>
+    <g fill="url(#blue-mark)">
+      <use href="#tenaz-mark" transform="translate(78 112) scale(.38)"/>
+      <use href="#tenaz-mark" transform="translate(488 112) scale(.38)"/>
+      <use href="#tenaz-mark" transform="translate(1068 14) scale(.44)"/>
+      <use href="#tenaz-mark" transform="translate(1368 112) scale(.38)"/>
+    </g>
+    <g fill="#ffffff">
+      <use href="#tenaz-mark" transform="translate(278 112) scale(.38)"/>
+      <use href="#tenaz-mark" transform="translate(712 112) scale(.38)"/>
+      <use href="#tenaz-mark" transform="translate(1180 112) scale(.38)"/>
+    </g>
+  </g>
+</svg>
