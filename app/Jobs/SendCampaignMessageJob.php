@@ -6,7 +6,9 @@ use App\Events\CampaignProgressUpdated;
 use App\Exceptions\MetaInvalidNumberException;
 use App\Exceptions\MetaNoWhatsAppException;
 use App\Exceptions\MetaRateLimitException;
+use App\Models\Campaign;
 use App\Models\CampaignMessage;
+use App\Models\ContactListEntry;
 use App\Models\WhatsappTemplate;
 use App\Services\AgentInteractionEventService;
 use App\Services\BroadcastDebouncer;
@@ -274,30 +276,29 @@ class SendCampaignMessageJob implements ShouldQueue
 
             return;
         } catch (Throwable $e) {
-            $message->markFailed('EXCEPTION', $e->getMessage());
-            $campaign->incrementCounter('total_failed');
-            $freshCampaign = $campaign->fresh();
-            $service->checkAndAutoPause($freshCampaign);
-            $this->dispatchProgressIfReady($debouncer, $freshCampaign);
-
+            // Transient/unknown error: rethrow WITHOUT finalizing so the queue retries
+            // (tries=3, backoff). The message stays 'queued', and only the framework's
+            // failed() callback marks it failed + counts it once after retries exhaust.
+            // Marking failed here would early-return every retry and make tries/backoff
+            // dead config.
             $interactionEvents->record(
                 interactionId: $interactionId,
                 tenantId: $campaign->tenant_id,
-                eventType: 'outbound_failed',
+                eventType: 'outbound_retrying',
                 eventSource: 'send_campaign_message_job',
                 payload: [
                     'campaign_id' => $campaign->id,
                     'campaign_message_id' => $message->id,
                     'error' => $e->getMessage(),
                 ],
-                severity: 'error',
+                severity: 'warning',
             );
 
             throw $e;
         }
     }
 
-    private function dispatchProgressIfReady(BroadcastDebouncer $debouncer, ?\App\Models\Campaign $campaign): void
+    private function dispatchProgressIfReady(BroadcastDebouncer $debouncer, ?Campaign $campaign): void
     {
         if (! $campaign) {
             return;
@@ -346,7 +347,7 @@ class SendCampaignMessageJob implements ShouldQueue
      * @param  array<string, string>  $mapping
      * @return array<string, string>
      */
-    private function resolveTemplateParams(array $mapping, \App\Models\ContactListEntry $entry): array
+    private function resolveTemplateParams(array $mapping, ContactListEntry $entry): array
     {
         $resolved = [];
         $contact = $entry->contact_id ? $entry->contact()->withoutGlobalScopes()->first() : null;

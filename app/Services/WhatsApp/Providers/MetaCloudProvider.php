@@ -7,7 +7,6 @@ use App\Contracts\WhatsApp\WhatsAppProviderInterface;
 use App\DTOs\WhatsApp\IncomingMessageDTO;
 use App\Enums\MediaType;
 use App\Exceptions\MetaApiException;
-use App\Exceptions\MetaInvalidNumberException;
 use App\Exceptions\MetaNoWhatsAppException;
 use App\Exceptions\MetaRateLimitException;
 use Illuminate\Http\Client\Response;
@@ -263,10 +262,14 @@ class MetaCloudProvider implements WhatsAppProviderInterface
             'message' => $message,
         ]);
 
-        match ($code) {
-            130429 => throw new MetaRateLimitException($message, $code),
-            131047 => throw new MetaInvalidNumberException($message, $code),
-            131026 => throw new MetaNoWhatsAppException($message, $code),
+        // Grouped by handling behavior, not by Meta's loose naming. See Meta Cloud API
+        // error reference: 131047 is a re-engagement/24h-window error (NOT an invalid
+        // number); 131049/130472 are per-user marketing delivery limits; 131026 is the
+        // "undeliverable" bucket. All of these are permanent for a given send and must
+        // not be retried. 130429/131048/80007 are throttle signals and are retriable.
+        match (true) {
+            in_array($code, [130429, 131048, 80007], true) => throw new MetaRateLimitException($message, $code),
+            in_array($code, [131026, 131047, 131049, 130472], true) => throw new MetaNoWhatsAppException($message, $code),
             default => throw new MetaApiException($message, $code),
         };
     }
