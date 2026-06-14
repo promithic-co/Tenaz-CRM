@@ -111,6 +111,20 @@ describe('ContactController CRUD', function () {
         expect($response->json('already_in_list'))->toContain($c->id);
     });
 
+    test('update persists free-text notes on the contact', function () {
+        $user = User::factory()->create();
+        $contact = Contact::factory()->forTenant((string) $user->tenantId)->create();
+
+        $this->actingAs($user)
+            ->patch('/contatos/'.$contact->id, [
+                'phone' => $contact->phone,
+                'notes' => "Cliente prefere contato à tarde.\nJá negociou em 2025.",
+            ])
+            ->assertRedirect();
+
+        expect($contact->fresh()->notes)->toBe("Cliente prefere contato à tarde.\nJá negociou em 2025.");
+    });
+
     test('destroy soft-deletes the contact', function () {
         $user = User::factory()->create();
         $contact = Contact::factory()->forTenant((string) $user->tenantId)->create();

@@ -125,22 +125,41 @@ class SmartListResolverService
 
             $list->entries()->delete();
 
+            // Dedup by canonical contact so the same person is never messaged twice
+            // when they own multiple leads. Legacy leads without a contact_id fall
+            // back to deduping on their raw phone. Seen-set spans all chunks.
             $count = 0;
-            $query->chunkById(self::CHUNK_SIZE, function ($leads) use ($list, &$count): void {
-                $rows = $leads->map(fn (Lead $lead): array => [
-                    'contact_list_id' => $list->id,
-                    'phone' => $lead->whatsapp,
-                    'name' => $lead->nome,
-                    'lead_id' => $lead->id,
-                    'contact_id' => $lead->contact_id,
-                    'opt_in_status' => 'opted_in',
-                    'opt_in_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ])->all();
+            $seen = [];
+            $query->chunkById(self::CHUNK_SIZE, function ($leads) use ($list, &$count, &$seen): void {
+                $rows = [];
 
-                ContactListEntry::insert($rows);
-                $count += count($rows);
+                foreach ($leads as $lead) {
+                    $key = $lead->contact_id !== null
+                        ? 'c:'.$lead->contact_id
+                        : 'p:'.$lead->whatsapp;
+
+                    if (isset($seen[$key])) {
+                        continue;
+                    }
+                    $seen[$key] = true;
+
+                    $rows[] = [
+                        'contact_list_id' => $list->id,
+                        'phone' => $lead->whatsapp,
+                        'name' => $lead->nome,
+                        'lead_id' => $lead->id,
+                        'contact_id' => $lead->contact_id,
+                        'opt_in_status' => 'opted_in',
+                        'opt_in_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                if ($rows !== []) {
+                    ContactListEntry::insert($rows);
+                    $count += count($rows);
+                }
             });
 
             $list->update([

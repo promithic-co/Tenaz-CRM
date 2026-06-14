@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::index
  * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:14
@@ -42,41 +42,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::index
- * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:14
- * @route '/backoffice/templates'
- */
-    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: index.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::index
- * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:14
- * @route '/backoffice/templates'
- */
-        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::index
- * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:14
- * @route '/backoffice/templates'
- */
-        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    index.form = indexForm
 /**
 * @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::edit
  * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:28
@@ -139,41 +104,6 @@ edit.head = (args: { template_slug: string | number } | [template_slug: string |
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::edit
- * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:28
- * @route '/backoffice/templates/{template_slug}/edit'
- */
-    const editForm = (args: { template_slug: string | number } | [template_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: edit.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::edit
- * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:28
- * @route '/backoffice/templates/{template_slug}/edit'
- */
-        editForm.get = (args: { template_slug: string | number } | [template_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: edit.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::edit
- * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:28
- * @route '/backoffice/templates/{template_slug}/edit'
- */
-        editForm.head = (args: { template_slug: string | number } | [template_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: edit.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    edit.form = editForm
 /**
 * @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::update
  * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:40
@@ -235,52 +165,6 @@ update.patch = (args: { template_slug: string | number } | [template_slug: strin
     url: update.url(args, options),
     method: 'patch',
 })
-
-    /**
-* @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::update
- * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:40
- * @route '/backoffice/templates/{template_slug}'
- */
-    const updateForm = (args: { template_slug: string | number } | [template_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: update.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'PUT',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::update
- * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:40
- * @route '/backoffice/templates/{template_slug}'
- */
-        updateForm.put = (args: { template_slug: string | number } | [template_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: update.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PUT',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-            /**
-* @see \App\Http\Controllers\Backoffice\BackofficeTemplateController::update
- * @see app/Http/Controllers/Backoffice/BackofficeTemplateController.php:40
- * @route '/backoffice/templates/{template_slug}'
- */
-        updateForm.patch = (args: { template_slug: string | number } | [template_slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: update.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PATCH',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    update.form = updateForm
 const BackofficeTemplateController = { index, edit, update }
 
 export default BackofficeTemplateController

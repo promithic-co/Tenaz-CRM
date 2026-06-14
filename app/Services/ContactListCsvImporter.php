@@ -20,7 +20,9 @@ class ContactListCsvImporter
      * Auto-detects the delimiter, normalizes headers (UTF-8, BOM strip, lowercase,
      * trim), reads phone/phone2/name columns, builds extra_data from the remaining
      * columns, and dedups phones against existing entries AND earlier rows in the
-     * same file. Phones are normalized with the strict Brazilian import rule.
+     * same file. Phones are normalized through ContactSyncService::normalizePhone —
+     * the single canonical normalizer shared with lead and contact syncing — so an
+     * imported entry.phone always matches the contact it links to.
      *
      * Returns an array shaped as:
      *   ['error' => string]                          on failure (file/format/column)
@@ -95,7 +97,7 @@ class ContactListCsvImporter
                 $phonesToImport = [];
 
                 foreach ($rawPhones as $raw) {
-                    $phone = $this->contactSync->normalizeBrazilianPhone($raw);
+                    $phone = $this->contactSync->normalizePhone($raw);
 
                     if ($phone !== null) {
                         $phonesToImport[] = $phone;

@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../wayfinder'
 /**
  * @see routes/web.php:27
  * @route '/__version'
@@ -37,39 +37,6 @@ version.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: version.url(options),
     method: 'head',
 })
-
-    /**
- * @see routes/web.php:27
- * @route '/__version'
- */
-    const versionForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: version.url(options),
-        method: 'get',
-    })
-
-            /**
- * @see routes/web.php:27
- * @route '/__version'
- */
-        versionForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: version.url(options),
-            method: 'get',
-        })
-            /**
- * @see routes/web.php:27
- * @route '/__version'
- */
-        versionForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: version.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    version.form = versionForm
 const meta = {
     version: Object.assign(version, version),
 }

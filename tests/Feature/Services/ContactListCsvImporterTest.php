@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Contact;
 use App\Models\ContactList;
 use App\Models\ContactListEntry;
 use App\Models\User;
@@ -94,6 +95,21 @@ it('dedups intra-file duplicate phones', function () {
 
     expect($result)->toBe(['imported' => 1, 'skipped' => 1]);
     expect(ContactListEntry::where('contact_list_id', $list->id)->count())->toBe(1);
+});
+
+it('normalizes a local-format phone consistently between entry and synced contact', function () {
+    $list = makeImportList();
+
+    // 11-digit local number (no country code) — normalizePhone prepends 55.
+    importContent($list, "telefone,nome\n11999990001,João\n");
+
+    $entry = ContactListEntry::where('contact_list_id', $list->id)->first();
+
+    expect($entry->phone)->toBe('5511999990001')
+        ->and($entry->contact_id)->not->toBeNull();
+
+    $contact = Contact::withoutGlobalScopes()->find($entry->contact_id);
+    expect($contact->phone)->toBe($entry->phone);
 });
 
 it('builds extra_data from non-phone non-name columns', function () {

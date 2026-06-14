@@ -7,7 +7,9 @@ use App\Models\ContactListEntry;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\WhatsappInstance;
+use App\Services\AgentInteractionEventService;
 use App\Services\ContactSyncService;
+use App\Services\IncomingConversationPersister;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -90,6 +92,31 @@ describe('ContactSyncService', function () {
 
         $entry->refresh();
         expect((int) $entry->contact_id)->toBe((int) $contact->id);
+    });
+
+    test('inbound conversation persister auto-syncs a canonical contact', function () {
+        $persister = app(IncomingConversationPersister::class);
+
+        $result = $persister->persist(
+            tenantId: 'tenant-inbound',
+            agentId: null,
+            phone: '5511944443333',
+            name: 'Eduardo',
+            instanceName: '',
+            aggregatedMessage: 'Olá, quero simular',
+            mediaContext: null,
+            interactionId: app(AgentInteractionEventService::class)->newInteractionId(),
+            providerMessageId: 'wamid.inbound-sync',
+        );
+
+        $lead = $result['lead'];
+        expect($lead->contact_id)->not->toBeNull();
+
+        $contact = Contact::withoutGlobalScopes()->find($lead->contact_id);
+        expect($contact)->not->toBeNull()
+            ->and($contact->phone)->toBe('5511944443333')
+            ->and($contact->name)->toBe('Eduardo')
+            ->and($contact->source)->toBe(Contact::SOURCE_WHATSAPP_INBOUND);
     });
 
     test('LeadManagementController@store auto-syncs a contact', function () {

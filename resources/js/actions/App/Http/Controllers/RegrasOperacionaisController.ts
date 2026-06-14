@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\RegrasOperacionaisController::show
  * @see app/Http/Controllers/RegrasOperacionaisController.php:15
@@ -66,41 +66,6 @@ show.head = (args: { agent: number | { id: number } } | [agent: number | { id: n
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\RegrasOperacionaisController::show
- * @see app/Http/Controllers/RegrasOperacionaisController.php:15
- * @route '/agentes/{agent}/regras-operacionais'
- */
-    const showForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: show.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\RegrasOperacionaisController::show
- * @see app/Http/Controllers/RegrasOperacionaisController.php:15
- * @route '/agentes/{agent}/regras-operacionais'
- */
-        showForm.get = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\RegrasOperacionaisController::show
- * @see app/Http/Controllers/RegrasOperacionaisController.php:15
- * @route '/agentes/{agent}/regras-operacionais'
- */
-        showForm.head = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    show.form = showForm
 /**
 * @see \App\Http\Controllers\RegrasOperacionaisController::update
  * @see app/Http/Controllers/RegrasOperacionaisController.php:51
@@ -158,38 +123,6 @@ update.put = (args: { agent: number | { id: number } } | [agent: number | { id: 
     url: update.url(args, options),
     method: 'put',
 })
-
-    /**
-* @see \App\Http\Controllers\RegrasOperacionaisController::update
- * @see app/Http/Controllers/RegrasOperacionaisController.php:51
- * @route '/agentes/{agent}/regras-operacionais'
- */
-    const updateForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: update.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'PUT',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\RegrasOperacionaisController::update
- * @see app/Http/Controllers/RegrasOperacionaisController.php:51
- * @route '/agentes/{agent}/regras-operacionais'
- */
-        updateForm.put = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: update.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PUT',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    update.form = updateForm
 const RegrasOperacionaisController = { show, update }
 
 export default RegrasOperacionaisController

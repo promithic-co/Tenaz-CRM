@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\IvrController::script
  * @see app/Http/Controllers/IvrController.php:17
@@ -57,27 +57,6 @@ script.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCamp
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\IvrController::script
- * @see app/Http/Controllers/IvrController.php:17
- * @route '/api/ivr/call/{voiceCampaignCall}/script'
- */
-    const scriptForm = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: script.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\IvrController::script
- * @see app/Http/Controllers/IvrController.php:17
- * @route '/api/ivr/call/{voiceCampaignCall}/script'
- */
-        scriptForm.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: script.url(args, options),
-            method: 'post',
-        })
-    
-    script.form = scriptForm
 /**
 * @see \App\Http\Controllers\IvrController::dtmf
  * @see app/Http/Controllers/IvrController.php:72
@@ -136,27 +115,6 @@ dtmf.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampai
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\IvrController::dtmf
- * @see app/Http/Controllers/IvrController.php:72
- * @route '/api/ivr/call/{voiceCampaignCall}/dtmf'
- */
-    const dtmfForm = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: dtmf.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\IvrController::dtmf
- * @see app/Http/Controllers/IvrController.php:72
- * @route '/api/ivr/call/{voiceCampaignCall}/dtmf'
- */
-        dtmfForm.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: dtmf.url(args, options),
-            method: 'post',
-        })
-    
-    dtmf.form = dtmfForm
 /**
 * @see \App\Http\Controllers\IvrController::status
  * @see app/Http/Controllers/IvrController.php:148
@@ -214,28 +172,6 @@ status.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCamp
     url: status.url(args, options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\IvrController::status
- * @see app/Http/Controllers/IvrController.php:148
- * @route '/api/ivr/call/{voiceCampaignCall}/status'
- */
-    const statusForm = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: status.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\IvrController::status
- * @see app/Http/Controllers/IvrController.php:148
- * @route '/api/ivr/call/{voiceCampaignCall}/status'
- */
-        statusForm.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: status.url(args, options),
-            method: 'post',
-        })
-    
-    status.form = statusForm
 const ivr = {
     script: Object.assign(script, script),
 dtmf: Object.assign(dtmf, dtmf),

@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\Agent;
+use App\Models\Lead;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Lead>
+ * @extends Factory<Lead>
  */
 class LeadFactory extends Factory
 {
@@ -20,7 +21,7 @@ class LeadFactory extends Factory
         return [
             'tenant_id' => 'default',
             'agent_id' => null,
-            'whatsapp' => fake()->numerify('55119########'),
+            'whatsapp' => fake()->unique()->numerify('55119########'),
             'nome' => fake()->name(),
             'status' => 'novo',
             'modo' => 'receptivo',

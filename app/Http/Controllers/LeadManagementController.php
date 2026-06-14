@@ -11,6 +11,7 @@ use App\Models\ContactListEntry;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use App\Services\AgentInteractionEventService;
+use App\Services\ContactSyncService;
 use App\Services\PauseService;
 use Illuminate\Http\RedirectResponse;
 
@@ -21,6 +22,7 @@ class LeadManagementController extends Controller
         private readonly AgentInteractionEventService $events,
         private readonly CreateOrRestoreLeadAction $createOrRestoreLead,
         private readonly ApplyBulkLeadAction $applyBulkLeadAction,
+        private readonly ContactSyncService $contactSync,
     ) {}
 
     /**
@@ -185,5 +187,25 @@ class LeadManagementController extends Controller
         }
 
         return redirect()->route('campanhas.create', $query);
+    }
+
+    /**
+     * Promote a lead to the canonical contact base. Resolves (or creates) the
+     * tenant + phone Contact and links the lead's `contact_id` to it. Idempotent:
+     * if the lead is already linked, redirects to the existing contact.
+     */
+    public function addToContacts(Lead $lead): RedirectResponse
+    {
+        $this->authorize('update', $lead);
+
+        $contact = $this->contactSync->syncFromLead($lead);
+
+        if (! $contact) {
+            return back()->with('flash', 'Não foi possível adicionar à base: telefone inválido.');
+        }
+
+        return redirect()
+            ->route('contatos.show', $contact)
+            ->with('flash', 'Contato adicionado à base.');
     }
 }

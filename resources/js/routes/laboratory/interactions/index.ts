@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LaboratoryController::show
  * @see app/Http/Controllers/LaboratoryController.php:202
@@ -60,42 +60,6 @@ show.head = (args: { interactionId: string | number } | [interactionId: string |
     url: show.url(args, options),
     method: 'head',
 })
-
-    /**
-* @see \App\Http\Controllers\LaboratoryController::show
- * @see app/Http/Controllers/LaboratoryController.php:202
- * @route '/laboratory/interactions/{interactionId}'
- */
-    const showForm = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: show.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\LaboratoryController::show
- * @see app/Http/Controllers/LaboratoryController.php:202
- * @route '/laboratory/interactions/{interactionId}'
- */
-        showForm.get = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\LaboratoryController::show
- * @see app/Http/Controllers/LaboratoryController.php:202
- * @route '/laboratory/interactions/{interactionId}'
- */
-        showForm.head = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    show.form = showForm
 const interactions = {
     show: Object.assign(show, show),
 }

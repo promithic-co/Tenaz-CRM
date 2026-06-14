@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::embeddedSignup
  * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
@@ -32,28 +32,6 @@ embeddedSignup.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => 
     url: embeddedSignup.url(options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\MetaEmbeddedSignupController::embeddedSignup
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
- * @route '/whatsapp/meta/embedded-signup'
- */
-    const embeddedSignupForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: embeddedSignup.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\MetaEmbeddedSignupController::embeddedSignup
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
- * @route '/whatsapp/meta/embedded-signup'
- */
-        embeddedSignupForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: embeddedSignup.url(options),
-            method: 'post',
-        })
-    
-    embeddedSignup.form = embeddedSignupForm
 const meta = {
     embeddedSignup: Object.assign(embeddedSignup, embeddedSignup),
 }

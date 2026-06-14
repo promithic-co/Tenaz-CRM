@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Contact;
 use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
@@ -23,6 +24,7 @@ class IncomingConversationPersister
         private readonly AgentInteractionEventService $events,
         private readonly CampaignReplyDetector $campaignDetector,
         private readonly ConversationAutomationService $automation,
+        private readonly ContactSyncService $contactSync,
     ) {}
 
     /**
@@ -135,6 +137,20 @@ class IncomingConversationPersister
             ]);
 
             return null;
+        }
+
+        // CRM-first: link the inbound lead to its canonical Contact. Runs outside the
+        // lead-create transaction (own cache lock + writes) and must never hide the
+        // message — a sync failure is logged, not propagated.
+        try {
+            $this->contactSync->syncFromLead($lead, Contact::SOURCE_WHATSAPP_INBOUND);
+            $lead->refresh();
+        } catch (\Throwable $e) {
+            Log::warning('whatsapp_persister.contact_sync_failed', [
+                'interaction_id' => $interactionId,
+                'lead_id' => $lead->id,
+                'message' => $e->getMessage(),
+            ]);
         }
 
         $this->events->recordForLead(

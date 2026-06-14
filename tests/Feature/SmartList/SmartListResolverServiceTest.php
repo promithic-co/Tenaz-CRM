@@ -2,6 +2,7 @@
 
 use App\Enums\TaggableSource;
 use App\Models\Agent;
+use App\Models\Contact;
 use App\Models\ContactList;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
@@ -418,7 +419,7 @@ it('materialize throws LogicException for static lists', function () {
 
     $resolver = app(SmartListResolverService::class);
 
-    expect(fn () => $resolver->materialize($list))->toThrow(\LogicException::class, 'Only dynamic lists can be materialized.');
+    expect(fn () => $resolver->materialize($list))->toThrow(LogicException::class, 'Only dynamic lists can be materialized.');
 });
 
 it('materialize inserts entries and updates list counters', function () {
@@ -442,6 +443,37 @@ it('materialize inserts entries and updates list counters', function () {
     expect($list->fresh()->last_resolved_count)->toBe(3);
     expect($list->fresh()->last_resolved_at)->not->toBeNull();
     expect($list->entries()->count())->toBe(3);
+});
+
+it('materialize dedups leads sharing a canonical contact into one entry', function () {
+    $user = userWithTenant();
+    $tenantId = $user->tenantId;
+
+    $contact = Contact::factory()->forTenant((string) $tenantId)->create();
+
+    // Same person, two leads → must collapse to a single entry.
+    Lead::factory()->forTenant($tenantId)->count(2)->create([
+        'status' => 'qualificado',
+        'contact_id' => $contact->id,
+    ]);
+
+    // A different person → its own entry.
+    Lead::factory()->forTenant($tenantId)->create([
+        'status' => 'qualificado',
+        'contact_id' => Contact::factory()->forTenant((string) $tenantId)->create()->id,
+    ]);
+
+    $list = ContactList::factory()->create([
+        'tenant_id' => $tenantId,
+        'is_dynamic' => true,
+        'filters_json' => buildFilters([]),
+    ]);
+
+    $resolver = app(SmartListResolverService::class);
+    $count = $resolver->materialize($list);
+
+    expect($count)->toBe(2);
+    expect($list->entries()->count())->toBe(2);
 });
 
 it('materialize uses per-list lock key preventing double materialization', function () {

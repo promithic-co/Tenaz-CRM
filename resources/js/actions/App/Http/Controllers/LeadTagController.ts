@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LeadTagController::__invoke
  * @see app/Http/Controllers/LeadTagController.php:25
@@ -51,26 +51,4 @@ LeadTagController.post = (args: { lead: string | number } | [lead: string | numb
     url: LeadTagController.url(args, options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\LeadTagController::__invoke
- * @see app/Http/Controllers/LeadTagController.php:25
- * @route '/leads/{lead}/tags'
- */
-    const LeadTagControllerForm = (args: { lead: string | number } | [lead: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: LeadTagController.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\LeadTagController::__invoke
- * @see app/Http/Controllers/LeadTagController.php:25
- * @route '/leads/{lead}/tags'
- */
-        LeadTagControllerForm.post = (args: { lead: string | number } | [lead: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: LeadTagController.url(args, options),
-            method: 'post',
-        })
-    
-    LeadTagController.form = LeadTagControllerForm
 export default LeadTagController

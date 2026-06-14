@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { router, useForm } from '@inertiajs/vue3';
-import { AlertTriangle, Bot, Megaphone, Phone, Play, RefreshCw, Trash2, UserCheck, UserRound } from 'lucide-vue-next';
+import { Link, router, useForm } from '@inertiajs/vue3';
+import { AlertTriangle, Bot, ExternalLink, Megaphone, Phone, Play, RefreshCw, Trash2, UserCheck, UserPlus, UserRound } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import StatusSelect from '@/components/StatusSelect.vue';
 import TagInput from '@/components/TagInput.vue';
@@ -13,7 +13,8 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { store as autoTagStore } from '@/routes/leads/auto-tag';
-import { aiMode, claim, clearHistory, destroy, pause, prepareCampaign, resume } from '@/routes/conversas';
+import { addToContacts, aiMode, claim, clearHistory, destroy, pause, prepareCampaign, resume } from '@/routes/conversas';
+import { show as showContact } from '@/routes/contatos';
 import {
     disable as disableFollowup,
     pause as pauseFollowup,
@@ -39,6 +40,7 @@ const reactivateFollowUpForm = useForm({});
 const clearHistoryForm = useForm({});
 const deleteLeadForm = useForm({});
 const prepareCampaignForm = useForm({});
+const addContactForm = useForm({});
 const aiModeForm = useForm({
     ai_mode: props.conversation.lead.ai_mode ?? '',
 });
@@ -190,13 +192,13 @@ function formatEventDate(value: string): string {
 </script>
 
 <template>
-    <aside class="hidden min-h-0 flex-col gap-3 overflow-y-auto border-l border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border xl:flex">
-        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-4 dark:border-sidebar-border">
+    <aside class="hidden min-h-0 flex-col gap-2 overflow-y-auto border-l border-sidebar-border/70 bg-card p-3 dark:border-sidebar-border xl:flex">
+        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border">
             <div class="flex flex-col items-center text-center">
-                <div class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-lg font-semibold text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-base font-semibold text-blue-600 dark:bg-blue-950 dark:text-blue-400">
                     {{ initials(lead.nome) }}
                 </div>
-                <h2 class="mt-3 max-w-full truncate text-base font-semibold text-foreground">{{ lead.nome }}</h2>
+                <h2 class="mt-2 max-w-full truncate text-sm font-semibold text-foreground">{{ lead.nome }}</h2>
                 <div class="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Phone class="h-3.5 w-3.5" />
                     <span>{{ lead.whatsapp }}</span>
@@ -238,7 +240,7 @@ function formatEventDate(value: string): string {
             </div>
         </section>
 
-        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-4 dark:border-sidebar-border">
+        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border">
             <div class="space-y-3 text-sm">
                 <div class="flex items-center justify-between gap-3">
                     <span class="text-muted-foreground">CPF</span>
@@ -256,7 +258,7 @@ function formatEventDate(value: string): string {
                     <button
                         type="submit"
                         :disabled="claimForm.processing"
-                        class="flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                        class="flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
                     >
                         <UserCheck class="h-4 w-4" />
                         Assumir conversa
@@ -275,7 +277,7 @@ function formatEventDate(value: string): string {
 
         <section
             v-if="conversationWindow"
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-4 dark:border-sidebar-border"
+            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
         >
             <p class="mb-2 text-xs font-semibold text-muted-foreground">Janela WhatsApp</p>
             <div class="flex flex-col gap-1.5 text-xs">
@@ -332,14 +334,14 @@ function formatEventDate(value: string): string {
             </div>
         </section>
 
-        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-4 dark:border-sidebar-border">
+        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border">
             <p class="mb-2 text-xs font-semibold text-muted-foreground">Credito</p>
             <p class="text-xs leading-relaxed text-foreground">{{ lead.resumo_credito ?? 'Sem resumo de credito' }}</p>
         </section>
 
         <section
             v-if="conversation.active_handoff || conversation.handoff_state !== 'ai_active'"
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-4 dark:border-sidebar-border"
+            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
         >
             <p class="mb-2 text-xs font-semibold text-muted-foreground">Atendimento</p>
             <div class="space-y-3">
@@ -386,7 +388,7 @@ function formatEventDate(value: string): string {
                             type="submit"
                             :disabled="returnToAiForm.processing"
                             title="Encerra o atendimento humano e devolve o lead para a IA continuar"
-                            class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-3 text-xs font-medium text-white transition-colors hover:bg-sky-700 disabled:opacity-50"
+                            class="flex h-8 w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-3 text-xs font-medium text-white transition-colors hover:bg-sky-700 disabled:opacity-50"
                         >
                             Devolver para IA
                         </button>
@@ -398,7 +400,7 @@ function formatEventDate(value: string): string {
                             type="submit"
                             :disabled="keepManualForm.processing"
                             title="Fecha o atendimento mantendo a IA pausada — você continua respondendo manualmente"
-                            class="flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                            class="flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
                         >
                             Manter manual
                         </button>
@@ -407,14 +409,14 @@ function formatEventDate(value: string): string {
             </div>
         </section>
 
-        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-4 dark:border-sidebar-border">
-            <div class="mb-3 flex items-center gap-2">
+        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border">
+            <div class="mb-2 flex items-center gap-2">
                 <Bot class="h-4 w-4 text-muted-foreground" />
                 <p class="text-xs font-semibold text-muted-foreground">Controle do Agente</p>
             </div>
             <select
                 v-model="aiModeForm.ai_mode"
-                class="mb-3 h-9 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                class="mb-3 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
                 :disabled="aiModeForm.processing"
                 @change="updateAiMode"
             >
@@ -428,7 +430,7 @@ function formatEventDate(value: string): string {
                 <button
                     type="submit"
                     :disabled="pauseForm.processing"
-                    class="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+                    class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
                 >
                     Assumir e pausar IA
                 </button>
@@ -437,7 +439,7 @@ function formatEventDate(value: string): string {
                 <button
                     type="submit"
                     :disabled="resumeForm.processing"
-                    class="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                    class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
                 >
                     Retomar IA
                 </button>
@@ -445,7 +447,7 @@ function formatEventDate(value: string): string {
             </form>
         </section>
 
-        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-4 dark:border-sidebar-border">
+        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border">
             <p class="mb-2 text-xs font-semibold text-muted-foreground">Controle do Follow-up</p>
             <p
                 v-if="followupStatus === 'paused'"
@@ -468,7 +470,7 @@ function formatEventDate(value: string): string {
                     <button
                         type="submit"
                         :disabled="pauseFollowUpForm.processing"
-                        class="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+                        class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
                     >
                         Pausar Follow-up
                     </button>
@@ -481,7 +483,7 @@ function formatEventDate(value: string): string {
                     <button
                         type="submit"
                         :disabled="resumeFollowUpForm.processing"
-                        class="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                        class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
                     >
                         <Play class="h-4 w-4" />
                         Retomar Follow-up
@@ -495,7 +497,7 @@ function formatEventDate(value: string): string {
                     <button
                         type="submit"
                         :disabled="reactivateFollowUpForm.processing"
-                        class="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                        class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
                     >
                         <Play class="h-4 w-4" />
                         Reativar Follow-up
@@ -509,7 +511,7 @@ function formatEventDate(value: string): string {
                     <button
                         type="submit"
                         :disabled="disableFollowUpForm.processing"
-                        class="flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-rose-500/50 bg-transparent px-3 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10 disabled:opacity-50"
+                        class="flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-rose-500/50 bg-transparent px-3 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10 disabled:opacity-50"
                     >
                         Desativar follow-up
                     </button>
@@ -517,8 +519,8 @@ function formatEventDate(value: string): string {
             </div>
         </section>
 
-        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-4 dark:border-sidebar-border">
-            <div class="mb-3 flex items-center gap-2">
+        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border">
+            <div class="mb-2 flex items-center gap-2">
                 <UserRound class="h-4 w-4 text-muted-foreground" />
                 <p class="text-xs font-semibold text-muted-foreground">Historico de Follow-ups</p>
             </div>
@@ -536,7 +538,7 @@ function formatEventDate(value: string): string {
 
         <section
             v-if="conversation.recentEvents.length > 0"
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-4 dark:border-sidebar-border"
+            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
         >
             <p class="mb-3 text-xs font-semibold text-muted-foreground">Eventos recentes</p>
             <ul class="space-y-2 text-xs">
@@ -549,13 +551,13 @@ function formatEventDate(value: string): string {
 
         <section
             v-if="conversation.canStartCampaign"
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-4 dark:border-sidebar-border"
+            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
         >
             <form @submit.prevent="submitPrepareCampaign">
                 <button
                     type="submit"
                     :disabled="prepareCampaignForm.processing"
-                    class="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
+                    class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
                 >
                     <Megaphone class="h-4 w-4" />
                     Iniciar via campanha
@@ -563,15 +565,36 @@ function formatEventDate(value: string): string {
             </form>
         </section>
 
-        <section class="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4">
-            <div class="mb-3 flex items-center gap-2">
+        <section class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border">
+            <Link
+                v-if="lead.contact_id"
+                :href="showContact.url({ contact: lead.contact_id })"
+                class="flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+            >
+                <ExternalLink class="h-3.5 w-3.5" />
+                Ver contato na base
+            </Link>
+            <form v-else @submit.prevent="addContactForm.post(addToContacts.url({ lead: lead.id }), { preserveScroll: true })">
+                <button
+                    type="submit"
+                    :disabled="addContactForm.processing"
+                    class="flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/5 px-3 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-500/10 disabled:opacity-50 dark:text-emerald-400"
+                >
+                    <UserPlus class="h-3.5 w-3.5" />
+                    Adicionar contato na base
+                </button>
+            </form>
+        </section>
+
+        <section class="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3">
+            <div class="mb-2 flex items-center gap-2">
                 <AlertTriangle class="h-4 w-4 text-rose-500" />
                 <p class="text-xs font-semibold text-rose-500">Zona de perigo</p>
             </div>
 
             <button
                 type="button"
-                class="mb-2 flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-rose-500/40 px-3 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10"
+                class="mb-2 flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-rose-500/40 px-3 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10"
                 @click="showClearConfirm = true"
             >
                 Limpar histórico
@@ -579,7 +602,7 @@ function formatEventDate(value: string): string {
 
             <button
                 type="button"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-rose-500 px-3 text-xs font-medium text-white transition-colors hover:bg-rose-600"
+                class="flex h-8 w-full items-center justify-center gap-2 rounded-lg bg-rose-500 px-3 text-xs font-medium text-white transition-colors hover:bg-rose-600"
                 @click="showDeleteConfirm = true"
             >
                 <Trash2 class="h-4 w-4" />
@@ -629,7 +652,7 @@ function formatEventDate(value: string): string {
                 <input
                     v-model="deleteConfirmText"
                     type="text"
-                    class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                    class="h-8 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
                     placeholder="EXCLUIR"
                 />
                 <DialogFooter class="gap-2 sm:gap-2">

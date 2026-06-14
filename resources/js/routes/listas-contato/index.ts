@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 import entries from './entries'
 /**
 * @see \App\Http\Controllers\ContactController::addContacts
@@ -58,27 +58,6 @@ addContacts.post = (args: { list: number | { id: number } } | [list: number | { 
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactController::addContacts
- * @see app/Http/Controllers/ContactController.php:184
- * @route '/listas-contato/{list}/contatos'
- */
-    const addContactsForm = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: addContacts.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactController::addContacts
- * @see app/Http/Controllers/ContactController.php:184
- * @route '/listas-contato/{list}/contatos'
- */
-        addContactsForm.post = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: addContacts.url(args, options),
-            method: 'post',
-        })
-    
-    addContacts.form = addContactsForm
 /**
 * @see \App\Http\Controllers\ContactListController::preview
  * @see app/Http/Controllers/ContactListController.php:145
@@ -113,27 +92,6 @@ preview.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactListController::preview
- * @see app/Http/Controllers/ContactListController.php:145
- * @route '/listas-contato/preview'
- */
-    const previewForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: preview.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListController::preview
- * @see app/Http/Controllers/ContactListController.php:145
- * @route '/listas-contato/preview'
- */
-        previewForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: preview.url(options),
-            method: 'post',
-        })
-    
-    preview.form = previewForm
 /**
 * @see \App\Http\Controllers\ContactListController::create
  * @see app/Http/Controllers/ContactListController.php:39
@@ -177,41 +135,6 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactListController::create
- * @see app/Http/Controllers/ContactListController.php:39
- * @route '/listas-contato/create'
- */
-    const createForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: create.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListController::create
- * @see app/Http/Controllers/ContactListController.php:39
- * @route '/listas-contato/create'
- */
-        createForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: create.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\ContactListController::create
- * @see app/Http/Controllers/ContactListController.php:39
- * @route '/listas-contato/create'
- */
-        createForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: create.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    create.form = createForm
 /**
 * @see \App\Http\Controllers\ContactListController::index
  * @see app/Http/Controllers/ContactListController.php:27
@@ -255,41 +178,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactListController::index
- * @see app/Http/Controllers/ContactListController.php:27
- * @route '/listas-contato'
- */
-    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: index.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListController::index
- * @see app/Http/Controllers/ContactListController.php:27
- * @route '/listas-contato'
- */
-        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\ContactListController::index
- * @see app/Http/Controllers/ContactListController.php:27
- * @route '/listas-contato'
- */
-        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    index.form = indexForm
 /**
 * @see \App\Http\Controllers\ContactListController::store
  * @see app/Http/Controllers/ContactListController.php:77
@@ -324,27 +212,6 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactListController::store
- * @see app/Http/Controllers/ContactListController.php:77
- * @route '/listas-contato'
- */
-    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: store.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListController::store
- * @see app/Http/Controllers/ContactListController.php:77
- * @route '/listas-contato'
- */
-        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: store.url(options),
-            method: 'post',
-        })
-    
-    store.form = storeForm
 /**
 * @see \App\Http\Controllers\ContactListController::show
  * @see app/Http/Controllers/ContactListController.php:97
@@ -412,41 +279,6 @@ show.head = (args: { list: number | { id: number } } | [list: number | { id: num
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactListController::show
- * @see app/Http/Controllers/ContactListController.php:97
- * @route '/listas-contato/{list}'
- */
-    const showForm = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: show.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListController::show
- * @see app/Http/Controllers/ContactListController.php:97
- * @route '/listas-contato/{list}'
- */
-        showForm.get = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\ContactListController::show
- * @see app/Http/Controllers/ContactListController.php:97
- * @route '/listas-contato/{list}'
- */
-        showForm.head = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    show.form = showForm
 /**
 * @see \App\Http\Controllers\ContactListController::destroy
  * @see app/Http/Controllers/ContactListController.php:122
@@ -505,37 +337,6 @@ destroy.delete = (args: { list: number | { id: number } } | [list: number | { id
     method: 'delete',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactListController::destroy
- * @see app/Http/Controllers/ContactListController.php:122
- * @route '/listas-contato/{list}'
- */
-    const destroyForm = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: destroy.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListController::destroy
- * @see app/Http/Controllers/ContactListController.php:122
- * @route '/listas-contato/{list}'
- */
-        destroyForm.delete = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: destroy.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\ContactListController::importCsv
  * @see app/Http/Controllers/ContactListController.php:209
@@ -594,27 +395,6 @@ importCsv.post = (args: { list: number | { id: number } } | [list: number | { id
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactListController::importCsv
- * @see app/Http/Controllers/ContactListController.php:209
- * @route '/listas-contato/{list}/import-csv'
- */
-    const importCsvForm = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: importCsv.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListController::importCsv
- * @see app/Http/Controllers/ContactListController.php:209
- * @route '/listas-contato/{list}/import-csv'
- */
-        importCsvForm.post = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: importCsv.url(args, options),
-            method: 'post',
-        })
-    
-    importCsv.form = importCsvForm
 /**
 * @see \App\Http\Controllers\ContactListController::updateFilters
  * @see app/Http/Controllers/ContactListController.php:174
@@ -673,37 +453,6 @@ updateFilters.patch = (args: { list: number | { id: number } } | [list: number |
     method: 'patch',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactListController::updateFilters
- * @see app/Http/Controllers/ContactListController.php:174
- * @route '/listas-contato/{list}/filters'
- */
-    const updateFiltersForm = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: updateFilters.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'PATCH',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListController::updateFilters
- * @see app/Http/Controllers/ContactListController.php:174
- * @route '/listas-contato/{list}/filters'
- */
-        updateFiltersForm.patch = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: updateFilters.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PATCH',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    updateFilters.form = updateFiltersForm
 /**
 * @see \App\Http\Controllers\ContactListController::refresh
  * @see app/Http/Controllers/ContactListController.php:184
@@ -762,27 +511,6 @@ refresh.post = (args: { list: number | { id: number } } | [list: number | { id: 
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactListController::refresh
- * @see app/Http/Controllers/ContactListController.php:184
- * @route '/listas-contato/{list}/refresh'
- */
-    const refreshForm = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: refresh.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListController::refresh
- * @see app/Http/Controllers/ContactListController.php:184
- * @route '/listas-contato/{list}/refresh'
- */
-        refreshForm.post = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: refresh.url(args, options),
-            method: 'post',
-        })
-    
-    refresh.form = refreshForm
 /**
 * @see \App\Http\Controllers\ContactListController::freeze
  * @see app/Http/Controllers/ContactListController.php:198
@@ -840,28 +568,6 @@ freeze.post = (args: { list: number | { id: number } } | [list: number | { id: n
     url: freeze.url(args, options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\ContactListController::freeze
- * @see app/Http/Controllers/ContactListController.php:198
- * @route '/listas-contato/{list}/freeze'
- */
-    const freezeForm = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: freeze.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListController::freeze
- * @see app/Http/Controllers/ContactListController.php:198
- * @route '/listas-contato/{list}/freeze'
- */
-        freezeForm.post = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: freeze.url(args, options),
-            method: 'post',
-        })
-    
-    freeze.form = freezeForm
 const listasContato = {
     addContacts: Object.assign(addContacts, addContacts),
 preview: Object.assign(preview, preview),

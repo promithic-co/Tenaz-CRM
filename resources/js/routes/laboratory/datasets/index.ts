@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\StressTestController::index
  * @see app/Http/Controllers/StressTestController.php:21
@@ -42,41 +42,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\StressTestController::index
- * @see app/Http/Controllers/StressTestController.php:21
- * @route '/laboratory/datasets'
- */
-    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: index.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\StressTestController::index
- * @see app/Http/Controllers/StressTestController.php:21
- * @route '/laboratory/datasets'
- */
-        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\StressTestController::index
- * @see app/Http/Controllers/StressTestController.php:21
- * @route '/laboratory/datasets'
- */
-        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    index.form = indexForm
 /**
 * @see \App\Http\Controllers\StressTestController::store
  * @see app/Http/Controllers/StressTestController.php:30
@@ -111,27 +76,6 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\StressTestController::store
- * @see app/Http/Controllers/StressTestController.php:30
- * @route '/laboratory/datasets'
- */
-    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: store.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StressTestController::store
- * @see app/Http/Controllers/StressTestController.php:30
- * @route '/laboratory/datasets'
- */
-        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: store.url(options),
-            method: 'post',
-        })
-    
-    store.form = storeForm
 /**
 * @see \App\Http\Controllers\StressTestController::show
  * @see app/Http/Controllers/StressTestController.php:65
@@ -199,41 +143,6 @@ show.head = (args: { dataset: number | { id: number } } | [dataset: number | { i
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\StressTestController::show
- * @see app/Http/Controllers/StressTestController.php:65
- * @route '/laboratory/datasets/{dataset}'
- */
-    const showForm = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: show.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\StressTestController::show
- * @see app/Http/Controllers/StressTestController.php:65
- * @route '/laboratory/datasets/{dataset}'
- */
-        showForm.get = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\StressTestController::show
- * @see app/Http/Controllers/StressTestController.php:65
- * @route '/laboratory/datasets/{dataset}'
- */
-        showForm.head = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    show.form = showForm
 /**
 * @see \App\Http\Controllers\StressTestController::destroy
  * @see app/Http/Controllers/StressTestController.php:94
@@ -292,37 +201,6 @@ destroy.delete = (args: { dataset: number | { id: number } } | [dataset: number 
     method: 'delete',
 })
 
-    /**
-* @see \App\Http\Controllers\StressTestController::destroy
- * @see app/Http/Controllers/StressTestController.php:94
- * @route '/laboratory/datasets/{dataset}'
- */
-    const destroyForm = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: destroy.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StressTestController::destroy
- * @see app/Http/Controllers/StressTestController.php:94
- * @route '/laboratory/datasets/{dataset}'
- */
-        destroyForm.delete = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: destroy.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\StressTestController::prefetch
  * @see app/Http/Controllers/StressTestController.php:102
@@ -380,28 +258,6 @@ prefetch.post = (args: { dataset: number | { id: number } } | [dataset: number |
     url: prefetch.url(args, options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\StressTestController::prefetch
- * @see app/Http/Controllers/StressTestController.php:102
- * @route '/laboratory/datasets/{dataset}/prefetch'
- */
-    const prefetchForm = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: prefetch.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StressTestController::prefetch
- * @see app/Http/Controllers/StressTestController.php:102
- * @route '/laboratory/datasets/{dataset}/prefetch'
- */
-        prefetchForm.post = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: prefetch.url(args, options),
-            method: 'post',
-        })
-    
-    prefetch.form = prefetchForm
 const datasets = {
     index: Object.assign(index, index),
 store: Object.assign(store, store),

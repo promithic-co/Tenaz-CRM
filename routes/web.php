@@ -4,22 +4,35 @@ use App\Http\Controllers\AgentConfigController;
 use App\Http\Controllers\AgenteConfigController;
 use App\Http\Controllers\AgentFollowUpController;
 use App\Http\Controllers\AgentsController;
+use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\ConfiguracoesController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\ContactListController;
+use App\Http\Controllers\ContactListEntryController;
 use App\Http\Controllers\ConversasController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LaboratoryController;
+use App\Http\Controllers\LeadAutoTagController;
 use App\Http\Controllers\LeadFollowUpController;
+use App\Http\Controllers\LeadManagementController;
 use App\Http\Controllers\LeadStatusController;
+use App\Http\Controllers\LeadTagController;
 use App\Http\Controllers\MetaEmbeddedSignupController;
+use App\Http\Controllers\PipelineController;
+use App\Http\Controllers\PlaygroundController;
 use App\Http\Controllers\RegrasOperacionaisController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ServiceTicketController;
 use App\Http\Controllers\StatusPipelineController;
+use App\Http\Controllers\StressTestController;
+use App\Http\Controllers\TagController;
+use App\Http\Controllers\UraApiKeyController;
 use App\Http\Controllers\VoiceCampaignController;
 use App\Http\Controllers\VoiceInstanceController;
 use App\Http\Controllers\VoicePreviewController;
 use App\Http\Controllers\WhatsAppInstanceController;
+use App\Http\Controllers\WhatsappTemplateController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
@@ -88,12 +101,12 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
 
     // Conversas / leads
     Route::get('/conversas', [ConversasController::class, 'index'])->name('conversas.index');
-    Route::post('/conversas', [\App\Http\Controllers\LeadManagementController::class, 'store'])->name('conversas.store');
-    Route::post('/conversas/bulk-action', [\App\Http\Controllers\LeadManagementController::class, 'bulkAction'])->name('conversas.bulk-action');
+    Route::post('/conversas', [LeadManagementController::class, 'store'])->name('conversas.store');
+    Route::post('/conversas/bulk-action', [LeadManagementController::class, 'bulkAction'])->name('conversas.bulk-action');
     Route::post('/conversas/transfer', [ConversasController::class, 'bulkTransfer'])->name('conversas.transfer');
     Route::get('/conversas/{lead}/preview', [ConversasController::class, 'preview'])->name('conversas.preview');
     Route::get('/conversas/{lead}', [ConversasController::class, 'show'])->name('conversas.show');
-    Route::delete('/conversas/{lead}', [\App\Http\Controllers\LeadManagementController::class, 'destroy'])->name('conversas.destroy');
+    Route::delete('/conversas/{lead}', [LeadManagementController::class, 'destroy'])->name('conversas.destroy');
     Route::post('/conversas/{lead}/pause', [ConversasController::class, 'pause'])->name('conversas.pause');
     Route::post('/conversas/{lead}/resume', [ConversasController::class, 'resume'])->name('conversas.resume');
     Route::post('/conversas/{lead}/claim', [ConversasController::class, 'claim'])->name('conversas.claim');
@@ -105,38 +118,39 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::post('/conversas/{lead}/followup-reactivate', [LeadFollowUpController::class, 'reactivate'])->name('conversas.followup.reactivate');
     Route::post('/conversas/{lead}/clear-history', [ConversasController::class, 'clearHistory'])->name('conversas.clearHistory');
     Route::post('/conversas/{lead}/send', [ConversasController::class, 'sendMessage'])->name('conversas.send');
-    Route::post('/conversas/{lead}/prepare-campaign', [\App\Http\Controllers\LeadManagementController::class, 'prepareCampaign'])->name('conversas.prepare-campaign');
+    Route::post('/conversas/{lead}/prepare-campaign', [LeadManagementController::class, 'prepareCampaign'])->name('conversas.prepare-campaign');
+    Route::post('/conversas/{lead}/add-to-contacts', [LeadManagementController::class, 'addToContacts'])->name('conversas.add-to-contacts');
     Route::post('/leads/{lead}/status', [LeadStatusController::class, 'update'])->name('leads.status.update');
 
     // Contatos (CRM canonical contact identity)
-    Route::get('/contatos', [\App\Http\Controllers\ContactController::class, 'index'])->name('contatos.index');
-    Route::get('/contatos/search', [\App\Http\Controllers\ContactController::class, 'search'])->name('contatos.search');
-    Route::get('/contatos/{contact}', [\App\Http\Controllers\ContactController::class, 'show'])->name('contatos.show');
+    Route::get('/contatos', [ContactController::class, 'index'])->name('contatos.index');
+    Route::get('/contatos/search', [ContactController::class, 'search'])->name('contatos.search');
+    Route::get('/contatos/{contact}', [ContactController::class, 'show'])->name('contatos.show');
     Route::middleware('role:owner,administrator')->group(function () {
-        Route::post('/contatos', [\App\Http\Controllers\ContactController::class, 'store'])->name('contatos.store');
-        Route::patch('/contatos/{contact}', [\App\Http\Controllers\ContactController::class, 'update'])->name('contatos.update');
-        Route::delete('/contatos/{contact}', [\App\Http\Controllers\ContactController::class, 'destroy'])->name('contatos.destroy');
-        Route::post('/listas-contato/{list}/contatos', [\App\Http\Controllers\ContactController::class, 'addToList'])->name('listas-contato.add-contacts');
+        Route::post('/contatos', [ContactController::class, 'store'])->name('contatos.store');
+        Route::patch('/contatos/{contact}', [ContactController::class, 'update'])->name('contatos.update');
+        Route::delete('/contatos/{contact}', [ContactController::class, 'destroy'])->name('contatos.destroy');
+        Route::post('/listas-contato/{list}/contatos', [ContactController::class, 'addToList'])->name('listas-contato.add-contacts');
     });
 
     // Tags (tenant-scoped polymorphic) — index/search accessible to all auth users; mutations restricted to owners/admins.
-    Route::get('/tags', [\App\Http\Controllers\TagController::class, 'index'])->name('tags.index');
+    Route::get('/tags', [TagController::class, 'index'])->name('tags.index');
     Route::middleware('role:owner,administrator')->group(function (): void {
-        Route::post('/tags', [\App\Http\Controllers\TagController::class, 'store'])->name('tags.store');
-        Route::patch('/tags/{tag}', [\App\Http\Controllers\TagController::class, 'update'])->name('tags.update');
-        Route::delete('/tags/{tag}', [\App\Http\Controllers\TagController::class, 'destroy'])->name('tags.destroy');
-        Route::post('/leads/{lead}/tags', \App\Http\Controllers\LeadTagController::class)->name('leads.tags.sync');
+        Route::post('/tags', [TagController::class, 'store'])->name('tags.store');
+        Route::patch('/tags/{tag}', [TagController::class, 'update'])->name('tags.update');
+        Route::delete('/tags/{tag}', [TagController::class, 'destroy'])->name('tags.destroy');
+        Route::post('/leads/{lead}/tags', LeadTagController::class)->name('leads.tags.sync');
     });
 
     // AI auto-tag manual re-evaluation — any authenticated user with Lead update access
-    Route::post('/leads/{lead}/auto-tag', [\App\Http\Controllers\LeadAutoTagController::class, 'store'])->name('leads.auto-tag.store');
+    Route::post('/leads/{lead}/auto-tag', [LeadAutoTagController::class, 'store'])->name('leads.auto-tag.store');
 
     // Pipeline (Phase 49) — Kanban board scoped to authenticated tenant.
-    Route::get('/pipeline', [\App\Http\Controllers\PipelineController::class, 'index'])->name('pipeline.index');
-    Route::get('/pipeline/columns/{slug}', [\App\Http\Controllers\PipelineController::class, 'column'])
+    Route::get('/pipeline', [PipelineController::class, 'index'])->name('pipeline.index');
+    Route::get('/pipeline/columns/{slug}', [PipelineController::class, 'column'])
         ->where('slug', '[a-z0-9_-]+')
         ->name('pipeline.column');
-    Route::post('/pipeline/move', [\App\Http\Controllers\PipelineController::class, 'move'])
+    Route::post('/pipeline/move', [PipelineController::class, 'move'])
         ->middleware('throttle:60,1')
         ->name('pipeline.move');
 
@@ -218,36 +232,36 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::get('/laboratory/leads/{lead}/interactions', [LaboratoryController::class, 'leadInteractionTimeline'])->name('laboratory.leads.interactions');
 
     Route::prefix('laboratory')->name('laboratory.')->group(function () {
-        Route::get('/datasets', [\App\Http\Controllers\StressTestController::class, 'datasets'])->name('datasets.index');
-        Route::post('/datasets', [\App\Http\Controllers\StressTestController::class, 'storeDataset'])->name('datasets.store');
-        Route::get('/datasets/{dataset}', [\App\Http\Controllers\StressTestController::class, 'showDataset'])->name('datasets.show');
-        Route::delete('/datasets/{dataset}', [\App\Http\Controllers\StressTestController::class, 'destroyDataset'])->name('datasets.destroy');
-        Route::post('/datasets/{dataset}/prefetch', [\App\Http\Controllers\StressTestController::class, 'prefetchDataset'])->name('datasets.prefetch');
-        Route::get('/stress-tests', [\App\Http\Controllers\StressTestController::class, 'runs'])->name('stress-tests.index');
-        Route::post('/stress-tests', [\App\Http\Controllers\StressTestController::class, 'storeRun'])->name('stress-tests.store');
-        Route::get('/stress-tests/{run}', [\App\Http\Controllers\StressTestController::class, 'showRun'])->name('stress-tests.show');
-        Route::post('/stress-tests/{run}/cancel', [\App\Http\Controllers\StressTestController::class, 'cancelRun'])->name('stress-tests.cancel');
+        Route::get('/datasets', [StressTestController::class, 'datasets'])->name('datasets.index');
+        Route::post('/datasets', [StressTestController::class, 'storeDataset'])->name('datasets.store');
+        Route::get('/datasets/{dataset}', [StressTestController::class, 'showDataset'])->name('datasets.show');
+        Route::delete('/datasets/{dataset}', [StressTestController::class, 'destroyDataset'])->name('datasets.destroy');
+        Route::post('/datasets/{dataset}/prefetch', [StressTestController::class, 'prefetchDataset'])->name('datasets.prefetch');
+        Route::get('/stress-tests', [StressTestController::class, 'runs'])->name('stress-tests.index');
+        Route::post('/stress-tests', [StressTestController::class, 'storeRun'])->name('stress-tests.store');
+        Route::get('/stress-tests/{run}', [StressTestController::class, 'showRun'])->name('stress-tests.show');
+        Route::post('/stress-tests/{run}/cancel', [StressTestController::class, 'cancelRun'])->name('stress-tests.cancel');
     });
 
     // Admin-only: campaigns, templates, contact lists
     Route::middleware('role:owner,administrator')->group(function () {
-        Route::resource('templates', \App\Http\Controllers\WhatsappTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
-        Route::post('templates/sync-meta', [\App\Http\Controllers\WhatsappTemplateController::class, 'syncMeta'])->name('templates.sync-meta');
+        Route::resource('templates', WhatsappTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::post('templates/sync-meta', [WhatsappTemplateController::class, 'syncMeta'])->name('templates.sync-meta');
 
-        Route::resource('campanhas', \App\Http\Controllers\CampaignController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
-        Route::patch('campanhas/{campanha}', [\App\Http\Controllers\CampaignController::class, 'update'])->name('campanhas.update');
-        Route::post('campanhas/{campanha}/start', [\App\Http\Controllers\CampaignController::class, 'start'])->name('campanhas.start');
-        Route::post('campanhas/{campanha}/pause', [\App\Http\Controllers\CampaignController::class, 'pause'])->name('campanhas.pause');
-        Route::post('campanhas/{campanha}/resume', [\App\Http\Controllers\CampaignController::class, 'resume'])->name('campanhas.resume');
+        Route::resource('campanhas', CampaignController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
+        Route::patch('campanhas/{campanha}', [CampaignController::class, 'update'])->name('campanhas.update');
+        Route::post('campanhas/{campanha}/start', [CampaignController::class, 'start'])->name('campanhas.start');
+        Route::post('campanhas/{campanha}/pause', [CampaignController::class, 'pause'])->name('campanhas.pause');
+        Route::post('campanhas/{campanha}/resume', [CampaignController::class, 'resume'])->name('campanhas.resume');
 
-        Route::post('listas-contato/preview', [\App\Http\Controllers\ContactListController::class, 'preview'])->name('listas-contato.preview');
-        Route::get('listas-contato/create', [\App\Http\Controllers\ContactListController::class, 'create'])->name('listas-contato.create');
-        Route::resource('listas-contato', \App\Http\Controllers\ContactListController::class)->only(['index', 'store', 'show', 'destroy'])->parameters(['listas-contato' => 'list']);
-        Route::post('listas-contato/{list}/import-csv', [\App\Http\Controllers\ContactListController::class, 'importCsv'])->name('listas-contato.import-csv');
-        Route::resource('listas-contato.entries', \App\Http\Controllers\ContactListEntryController::class)->only(['store', 'destroy'])->shallow()->parameters(['listas-contato' => 'list']);
-        Route::patch('listas-contato/{list}/filters', [\App\Http\Controllers\ContactListController::class, 'updateFilters'])->name('listas-contato.update-filters');
-        Route::post('listas-contato/{list}/refresh', [\App\Http\Controllers\ContactListController::class, 'refresh'])->name('listas-contato.refresh');
-        Route::post('listas-contato/{list}/freeze', [\App\Http\Controllers\ContactListController::class, 'freeze'])->name('listas-contato.freeze');
+        Route::post('listas-contato/preview', [ContactListController::class, 'preview'])->name('listas-contato.preview');
+        Route::get('listas-contato/create', [ContactListController::class, 'create'])->name('listas-contato.create');
+        Route::resource('listas-contato', ContactListController::class)->only(['index', 'store', 'show', 'destroy'])->parameters(['listas-contato' => 'list']);
+        Route::post('listas-contato/{list}/import-csv', [ContactListController::class, 'importCsv'])->name('listas-contato.import-csv');
+        Route::resource('listas-contato.entries', ContactListEntryController::class)->only(['store', 'destroy'])->shallow()->parameters(['listas-contato' => 'list']);
+        Route::patch('listas-contato/{list}/filters', [ContactListController::class, 'updateFilters'])->name('listas-contato.update-filters');
+        Route::post('listas-contato/{list}/refresh', [ContactListController::class, 'refresh'])->name('listas-contato.refresh');
+        Route::post('listas-contato/{list}/freeze', [ContactListController::class, 'freeze'])->name('listas-contato.freeze');
     });
 
     Route::middleware('role:owner,administrator')->group(function () {
@@ -274,27 +288,27 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
 
     // URA integration API keys management
     Route::prefix('ura')->name('ura.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\UraApiKeyController::class, 'index'])->name('index');
-        Route::post('/', [\App\Http\Controllers\UraApiKeyController::class, 'store'])->name('store');
-        Route::patch('{uraApiKey}', [\App\Http\Controllers\UraApiKeyController::class, 'update'])->name('update');
-        Route::delete('{uraApiKey}', [\App\Http\Controllers\UraApiKeyController::class, 'destroy'])->name('destroy');
+        Route::get('/', [UraApiKeyController::class, 'index'])->name('index');
+        Route::post('/', [UraApiKeyController::class, 'store'])->name('store');
+        Route::patch('{uraApiKey}', [UraApiKeyController::class, 'update'])->name('update');
+        Route::delete('{uraApiKey}', [UraApiKeyController::class, 'destroy'])->name('destroy');
     });
 
     // Voice TTS Preview (generates mp3 via Google TTS API)
     Route::post('/voz/preview-tts', [VoicePreviewController::class, 'preview'])->name('voz.preview-tts');
     // Playground (sandbox de testes do agente)
     Route::prefix('playground')->name('playground.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\PlaygroundController::class, 'index'])->name('index');
-        Route::post('/', [\App\Http\Controllers\PlaygroundController::class, 'store'])->name('store');
-        Route::post('/generate-scenario', [\App\Http\Controllers\PlaygroundController::class, 'generateScenario'])->name('generateScenario');
-        Route::post('/scan-blindspots', [\App\Http\Controllers\PlaygroundController::class, 'scanBlindspots'])->name('scanBlindspots');
-        Route::delete('/{lead}', [\App\Http\Controllers\PlaygroundController::class, 'destroy'])->name('destroy');
-        Route::post('/{lead}/reset', [\App\Http\Controllers\PlaygroundController::class, 'reset'])->name('reset');
-        Route::post('/{lead}/prompt', [\App\Http\Controllers\PlaygroundController::class, 'updatePrompt'])->name('updatePrompt');
-        Route::post('/{lead}/chat', [\App\Http\Controllers\PlaygroundController::class, 'chat'])->name('chat');
-        Route::post('/{lead}/tester-chat', [\App\Http\Controllers\PlaygroundController::class, 'testerChat'])->name('testerChat');
-        Route::post('/{lead}/evaluate', [\App\Http\Controllers\PlaygroundController::class, 'evaluate'])->name('evaluate');
-        Route::get('/{lead}/messages', [\App\Http\Controllers\PlaygroundController::class, 'messages'])->name('messages');
+        Route::get('/', [PlaygroundController::class, 'index'])->name('index');
+        Route::post('/', [PlaygroundController::class, 'store'])->name('store');
+        Route::post('/generate-scenario', [PlaygroundController::class, 'generateScenario'])->name('generateScenario');
+        Route::post('/scan-blindspots', [PlaygroundController::class, 'scanBlindspots'])->name('scanBlindspots');
+        Route::delete('/{lead}', [PlaygroundController::class, 'destroy'])->name('destroy');
+        Route::post('/{lead}/reset', [PlaygroundController::class, 'reset'])->name('reset');
+        Route::post('/{lead}/prompt', [PlaygroundController::class, 'updatePrompt'])->name('updatePrompt');
+        Route::post('/{lead}/chat', [PlaygroundController::class, 'chat'])->name('chat');
+        Route::post('/{lead}/tester-chat', [PlaygroundController::class, 'testerChat'])->name('testerChat');
+        Route::post('/{lead}/evaluate', [PlaygroundController::class, 'evaluate'])->name('evaluate');
+        Route::get('/{lead}/messages', [PlaygroundController::class, 'messages'])->name('messages');
     });
 });
 

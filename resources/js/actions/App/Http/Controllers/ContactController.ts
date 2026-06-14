@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\ContactController::index
  * @see app/Http/Controllers/ContactController.php:22
@@ -42,41 +42,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactController::index
- * @see app/Http/Controllers/ContactController.php:22
- * @route '/contatos'
- */
-    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: index.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactController::index
- * @see app/Http/Controllers/ContactController.php:22
- * @route '/contatos'
- */
-        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\ContactController::index
- * @see app/Http/Controllers/ContactController.php:22
- * @route '/contatos'
- */
-        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    index.form = indexForm
 /**
 * @see \App\Http\Controllers\ContactController::search
  * @see app/Http/Controllers/ContactController.php:78
@@ -120,41 +85,6 @@ search.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactController::search
- * @see app/Http/Controllers/ContactController.php:78
- * @route '/contatos/search'
- */
-    const searchForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: search.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactController::search
- * @see app/Http/Controllers/ContactController.php:78
- * @route '/contatos/search'
- */
-        searchForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: search.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\ContactController::search
- * @see app/Http/Controllers/ContactController.php:78
- * @route '/contatos/search'
- */
-        searchForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: search.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    search.form = searchForm
 /**
 * @see \App\Http\Controllers\ContactController::show
  * @see app/Http/Controllers/ContactController.php:108
@@ -222,41 +152,6 @@ show.head = (args: { contact: number | { id: number } } | [contact: number | { i
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactController::show
- * @see app/Http/Controllers/ContactController.php:108
- * @route '/contatos/{contact}'
- */
-    const showForm = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: show.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactController::show
- * @see app/Http/Controllers/ContactController.php:108
- * @route '/contatos/{contact}'
- */
-        showForm.get = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\ContactController::show
- * @see app/Http/Controllers/ContactController.php:108
- * @route '/contatos/{contact}'
- */
-        showForm.head = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    show.form = showForm
 /**
 * @see \App\Http\Controllers\ContactController::store
  * @see app/Http/Controllers/ContactController.php:136
@@ -291,27 +186,6 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactController::store
- * @see app/Http/Controllers/ContactController.php:136
- * @route '/contatos'
- */
-    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: store.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactController::store
- * @see app/Http/Controllers/ContactController.php:136
- * @route '/contatos'
- */
-        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: store.url(options),
-            method: 'post',
-        })
-    
-    store.form = storeForm
 /**
 * @see \App\Http\Controllers\ContactController::update
  * @see app/Http/Controllers/ContactController.php:162
@@ -370,37 +244,6 @@ update.patch = (args: { contact: number | { id: number } } | [contact: number | 
     method: 'patch',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactController::update
- * @see app/Http/Controllers/ContactController.php:162
- * @route '/contatos/{contact}'
- */
-    const updateForm = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: update.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'PATCH',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactController::update
- * @see app/Http/Controllers/ContactController.php:162
- * @route '/contatos/{contact}'
- */
-        updateForm.patch = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: update.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PATCH',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    update.form = updateForm
 /**
 * @see \App\Http\Controllers\ContactController::destroy
  * @see app/Http/Controllers/ContactController.php:170
@@ -459,37 +302,6 @@ destroy.delete = (args: { contact: number | { id: number } } | [contact: number 
     method: 'delete',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactController::destroy
- * @see app/Http/Controllers/ContactController.php:170
- * @route '/contatos/{contact}'
- */
-    const destroyForm = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: destroy.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactController::destroy
- * @see app/Http/Controllers/ContactController.php:170
- * @route '/contatos/{contact}'
- */
-        destroyForm.delete = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: destroy.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\ContactController::addToList
  * @see app/Http/Controllers/ContactController.php:184
@@ -547,28 +359,6 @@ addToList.post = (args: { list: number | { id: number } } | [list: number | { id
     url: addToList.url(args, options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\ContactController::addToList
- * @see app/Http/Controllers/ContactController.php:184
- * @route '/listas-contato/{list}/contatos'
- */
-    const addToListForm = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: addToList.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactController::addToList
- * @see app/Http/Controllers/ContactController.php:184
- * @route '/listas-contato/{list}/contatos'
- */
-        addToListForm.post = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: addToList.url(args, options),
-            method: 'post',
-        })
-    
-    addToList.form = addToListForm
 const ContactController = { index, search, show, store, update, destroy, addToList }
 
 export default ContactController

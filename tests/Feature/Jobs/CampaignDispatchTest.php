@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    config(['credflow.campaigns.rate_per_minute' => 0]);
+});
+
 test('DispatchCampaignJob creates CampaignMessages for all entries regardless of opt_in_status', function () {
     Queue::fake();
 
@@ -31,7 +35,7 @@ test('DispatchCampaignJob creates CampaignMessages for all entries regardless of
     ]);
 
     $job = new DispatchCampaignJob($campaign);
-    $job->handle(app(\App\Services\CampaignService::class));
+    $job->handle(app(CampaignService::class));
 
     expect(CampaignMessage::where('campaign_id', $campaign->id)->count())->toBe(4);
     Queue::assertPushed(SendCampaignMessageJob::class, 4);
@@ -53,7 +57,7 @@ test('DispatchCampaignJob skips already-sent entries on resume', function () {
     ]);
 
     $job = new DispatchCampaignJob($campaign);
-    $job->handle(app(\App\Services\CampaignService::class));
+    $job->handle(app(CampaignService::class));
 
     // Should only dispatch 2 new messages
     Queue::assertPushed(SendCampaignMessageJob::class, 2);
@@ -70,7 +74,7 @@ test('DispatchCampaignJob stops if campaign paused mid-dispatch', function () {
     ]);
 
     $job = new DispatchCampaignJob($campaign);
-    $job->handle(app(\App\Services\CampaignService::class));
+    $job->handle(app(CampaignService::class));
 
     Queue::assertNotPushed(SendCampaignMessageJob::class);
 });
@@ -145,7 +149,7 @@ test('SendCampaignMessageJob marks failed on provider exception', function () {
     ]);
 
     $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
-    $providerMock->shouldReceive('sendTemplate')->andThrow(new \RuntimeException('Provider error'));
+    $providerMock->shouldReceive('sendTemplate')->andThrow(new RuntimeException('Provider error'));
 
     $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
     $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
@@ -154,7 +158,7 @@ test('SendCampaignMessageJob marks failed on provider exception', function () {
     $job = new SendCampaignMessageJob($message);
 
     expect(fn () => $job->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class)))
-        ->toThrow(\RuntimeException::class);
+        ->toThrow(RuntimeException::class);
 
     expect($message->fresh()->status)->toBe('failed');
     expect($message->fresh()->error_code)->toBe('EXCEPTION');
