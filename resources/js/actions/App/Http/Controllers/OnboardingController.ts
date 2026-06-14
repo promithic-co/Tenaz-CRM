@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\OnboardingController::show
  * @see app/Http/Controllers/OnboardingController.php:36
@@ -42,41 +42,6 @@ show.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\OnboardingController::show
- * @see app/Http/Controllers/OnboardingController.php:36
- * @route '/onboarding'
- */
-    const showForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: show.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\OnboardingController::show
- * @see app/Http/Controllers/OnboardingController.php:36
- * @route '/onboarding'
- */
-        showForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\OnboardingController::show
- * @see app/Http/Controllers/OnboardingController.php:36
- * @route '/onboarding'
- */
-        showForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    show.form = showForm
 /**
 * @see \App\Http\Controllers\OnboardingController::storeAgent
  * @see app/Http/Controllers/OnboardingController.php:115
@@ -111,27 +76,6 @@ storeAgent.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\OnboardingController::storeAgent
- * @see app/Http/Controllers/OnboardingController.php:115
- * @route '/onboarding/agent'
- */
-    const storeAgentForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: storeAgent.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\OnboardingController::storeAgent
- * @see app/Http/Controllers/OnboardingController.php:115
- * @route '/onboarding/agent'
- */
-        storeAgentForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: storeAgent.url(options),
-            method: 'post',
-        })
-    
-    storeAgent.form = storeAgentForm
 /**
 * @see \App\Http\Controllers\OnboardingController::storeInstance
  * @see app/Http/Controllers/OnboardingController.php:174
@@ -166,27 +110,6 @@ storeInstance.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\OnboardingController::storeInstance
- * @see app/Http/Controllers/OnboardingController.php:174
- * @route '/onboarding/instance'
- */
-    const storeInstanceForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: storeInstance.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\OnboardingController::storeInstance
- * @see app/Http/Controllers/OnboardingController.php:174
- * @route '/onboarding/instance'
- */
-        storeInstanceForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: storeInstance.url(options),
-            method: 'post',
-        })
-    
-    storeInstance.form = storeInstanceForm
 /**
 * @see \App\Http\Controllers\OnboardingController::storePersona
  * @see app/Http/Controllers/OnboardingController.php:256
@@ -221,27 +144,6 @@ storePersona.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\OnboardingController::storePersona
- * @see app/Http/Controllers/OnboardingController.php:256
- * @route '/onboarding/persona'
- */
-    const storePersonaForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: storePersona.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\OnboardingController::storePersona
- * @see app/Http/Controllers/OnboardingController.php:256
- * @route '/onboarding/persona'
- */
-        storePersonaForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: storePersona.url(options),
-            method: 'post',
-        })
-    
-    storePersona.form = storePersonaForm
 /**
 * @see \App\Http\Controllers\OnboardingController::complete
  * @see app/Http/Controllers/OnboardingController.php:308
@@ -303,42 +205,6 @@ complete.head = (args: { agent: string | number } | [agent: string | number ] | 
     url: complete.url(args, options),
     method: 'head',
 })
-
-    /**
-* @see \App\Http\Controllers\OnboardingController::complete
- * @see app/Http/Controllers/OnboardingController.php:308
- * @route '/onboarding/complete/{agent}'
- */
-    const completeForm = (args: { agent: string | number } | [agent: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: complete.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\OnboardingController::complete
- * @see app/Http/Controllers/OnboardingController.php:308
- * @route '/onboarding/complete/{agent}'
- */
-        completeForm.get = (args: { agent: string | number } | [agent: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: complete.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\OnboardingController::complete
- * @see app/Http/Controllers/OnboardingController.php:308
- * @route '/onboarding/complete/{agent}'
- */
-        completeForm.head = (args: { agent: string | number } | [agent: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: complete.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    complete.form = completeForm
 const OnboardingController = { show, storeAgent, storeInstance, storePersona, complete }
 
 export default OnboardingController

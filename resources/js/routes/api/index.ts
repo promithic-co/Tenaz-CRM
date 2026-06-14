@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\HealthController::__invoke
  * @see app/Http/Controllers/Api/HealthController.php:14
@@ -42,41 +42,6 @@ health.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\Api\HealthController::__invoke
- * @see app/Http/Controllers/Api/HealthController.php:14
- * @route '/api/health'
- */
-    const healthForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: health.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\Api\HealthController::__invoke
- * @see app/Http/Controllers/Api/HealthController.php:14
- * @route '/api/health'
- */
-        healthForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: health.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\Api\HealthController::__invoke
- * @see app/Http/Controllers/Api/HealthController.php:14
- * @route '/api/health'
- */
-        healthForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: health.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    health.form = healthForm
 /**
 * @see \App\Http\Controllers\AgentController::tenaz
  * @see app/Http/Controllers/AgentController.php:21
@@ -111,27 +76,6 @@ tenaz.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\AgentController::tenaz
- * @see app/Http/Controllers/AgentController.php:21
- * @route '/api/tenaz'
- */
-    const tenazForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: tenaz.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\AgentController::tenaz
- * @see app/Http/Controllers/AgentController.php:21
- * @route '/api/tenaz'
- */
-        tenazForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: tenaz.url(options),
-            method: 'post',
-        })
-    
-    tenaz.form = tenazForm
 /**
 * @see \App\Http\Controllers\AgentController::aria
  * @see app/Http/Controllers/AgentController.php:32
@@ -165,28 +109,6 @@ aria.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: aria.url(options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\AgentController::aria
- * @see app/Http/Controllers/AgentController.php:32
- * @route '/api/aria'
- */
-    const ariaForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: aria.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\AgentController::aria
- * @see app/Http/Controllers/AgentController.php:32
- * @route '/api/aria'
- */
-        ariaForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: aria.url(options),
-            method: 'post',
-        })
-    
-    aria.form = ariaForm
 const api = {
     health: Object.assign(health, health),
 tenaz: Object.assign(tenaz, tenaz),

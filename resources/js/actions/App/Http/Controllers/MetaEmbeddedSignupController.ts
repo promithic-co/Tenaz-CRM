@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::callback
  * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
@@ -32,28 +32,6 @@ callback.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: callback.url(options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\MetaEmbeddedSignupController::callback
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
- * @route '/whatsapp/meta/embedded-signup'
- */
-    const callbackForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: callback.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\MetaEmbeddedSignupController::callback
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
- * @route '/whatsapp/meta/embedded-signup'
- */
-        callbackForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: callback.url(options),
-            method: 'post',
-        })
-    
-    callback.form = callbackForm
 const MetaEmbeddedSignupController = { callback }
 
 export default MetaEmbeddedSignupController

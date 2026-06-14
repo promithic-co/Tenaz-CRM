@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
@@ -42,41 +42,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\StatusPipelineController::index
- * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
- */
-    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: index.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::index
- * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
- */
-        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::index
- * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
- */
-        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    index.form = indexForm
 /**
 * @see \App\Http\Controllers\StatusPipelineController::storeStatus
  * @see app/Http/Controllers/StatusPipelineController.php:91
@@ -111,27 +76,6 @@ storeStatus.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\StatusPipelineController::storeStatus
- * @see app/Http/Controllers/StatusPipelineController.php:91
- * @route '/configuracoes/pipeline/statuses'
- */
-    const storeStatusForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: storeStatus.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::storeStatus
- * @see app/Http/Controllers/StatusPipelineController.php:91
- * @route '/configuracoes/pipeline/statuses'
- */
-        storeStatusForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: storeStatus.url(options),
-            method: 'post',
-        })
-    
-    storeStatus.form = storeStatusForm
 /**
 * @see \App\Http\Controllers\StatusPipelineController::updateStatus
  * @see app/Http/Controllers/StatusPipelineController.php:68
@@ -185,37 +129,6 @@ updateStatus.put = (args: { slug: string | number } | [slug: string | number ] |
     method: 'put',
 })
 
-    /**
-* @see \App\Http\Controllers\StatusPipelineController::updateStatus
- * @see app/Http/Controllers/StatusPipelineController.php:68
- * @route '/configuracoes/pipeline/statuses/{slug}'
- */
-    const updateStatusForm = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: updateStatus.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'PUT',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::updateStatus
- * @see app/Http/Controllers/StatusPipelineController.php:68
- * @route '/configuracoes/pipeline/statuses/{slug}'
- */
-        updateStatusForm.put = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: updateStatus.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PUT',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    updateStatus.form = updateStatusForm
 /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyStatus
  * @see app/Http/Controllers/StatusPipelineController.php:108
@@ -269,37 +182,6 @@ destroyStatus.delete = (args: { slug: string | number } | [slug: string | number
     method: 'delete',
 })
 
-    /**
-* @see \App\Http\Controllers\StatusPipelineController::destroyStatus
- * @see app/Http/Controllers/StatusPipelineController.php:108
- * @route '/configuracoes/pipeline/statuses/{slug}'
- */
-    const destroyStatusForm = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: destroyStatus.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::destroyStatus
- * @see app/Http/Controllers/StatusPipelineController.php:108
- * @route '/configuracoes/pipeline/statuses/{slug}'
- */
-        destroyStatusForm.delete = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: destroyStatus.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    destroyStatus.form = destroyStatusForm
 /**
 * @see \App\Http\Controllers\StatusPipelineController::storeTransition
  * @see app/Http/Controllers/StatusPipelineController.php:141
@@ -334,27 +216,6 @@ storeTransition.post = (options?: RouteQueryOptions): RouteDefinition<'post'> =>
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\StatusPipelineController::storeTransition
- * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
- */
-    const storeTransitionForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: storeTransition.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::storeTransition
- * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
- */
-        storeTransitionForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: storeTransition.url(options),
-            method: 'post',
-        })
-    
-    storeTransition.form = storeTransitionForm
 /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyTransition
  * @see app/Http/Controllers/StatusPipelineController.php:160
@@ -406,37 +267,6 @@ destroyTransition.delete = (args: { from: string | number, to: string | number }
     method: 'delete',
 })
 
-    /**
-* @see \App\Http\Controllers\StatusPipelineController::destroyTransition
- * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
- */
-    const destroyTransitionForm = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: destroyTransition.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::destroyTransition
- * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
- */
-        destroyTransitionForm.delete = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: destroyTransition.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    destroyTransition.form = destroyTransitionForm
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
@@ -471,27 +301,6 @@ reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\StatusPipelineController::reorder
- * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
- */
-    const reorderForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: reorder.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::reorder
- * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
- */
-        reorderForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: reorder.url(options),
-            method: 'post',
-        })
-    
-    reorder.form = reorderForm
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
@@ -525,28 +334,6 @@ reset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reset.url(options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\StatusPipelineController::reset
- * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
- */
-    const resetForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: reset.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::reset
- * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
- */
-        resetForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: reset.url(options),
-            method: 'post',
-        })
-    
-    reset.form = resetForm
 const StatusPipelineController = { index, storeStatus, updateStatus, destroyStatus, storeTransition, destroyTransition, reorder, reset }
 
 export default StatusPipelineController

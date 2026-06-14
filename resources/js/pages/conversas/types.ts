@@ -38,6 +38,7 @@ export type InboxLead = {
 export type ConversationLead = {
     id: number;
     agent_id?: number | null;
+    contact_id: number | null;
     nome: string;
     whatsapp: string;
     cpf: string | null;

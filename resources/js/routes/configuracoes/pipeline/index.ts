@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../wayfinder'
 import statuses from './statuses'
 import transitions from './transitions'
 /**
@@ -44,41 +44,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\StatusPipelineController::index
- * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
- */
-    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: index.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::index
- * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
- */
-        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::index
- * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
- */
-        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    index.form = indexForm
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
@@ -113,27 +78,6 @@ reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\StatusPipelineController::reorder
- * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
- */
-    const reorderForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: reorder.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::reorder
- * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
- */
-        reorderForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: reorder.url(options),
-            method: 'post',
-        })
-    
-    reorder.form = reorderForm
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
@@ -167,28 +111,6 @@ reset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reset.url(options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\StatusPipelineController::reset
- * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
- */
-    const resetForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: reset.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\StatusPipelineController::reset
- * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
- */
-        resetForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: reset.url(options),
-            method: 'post',
-        })
-    
-    reset.form = resetForm
 const pipeline = {
     index: Object.assign(index, index),
 statuses: Object.assign(statuses, statuses),

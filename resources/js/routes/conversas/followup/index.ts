@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LeadFollowUpController::pause
  * @see app/Http/Controllers/LeadFollowUpController.php:12
@@ -57,27 +57,6 @@ pause.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\LeadFollowUpController::pause
- * @see app/Http/Controllers/LeadFollowUpController.php:12
- * @route '/conversas/{lead}/followup-pause'
- */
-    const pauseForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: pause.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\LeadFollowUpController::pause
- * @see app/Http/Controllers/LeadFollowUpController.php:12
- * @route '/conversas/{lead}/followup-pause'
- */
-        pauseForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: pause.url(args, options),
-            method: 'post',
-        })
-    
-    pause.form = pauseForm
 /**
 * @see \App\Http\Controllers\LeadFollowUpController::resume
  * @see app/Http/Controllers/LeadFollowUpController.php:27
@@ -136,27 +115,6 @@ resume.post = (args: { lead: number | { id: number } } | [lead: number | { id: n
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\LeadFollowUpController::resume
- * @see app/Http/Controllers/LeadFollowUpController.php:27
- * @route '/conversas/{lead}/followup-resume'
- */
-    const resumeForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: resume.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\LeadFollowUpController::resume
- * @see app/Http/Controllers/LeadFollowUpController.php:27
- * @route '/conversas/{lead}/followup-resume'
- */
-        resumeForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: resume.url(args, options),
-            method: 'post',
-        })
-    
-    resume.form = resumeForm
 /**
 * @see \App\Http\Controllers\LeadFollowUpController::disable
  * @see app/Http/Controllers/LeadFollowUpController.php:53
@@ -215,27 +173,6 @@ disable.post = (args: { lead: number | { id: number } } | [lead: number | { id: 
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\LeadFollowUpController::disable
- * @see app/Http/Controllers/LeadFollowUpController.php:53
- * @route '/conversas/{lead}/followup-disable'
- */
-    const disableForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: disable.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\LeadFollowUpController::disable
- * @see app/Http/Controllers/LeadFollowUpController.php:53
- * @route '/conversas/{lead}/followup-disable'
- */
-        disableForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: disable.url(args, options),
-            method: 'post',
-        })
-    
-    disable.form = disableForm
 /**
 * @see \App\Http\Controllers\LeadFollowUpController::reactivate
  * @see app/Http/Controllers/LeadFollowUpController.php:72
@@ -293,28 +230,6 @@ reactivate.post = (args: { lead: number | { id: number } } | [lead: number | { i
     url: reactivate.url(args, options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\LeadFollowUpController::reactivate
- * @see app/Http/Controllers/LeadFollowUpController.php:72
- * @route '/conversas/{lead}/followup-reactivate'
- */
-    const reactivateForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: reactivate.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\LeadFollowUpController::reactivate
- * @see app/Http/Controllers/LeadFollowUpController.php:72
- * @route '/conversas/{lead}/followup-reactivate'
- */
-        reactivateForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: reactivate.url(args, options),
-            method: 'post',
-        })
-    
-    reactivate.form = reactivateForm
 const followup = {
     pause: Object.assign(pause, pause),
 resume: Object.assign(resume, resume),

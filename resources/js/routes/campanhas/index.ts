@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\CampaignController::index
  * @see app/Http/Controllers/CampaignController.php:20
@@ -42,41 +42,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\CampaignController::index
- * @see app/Http/Controllers/CampaignController.php:20
- * @route '/campanhas'
- */
-    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: index.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\CampaignController::index
- * @see app/Http/Controllers/CampaignController.php:20
- * @route '/campanhas'
- */
-        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\CampaignController::index
- * @see app/Http/Controllers/CampaignController.php:20
- * @route '/campanhas'
- */
-        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    index.form = indexForm
 /**
 * @see \App\Http\Controllers\CampaignController::create
  * @see app/Http/Controllers/CampaignController.php:33
@@ -120,41 +85,6 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\CampaignController::create
- * @see app/Http/Controllers/CampaignController.php:33
- * @route '/campanhas/create'
- */
-    const createForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: create.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\CampaignController::create
- * @see app/Http/Controllers/CampaignController.php:33
- * @route '/campanhas/create'
- */
-        createForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: create.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\CampaignController::create
- * @see app/Http/Controllers/CampaignController.php:33
- * @route '/campanhas/create'
- */
-        createForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: create.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    create.form = createForm
 /**
 * @see \App\Http\Controllers\CampaignController::store
  * @see app/Http/Controllers/CampaignController.php:53
@@ -189,27 +119,6 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\CampaignController::store
- * @see app/Http/Controllers/CampaignController.php:53
- * @route '/campanhas'
- */
-    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: store.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\CampaignController::store
- * @see app/Http/Controllers/CampaignController.php:53
- * @route '/campanhas'
- */
-        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: store.url(options),
-            method: 'post',
-        })
-    
-    store.form = storeForm
 /**
 * @see \App\Http\Controllers\CampaignController::show
  * @see app/Http/Controllers/CampaignController.php:75
@@ -277,41 +186,6 @@ show.head = (args: { campanha: number | { id: number } } | [campanha: number | {
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\CampaignController::show
- * @see app/Http/Controllers/CampaignController.php:75
- * @route '/campanhas/{campanha}'
- */
-    const showForm = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: show.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\CampaignController::show
- * @see app/Http/Controllers/CampaignController.php:75
- * @route '/campanhas/{campanha}'
- */
-        showForm.get = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\CampaignController::show
- * @see app/Http/Controllers/CampaignController.php:75
- * @route '/campanhas/{campanha}'
- */
-        showForm.head = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    show.form = showForm
 /**
 * @see \App\Http\Controllers\CampaignController::destroy
  * @see app/Http/Controllers/CampaignController.php:119
@@ -370,37 +244,6 @@ destroy.delete = (args: { campanha: number | { id: number } } | [campanha: numbe
     method: 'delete',
 })
 
-    /**
-* @see \App\Http\Controllers\CampaignController::destroy
- * @see app/Http/Controllers/CampaignController.php:119
- * @route '/campanhas/{campanha}'
- */
-    const destroyForm = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: destroy.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\CampaignController::destroy
- * @see app/Http/Controllers/CampaignController.php:119
- * @route '/campanhas/{campanha}'
- */
-        destroyForm.delete = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: destroy.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\CampaignController::update
  * @see app/Http/Controllers/CampaignController.php:100
@@ -459,37 +302,6 @@ update.patch = (args: { campanha: number | { id: number } } | [campanha: number 
     method: 'patch',
 })
 
-    /**
-* @see \App\Http\Controllers\CampaignController::update
- * @see app/Http/Controllers/CampaignController.php:100
- * @route '/campanhas/{campanha}'
- */
-    const updateForm = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: update.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'PATCH',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\CampaignController::update
- * @see app/Http/Controllers/CampaignController.php:100
- * @route '/campanhas/{campanha}'
- */
-        updateForm.patch = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: update.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PATCH',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    update.form = updateForm
 /**
 * @see \App\Http\Controllers\CampaignController::start
  * @see app/Http/Controllers/CampaignController.php:133
@@ -548,27 +360,6 @@ start.post = (args: { campanha: number | { id: number } } | [campanha: number | 
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\CampaignController::start
- * @see app/Http/Controllers/CampaignController.php:133
- * @route '/campanhas/{campanha}/start'
- */
-    const startForm = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: start.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\CampaignController::start
- * @see app/Http/Controllers/CampaignController.php:133
- * @route '/campanhas/{campanha}/start'
- */
-        startForm.post = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: start.url(args, options),
-            method: 'post',
-        })
-    
-    start.form = startForm
 /**
 * @see \App\Http\Controllers\CampaignController::pause
  * @see app/Http/Controllers/CampaignController.php:146
@@ -627,27 +418,6 @@ pause.post = (args: { campanha: number | { id: number } } | [campanha: number | 
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\CampaignController::pause
- * @see app/Http/Controllers/CampaignController.php:146
- * @route '/campanhas/{campanha}/pause'
- */
-    const pauseForm = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: pause.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\CampaignController::pause
- * @see app/Http/Controllers/CampaignController.php:146
- * @route '/campanhas/{campanha}/pause'
- */
-        pauseForm.post = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: pause.url(args, options),
-            method: 'post',
-        })
-    
-    pause.form = pauseForm
 /**
 * @see \App\Http\Controllers\CampaignController::resume
  * @see app/Http/Controllers/CampaignController.php:159
@@ -705,28 +475,6 @@ resume.post = (args: { campanha: number | { id: number } } | [campanha: number |
     url: resume.url(args, options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\CampaignController::resume
- * @see app/Http/Controllers/CampaignController.php:159
- * @route '/campanhas/{campanha}/resume'
- */
-    const resumeForm = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: resume.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\CampaignController::resume
- * @see app/Http/Controllers/CampaignController.php:159
- * @route '/campanhas/{campanha}/resume'
- */
-        resumeForm.post = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: resume.url(args, options),
-            method: 'post',
-        })
-    
-    resume.form = resumeForm
 const campanhas = {
     index: Object.assign(index, index),
 create: Object.assign(create, create),

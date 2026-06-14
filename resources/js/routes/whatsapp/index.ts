@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 import meta from './meta'
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::index
@@ -43,41 +43,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::index
- * @see app/Http/Controllers/WhatsAppInstanceController.php:25
- * @route '/whatsapp'
- */
-    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: index.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::index
- * @see app/Http/Controllers/WhatsAppInstanceController.php:25
- * @route '/whatsapp'
- */
-        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::index
- * @see app/Http/Controllers/WhatsAppInstanceController.php:25
- * @route '/whatsapp'
- */
-        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    index.form = indexForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::store
  * @see app/Http/Controllers/WhatsAppInstanceController.php:100
@@ -112,27 +77,6 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::store
- * @see app/Http/Controllers/WhatsAppInstanceController.php:100
- * @route '/whatsapp'
- */
-    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: store.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::store
- * @see app/Http/Controllers/WhatsAppInstanceController.php:100
- * @route '/whatsapp'
- */
-        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: store.url(options),
-            method: 'post',
-        })
-    
-    store.form = storeForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::destroy
  * @see app/Http/Controllers/WhatsAppInstanceController.php:163
@@ -191,37 +135,6 @@ destroy.delete = (args: { instance: number | { id: number } } | [instance: numbe
     method: 'delete',
 })
 
-    /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::destroy
- * @see app/Http/Controllers/WhatsAppInstanceController.php:163
- * @route '/whatsapp/{instance}'
- */
-    const destroyForm = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: destroy.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::destroy
- * @see app/Http/Controllers/WhatsAppInstanceController.php:163
- * @route '/whatsapp/{instance}'
- */
-        destroyForm.delete = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: destroy.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::status
  * @see app/Http/Controllers/WhatsAppInstanceController.php:172
@@ -289,41 +202,6 @@ status.head = (args: { instance: number | { id: number } } | [instance: number |
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::status
- * @see app/Http/Controllers/WhatsAppInstanceController.php:172
- * @route '/whatsapp/{instance}/status'
- */
-    const statusForm = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: status.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::status
- * @see app/Http/Controllers/WhatsAppInstanceController.php:172
- * @route '/whatsapp/{instance}/status'
- */
-        statusForm.get = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: status.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::status
- * @see app/Http/Controllers/WhatsAppInstanceController.php:172
- * @route '/whatsapp/{instance}/status'
- */
-        statusForm.head = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: status.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    status.form = statusForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::connect
  * @see app/Http/Controllers/WhatsAppInstanceController.php:182
@@ -382,27 +260,6 @@ connect.post = (args: { instance: number | { id: number } } | [instance: number 
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::connect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:182
- * @route '/whatsapp/{instance}/connect'
- */
-    const connectForm = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: connect.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::connect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:182
- * @route '/whatsapp/{instance}/connect'
- */
-        connectForm.post = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: connect.url(args, options),
-            method: 'post',
-        })
-    
-    connect.form = connectForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::disconnect
  * @see app/Http/Controllers/WhatsAppInstanceController.php:191
@@ -461,27 +318,6 @@ disconnect.post = (args: { instance: number | { id: number } } | [instance: numb
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::disconnect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:191
- * @route '/whatsapp/{instance}/disconnect'
- */
-    const disconnectForm = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: disconnect.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::disconnect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:191
- * @route '/whatsapp/{instance}/disconnect'
- */
-        disconnectForm.post = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: disconnect.url(args, options),
-            method: 'post',
-        })
-    
-    disconnect.form = disconnectForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::assign
  * @see app/Http/Controllers/WhatsAppInstanceController.php:204
@@ -539,38 +375,6 @@ assign.patch = (args: { instance: number | { id: number } } | [instance: number 
     url: assign.url(args, options),
     method: 'patch',
 })
-
-    /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::assign
- * @see app/Http/Controllers/WhatsAppInstanceController.php:204
- * @route '/whatsapp/{instance}/assign'
- */
-    const assignForm = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: assign.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'PATCH',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsAppInstanceController::assign
- * @see app/Http/Controllers/WhatsAppInstanceController.php:204
- * @route '/whatsapp/{instance}/assign'
- */
-        assignForm.patch = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: assign.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PATCH',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    assign.form = assignForm
 const whatsapp = {
     index: Object.assign(index, index),
 store: Object.assign(store, store),

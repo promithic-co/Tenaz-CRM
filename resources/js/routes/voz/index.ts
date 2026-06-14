@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\VoiceInstanceController::index
  * @see app/Http/Controllers/VoiceInstanceController.php:14
@@ -42,41 +42,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\VoiceInstanceController::index
- * @see app/Http/Controllers/VoiceInstanceController.php:14
- * @route '/voz'
- */
-    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: index.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\VoiceInstanceController::index
- * @see app/Http/Controllers/VoiceInstanceController.php:14
- * @route '/voz'
- */
-        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\VoiceInstanceController::index
- * @see app/Http/Controllers/VoiceInstanceController.php:14
- * @route '/voz'
- */
-        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    index.form = indexForm
 /**
 * @see \App\Http\Controllers\VoiceInstanceController::store
  * @see app/Http/Controllers/VoiceInstanceController.php:33
@@ -111,27 +76,6 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\VoiceInstanceController::store
- * @see app/Http/Controllers/VoiceInstanceController.php:33
- * @route '/voz'
- */
-    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: store.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\VoiceInstanceController::store
- * @see app/Http/Controllers/VoiceInstanceController.php:33
- * @route '/voz'
- */
-        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: store.url(options),
-            method: 'post',
-        })
-    
-    store.form = storeForm
 /**
 * @see \App\Http\Controllers\VoiceInstanceController::update
  * @see app/Http/Controllers/VoiceInstanceController.php:44
@@ -190,37 +134,6 @@ update.put = (args: { voiceInstance: number | { id: number } } | [voiceInstance:
     method: 'put',
 })
 
-    /**
-* @see \App\Http\Controllers\VoiceInstanceController::update
- * @see app/Http/Controllers/VoiceInstanceController.php:44
- * @route '/voz/{voiceInstance}'
- */
-    const updateForm = (args: { voiceInstance: number | { id: number } } | [voiceInstance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: update.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'PUT',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\VoiceInstanceController::update
- * @see app/Http/Controllers/VoiceInstanceController.php:44
- * @route '/voz/{voiceInstance}'
- */
-        updateForm.put = (args: { voiceInstance: number | { id: number } } | [voiceInstance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: update.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PUT',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    update.form = updateForm
 /**
 * @see \App\Http\Controllers\VoiceInstanceController::destroy
  * @see app/Http/Controllers/VoiceInstanceController.php:53
@@ -279,37 +192,6 @@ destroy.delete = (args: { voiceInstance: number | { id: number } } | [voiceInsta
     method: 'delete',
 })
 
-    /**
-* @see \App\Http\Controllers\VoiceInstanceController::destroy
- * @see app/Http/Controllers/VoiceInstanceController.php:53
- * @route '/voz/{voiceInstance}'
- */
-    const destroyForm = (args: { voiceInstance: number | { id: number } } | [voiceInstance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: destroy.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\VoiceInstanceController::destroy
- * @see app/Http/Controllers/VoiceInstanceController.php:53
- * @route '/voz/{voiceInstance}'
- */
-        destroyForm.delete = (args: { voiceInstance: number | { id: number } } | [voiceInstance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: destroy.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\VoicePreviewController::previewTts
  * @see app/Http/Controllers/VoicePreviewController.php:30
@@ -343,28 +225,6 @@ previewTts.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: previewTts.url(options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\VoicePreviewController::previewTts
- * @see app/Http/Controllers/VoicePreviewController.php:30
- * @route '/voz/preview-tts'
- */
-    const previewTtsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: previewTts.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\VoicePreviewController::previewTts
- * @see app/Http/Controllers/VoicePreviewController.php:30
- * @route '/voz/preview-tts'
- */
-        previewTtsForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: previewTts.url(options),
-            method: 'post',
-        })
-    
-    previewTts.form = previewTtsForm
 const voz = {
     index: Object.assign(index, index),
 store: Object.assign(store, store),

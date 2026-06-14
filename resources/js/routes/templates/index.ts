@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::index
  * @see app/Http/Controllers/WhatsappTemplateController.php:24
@@ -42,41 +42,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\WhatsappTemplateController::index
- * @see app/Http/Controllers/WhatsappTemplateController.php:24
- * @route '/templates'
- */
-    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: index.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsappTemplateController::index
- * @see app/Http/Controllers/WhatsappTemplateController.php:24
- * @route '/templates'
- */
-        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\WhatsappTemplateController::index
- * @see app/Http/Controllers/WhatsappTemplateController.php:24
- * @route '/templates'
- */
-        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: index.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    index.form = indexForm
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::store
  * @see app/Http/Controllers/WhatsappTemplateController.php:60
@@ -111,27 +76,6 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\WhatsappTemplateController::store
- * @see app/Http/Controllers/WhatsappTemplateController.php:60
- * @route '/templates'
- */
-    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: store.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsappTemplateController::store
- * @see app/Http/Controllers/WhatsappTemplateController.php:60
- * @route '/templates'
- */
-        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: store.url(options),
-            method: 'post',
-        })
-    
-    store.form = storeForm
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::update
  * @see app/Http/Controllers/WhatsappTemplateController.php:153
@@ -199,51 +143,6 @@ update.patch = (args: { template: number | { id: number } } | [template: number 
     method: 'patch',
 })
 
-    /**
-* @see \App\Http\Controllers\WhatsappTemplateController::update
- * @see app/Http/Controllers/WhatsappTemplateController.php:153
- * @route '/templates/{template}'
- */
-    const updateForm = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: update.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'PUT',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsappTemplateController::update
- * @see app/Http/Controllers/WhatsappTemplateController.php:153
- * @route '/templates/{template}'
- */
-        updateForm.put = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: update.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PUT',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-            /**
-* @see \App\Http\Controllers\WhatsappTemplateController::update
- * @see app/Http/Controllers/WhatsappTemplateController.php:153
- * @route '/templates/{template}'
- */
-        updateForm.patch = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: update.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PATCH',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    update.form = updateForm
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::destroy
  * @see app/Http/Controllers/WhatsappTemplateController.php:179
@@ -302,37 +201,6 @@ destroy.delete = (args: { template: number | { id: number } } | [template: numbe
     method: 'delete',
 })
 
-    /**
-* @see \App\Http\Controllers\WhatsappTemplateController::destroy
- * @see app/Http/Controllers/WhatsappTemplateController.php:179
- * @route '/templates/{template}'
- */
-    const destroyForm = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: destroy.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsappTemplateController::destroy
- * @see app/Http/Controllers/WhatsappTemplateController.php:179
- * @route '/templates/{template}'
- */
-        destroyForm.delete = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: destroy.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::syncMeta
  * @see app/Http/Controllers/WhatsappTemplateController.php:163
@@ -366,28 +234,6 @@ syncMeta.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: syncMeta.url(options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\WhatsappTemplateController::syncMeta
- * @see app/Http/Controllers/WhatsappTemplateController.php:163
- * @route '/templates/sync-meta'
- */
-    const syncMetaForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: syncMeta.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\WhatsappTemplateController::syncMeta
- * @see app/Http/Controllers/WhatsappTemplateController.php:163
- * @route '/templates/sync-meta'
- */
-        syncMetaForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: syncMeta.url(options),
-            method: 'post',
-        })
-    
-    syncMeta.form = syncMetaForm
 const templates = {
     index: Object.assign(index, index),
 store: Object.assign(store, store),

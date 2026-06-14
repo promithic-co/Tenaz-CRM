@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\ServiceTicketController::disable
  * @see app/Http/Controllers/ServiceTicketController.php:55
@@ -56,28 +56,6 @@ disable.post = (args: { ticket: number | { id: number } } | [ticket: number | { 
     url: disable.url(args, options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\ServiceTicketController::disable
- * @see app/Http/Controllers/ServiceTicketController.php:55
- * @route '/atendimentos/{ticket}/followup-disable'
- */
-    const disableForm = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: disable.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ServiceTicketController::disable
- * @see app/Http/Controllers/ServiceTicketController.php:55
- * @route '/atendimentos/{ticket}/followup-disable'
- */
-        disableForm.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: disable.url(args, options),
-            method: 'post',
-        })
-    
-    disable.form = disableForm
 const followup = {
     disable: Object.assign(disable, disable),
 }

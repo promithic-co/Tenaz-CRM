@@ -190,7 +190,7 @@ function selectSpecialization(specialization: AgentSpecialization): void {
 
                 <!-- Specialization picker -->
                 <div class="mt-5">
-                    <label class="mb-1.5 block text-sm font-medium text-foreground">PÃºblico-alvo</label>
+                    <label class="mb-1.5 block text-sm font-medium text-foreground">Público-alvo</label>
                     <div class="relative">
                         <button
                             type="button"

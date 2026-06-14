@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\OnboardingController::show
  * @see app/Http/Controllers/OnboardingController.php:36
@@ -42,41 +42,6 @@ show.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
-    /**
-* @see \App\Http\Controllers\OnboardingController::show
- * @see app/Http/Controllers/OnboardingController.php:36
- * @route '/onboarding'
- */
-    const showForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: show.url(options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\OnboardingController::show
- * @see app/Http/Controllers/OnboardingController.php:36
- * @route '/onboarding'
- */
-        showForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url(options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\OnboardingController::show
- * @see app/Http/Controllers/OnboardingController.php:36
- * @route '/onboarding'
- */
-        showForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: show.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    show.form = showForm
 /**
 * @see \App\Http\Controllers\OnboardingController::agent
  * @see app/Http/Controllers/OnboardingController.php:115
@@ -111,27 +76,6 @@ agent.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\OnboardingController::agent
- * @see app/Http/Controllers/OnboardingController.php:115
- * @route '/onboarding/agent'
- */
-    const agentForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: agent.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\OnboardingController::agent
- * @see app/Http/Controllers/OnboardingController.php:115
- * @route '/onboarding/agent'
- */
-        agentForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: agent.url(options),
-            method: 'post',
-        })
-    
-    agent.form = agentForm
 /**
 * @see \App\Http\Controllers\OnboardingController::instance
  * @see app/Http/Controllers/OnboardingController.php:174
@@ -166,27 +110,6 @@ instance.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\OnboardingController::instance
- * @see app/Http/Controllers/OnboardingController.php:174
- * @route '/onboarding/instance'
- */
-    const instanceForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: instance.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\OnboardingController::instance
- * @see app/Http/Controllers/OnboardingController.php:174
- * @route '/onboarding/instance'
- */
-        instanceForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: instance.url(options),
-            method: 'post',
-        })
-    
-    instance.form = instanceForm
 /**
 * @see \App\Http\Controllers\OnboardingController::persona
  * @see app/Http/Controllers/OnboardingController.php:256
@@ -221,27 +144,6 @@ persona.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\OnboardingController::persona
- * @see app/Http/Controllers/OnboardingController.php:256
- * @route '/onboarding/persona'
- */
-    const personaForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: persona.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\OnboardingController::persona
- * @see app/Http/Controllers/OnboardingController.php:256
- * @route '/onboarding/persona'
- */
-        personaForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: persona.url(options),
-            method: 'post',
-        })
-    
-    persona.form = personaForm
 /**
 * @see \App\Http\Controllers\OnboardingController::complete
  * @see app/Http/Controllers/OnboardingController.php:308
@@ -303,42 +205,6 @@ complete.head = (args: { agent: string | number } | [agent: string | number ] | 
     url: complete.url(args, options),
     method: 'head',
 })
-
-    /**
-* @see \App\Http\Controllers\OnboardingController::complete
- * @see app/Http/Controllers/OnboardingController.php:308
- * @route '/onboarding/complete/{agent}'
- */
-    const completeForm = (args: { agent: string | number } | [agent: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: complete.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\OnboardingController::complete
- * @see app/Http/Controllers/OnboardingController.php:308
- * @route '/onboarding/complete/{agent}'
- */
-        completeForm.get = (args: { agent: string | number } | [agent: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: complete.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\OnboardingController::complete
- * @see app/Http/Controllers/OnboardingController.php:308
- * @route '/onboarding/complete/{agent}'
- */
-        completeForm.head = (args: { agent: string | number } | [agent: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: complete.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    complete.form = completeForm
 const onboarding = {
     show: Object.assign(show, show),
 agent: Object.assign(agent, agent),

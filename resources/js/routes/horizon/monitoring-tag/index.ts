@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \Laravel\Horizon\Http\Controllers\MonitoringController::paginate
  * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:64
@@ -61,41 +61,6 @@ paginate.head = (args: { tag: string | number } | [tag: string | number ] | stri
     method: 'head',
 })
 
-    /**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::paginate
- * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:64
- * @route '/horizon/api/monitoring/{tag}'
- */
-    const paginateForm = (args: { tag: string | number } | [tag: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: paginate.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::paginate
- * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:64
- * @route '/horizon/api/monitoring/{tag}'
- */
-        paginateForm.get = (args: { tag: string | number } | [tag: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: paginate.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::paginate
- * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:64
- * @route '/horizon/api/monitoring/{tag}'
- */
-        paginateForm.head = (args: { tag: string | number } | [tag: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: paginate.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    paginate.form = paginateForm
 /**
 * @see \Laravel\Horizon\Http\Controllers\MonitoringController::destroy
  * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:115
@@ -148,38 +113,6 @@ destroy.delete = (args: { tag: string | number } | [tag: string | number ] | str
     url: destroy.url(args, options),
     method: 'delete',
 })
-
-    /**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::destroy
- * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:115
- * @route '/horizon/api/monitoring/{tag}'
- */
-    const destroyForm = (args: { tag: string | number } | [tag: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: destroy.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::destroy
- * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:115
- * @route '/horizon/api/monitoring/{tag}'
- */
-        destroyForm.delete = (args: { tag: string | number } | [tag: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: destroy.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    destroy.form = destroyForm
 const monitoringTag = {
     paginate: Object.assign(paginate, paginate),
 destroy: Object.assign(destroy, destroy),

@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\ContactListEntryController::store
  * @see app/Http/Controllers/ContactListEntryController.php:16
@@ -57,27 +57,6 @@ store.post = (args: { list: number | { id: number } } | [list: number | { id: nu
     method: 'post',
 })
 
-    /**
-* @see \App\Http\Controllers\ContactListEntryController::store
- * @see app/Http/Controllers/ContactListEntryController.php:16
- * @route '/listas-contato/{list}/entries'
- */
-    const storeForm = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: store.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListEntryController::store
- * @see app/Http/Controllers/ContactListEntryController.php:16
- * @route '/listas-contato/{list}/entries'
- */
-        storeForm.post = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: store.url(args, options),
-            method: 'post',
-        })
-    
-    store.form = storeForm
 /**
 * @see \App\Http\Controllers\ContactListEntryController::destroy
  * @see app/Http/Controllers/ContactListEntryController.php:32
@@ -135,38 +114,6 @@ destroy.delete = (args: { entry: number | { id: number } } | [entry: number | { 
     url: destroy.url(args, options),
     method: 'delete',
 })
-
-    /**
-* @see \App\Http\Controllers\ContactListEntryController::destroy
- * @see app/Http/Controllers/ContactListEntryController.php:32
- * @route '/entries/{entry}'
- */
-    const destroyForm = (args: { entry: number | { id: number } } | [entry: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: destroy.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\ContactListEntryController::destroy
- * @see app/Http/Controllers/ContactListEntryController.php:32
- * @route '/entries/{entry}'
- */
-        destroyForm.delete = (args: { entry: number | { id: number } } | [entry: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: destroy.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    destroy.form = destroyForm
 const ContactListEntryController = { store, destroy }
 
 export default ContactListEntryController

@@ -2,6 +2,7 @@
 
 use App\Models\Agent;
 use App\Models\AgentInteractionEvent;
+use App\Models\Contact;
 use App\Models\ContactList;
 use App\Models\Lead;
 use App\Models\User;
@@ -459,5 +460,62 @@ describe('LeadManagementController@prepareCampaign', function () {
         $this->actingAs($user)->post(route('conversas.prepare-campaign', $lead))->assertRedirect();
 
         expect(ContactList::where('tenant_id', $user->tenantId)->where('source', 'individual')->count())->toBe(1);
+    });
+});
+
+describe('LeadManagementController@addToContacts', function () {
+    test('creates a canonical contact and links the lead', function () {
+        [$user, $agent] = makeOwnerWithInstance();
+        $lead = Lead::factory()->create([
+            'tenant_id' => $user->tenantId,
+            'agent_id' => $agent->id,
+            'whatsapp' => '5511944443333',
+            'nome' => 'Promovido',
+            'contact_id' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('conversas.add-to-contacts', $lead))
+            ->assertRedirect();
+
+        $lead->refresh();
+        expect($lead->contact_id)->not->toBeNull();
+
+        $contact = Contact::find($lead->contact_id);
+        expect($contact)->not->toBeNull()
+            ->and($contact->tenant_id)->toBe((string) $user->tenantId)
+            ->and($contact->name)->toBe('Promovido');
+    });
+
+    test('is idempotent and redirects to the existing contact', function () {
+        [$user, $agent] = makeOwnerWithInstance();
+        $lead = Lead::factory()->create([
+            'tenant_id' => $user->tenantId,
+            'agent_id' => $agent->id,
+            'whatsapp' => '5511944442222',
+        ]);
+
+        $this->actingAs($user)->post(route('conversas.add-to-contacts', $lead))->assertRedirect();
+        $firstContactId = $lead->fresh()->contact_id;
+
+        $this->actingAs($user)
+            ->post(route('conversas.add-to-contacts', $lead))
+            ->assertRedirect(route('contatos.show', $firstContactId));
+
+        expect(Contact::where('tenant_id', $user->tenantId)->count())->toBe(1)
+            ->and($lead->fresh()->contact_id)->toBe($firstContactId);
+    });
+
+    test('blocks cross-tenant promotion', function () {
+        [$userA] = makeOwnerWithInstance();
+        [$userB, $agentB] = makeOwnerWithInstance();
+        $leadB = Lead::factory()->create([
+            'tenant_id' => $userB->tenantId,
+            'agent_id' => $agentB->id,
+        ]);
+
+        $this->actingAs($userA)
+            ->post(route('conversas.add-to-contacts', $leadB))
+            ->assertNotFound();
     });
 });

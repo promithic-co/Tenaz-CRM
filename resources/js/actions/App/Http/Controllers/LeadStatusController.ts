@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LeadStatusController::update
  * @see app/Http/Controllers/LeadStatusController.php:29
@@ -56,28 +56,6 @@ update.post = (args: { lead: number | { id: number } } | [lead: number | { id: n
     url: update.url(args, options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\LeadStatusController::update
- * @see app/Http/Controllers/LeadStatusController.php:29
- * @route '/leads/{lead}/status'
- */
-    const updateForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: update.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\LeadStatusController::update
- * @see app/Http/Controllers/LeadStatusController.php:29
- * @route '/leads/{lead}/status'
- */
-        updateForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: update.url(args, options),
-            method: 'post',
-        })
-    
-    update.form = updateForm
 const LeadStatusController = { update }
 
 export default LeadStatusController
