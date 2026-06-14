@@ -210,6 +210,30 @@ test('update rejects synced meta fields', function () {
     expect($template->status)->toBe('PENDING');
 });
 
+test('update rejects instance reassignment', function () {
+    [$user, $instance] = makeAuthUserWithMetaCloud();
+
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'kind' => 'meta_hsm',
+        'name' => 'Original Name',
+    ]);
+
+    $other = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenantId,
+    ]);
+
+    $response = $this->actingAs($user)->put("/templates/{$template->id}", [
+        'name' => 'Updated Name',
+        'whatsapp_instance_id' => $other->id,
+    ]);
+
+    $response->assertSessionHasErrors('whatsapp_instance_id');
+    expect($template->fresh()->whatsapp_instance_id)->toBe($instance->id);
+});
+
 test('destroy removes template without active campaigns', function () {
     [$user] = makeAuthUserWithMetaCloud();
 

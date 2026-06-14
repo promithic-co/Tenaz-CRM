@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
-import { CheckCircle2, ChevronDown, ChevronRight, ExternalLink, FileText, RefreshCw } from 'lucide-vue-next';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { CheckCircle2, ChevronDown, ChevronRight, FileText, RefreshCw } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import WhatsappTemplateController from '@/actions/App/Http/Controllers/WhatsappTemplateController';
 import EmptyState from '@/components/EmptyState.vue';
@@ -120,27 +120,23 @@ const editOpen = ref(false);
 const editingTemplate = ref<WhatsappTemplate | null>(null);
 
 const editForm = useForm({
-    whatsapp_instance_id: '' as string | number,
     name: '',
 });
 
 function openEdit(template: WhatsappTemplate): void {
     editingTemplate.value = template;
-    editForm.whatsapp_instance_id = template.whatsapp_instance_id ?? '';
     editForm.name = template.name;
     editOpen.value = true;
 }
 
 function submitEdit(): void {
     if (!editingTemplate.value) { return; }
-    editForm
-        .transform((data) => ({ name: data.name }))
-        .put(WhatsappTemplateController.update(editingTemplate.value.id).url, {
-            onSuccess: () => {
-                editOpen.value = false;
-                editingTemplate.value = null;
-            },
-        });
+    editForm.put(WhatsappTemplateController.update(editingTemplate.value.id).url, {
+        onSuccess: () => {
+            editOpen.value = false;
+            editingTemplate.value = null;
+        },
+    });
 }
 
 // ─── Sync Meta Templates ─────────────────────────────────────────────────────
@@ -401,17 +397,20 @@ watch(registerOpen, (open) => {
                 <!-- Pagination -->
                 <div v-if="templates.links?.length > 3" class="flex items-center gap-1 border-t border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
                     <template v-for="link in templates.links" :key="link.label">
-                        <a
+                        <Link
                             v-if="link.url"
                             :href="link.url"
+                            preserve-scroll
                             :class="[
                                 'rounded px-3 py-1 text-sm',
                                 link.active
                                     ? 'bg-primary font-medium text-primary-foreground'
                                     : 'text-muted-foreground hover:bg-muted',
                             ]"
-                            v-html="link.label"
-                        />
+                        >
+                            <!-- eslint-disable-next-line vue/no-v-html -->
+                            <span v-html="link.label" />
+                        </Link>
                         <span v-else class="px-3 py-1 text-sm text-muted-foreground/40" v-html="link.label" />
                     </template>
                 </div>
@@ -589,23 +588,15 @@ watch(registerOpen, (open) => {
                 <DialogTitle>Detalhes do Template</DialogTitle>
             </DialogHeader>
             <form class="flex flex-col gap-4" @submit.prevent="submitEdit">
-                <!-- Instance -->
+                <!-- Instance (read-only — bound at creation) -->
                 <div>
                     <label class="mb-1 block text-sm font-medium text-foreground">Instância WhatsApp</label>
-                    <select
-                        v-model="editForm.whatsapp_instance_id"
-                        disabled
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    >
-                        <option value="">Sem instância</option>
-                        <option v-for="instance in instances" :key="instance.id" :value="instance.id">
-                            {{ instance.display_name ?? instance.name }}
-                        </option>
-                    </select>
-                    <p v-if="editForm.errors.whatsapp_instance_id" class="mt-1 text-xs text-red-500">{{ editForm.errors.whatsapp_instance_id }}</p>
+                    <p class="rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                        {{ editingTemplate?.whatsapp_instance?.display_name ?? editingTemplate?.whatsapp_instance?.name ?? 'Sem instância' }}
+                    </p>
                 </div>
 
-                <!-- Name -->
+                <!-- Name (editable) -->
                 <div>
                     <label class="mb-1 block text-sm font-medium text-foreground">Nome de Exibição</label>
                     <input

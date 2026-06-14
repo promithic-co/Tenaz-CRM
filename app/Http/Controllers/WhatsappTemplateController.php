@@ -89,7 +89,6 @@ class WhatsappTemplateController extends Controller
     public function update(UpdateWhatsappTemplateRequest $request, WhatsappTemplate $template): RedirectResponse
     {
         $template->update([
-            'whatsapp_instance_id' => $request->validated('whatsapp_instance_id') ?? $template->whatsapp_instance_id,
             'name' => $request->validated('name') ?? $template->name,
         ]);
 
