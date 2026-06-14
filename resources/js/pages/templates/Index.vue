@@ -213,7 +213,15 @@ function qualityBadgeClass(score: string | null): string {
 }
 
 function highlightVariables(body: string): string {
-    return body.replace(/\{\{(\d+)\}\}/g, '<span class="rounded bg-yellow-100 px-0.5 font-mono text-xs text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">{{$1}}</span>');
+    // Escape HTML first — body is tenant-entered and Meta-synced, rendered via
+    // v-html. Without escaping, a body like <img onerror> becomes stored XSS.
+    const escaped = body
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    return escaped.replace(/\{\{(\d+)\}\}/g, '<span class="rounded bg-yellow-100 px-0.5 font-mono text-xs text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">{{$1}}</span>');
 }
 
 function countBodyVars(body: string): number {
