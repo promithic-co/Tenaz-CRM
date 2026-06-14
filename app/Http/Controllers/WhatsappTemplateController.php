@@ -108,27 +108,13 @@ class WhatsappTemplateController extends Controller
                 'language' => $language,
                 'body' => $body,
                 'components_json' => $created['components'],
-                'variables_count' => $this->countVariables($body),
+                'variables_count' => WhatsappTemplate::countVariablesIn($body),
             ]);
 
             return back()->with('success', 'Template enviado para analise da Meta.');
         }
 
         return back()->withErrors(['kind' => 'Tipo de template inválido.'])->withInput();
-    }
-
-    /**
-     * Count {{1}}, {{2}}, … variables in a template body.
-     */
-    private function countVariables(string $text): int
-    {
-        preg_match_all('/\{\{(\d+)\}\}/', $text, $matches);
-
-        if (empty($matches[1])) {
-            return 0;
-        }
-
-        return (int) max(array_map('intval', $matches[1]));
     }
 
     public function update(UpdateWhatsappTemplateRequest $request, WhatsappTemplate $template): RedirectResponse

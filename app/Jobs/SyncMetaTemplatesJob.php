@@ -92,13 +92,8 @@ class SyncMetaTemplatesJob implements ShouldQueue
     private function countVars(array|string $components): int
     {
         $text = is_array($components) ? $this->extractTemplateText($components) : $components;
-        preg_match_all('/\{\{(\d+)\}\}/', $text, $matches);
 
-        if (empty($matches[1])) {
-            return 0;
-        }
-
-        return (int) max(array_map('intval', $matches[1]));
+        return WhatsappTemplate::countVariablesIn($text);
     }
 
     /**
