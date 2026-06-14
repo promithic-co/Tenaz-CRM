@@ -24,10 +24,8 @@ class WhatsappTemplateController extends Controller
     public function index(): Response
     {
         $tenantId = (string) auth()->user()->tenantId;
-        $kind = TemplateKind::tryFrom((string) request('kind')) ?? TemplateKind::MetaHsm;
 
-        $templates = WhatsappTemplate::forTenant($tenantId)
-            ->ofKind($kind)
+        $templates = WhatsappTemplate::ofKind(TemplateKind::MetaHsm)
             ->with('whatsappInstance')
             ->when(request('status'), fn ($q, $status) => $q->where('status', $status))
             ->orderByDesc('created_at')
@@ -47,11 +45,7 @@ class WhatsappTemplateController extends Controller
         return Inertia::render('templates/Index', [
             'templates' => $templates,
             'instances' => $instances,
-            'kinds' => array_map(fn (TemplateKind $k) => [
-                'value' => $k->value,
-                'label' => $k->label(),
-            ], TemplateKind::cases()),
-            'currentKind' => $kind->value,
+            'currentKind' => TemplateKind::MetaHsm->value,
             'flash' => session('success'),
             'error' => session('error'),
         ]);
@@ -120,20 +114,7 @@ class WhatsappTemplateController extends Controller
             return back()->with('success', 'Template enviado para analise da Meta.');
         }
 
-        WhatsappTemplate::create([
-            'tenant_id' => $tenantId,
-            'kind' => $kind->value,
-            'whatsapp_instance_id' => $request->validated('whatsapp_instance_id'),
-            'name' => $request->validated('name'),
-            'status' => 'PENDING',
-            'category' => strtoupper((string) ($request->validated('category') ?? 'MARKETING')),
-            'language' => (string) ($request->validated('language') ?? 'pt_BR'),
-            'body' => $body,
-            'variables_count' => $this->countVariables($body),
-            'element_name' => $request->validated('element_name'),
-        ]);
-
-        return back()->with('success', 'Template registrado com sucesso.');
+        return back()->withErrors(['kind' => 'Tipo de template inválido.'])->withInput();
     }
 
     /**

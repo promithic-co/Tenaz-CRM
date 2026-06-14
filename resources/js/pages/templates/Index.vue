@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import { CheckCircle2, ChevronDown, ChevronRight, ExternalLink, FileText, RefreshCw } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import WhatsappTemplateController from '@/actions/App/Http/Controllers/WhatsappTemplateController';
@@ -27,7 +27,6 @@ type WhatsappTemplate = {
     id: number;
     name: string;
     kind: string;
-    element_name: string | null;
     meta_template_id: string | null;
     meta_template_name: string | null;
     meta_waba_id: string | null;
@@ -45,11 +44,6 @@ type WhatsappTemplate = {
     whatsapp_instance: WhatsappInstance | null;
 };
 
-type KindOption = {
-    value: string;
-    label: string;
-};
-
 type Props = {
     templates: {
         data: WhatsappTemplate[];
@@ -57,7 +51,6 @@ type Props = {
         links: Array<{ url: string | null; label: string; active: boolean }>;
     };
     instances: WhatsappInstance[];
-    kinds: KindOption[];
     currentKind: string;
     flash: string | null;
     error: string | null;
@@ -70,31 +63,21 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Templates WhatsApp', href: '/templates' },
 ];
 
-// ─── Tab navigation ───────────────────────────────────────────────────────────
-
-function switchKind(kind: string): void {
-    router.get('/templates', { kind }, { preserveState: false });
-}
-
 // ─── Register dialog ──────────────────────────────────────────────────────────
 
 const registerOpen = ref(false);
 
 const registerForm = useForm({
-    kind: props.currentKind,
+    kind: 'meta_hsm',
     whatsapp_instance_id: '',
-    // Meta HSM fields
     meta_template_name: '',
-    element_name: '',
     variable_examples: {} as Record<string, string>,
-    // Common fields
     name: '',
     body: '',
     category: 'MARKETING',
     language: 'pt_BR',
 });
 
-const isMetaHsm = computed(() => registerForm.kind === 'meta_hsm');
 const metaInstances = computed(() =>
     props.instances.filter((i) => i.provider === 'meta_cloud')
 );
@@ -286,27 +269,24 @@ watch(registerOpen, (open) => {
                         <span class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{{ templates.total }} templates</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <!-- Sincronizar agora — Meta HSM tab only -->
-                        <template v-if="currentKind === 'meta_hsm'">
-                            <select
-                                v-model="syncForm.whatsapp_instance_id"
-                                class="rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                            >
-                                <option value="">Instância p/ sync...</option>
-                                <option v-for="inst in metaInstances" :key="inst.id" :value="inst.id">
-                                    {{ inst.display_name ?? inst.name }}
-                                </option>
-                            </select>
-                            <button
-                                type="button"
-                                :disabled="syncForm.processing || !syncForm.whatsapp_instance_id"
-                                class="flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                                @click="submitSync"
-                            >
-                                <RefreshCw class="h-3 w-3" :class="{ 'animate-spin': syncForm.processing }" />
-                                {{ syncForm.processing ? 'Sincronizando...' : 'Sincronizar da Meta' }}
-                            </button>
-                        </template>
+                        <select
+                            v-model="syncForm.whatsapp_instance_id"
+                            class="rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        >
+                            <option value="">Instância p/ sync...</option>
+                            <option v-for="inst in metaInstances" :key="inst.id" :value="inst.id">
+                                {{ inst.display_name ?? inst.name }}
+                            </option>
+                        </select>
+                        <button
+                            type="button"
+                            :disabled="syncForm.processing || !syncForm.whatsapp_instance_id"
+                            class="flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                            @click="submitSync"
+                        >
+                            <RefreshCw class="h-3 w-3" :class="{ 'animate-spin': syncForm.processing }" />
+                            {{ syncForm.processing ? 'Sincronizando...' : 'Sincronizar da Meta' }}
+                        </button>
                         <button
                             class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                             @click="openRegister"
@@ -316,34 +296,16 @@ watch(registerOpen, (open) => {
                     </div>
                 </div>
 
-                <!-- Kind Tabs -->
-                <div class="flex border-b border-sidebar-border/70 dark:border-sidebar-border">
-                    <button
-                        v-for="kind in kinds"
-                        :key="kind.value"
-                        :class="[
-                            'px-4 py-2.5 text-sm font-medium transition-colors',
-                            currentKind === kind.value
-                                ? 'border-b-2 border-primary text-foreground'
-                                : 'text-muted-foreground hover:text-foreground',
-                        ]"
-                        @click="switchKind(kind.value)"
-                    >
-                        {{ kind.label }}
-                    </button>
-                </div>
-
                 <!-- Table -->
                 <table class="w-full text-sm">
                     <thead class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border">
                         <tr>
                             <th class="w-6 px-4 py-3" />
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Nome</th>
-                            <th v-if="currentKind === 'meta_hsm'" class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Template ID</th>
-                            <th v-if="currentKind === 'meta_hsm'" class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Template Name</th>
-                            <th v-if="currentKind === 'evolution_preset'" class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Element Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Template ID</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Template Name</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Status</th>
-                            <th v-if="currentKind === 'meta_hsm'" class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Qualidade</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Qualidade</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Variáveis</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Instância</th>
                             <th class="px-4 py-3" />
@@ -360,19 +322,16 @@ watch(registerOpen, (open) => {
                                     <ChevronRight v-else class="h-4 w-4" />
                                 </td>
                                 <td class="px-4 py-3 font-medium text-foreground">{{ template.name }}</td>
-                                <td v-if="currentKind === 'meta_hsm'" class="px-4 py-3">
+                                <td class="px-4 py-3">
                                     <span class="font-mono text-xs text-muted-foreground">{{ template.meta_template_id ?? '—' }}</span>
                                 </td>
-                                <td v-if="currentKind === 'meta_hsm'" class="px-4 py-3">
+                                <td class="px-4 py-3">
                                     <span class="font-mono text-xs text-muted-foreground">{{ template.meta_template_name ?? '—' }}</span>
-                                </td>
-                                <td v-if="currentKind === 'evolution_preset'" class="px-4 py-3">
-                                    <span class="font-mono text-xs text-muted-foreground">{{ template.element_name ?? '—' }}</span>
                                 </td>
                                 <td class="px-4 py-3">
                                     <span :class="statusBadgeClass(template.status)">{{ template.status }}</span>
                                 </td>
-                                <td v-if="currentKind === 'meta_hsm'" class="px-4 py-3">
+                                <td class="px-4 py-3">
                                     <span :class="qualityBadgeClass(template.quality_score)">{{ template.quality_score ?? 'N/A' }}</span>
                                 </td>
                                 <td class="px-4 py-3 text-xs text-muted-foreground">{{ template.variables_count }}</td>
@@ -396,13 +355,13 @@ watch(registerOpen, (open) => {
                             </tr>
                             <!-- Expanded body row -->
                             <tr v-if="expandedRows.has(template.id)" class="bg-muted/20">
-                                <td :colspan="currentKind === 'meta_hsm' ? 10 : 8" class="px-8 py-3">
+                                <td :colspan="9" class="px-8 py-3">
                                     <div v-if="template.body" class="text-sm text-foreground">
                                         <p class="mb-1 text-xs font-semibold uppercase text-muted-foreground">Corpo do Template</p>
                                         <!-- eslint-disable-next-line vue/no-v-html -->
                                         <p class="whitespace-pre-wrap leading-relaxed" v-html="highlightVariables(template.body)" />
                                     </div>
-                                    <div v-if="currentKind === 'meta_hsm'" class="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                                    <div class="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                                         <div v-if="template.meta_waba_id">
                                             WABA ID: <span class="font-mono">{{ template.meta_waba_id }}</span>
                                         </div>
@@ -427,8 +386,8 @@ watch(registerOpen, (open) => {
                 <EmptyState
                     v-if="templates.data.length === 0"
                     :icon="FileText"
-                    :title="currentKind === 'meta_hsm' ? 'Nenhum template Meta HSM registrado' : 'Nenhum preset Evolution registrado'"
-                    :description="currentKind === 'meta_hsm' ? 'Crie um template na Meta ou sincronize templates existentes para usar em campanhas.' : 'Registre um preset de mensagem para disparos via Evolution API.'"
+                    title="Nenhum template Meta HSM registrado"
+                    description="Crie um template na Meta ou sincronize templates existentes para usar em campanhas."
                 />
 
                 <!-- Pagination -->
@@ -501,31 +460,29 @@ watch(registerOpen, (open) => {
                     <p v-if="selectedMetaInstance && !selectedMetaInstanceIsConfigured" class="mt-1 text-xs text-red-600 dark:text-red-400">
                         Configure WABA ID e token Meta nesta instância antes de criar templates pela Meta.
                     </p>
-                    <p v-if="isMetaHsm && metaInstances.length === 0" class="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
+                    <p v-if="metaInstances.length === 0" class="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
                         Nenhuma instância Meta Cloud disponível. <a href="/whatsapp" class="underline">Conectar instância</a>.
                     </p>
                 </div>
 
                 <!-- Meta HSM specific fields -->
-                <template v-if="isMetaHsm">
-                    <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs text-blue-800 dark:border-blue-900/50 dark:bg-blue-900/20 dark:text-blue-300">
-                        <p class="font-semibold">Template Meta HSM</p>
-                        <p class="mt-0.5">O template será enviado para análise da Meta. O status será atualizado por sincronização ou webhook.</p>
-                    </div>
+                <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs text-blue-800 dark:border-blue-900/50 dark:bg-blue-900/20 dark:text-blue-300">
+                    <p class="font-semibold">Template Meta HSM</p>
+                    <p class="mt-0.5">O template será enviado para análise da Meta. O status será atualizado por sincronização ou webhook.</p>
+                </div>
 
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-foreground">Nome Meta <span class="text-red-500">*</span></label>
-                        <input
-                            v-model="registerForm.meta_template_name"
-                            type="text"
-                            placeholder="ex: campanha_janeiro"
-                            required
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm text-foreground placeholder:font-sans placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
-                        <p class="mt-0.5 text-[11px] text-muted-foreground">Use apenas letras minúsculas, números e underscore. Esse nome é enviado para a Meta.</p>
-                        <p v-if="registerForm.errors.meta_template_name" class="mt-1 text-xs text-red-500">{{ registerForm.errors.meta_template_name }}</p>
-                    </div>
-                </template>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-foreground">Nome Meta <span class="text-red-500">*</span></label>
+                    <input
+                        v-model="registerForm.meta_template_name"
+                        type="text"
+                        placeholder="ex: campanha_janeiro"
+                        required
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm text-foreground placeholder:font-sans placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <p class="mt-0.5 text-[11px] text-muted-foreground">Use apenas letras minúsculas, números e underscore. Esse nome é enviado para a Meta.</p>
+                    <p v-if="registerForm.errors.meta_template_name" class="mt-1 text-xs text-red-500">{{ registerForm.errors.meta_template_name }}</p>
+                </div>
 
                 <!-- Internal name -->
                 <div>
