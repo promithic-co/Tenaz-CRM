@@ -157,8 +157,14 @@ class ContactSyncService
     }
 
     /**
-     * Normalize phone. Falls back to digits-only when E.164 validator rejects the input
-     * so legacy data with foreign numbers still resolves to a canonical contact.
+     * The single canonical phone normalizer for the whole contacts domain — lead
+     * sync, CSV import, and list-entry sync all resolve through this method so a
+     * person always maps to the same contact key regardless of entry point.
+     *
+     * Permissive by design: tries the E.164 validator first, then falls back to
+     * digits-only so foreign and imperfect numbers still resolve to a canonical
+     * contact. Malformed numbers are filtered later at send time by
+     * {@see PhoneNumberValidator}, which guards the Meta reputation tier.
      */
     public function normalizePhone(?string $raw): ?string
     {
@@ -174,39 +180,5 @@ class ContactSyncService
         $digits = preg_replace('/\D+/', '', $raw) ?? '';
 
         return $digits !== '' ? $digits : null;
-    }
-
-    /**
-     * Normalize a phone number using the stricter Brazilian CSV-import rule.
-     *
-     * Strips non-digits, forces the BR country code `55` when the number is 11
-     * digits or shorter, then accepts only 12-13 digit results (55 + DDD + 8-9
-     * subscriber digits). Returns null for anything that falls outside that range.
-     *
-     * This intentionally differs from {@see normalizePhone()}: it never falls back
-     * to raw digits and never accepts foreign numbers as-is — the CSV import treats
-     * every row as Brazilian. It is the canonical source for ContactList CSV import.
-     */
-    public function normalizeBrazilianPhone(?string $raw): ?string
-    {
-        if ($raw === null || $raw === '') {
-            return null;
-        }
-
-        $digits = preg_replace('/\D/', '', $raw);
-
-        if (! $digits) {
-            return null;
-        }
-
-        if (strlen($digits) <= 11) {
-            $digits = '55'.$digits;
-        }
-
-        if (strlen($digits) < 12 || strlen($digits) > 13) {
-            return null;
-        }
-
-        return $digits;
     }
 }

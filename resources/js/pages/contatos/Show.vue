@@ -30,6 +30,7 @@ type Contact = {
     source: string;
     opt_in_status: 'pending' | 'opted_in' | 'opted_out';
     extra_data: Record<string, unknown> | null;
+    notes: string | null;
     last_seen_at: string | null;
     created_at: string;
 };
@@ -63,6 +64,7 @@ const editForm = useForm({
     email: props.contact.email ?? '',
     cpf: props.contact.cpf ?? '',
     opt_in_status: props.contact.opt_in_status,
+    notes: props.contact.notes ?? '',
 });
 
 function submitEdit(): void {
@@ -162,6 +164,7 @@ function formatDate(value: string | null): string {
                         <option value="opted_in">Opt-in</option>
                         <option value="opted_out">Opt-out</option>
                     </select>
+                    <textarea v-model="editForm.notes" placeholder="Observações" rows="4" class="resize-y rounded-md border border-input bg-background px-2 py-1.5" />
                     <button type="submit" :disabled="editForm.processing" class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                         {{ editForm.processing ? 'Salvando...' : 'Salvar' }}
                     </button>
@@ -219,6 +222,14 @@ function formatDate(value: string | null): string {
                     >
                         {{ conversationWindow.coexistence.note }}
                     </p>
+                </div>
+
+                <div class="rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border">
+                    <div class="border-b border-sidebar-border/70 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:border-sidebar-border">
+                        Observações
+                    </div>
+                    <p v-if="contact.notes" class="whitespace-pre-wrap px-4 py-3 text-sm text-foreground">{{ contact.notes }}</p>
+                    <p v-else class="px-4 py-6 text-sm text-muted-foreground">Sem observações. Use "Editar" para adicionar notas sobre este contato.</p>
                 </div>
 
                 <div class="rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border">

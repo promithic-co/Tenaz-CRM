@@ -52,6 +52,7 @@ class UpdateContactRequest extends FormRequest
                 Contact::OPT_OUT,
             ])],
             'extra_data' => ['nullable', 'array'],
+            'notes' => ['nullable', 'string', 'max:5000'],
         ];
     }
 

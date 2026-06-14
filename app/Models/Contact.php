@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Database\Factories\ContactFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Contact extends Model
 {
-    /** @use HasFactory<\Database\Factories\ContactFactory> */
+    /** @use HasFactory<ContactFactory> */
     use BelongsToTenant, HasFactory, SoftDeletes;
 
     public const SOURCE_MANUAL = 'manual';
@@ -49,6 +50,7 @@ class Contact extends Model
         'opt_in_at',
         'opt_out_at',
         'extra_data',
+        'notes',
         'last_seen_at',
     ];
 
