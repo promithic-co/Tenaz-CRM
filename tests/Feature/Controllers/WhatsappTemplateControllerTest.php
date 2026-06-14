@@ -214,6 +214,53 @@ test('store rejects a URL button without a url', function () {
     Http::assertNothingSent();
 });
 
+test('store rejects a footer containing a variable', function () {
+    [$user, $instance] = makeAuthUserWithMetaCloud();
+
+    Http::fake();
+
+    $response = $this->actingAs($user)->post('/templates', [
+        'kind' => 'meta_hsm',
+        'whatsapp_instance_id' => $instance->id,
+        'name' => 'Rodape Quebrado',
+        'meta_template_name' => 'rodape_quebrado',
+        'body' => 'Corpo simples.',
+        'footer_text' => 'Ate logo {{1}}',
+        'category' => 'MARKETING',
+        'language' => 'pt_BR',
+    ]);
+
+    $response->assertSessionHasErrors('footer_text');
+    Http::assertNothingSent();
+});
+
+test('store persists a PHONE_NUMBER button with its phone number', function () {
+    [$user, $instance] = makeAuthUserWithMetaCloud();
+
+    Http::fake(['*' => Http::response(['id' => 'tpl_phone', 'status' => 'PENDING'], 200)]);
+
+    $response = $this->actingAs($user)->post('/templates', [
+        'kind' => 'meta_hsm',
+        'whatsapp_instance_id' => $instance->id,
+        'name' => 'Com Telefone',
+        'meta_template_name' => 'com_telefone',
+        'body' => 'Fale conosco.',
+        'buttons' => [
+            ['type' => 'PHONE_NUMBER', 'text' => 'Ligar agora', 'phone_number' => '5511999999999'],
+        ],
+        'category' => 'UTILITY',
+        'language' => 'pt_BR',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHasNoErrors();
+
+    $template = WhatsappTemplate::where('meta_template_name', 'com_telefone')->first();
+    expect($template->buttons_json)->toBe([
+        ['type' => 'PHONE_NUMBER', 'text' => 'Ligar agora', 'phone_number' => '5511999999999'],
+    ]);
+});
+
 test('update changes template fields', function () {
     [$user, $instance] = makeAuthUserWithMetaCloud();
 

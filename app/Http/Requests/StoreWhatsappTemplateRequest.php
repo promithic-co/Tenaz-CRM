@@ -108,6 +108,14 @@ class StoreWhatsappTemplateRequest extends FormRequest
                 $validator->errors()->add('header_example', 'Informe um exemplo para a variavel {{1}} do cabecalho.');
             }
         });
+
+        $validator->after(function (Validator $validator): void {
+            $footer = (string) $this->input('footer_text', '');
+
+            if (preg_match('/\{\{\d+\}\}/', $footer)) {
+                $validator->errors()->add('footer_text', 'O rodape nao aceita variaveis.');
+            }
+        });
     }
 
     /** @return array<string, string> */

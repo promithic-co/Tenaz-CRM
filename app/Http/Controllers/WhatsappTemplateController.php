@@ -71,7 +71,7 @@ class WhatsappTemplateController extends Controller
                 tenantId: $tenantId,
                 internalName: (string) $request->validated('name'),
                 metaName: (string) $request->validated('meta_template_name'),
-                category: strtoupper((string) $request->validated('category')),
+                category: (string) $request->validated('category'),
                 language: (string) $request->validated('language'),
                 spec: [
                     'header_text' => $request->validated('header_text'),

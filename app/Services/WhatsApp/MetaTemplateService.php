@@ -41,13 +41,16 @@ class MetaTemplateService
         string $language,
         array $spec,
     ): WhatsappTemplate {
+        $category = strtoupper($category);
         $components = $this->buildComponents($spec);
         $metaResponse = $this->postTemplate($instance, $metaName, $category, $language, $components);
 
         $body = (string) ($spec['body'] ?? '');
         $headerText = $this->cleanText($spec['header_text'] ?? null);
         $footerText = $this->cleanText($spec['footer_text'] ?? null);
-        $buttons = $this->normalizeButtons((array) ($spec['buttons'] ?? []));
+
+        $buttonsComponent = collect($components)->firstWhere('type', 'BUTTONS');
+        $buttons = $buttonsComponent['buttons'] ?? [];
 
         return WhatsappTemplate::create([
             'tenant_id' => $tenantId,
@@ -180,7 +183,7 @@ class MetaTemplateService
             ->timeout(60)
             ->post($url, [
                 'name' => $name,
-                'category' => strtoupper($category),
+                'category' => $category,
                 'language' => $language,
                 'components' => $components,
             ])
