@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\DispatchCampaignJob;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
 use Illuminate\Support\Facades\Log;
@@ -32,7 +33,7 @@ class CampaignService
 
         Log::info('CampaignService.start', ['campaign_id' => $campaign->id, 'recipients' => $totalRecipients]);
 
-        \App\Jobs\DispatchCampaignJob::dispatch($campaign);
+        DispatchCampaignJob::dispatch($campaign);
     }
 
     /**
@@ -68,7 +69,7 @@ class CampaignService
 
         Log::info('CampaignService.resume', ['campaign_id' => $campaign->id]);
 
-        \App\Jobs\DispatchCampaignJob::dispatch($campaign);
+        DispatchCampaignJob::dispatch($campaign);
     }
 
     /**
@@ -90,7 +91,9 @@ class CampaignService
 
     /**
      * Check if the failure rate exceeds the threshold, and auto-pause if so.
-     * Also immediately pauses on error_code 1003 (wallet/insufficient funds).
+     * Wallet errors (error_code 1003) are owned by MonitorCampaignsCommand,
+     * which scans for them on a schedule — kept out of this hot per-failure
+     * path to avoid an extra query on every failed message.
      * Returns true if the campaign was paused.
      */
     public function checkAndAutoPause(Campaign $campaign): bool
@@ -99,24 +102,6 @@ class CampaignService
 
         if (! $campaign->isSending()) {
             return false;
-        }
-
-        // Immediate pause on wallet error (1003) - check last failed message
-        $lastFailed = CampaignMessage::where('campaign_id', $campaign->id)
-            ->where('status', 'failed')
-            ->latest('failed_at')
-            ->first();
-
-        if ($lastFailed && $lastFailed->error_code === '1003') {
-            $campaign->update([
-                'status' => 'paused',
-                'paused_at' => now(),
-                'failure_reason' => 'Saldo insuficiente (erro 1003). Campanha pausada automaticamente.',
-            ]);
-
-            Log::warning('CampaignService.auto_pause_wallet', ['campaign_id' => $campaign->id]);
-
-            return true;
         }
 
         // Check if we have enough sent messages to evaluate threshold
