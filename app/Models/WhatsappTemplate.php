@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\TemplateKind;
 use App\Models\Concerns\BelongsToTenant;
+use Database\Factories\WhatsappTemplateFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class WhatsappTemplate extends Model
 {
-    /** @use HasFactory<\Database\Factories\WhatsappTemplateFactory> */
+    /** @use HasFactory<WhatsappTemplateFactory> */
     use BelongsToTenant, HasFactory, SoftDeletes;
 
     protected $fillable = [
@@ -82,6 +83,20 @@ class WhatsappTemplate extends Model
     public function isApproved(): bool
     {
         return $this->status === 'APPROVED';
+    }
+
+    /**
+     * Highest {{n}} placeholder index in a template body. Returns 0 when none.
+     */
+    public static function countVariablesIn(string $text): int
+    {
+        preg_match_all('/\{\{(\d+)\}\}/', $text, $matches);
+
+        if (empty($matches[1])) {
+            return 0;
+        }
+
+        return (int) max(array_map('intval', $matches[1]));
     }
 
     /** @return list<string> */

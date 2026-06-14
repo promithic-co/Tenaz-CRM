@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateWhatsappTemplateRequest extends FormRequest
 {
@@ -17,14 +16,9 @@ class UpdateWhatsappTemplateRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        $tenantId = $this->user()->tenantId;
-
         return [
-            'whatsapp_instance_id' => [
-                'nullable',
-                Rule::exists('whatsapp_instances', 'id')->where('tenant_id', $tenantId),
-            ],
             'name' => ['nullable', 'string', 'max:255'],
+            'whatsapp_instance_id' => ['prohibited'],
             'body' => ['prohibited'],
             'category' => ['prohibited'],
             'language' => ['prohibited'],
@@ -38,7 +32,7 @@ class UpdateWhatsappTemplateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'whatsapp_instance_id.exists' => 'A instância selecionada não é válida ou não pertence à sua conta.',
+            'whatsapp_instance_id.prohibited' => 'A instância do template é definida na criação e não pode ser alterada.',
             'body.prohibited' => 'O corpo sincronizado da Meta nao pode ser alterado neste fluxo.',
             'category.prohibited' => 'A categoria sincronizada da Meta nao pode ser alterada neste fluxo.',
             'language.prohibited' => 'O idioma sincronizado da Meta nao pode ser alterado neste fluxo.',

@@ -24,10 +24,8 @@ class WhatsappTemplateController extends Controller
     public function index(): Response
     {
         $tenantId = (string) auth()->user()->tenantId;
-        $kind = TemplateKind::tryFrom((string) request('kind')) ?? TemplateKind::MetaHsm;
 
-        $templates = WhatsappTemplate::forTenant($tenantId)
-            ->ofKind($kind)
+        $templates = WhatsappTemplate::ofKind(TemplateKind::MetaHsm)
             ->with('whatsappInstance')
             ->when(request('status'), fn ($q, $status) => $q->where('status', $status))
             ->orderByDesc('created_at')
@@ -47,11 +45,7 @@ class WhatsappTemplateController extends Controller
         return Inertia::render('templates/Index', [
             'templates' => $templates,
             'instances' => $instances,
-            'kinds' => array_map(fn (TemplateKind $k) => [
-                'value' => $k->value,
-                'label' => $k->label(),
-            ], TemplateKind::cases()),
-            'currentKind' => $kind->value,
+            'currentKind' => TemplateKind::MetaHsm->value,
             'flash' => session('success'),
             'error' => session('error'),
         ]);
@@ -60,100 +54,47 @@ class WhatsappTemplateController extends Controller
     public function store(StoreWhatsappTemplateRequest $request): RedirectResponse
     {
         $tenantId = (string) auth()->user()->tenantId;
-        $kind = TemplateKind::from((string) $request->validated('kind'));
-        $body = (string) ($request->validated('body') ?? '');
 
-        if ($kind === TemplateKind::MetaHsm) {
-            $instance = WhatsappInstance::where('tenant_id', $tenantId)
-                ->whereKey($request->validated('whatsapp_instance_id'))
-                ->firstOrFail();
+        $instance = WhatsappInstance::where('tenant_id', $tenantId)
+            ->whereKey($request->validated('whatsapp_instance_id'))
+            ->firstOrFail();
 
-            if (! filled($instance->meta_waba_id) || ! filled($instance->meta_access_token)) {
-                return back()->withErrors([
-                    'whatsapp_instance_id' => 'A instancia Meta selecionada nao possui WABA ID ou token configurado.',
-                ])->withInput();
-            }
+        if (! filled($instance->meta_waba_id) || ! filled($instance->meta_access_token)) {
+            return back()->withErrors([
+                'whatsapp_instance_id' => 'A instancia Meta selecionada nao possui WABA ID ou token configurado.',
+            ])->withInput();
+        }
 
-            $metaName = (string) $request->validated('meta_template_name');
-            $category = strtoupper((string) $request->validated('category'));
-            $language = (string) $request->validated('language');
-            $variableExamples = array_filter(
-                (array) ($request->validated('variable_examples') ?? []),
-                fn (mixed $value): bool => filled($value)
+        try {
+            $this->metaTemplateService->createAndStoreTemplate(
+                instance: $instance,
+                tenantId: $tenantId,
+                internalName: (string) $request->validated('name'),
+                metaName: (string) $request->validated('meta_template_name'),
+                category: (string) $request->validated('category'),
+                language: (string) $request->validated('language'),
+                spec: [
+                    'header_text' => $request->validated('header_text'),
+                    'header_example' => $request->validated('header_example'),
+                    'body' => (string) ($request->validated('body') ?? ''),
+                    'variable_examples' => (array) ($request->validated('variable_examples') ?? []),
+                    'footer_text' => $request->validated('footer_text'),
+                    'buttons' => (array) ($request->validated('buttons') ?? []),
+                ],
             );
-            ksort($variableExamples, SORT_NUMERIC);
+        } catch (RequestException $exception) {
+            $message = $exception->response?->json('error.message')
+                ?? 'A Meta recusou a criacao do template. Verifique os dados e tente novamente.';
 
-            try {
-                $created = $this->metaTemplateService->createBodyTemplate(
-                    $instance,
-                    $metaName,
-                    $category,
-                    $language,
-                    $body,
-                    $variableExamples,
-                );
-            } catch (RequestException $exception) {
-                $message = $exception->response?->json('error.message')
-                    ?? 'A Meta recusou a criacao do template. Verifique os dados e tente novamente.';
-
-                return back()->withErrors(['meta_template' => $message])->withInput();
-            }
-
-            $metaResponse = is_array($created['response']) ? $created['response'] : [];
-
-            WhatsappTemplate::create([
-                'tenant_id' => $tenantId,
-                'kind' => $kind->value,
-                'whatsapp_instance_id' => $instance->id,
-                'name' => $request->validated('name'),
-                'meta_template_id' => $metaResponse['id'] ?? null,
-                'meta_template_name' => $metaName,
-                'meta_waba_id' => $instance->meta_waba_id,
-                'status' => strtoupper((string) ($metaResponse['status'] ?? 'PENDING')),
-                'category' => $category,
-                'language' => $language,
-                'body' => $body,
-                'components_json' => $created['components'],
-                'variables_count' => $this->countVariables($body),
-            ]);
-
-            return back()->with('success', 'Template enviado para analise da Meta.');
+            return back()->withErrors(['meta_template' => $message])->withInput();
         }
 
-        WhatsappTemplate::create([
-            'tenant_id' => $tenantId,
-            'kind' => $kind->value,
-            'whatsapp_instance_id' => $request->validated('whatsapp_instance_id'),
-            'name' => $request->validated('name'),
-            'status' => 'PENDING',
-            'category' => strtoupper((string) ($request->validated('category') ?? 'MARKETING')),
-            'language' => (string) ($request->validated('language') ?? 'pt_BR'),
-            'body' => $body,
-            'variables_count' => $this->countVariables($body),
-            'element_name' => $request->validated('element_name'),
-        ]);
-
-        return back()->with('success', 'Template registrado com sucesso.');
-    }
-
-    /**
-     * Count {{1}}, {{2}}, … variables in a template body.
-     */
-    private function countVariables(string $text): int
-    {
-        preg_match_all('/\{\{(\d+)\}\}/', $text, $matches);
-
-        if (empty($matches[1])) {
-            return 0;
-        }
-
-        return (int) max(array_map('intval', $matches[1]));
+        return back()->with('success', 'Template enviado para analise da Meta.');
     }
 
     public function update(UpdateWhatsappTemplateRequest $request, WhatsappTemplate $template): RedirectResponse
     {
         $template->update([
-            'whatsapp_instance_id' => $request->validated('whatsapp_instance_id') ?? $template->whatsapp_instance_id,
             'name' => $request->validated('name') ?? $template->name,
         ]);
 

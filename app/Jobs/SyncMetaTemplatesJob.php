@@ -54,9 +54,11 @@ class SyncMetaTemplatesJob implements ShouldQueue
             }
 
             foreach ($response->json('data', []) as $tpl) {
-                $components = $tpl['components'] ?? [];
-                $body = collect($components)
-                    ->firstWhere('type', 'BODY')['text'] ?? '';
+                $components = collect($tpl['components'] ?? []);
+                $body = $components->firstWhere('type', 'BODY')['text'] ?? '';
+                $header = $components->first(fn ($c): bool => ($c['type'] ?? null) === 'HEADER' && ($c['format'] ?? null) === 'TEXT');
+                $footer = $components->firstWhere('type', 'FOOTER');
+                $buttons = $components->firstWhere('type', 'BUTTONS')['buttons'] ?? null;
                 $qualityScore = $tpl['quality_score']['score'] ?? $tpl['quality_score'] ?? null;
 
                 WhatsappTemplate::updateOrCreate(
@@ -74,10 +76,13 @@ class SyncMetaTemplatesJob implements ShouldQueue
                         'category' => $tpl['category'] ?? null,
                         'language' => $tpl['language'],
                         'body' => $body,
-                        'components_json' => $components,
+                        'header' => $header['text'] ?? null,
+                        'footer' => $footer['text'] ?? null,
+                        'buttons_json' => is_array($buttons) && $buttons !== [] ? $buttons : null,
+                        'components_json' => $components->all(),
                         'quality_score' => is_scalar($qualityScore) ? (string) $qualityScore : null,
                         'rejected_reason' => $tpl['rejected_reason'] ?? $tpl['reason'] ?? null,
-                        'variables_count' => $this->countVars($components),
+                        'variables_count' => $this->countVars($components->all()),
                     ]
                 );
             }
@@ -92,13 +97,8 @@ class SyncMetaTemplatesJob implements ShouldQueue
     private function countVars(array|string $components): int
     {
         $text = is_array($components) ? $this->extractTemplateText($components) : $components;
-        preg_match_all('/\{\{(\d+)\}\}/', $text, $matches);
 
-        if (empty($matches[1])) {
-            return 0;
-        }
-
-        return (int) max(array_map('intval', $matches[1]));
+        return WhatsappTemplate::countVariablesIn($text);
     }
 
     /**

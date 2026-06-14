@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, useForm, router } from '@inertiajs/vue3';
-import { CheckCircle2, ChevronDown, ChevronRight, ExternalLink, FileText, RefreshCw } from 'lucide-vue-next';
+import { Head, Link, useForm, usePoll } from '@inertiajs/vue3';
+import { CheckCircle2, ChevronDown, ChevronRight, FileText, RefreshCw } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import WhatsappTemplateController from '@/actions/App/Http/Controllers/WhatsappTemplateController';
 import EmptyState from '@/components/EmptyState.vue';
@@ -23,18 +23,29 @@ type WhatsappInstance = {
     has_meta_access_token: boolean;
 };
 
+type TemplateButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER';
+
+type TemplateButton = {
+    type: TemplateButtonType;
+    text: string;
+    url?: string;
+    phone_number?: string;
+};
+
 type WhatsappTemplate = {
     id: number;
     name: string;
     kind: string;
-    element_name: string | null;
     meta_template_id: string | null;
     meta_template_name: string | null;
     meta_waba_id: string | null;
     status: string;
     category: string | null;
     language: string | null;
+    header: string | null;
     body: string | null;
+    footer: string | null;
+    buttons_json: TemplateButton[] | null;
     quality_score: string | null;
     rejected_reason: string | null;
     components_json: unknown[] | null;
@@ -45,11 +56,6 @@ type WhatsappTemplate = {
     whatsapp_instance: WhatsappInstance | null;
 };
 
-type KindOption = {
-    value: string;
-    label: string;
-};
-
 type Props = {
     templates: {
         data: WhatsappTemplate[];
@@ -57,7 +63,6 @@ type Props = {
         links: Array<{ url: string | null; label: string; active: boolean }>;
     };
     instances: WhatsappInstance[];
-    kinds: KindOption[];
     currentKind: string;
     flash: string | null;
     error: string | null;
@@ -70,31 +75,42 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Templates WhatsApp', href: '/templates' },
 ];
 
-// ─── Tab navigation ───────────────────────────────────────────────────────────
-
-function switchKind(kind: string): void {
-    router.get('/templates', { kind }, { preserveState: false });
-}
-
 // ─── Register dialog ──────────────────────────────────────────────────────────
 
 const registerOpen = ref(false);
 
 const registerForm = useForm({
-    kind: props.currentKind,
+    kind: 'meta_hsm',
     whatsapp_instance_id: '',
-    // Meta HSM fields
     meta_template_name: '',
-    element_name: '',
+    header_text: '',
+    header_example: '',
     variable_examples: {} as Record<string, string>,
-    // Common fields
-    name: '',
     body: '',
+    footer_text: '',
+    buttons: [] as TemplateButton[],
+    name: '',
     category: 'MARKETING',
     language: 'pt_BR',
 });
 
-const isMetaHsm = computed(() => registerForm.kind === 'meta_hsm');
+const headerHasVariable = computed(() => /\{\{1\}\}/.test(registerForm.header_text));
+
+const buttonTypeLabels: Record<TemplateButtonType, string> = {
+    QUICK_REPLY: 'Resposta rápida',
+    URL: 'Link (URL)',
+    PHONE_NUMBER: 'Telefone',
+};
+
+function addButton(): void {
+    if (registerForm.buttons.length >= 10) { return; }
+    registerForm.buttons.push({ type: 'QUICK_REPLY', text: '' });
+}
+
+function removeButton(index: number): void {
+    registerForm.buttons.splice(index, 1);
+}
+
 const metaInstances = computed(() =>
     props.instances.filter((i) => i.provider === 'meta_cloud')
 );
@@ -111,10 +127,15 @@ const selectedMetaInstanceIsConfigured = computed(() =>
     Boolean(selectedMetaInstance.value?.meta_waba_id && selectedMetaInstance.value?.has_meta_access_token)
 );
 
-function openRegister(): void {
+function resetRegisterForm(): void {
     registerForm.reset();
     registerForm.kind = 'meta_hsm';
     registerForm.variable_examples = {};
+    registerForm.buttons = [];
+}
+
+function openRegister(): void {
+    resetRegisterForm();
     registerOpen.value = true;
 }
 
@@ -124,9 +145,7 @@ function submitRegister(): void {
     registerForm.post(WhatsappTemplateController.store().url, {
         onSuccess: () => {
             registerOpen.value = false;
-            registerForm.reset();
-            registerForm.kind = 'meta_hsm';
-            registerForm.variable_examples = {};
+            resetRegisterForm();
         },
     });
 }
@@ -137,27 +156,23 @@ const editOpen = ref(false);
 const editingTemplate = ref<WhatsappTemplate | null>(null);
 
 const editForm = useForm({
-    whatsapp_instance_id: '' as string | number,
     name: '',
 });
 
 function openEdit(template: WhatsappTemplate): void {
     editingTemplate.value = template;
-    editForm.whatsapp_instance_id = template.whatsapp_instance_id ?? '';
     editForm.name = template.name;
     editOpen.value = true;
 }
 
 function submitEdit(): void {
     if (!editingTemplate.value) { return; }
-    editForm
-        .transform((data) => ({ name: data.name }))
-        .put(WhatsappTemplateController.update(editingTemplate.value.id).url, {
-            onSuccess: () => {
-                editOpen.value = false;
-                editingTemplate.value = null;
-            },
-        });
+    editForm.put(WhatsappTemplateController.update(editingTemplate.value.id).url, {
+        onSuccess: () => {
+            editOpen.value = false;
+            editingTemplate.value = null;
+        },
+    });
 }
 
 // ─── Sync Meta Templates ─────────────────────────────────────────────────────
@@ -230,7 +245,15 @@ function qualityBadgeClass(score: string | null): string {
 }
 
 function highlightVariables(body: string): string {
-    return body.replace(/\{\{(\d+)\}\}/g, '<span class="rounded bg-yellow-100 px-0.5 font-mono text-xs text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">{{$1}}</span>');
+    // Escape HTML first — body is tenant-entered and Meta-synced, rendered via
+    // v-html. Without escaping, a body like <img onerror> becomes stored XSS.
+    const escaped = body
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    return escaped.replace(/\{\{(\d+)\}\}/g, '<span class="rounded bg-yellow-100 px-0.5 font-mono text-xs text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">{{$1}}</span>');
 }
 
 function countBodyVars(body: string): number {
@@ -259,11 +282,33 @@ watch(bodyVariableCount, (count) => {
 // Reset register form when dialog closes
 watch(registerOpen, (open) => {
     if (!open) {
-        registerForm.reset();
-        registerForm.kind = 'meta_hsm';
-        registerForm.variable_examples = {};
+        resetRegisterForm();
     }
 });
+
+// ─── Live status refresh ───────────────────────────────────────────────────────
+// Meta flips template status (PENDING → APPROVED/REJECTED) asynchronously via
+// review + webhook/sync. Poll only while non-terminal templates exist so the
+// table self-updates without burning requests once everything settles.
+const NON_TERMINAL_STATUSES = ['PENDING', 'IN_APPEAL', 'FLAGGED', 'PENDING_DELETION'];
+
+const hasPendingTemplates = computed(() =>
+    props.templates.data.some((template) => NON_TERMINAL_STATUSES.includes(template.status))
+);
+
+const { start: startPolling, stop: stopPolling } = usePoll(
+    15000,
+    { only: ['templates'] },
+    { autoStart: false },
+);
+
+watch(hasPendingTemplates, (pending) => {
+    if (pending) {
+        startPolling();
+    } else {
+        stopPolling();
+    }
+}, { immediate: true });
 </script>
 
 <template>
@@ -286,27 +331,24 @@ watch(registerOpen, (open) => {
                         <span class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{{ templates.total }} templates</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <!-- Sincronizar agora — Meta HSM tab only -->
-                        <template v-if="currentKind === 'meta_hsm'">
-                            <select
-                                v-model="syncForm.whatsapp_instance_id"
-                                class="rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                            >
-                                <option value="">Instância p/ sync...</option>
-                                <option v-for="inst in metaInstances" :key="inst.id" :value="inst.id">
-                                    {{ inst.display_name ?? inst.name }}
-                                </option>
-                            </select>
-                            <button
-                                type="button"
-                                :disabled="syncForm.processing || !syncForm.whatsapp_instance_id"
-                                class="flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                                @click="submitSync"
-                            >
-                                <RefreshCw class="h-3 w-3" :class="{ 'animate-spin': syncForm.processing }" />
-                                {{ syncForm.processing ? 'Sincronizando...' : 'Sincronizar da Meta' }}
-                            </button>
-                        </template>
+                        <select
+                            v-model="syncForm.whatsapp_instance_id"
+                            class="rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        >
+                            <option value="">Instância p/ sync...</option>
+                            <option v-for="inst in metaInstances" :key="inst.id" :value="inst.id">
+                                {{ inst.display_name ?? inst.name }}
+                            </option>
+                        </select>
+                        <button
+                            type="button"
+                            :disabled="syncForm.processing || !syncForm.whatsapp_instance_id"
+                            class="flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                            @click="submitSync"
+                        >
+                            <RefreshCw class="h-3 w-3" :class="{ 'animate-spin': syncForm.processing }" />
+                            {{ syncForm.processing ? 'Sincronizando...' : 'Sincronizar da Meta' }}
+                        </button>
                         <button
                             class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                             @click="openRegister"
@@ -316,34 +358,16 @@ watch(registerOpen, (open) => {
                     </div>
                 </div>
 
-                <!-- Kind Tabs -->
-                <div class="flex border-b border-sidebar-border/70 dark:border-sidebar-border">
-                    <button
-                        v-for="kind in kinds"
-                        :key="kind.value"
-                        :class="[
-                            'px-4 py-2.5 text-sm font-medium transition-colors',
-                            currentKind === kind.value
-                                ? 'border-b-2 border-primary text-foreground'
-                                : 'text-muted-foreground hover:text-foreground',
-                        ]"
-                        @click="switchKind(kind.value)"
-                    >
-                        {{ kind.label }}
-                    </button>
-                </div>
-
                 <!-- Table -->
                 <table class="w-full text-sm">
                     <thead class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border">
                         <tr>
                             <th class="w-6 px-4 py-3" />
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Nome</th>
-                            <th v-if="currentKind === 'meta_hsm'" class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Template ID</th>
-                            <th v-if="currentKind === 'meta_hsm'" class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Template Name</th>
-                            <th v-if="currentKind === 'evolution_preset'" class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Element Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Template ID</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Template Name</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Status</th>
-                            <th v-if="currentKind === 'meta_hsm'" class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Qualidade</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Qualidade</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Variáveis</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Instância</th>
                             <th class="px-4 py-3" />
@@ -360,19 +384,16 @@ watch(registerOpen, (open) => {
                                     <ChevronRight v-else class="h-4 w-4" />
                                 </td>
                                 <td class="px-4 py-3 font-medium text-foreground">{{ template.name }}</td>
-                                <td v-if="currentKind === 'meta_hsm'" class="px-4 py-3">
+                                <td class="px-4 py-3">
                                     <span class="font-mono text-xs text-muted-foreground">{{ template.meta_template_id ?? '—' }}</span>
                                 </td>
-                                <td v-if="currentKind === 'meta_hsm'" class="px-4 py-3">
+                                <td class="px-4 py-3">
                                     <span class="font-mono text-xs text-muted-foreground">{{ template.meta_template_name ?? '—' }}</span>
-                                </td>
-                                <td v-if="currentKind === 'evolution_preset'" class="px-4 py-3">
-                                    <span class="font-mono text-xs text-muted-foreground">{{ template.element_name ?? '—' }}</span>
                                 </td>
                                 <td class="px-4 py-3">
                                     <span :class="statusBadgeClass(template.status)">{{ template.status }}</span>
                                 </td>
-                                <td v-if="currentKind === 'meta_hsm'" class="px-4 py-3">
+                                <td class="px-4 py-3">
                                     <span :class="qualityBadgeClass(template.quality_score)">{{ template.quality_score ?? 'N/A' }}</span>
                                 </td>
                                 <td class="px-4 py-3 text-xs text-muted-foreground">{{ template.variables_count }}</td>
@@ -396,13 +417,37 @@ watch(registerOpen, (open) => {
                             </tr>
                             <!-- Expanded body row -->
                             <tr v-if="expandedRows.has(template.id)" class="bg-muted/20">
-                                <td :colspan="currentKind === 'meta_hsm' ? 10 : 8" class="px-8 py-3">
+                                <td :colspan="9" class="px-8 py-3">
+                                    <div v-if="template.header" class="mb-3 text-sm text-foreground">
+                                        <p class="mb-1 text-xs font-semibold uppercase text-muted-foreground">Cabeçalho</p>
+                                        <!-- eslint-disable-next-line vue/no-v-html -->
+                                        <p class="font-medium leading-relaxed" v-html="highlightVariables(template.header)" />
+                                    </div>
                                     <div v-if="template.body" class="text-sm text-foreground">
                                         <p class="mb-1 text-xs font-semibold uppercase text-muted-foreground">Corpo do Template</p>
                                         <!-- eslint-disable-next-line vue/no-v-html -->
                                         <p class="whitespace-pre-wrap leading-relaxed" v-html="highlightVariables(template.body)" />
                                     </div>
-                                    <div v-if="currentKind === 'meta_hsm'" class="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                                    <div v-if="template.footer" class="mt-3 text-sm text-muted-foreground">
+                                        <p class="mb-1 text-xs font-semibold uppercase text-muted-foreground">Rodapé</p>
+                                        <p class="leading-relaxed">{{ template.footer }}</p>
+                                    </div>
+                                    <div v-if="template.buttons_json?.length" class="mt-3">
+                                        <p class="mb-1 text-xs font-semibold uppercase text-muted-foreground">Botões</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            <span
+                                                v-for="(button, i) in template.buttons_json"
+                                                :key="i"
+                                                class="inline-flex items-center gap-1.5 rounded-md border border-sidebar-border/70 bg-background px-2.5 py-1 text-xs text-foreground dark:border-sidebar-border"
+                                            >
+                                                <span class="font-medium">{{ button.text }}</span>
+                                                <span class="text-muted-foreground">· {{ buttonTypeLabels[button.type] ?? button.type }}</span>
+                                                <span v-if="button.url" class="font-mono text-muted-foreground">{{ button.url }}</span>
+                                                <span v-if="button.phone_number" class="font-mono text-muted-foreground">{{ button.phone_number }}</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                                         <div v-if="template.meta_waba_id">
                                             WABA ID: <span class="font-mono">{{ template.meta_waba_id }}</span>
                                         </div>
@@ -427,24 +472,27 @@ watch(registerOpen, (open) => {
                 <EmptyState
                     v-if="templates.data.length === 0"
                     :icon="FileText"
-                    :title="currentKind === 'meta_hsm' ? 'Nenhum template Meta HSM registrado' : 'Nenhum preset Evolution registrado'"
-                    :description="currentKind === 'meta_hsm' ? 'Crie um template na Meta ou sincronize templates existentes para usar em campanhas.' : 'Registre um preset de mensagem para disparos via Evolution API.'"
+                    title="Nenhum template Meta HSM registrado"
+                    description="Crie um template na Meta ou sincronize templates existentes para usar em campanhas."
                 />
 
                 <!-- Pagination -->
                 <div v-if="templates.links?.length > 3" class="flex items-center gap-1 border-t border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
                     <template v-for="link in templates.links" :key="link.label">
-                        <a
+                        <Link
                             v-if="link.url"
                             :href="link.url"
+                            preserve-scroll
                             :class="[
                                 'rounded px-3 py-1 text-sm',
                                 link.active
                                     ? 'bg-primary font-medium text-primary-foreground'
                                     : 'text-muted-foreground hover:bg-muted',
                             ]"
-                            v-html="link.label"
-                        />
+                        >
+                            <!-- eslint-disable-next-line vue/no-v-html -->
+                            <span v-html="link.label" />
+                        </Link>
                         <span v-else class="px-3 py-1 text-sm text-muted-foreground/40" v-html="link.label" />
                     </template>
                 </div>
@@ -501,31 +549,29 @@ watch(registerOpen, (open) => {
                     <p v-if="selectedMetaInstance && !selectedMetaInstanceIsConfigured" class="mt-1 text-xs text-red-600 dark:text-red-400">
                         Configure WABA ID e token Meta nesta instância antes de criar templates pela Meta.
                     </p>
-                    <p v-if="isMetaHsm && metaInstances.length === 0" class="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
+                    <p v-if="metaInstances.length === 0" class="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
                         Nenhuma instância Meta Cloud disponível. <a href="/whatsapp" class="underline">Conectar instância</a>.
                     </p>
                 </div>
 
                 <!-- Meta HSM specific fields -->
-                <template v-if="isMetaHsm">
-                    <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs text-blue-800 dark:border-blue-900/50 dark:bg-blue-900/20 dark:text-blue-300">
-                        <p class="font-semibold">Template Meta HSM</p>
-                        <p class="mt-0.5">O template será enviado para análise da Meta. O status será atualizado por sincronização ou webhook.</p>
-                    </div>
+                <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs text-blue-800 dark:border-blue-900/50 dark:bg-blue-900/20 dark:text-blue-300">
+                    <p class="font-semibold">Template Meta HSM</p>
+                    <p class="mt-0.5">O template será enviado para análise da Meta. O status será atualizado por sincronização ou webhook.</p>
+                </div>
 
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-foreground">Nome Meta <span class="text-red-500">*</span></label>
-                        <input
-                            v-model="registerForm.meta_template_name"
-                            type="text"
-                            placeholder="ex: campanha_janeiro"
-                            required
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm text-foreground placeholder:font-sans placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
-                        <p class="mt-0.5 text-[11px] text-muted-foreground">Use apenas letras minúsculas, números e underscore. Esse nome é enviado para a Meta.</p>
-                        <p v-if="registerForm.errors.meta_template_name" class="mt-1 text-xs text-red-500">{{ registerForm.errors.meta_template_name }}</p>
-                    </div>
-                </template>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-foreground">Nome Meta <span class="text-red-500">*</span></label>
+                    <input
+                        v-model="registerForm.meta_template_name"
+                        type="text"
+                        placeholder="ex: campanha_janeiro"
+                        required
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm text-foreground placeholder:font-sans placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <p class="mt-0.5 text-[11px] text-muted-foreground">Use apenas letras minúsculas, números e underscore. Esse nome é enviado para a Meta.</p>
+                    <p v-if="registerForm.errors.meta_template_name" class="mt-1 text-xs text-red-500">{{ registerForm.errors.meta_template_name }}</p>
+                </div>
 
                 <!-- Internal name -->
                 <div>
@@ -538,6 +584,34 @@ watch(registerOpen, (open) => {
                         class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                     <p v-if="registerForm.errors.name" class="mt-1 text-xs text-red-500">{{ registerForm.errors.name }}</p>
+                </div>
+
+                <!-- Header (optional, text only) -->
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-foreground">Cabeçalho <span class="text-xs font-normal text-muted-foreground">(opcional)</span></label>
+                    <input
+                        v-model="registerForm.header_text"
+                        type="text"
+                        maxlength="60"
+                        placeholder="Texto curto no topo. Use {{1}} para uma variável."
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <p class="mt-0.5 text-[11px] text-muted-foreground">Apenas texto, no máximo 60 caracteres e até uma variável.</p>
+                    <p v-if="registerForm.errors.header_text" class="mt-1 text-xs text-red-500">{{ registerForm.errors.header_text }}</p>
+                </div>
+
+                <div v-if="headerHasVariable">
+                    <label class="mb-1 block text-sm font-medium text-foreground">
+                        <span v-text="`Exemplo do cabeçalho {{1}}`" />
+                        <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        v-model="registerForm.header_example"
+                        type="text"
+                        placeholder="ex: Cliente Teste"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <p v-if="registerForm.errors.header_example" class="mt-1 text-xs text-red-500">{{ registerForm.errors.header_example }}</p>
                 </div>
 
                 <!-- Body -->
@@ -570,6 +644,83 @@ watch(registerOpen, (open) => {
                         />
                         <p v-if="registerForm.errors[`variable_examples.${index}`]" class="mt-1 text-xs text-red-500">{{ registerForm.errors[`variable_examples.${index}`] }}</p>
                     </div>
+                </div>
+
+                <!-- Footer (optional) -->
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-foreground">Rodapé <span class="text-xs font-normal text-muted-foreground">(opcional)</span></label>
+                    <input
+                        v-model="registerForm.footer_text"
+                        type="text"
+                        maxlength="60"
+                        placeholder="ex: Responda PARAR para sair."
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <p class="mt-0.5 text-[11px] text-muted-foreground">Texto fixo, sem variáveis, no máximo 60 caracteres.</p>
+                    <p v-if="registerForm.errors.footer_text" class="mt-1 text-xs text-red-500">{{ registerForm.errors.footer_text }}</p>
+                </div>
+
+                <!-- Buttons (optional) -->
+                <div>
+                    <div class="mb-1 flex items-center justify-between">
+                        <label class="block text-sm font-medium text-foreground">Botões <span class="text-xs font-normal text-muted-foreground">(opcional, até 10)</span></label>
+                        <button
+                            type="button"
+                            :disabled="registerForm.buttons.length >= 10"
+                            class="rounded-md border border-input px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                            @click="addButton"
+                        >
+                            + Adicionar botão
+                        </button>
+                    </div>
+                    <div v-if="registerForm.buttons.length" class="flex flex-col gap-3">
+                        <div
+                            v-for="(button, index) in registerForm.buttons"
+                            :key="index"
+                            class="rounded-md border border-sidebar-border/70 bg-muted/30 p-3 dark:border-sidebar-border"
+                        >
+                            <div class="flex items-center gap-2">
+                                <select
+                                    v-model="button.type"
+                                    class="rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                >
+                                    <option v-for="(label, value) in buttonTypeLabels" :key="value" :value="value">{{ label }}</option>
+                                </select>
+                                <input
+                                    v-model="button.text"
+                                    type="text"
+                                    maxlength="25"
+                                    placeholder="Texto do botão"
+                                    class="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                />
+                                <button
+                                    type="button"
+                                    class="rounded px-2 py-1 text-xs text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                                    @click="removeButton(index)"
+                                >
+                                    Remover
+                                </button>
+                            </div>
+                            <input
+                                v-if="button.type === 'URL'"
+                                v-model="button.url"
+                                type="url"
+                                placeholder="https://exemplo.com"
+                                class="mt-2 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                            <input
+                                v-if="button.type === 'PHONE_NUMBER'"
+                                v-model="button.phone_number"
+                                type="text"
+                                placeholder="ex: 5511999999999"
+                                class="mt-2 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                            <p v-if="registerForm.errors[`buttons.${index}.text`]" class="mt-1 text-xs text-red-500">{{ registerForm.errors[`buttons.${index}.text`] }}</p>
+                            <p v-if="registerForm.errors[`buttons.${index}.url`]" class="mt-1 text-xs text-red-500">{{ registerForm.errors[`buttons.${index}.url`] }}</p>
+                            <p v-if="registerForm.errors[`buttons.${index}.phone_number`]" class="mt-1 text-xs text-red-500">{{ registerForm.errors[`buttons.${index}.phone_number`] }}</p>
+                        </div>
+                    </div>
+                    <p v-if="registerForm.errors.buttons" class="mt-1 text-xs text-red-500">{{ registerForm.errors.buttons }}</p>
                 </div>
 
                 <!-- Category / Language -->
@@ -624,23 +775,15 @@ watch(registerOpen, (open) => {
                 <DialogTitle>Detalhes do Template</DialogTitle>
             </DialogHeader>
             <form class="flex flex-col gap-4" @submit.prevent="submitEdit">
-                <!-- Instance -->
+                <!-- Instance (read-only — bound at creation) -->
                 <div>
                     <label class="mb-1 block text-sm font-medium text-foreground">Instância WhatsApp</label>
-                    <select
-                        v-model="editForm.whatsapp_instance_id"
-                        disabled
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    >
-                        <option value="">Sem instância</option>
-                        <option v-for="instance in instances" :key="instance.id" :value="instance.id">
-                            {{ instance.display_name ?? instance.name }}
-                        </option>
-                    </select>
-                    <p v-if="editForm.errors.whatsapp_instance_id" class="mt-1 text-xs text-red-500">{{ editForm.errors.whatsapp_instance_id }}</p>
+                    <p class="rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                        {{ editingTemplate?.whatsapp_instance?.display_name ?? editingTemplate?.whatsapp_instance?.name ?? 'Sem instância' }}
+                    </p>
                 </div>
 
-                <!-- Name -->
+                <!-- Name (editable) -->
                 <div>
                     <label class="mb-1 block text-sm font-medium text-foreground">Nome de Exibição</label>
                     <input

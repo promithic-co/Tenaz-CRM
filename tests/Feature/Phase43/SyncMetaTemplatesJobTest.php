@@ -112,10 +112,15 @@ it('syncs Meta template components and counts variables outside body', function 
         'tenant_id' => $user->tenant_id,
     ]);
 
+    $buttons = [
+        ['type' => 'QUICK_REPLY', 'text' => 'Tenho interesse'],
+        ['type' => 'URL', 'text' => 'Ver detalhes', 'url' => 'https://example.com'],
+    ];
     $components = [
         ['type' => 'HEADER', 'format' => 'TEXT', 'text' => 'Oferta {{1}}'],
         ['type' => 'BODY', 'text' => 'Olá {{2}}, use {{3}}'],
         ['type' => 'FOOTER', 'text' => 'Rodapé'],
+        ['type' => 'BUTTONS', 'buttons' => $buttons],
     ];
 
     Http::fake(['*' => Http::response([
@@ -137,6 +142,9 @@ it('syncs Meta template components and counts variables outside body', function 
     $template = WhatsappTemplate::where('name', 'template_with_header_vars')->first();
     expect($template->components_json)->toBe($components);
     expect($template->variables_count)->toBe(3);
+    expect($template->header)->toBe('Oferta {{1}}');
+    expect($template->footer)->toBe('Rodapé');
+    expect($template->buttons_json)->toBe($buttons);
     expect($template->quality_score)->toBe('RED');
     expect($template->rejected_reason)->toBe('INVALID_FORMAT');
 });
