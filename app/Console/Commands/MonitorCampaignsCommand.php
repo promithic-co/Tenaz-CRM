@@ -31,9 +31,14 @@ class MonitorCampaignsCommand extends Command
      */
     private function checkWalletErrors(CampaignService $campaignService, AlertService $alertService): void
     {
+        // Scan by failed_at, not created_at: a message row is created at dispatch but its
+        // 1003 error lands later (via send or delivery webhook). On a slow/large campaign
+        // that gap can exceed the window, so filtering on creation time would miss late
+        // wallet failures. The window only bounds the query — already-paused campaigns are
+        // skipped below via isSending(), so a generous window is safe.
         $walletMessages = CampaignMessage::with('campaign')
             ->where('error_code', '1003')
-            ->where('created_at', '>=', now()->subMinutes(10))
+            ->where('failed_at', '>=', now()->subMinutes(15))
             ->get();
 
         $pausedCampaignIds = [];
