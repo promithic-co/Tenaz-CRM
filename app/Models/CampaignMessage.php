@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\CampaignMessageFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CampaignMessage extends Model
 {
-    /** @use HasFactory<\Database\Factories\CampaignMessageFactory> */
+    /** @use HasFactory<CampaignMessageFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -63,37 +64,33 @@ class CampaignMessage extends Model
         return $query->where('status', 'pending');
     }
 
+    /**
+     * Lifecycle progression rank. Single source of truth for status ordering.
+     *
+     * @var array<string, int>
+     */
+    private const STATUS_ORDER = [
+        'pending' => 0,
+        'queued' => 1,
+        'sent' => 2,
+        'delivered' => 3,
+        'read' => 4,
+        'failed' => 5,
+    ];
+
     public function statusOrder(): int
     {
-        return match ($this->status) {
-            'pending' => 0,
-            'queued' => 1,
-            'sent' => 2,
-            'delivered' => 3,
-            'read' => 4,
-            'failed' => 5,
-            default => -1,
-        };
+        return self::STATUS_ORDER[$this->status] ?? -1;
     }
 
     public function canTransitionTo(string $newStatus): bool
     {
-        $newOrder = match ($newStatus) {
-            'pending' => 0,
-            'queued' => 1,
-            'sent' => 2,
-            'delivered' => 3,
-            'read' => 4,
-            'failed' => 5,
-            default => -1,
-        };
-
         // failed can happen at any point; otherwise must be forward progression
         if ($newStatus === 'failed') {
-            return ! in_array($this->status, ['delivered', 'read']);
+            return ! in_array($this->status, ['delivered', 'read'], true);
         }
 
-        return $newOrder > $this->statusOrder();
+        return (self::STATUS_ORDER[$newStatus] ?? -1) > $this->statusOrder();
     }
 
     public function markSent(string $providerMessageId): void

@@ -152,18 +152,27 @@ class MetaCloudProvider implements WhatsAppProviderInterface
 
     public function verifyWebhook(Request $request): bool
     {
-        if (empty($this->appSecret)) {
+        return self::isValidSignature(
+            $request->getContent(),
+            (string) $request->header('X-Hub-Signature-256', ''),
+            $this->appSecret,
+        );
+    }
+
+    /**
+     * Shared X-Hub-Signature-256 HMAC check. Single source of truth so the
+     * per-instance provider path and the controller's global pre-dispatch
+     * check can never drift apart. Fails closed on an empty secret.
+     */
+    public static function isValidSignature(string $payload, string $signatureHeader, string $secret): bool
+    {
+        if ($secret === '' || ! str_starts_with($signatureHeader, 'sha256=')) {
             return false;
         }
 
-        $received = (string) $request->header('X-Hub-Signature-256', '');
-        if (! str_starts_with($received, 'sha256=')) {
-            return false;
-        }
+        $expected = 'sha256='.hash_hmac('sha256', $payload, $secret);
 
-        $expected = 'sha256='.hash_hmac('sha256', $request->getContent(), $this->appSecret);
-
-        return hash_equals($expected, $received);
+        return hash_equals($expected, $signatureHeader);
     }
 
     public function downloadMedia(Request $request, array $messageData): ?MediaContext
