@@ -234,6 +234,25 @@ test('store rejects a footer containing a variable', function () {
     Http::assertNothingSent();
 });
 
+test('store rejects an unsupported language', function () {
+    [$user, $instance] = makeAuthUserWithMetaCloud();
+
+    Http::fake();
+
+    $response = $this->actingAs($user)->post('/templates', [
+        'kind' => 'meta_hsm',
+        'whatsapp_instance_id' => $instance->id,
+        'name' => 'Idioma Invalido',
+        'meta_template_name' => 'idioma_invalido',
+        'body' => 'Corpo simples.',
+        'category' => 'MARKETING',
+        'language' => 'en_US',
+    ]);
+
+    $response->assertSessionHasErrors('language');
+    Http::assertNothingSent();
+});
+
 test('store persists a PHONE_NUMBER button with its phone number', function () {
     [$user, $instance] = makeAuthUserWithMetaCloud();
 
