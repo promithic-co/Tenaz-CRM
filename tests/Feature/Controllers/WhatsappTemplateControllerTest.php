@@ -160,6 +160,60 @@ test('store rejects instance from another tenant', function () {
     $response->assertSessionHasErrors('whatsapp_instance_id');
 });
 
+test('store creates a template with header, footer, and buttons', function () {
+    [$user, $instance] = makeAuthUserWithMetaCloud();
+
+    Http::fake(['*' => Http::response(['id' => 'tpl_full', 'status' => 'PENDING'], 200)]);
+
+    $response = $this->actingAs($user)->post('/templates', [
+        'kind' => 'meta_hsm',
+        'whatsapp_instance_id' => $instance->id,
+        'name' => 'Oferta Completa',
+        'meta_template_name' => 'oferta_completa',
+        'header_text' => 'Oferta para {{1}}',
+        'header_example' => 'Lucas',
+        'body' => 'Aproveite {{1}} hoje.',
+        'variable_examples' => ['1' => 'sua oferta'],
+        'footer_text' => 'Responda PARAR para sair.',
+        'buttons' => [
+            ['type' => 'QUICK_REPLY', 'text' => 'Tenho interesse'],
+            ['type' => 'URL', 'text' => 'Ver mais', 'url' => 'https://example.com'],
+        ],
+        'category' => 'MARKETING',
+        'language' => 'pt_BR',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHasNoErrors();
+
+    $template = WhatsappTemplate::where('meta_template_name', 'oferta_completa')->first();
+    expect($template->header)->toBe('Oferta para {{1}}')
+        ->and($template->footer)->toBe('Responda PARAR para sair.')
+        ->and($template->buttons_json)->toHaveCount(2);
+});
+
+test('store rejects a URL button without a url', function () {
+    [$user, $instance] = makeAuthUserWithMetaCloud();
+
+    Http::fake();
+
+    $response = $this->actingAs($user)->post('/templates', [
+        'kind' => 'meta_hsm',
+        'whatsapp_instance_id' => $instance->id,
+        'name' => 'Botao Quebrado',
+        'meta_template_name' => 'botao_quebrado',
+        'body' => 'Corpo simples.',
+        'buttons' => [
+            ['type' => 'URL', 'text' => 'Ver mais'],
+        ],
+        'category' => 'MARKETING',
+        'language' => 'pt_BR',
+    ]);
+
+    $response->assertSessionHasErrors('buttons.0.url');
+    Http::assertNothingSent();
+});
+
 test('update changes template fields', function () {
     [$user, $instance] = makeAuthUserWithMetaCloud();
 

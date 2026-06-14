@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\TemplateKind;
 use App\Enums\WhatsAppProvider;
+use App\Services\WhatsApp\MetaTemplateService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -29,6 +30,14 @@ class StoreWhatsappTemplateRequest extends FormRequest
             'language' => ['required', 'string', 'max:20'],
             'variable_examples' => ['nullable', 'array'],
             'variable_examples.*' => ['nullable', 'string', 'max:200'],
+            'header_text' => ['nullable', 'string', 'max:60'],
+            'header_example' => ['nullable', 'string', 'max:200'],
+            'footer_text' => ['nullable', 'string', 'max:60'],
+            'buttons' => ['nullable', 'array', 'max:10'],
+            'buttons.*.type' => ['required_with:buttons', 'string', Rule::in(MetaTemplateService::BUTTON_TYPES)],
+            'buttons.*.text' => ['required_with:buttons', 'string', 'max:25'],
+            'buttons.*.url' => ['nullable', 'required_if:buttons.*.type,URL', 'string', 'url', 'max:2000'],
+            'buttons.*.phone_number' => ['nullable', 'required_if:buttons.*.type,PHONE_NUMBER', 'string', 'max:20'],
             'whatsapp_instance_id' => [
                 'required',
                 'integer',
@@ -75,6 +84,30 @@ class StoreWhatsappTemplateRequest extends FormRequest
                 }
             }
         });
+
+        $validator->after(function (Validator $validator): void {
+            $header = (string) $this->input('header_text', '');
+            if ($header === '') {
+                return;
+            }
+
+            preg_match_all('/\{\{(\d+)\}\}/', $header, $matches);
+            $numbers = array_values(array_unique(array_map('intval', $matches[1] ?? [])));
+
+            if ($numbers === []) {
+                return;
+            }
+
+            if ($numbers !== [1]) {
+                $validator->errors()->add('header_text', 'O cabecalho aceita no maximo uma variavel, e ela deve ser {{1}}.');
+
+                return;
+            }
+
+            if (! filled($this->input('header_example'))) {
+                $validator->errors()->add('header_example', 'Informe um exemplo para a variavel {{1}} do cabecalho.');
+            }
+        });
     }
 
     /** @return array<string, string> */
@@ -87,6 +120,13 @@ class StoreWhatsappTemplateRequest extends FormRequest
             'whatsapp_instance_id.exists' => 'A instância selecionada não é válida ou não pertence à sua conta.',
             'meta_template_name.required' => 'O nome do template Meta é obrigatório.',
             'name.required' => 'O nome do template é obrigatório.',
+            'buttons.max' => 'Um template aceita no maximo 10 botoes.',
+            'buttons.*.type.required_with' => 'Selecione o tipo do botao.',
+            'buttons.*.type.in' => 'Tipo de botao invalido.',
+            'buttons.*.text.required_with' => 'Informe o texto do botao.',
+            'buttons.*.url.required_if' => 'Informe a URL do botao.',
+            'buttons.*.url.url' => 'A URL do botao e invalida.',
+            'buttons.*.phone_number.required_if' => 'Informe o telefone do botao.',
             'status.prohibited' => 'O status do template e definido pela Meta e nao pode ser informado manualmente.',
             'meta_template_id.prohibited' => 'O ID do template e gerado pela Meta e nao pode ser informado manualmente.',
             'meta_waba_id.prohibited' => 'O WABA ID vem da instancia selecionada e nao pode ser informado manualmente.',

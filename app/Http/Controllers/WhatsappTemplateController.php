@@ -66,15 +66,21 @@ class WhatsappTemplateController extends Controller
         }
 
         try {
-            $this->metaTemplateService->createAndStoreBodyTemplate(
+            $this->metaTemplateService->createAndStoreTemplate(
                 instance: $instance,
                 tenantId: $tenantId,
                 internalName: (string) $request->validated('name'),
                 metaName: (string) $request->validated('meta_template_name'),
                 category: strtoupper((string) $request->validated('category')),
                 language: (string) $request->validated('language'),
-                body: (string) ($request->validated('body') ?? ''),
-                variableExamples: (array) ($request->validated('variable_examples') ?? []),
+                spec: [
+                    'header_text' => $request->validated('header_text'),
+                    'header_example' => $request->validated('header_example'),
+                    'body' => (string) ($request->validated('body') ?? ''),
+                    'variable_examples' => (array) ($request->validated('variable_examples') ?? []),
+                    'footer_text' => $request->validated('footer_text'),
+                    'buttons' => (array) ($request->validated('buttons') ?? []),
+                ],
             );
         } catch (RequestException $exception) {
             $message = $exception->response?->json('error.message')
