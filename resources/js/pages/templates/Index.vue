@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePoll } from '@inertiajs/vue3';
 import { CheckCircle2, ChevronDown, ChevronRight, FileText, RefreshCw } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import WhatsappTemplateController from '@/actions/App/Http/Controllers/WhatsappTemplateController';
@@ -23,6 +23,15 @@ type WhatsappInstance = {
     has_meta_access_token: boolean;
 };
 
+type TemplateButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER';
+
+type TemplateButton = {
+    type: TemplateButtonType;
+    text: string;
+    url?: string;
+    phone_number?: string;
+};
+
 type WhatsappTemplate = {
     id: number;
     name: string;
@@ -33,7 +42,10 @@ type WhatsappTemplate = {
     status: string;
     category: string | null;
     language: string | null;
+    header: string | null;
     body: string | null;
+    footer: string | null;
+    buttons_json: TemplateButton[] | null;
     quality_score: string | null;
     rejected_reason: string | null;
     components_json: unknown[] | null;
@@ -71,12 +83,33 @@ const registerForm = useForm({
     kind: 'meta_hsm',
     whatsapp_instance_id: '',
     meta_template_name: '',
+    header_text: '',
+    header_example: '',
     variable_examples: {} as Record<string, string>,
-    name: '',
     body: '',
+    footer_text: '',
+    buttons: [] as TemplateButton[],
+    name: '',
     category: 'MARKETING',
     language: 'pt_BR',
 });
+
+const headerHasVariable = computed(() => /\{\{1\}\}/.test(registerForm.header_text));
+
+const buttonTypeLabels: Record<TemplateButtonType, string> = {
+    QUICK_REPLY: 'Resposta rápida',
+    URL: 'Link (URL)',
+    PHONE_NUMBER: 'Telefone',
+};
+
+function addButton(): void {
+    if (registerForm.buttons.length >= 10) { return; }
+    registerForm.buttons.push({ type: 'QUICK_REPLY', text: '' });
+}
+
+function removeButton(index: number): void {
+    registerForm.buttons.splice(index, 1);
+}
 
 const metaInstances = computed(() =>
     props.instances.filter((i) => i.provider === 'meta_cloud')
@@ -94,10 +127,15 @@ const selectedMetaInstanceIsConfigured = computed(() =>
     Boolean(selectedMetaInstance.value?.meta_waba_id && selectedMetaInstance.value?.has_meta_access_token)
 );
 
-function openRegister(): void {
+function resetRegisterForm(): void {
     registerForm.reset();
     registerForm.kind = 'meta_hsm';
     registerForm.variable_examples = {};
+    registerForm.buttons = [];
+}
+
+function openRegister(): void {
+    resetRegisterForm();
     registerOpen.value = true;
 }
 
@@ -107,9 +145,7 @@ function submitRegister(): void {
     registerForm.post(WhatsappTemplateController.store().url, {
         onSuccess: () => {
             registerOpen.value = false;
-            registerForm.reset();
-            registerForm.kind = 'meta_hsm';
-            registerForm.variable_examples = {};
+            resetRegisterForm();
         },
     });
 }
@@ -246,11 +282,33 @@ watch(bodyVariableCount, (count) => {
 // Reset register form when dialog closes
 watch(registerOpen, (open) => {
     if (!open) {
-        registerForm.reset();
-        registerForm.kind = 'meta_hsm';
-        registerForm.variable_examples = {};
+        resetRegisterForm();
     }
 });
+
+// ─── Live status refresh ───────────────────────────────────────────────────────
+// Meta flips template status (PENDING → APPROVED/REJECTED) asynchronously via
+// review + webhook/sync. Poll only while non-terminal templates exist so the
+// table self-updates without burning requests once everything settles.
+const NON_TERMINAL_STATUSES = ['PENDING', 'IN_APPEAL', 'FLAGGED', 'PENDING_DELETION'];
+
+const hasPendingTemplates = computed(() =>
+    props.templates.data.some((template) => NON_TERMINAL_STATUSES.includes(template.status))
+);
+
+const { start: startPolling, stop: stopPolling } = usePoll(
+    15000,
+    { only: ['templates'] },
+    { autoStart: false },
+);
+
+watch(hasPendingTemplates, (pending) => {
+    if (pending) {
+        startPolling();
+    } else {
+        stopPolling();
+    }
+}, { immediate: true });
 </script>
 
 <template>
@@ -360,10 +418,34 @@ watch(registerOpen, (open) => {
                             <!-- Expanded body row -->
                             <tr v-if="expandedRows.has(template.id)" class="bg-muted/20">
                                 <td :colspan="9" class="px-8 py-3">
+                                    <div v-if="template.header" class="mb-3 text-sm text-foreground">
+                                        <p class="mb-1 text-xs font-semibold uppercase text-muted-foreground">Cabeçalho</p>
+                                        <!-- eslint-disable-next-line vue/no-v-html -->
+                                        <p class="font-medium leading-relaxed" v-html="highlightVariables(template.header)" />
+                                    </div>
                                     <div v-if="template.body" class="text-sm text-foreground">
                                         <p class="mb-1 text-xs font-semibold uppercase text-muted-foreground">Corpo do Template</p>
                                         <!-- eslint-disable-next-line vue/no-v-html -->
                                         <p class="whitespace-pre-wrap leading-relaxed" v-html="highlightVariables(template.body)" />
+                                    </div>
+                                    <div v-if="template.footer" class="mt-3 text-sm text-muted-foreground">
+                                        <p class="mb-1 text-xs font-semibold uppercase text-muted-foreground">Rodapé</p>
+                                        <p class="leading-relaxed">{{ template.footer }}</p>
+                                    </div>
+                                    <div v-if="template.buttons_json?.length" class="mt-3">
+                                        <p class="mb-1 text-xs font-semibold uppercase text-muted-foreground">Botões</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            <span
+                                                v-for="(button, i) in template.buttons_json"
+                                                :key="i"
+                                                class="inline-flex items-center gap-1.5 rounded-md border border-sidebar-border/70 bg-background px-2.5 py-1 text-xs text-foreground dark:border-sidebar-border"
+                                            >
+                                                <span class="font-medium">{{ button.text }}</span>
+                                                <span class="text-muted-foreground">· {{ buttonTypeLabels[button.type] ?? button.type }}</span>
+                                                <span v-if="button.url" class="font-mono text-muted-foreground">{{ button.url }}</span>
+                                                <span v-if="button.phone_number" class="font-mono text-muted-foreground">{{ button.phone_number }}</span>
+                                            </span>
+                                        </div>
                                     </div>
                                     <div class="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                                         <div v-if="template.meta_waba_id">
@@ -504,6 +586,34 @@ watch(registerOpen, (open) => {
                     <p v-if="registerForm.errors.name" class="mt-1 text-xs text-red-500">{{ registerForm.errors.name }}</p>
                 </div>
 
+                <!-- Header (optional, text only) -->
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-foreground">Cabeçalho <span class="text-xs font-normal text-muted-foreground">(opcional)</span></label>
+                    <input
+                        v-model="registerForm.header_text"
+                        type="text"
+                        maxlength="60"
+                        placeholder="Texto curto no topo. Use {{1}} para uma variável."
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <p class="mt-0.5 text-[11px] text-muted-foreground">Apenas texto, no máximo 60 caracteres e até uma variável.</p>
+                    <p v-if="registerForm.errors.header_text" class="mt-1 text-xs text-red-500">{{ registerForm.errors.header_text }}</p>
+                </div>
+
+                <div v-if="headerHasVariable">
+                    <label class="mb-1 block text-sm font-medium text-foreground">
+                        <span v-text="`Exemplo do cabeçalho {{1}}`" />
+                        <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        v-model="registerForm.header_example"
+                        type="text"
+                        placeholder="ex: Cliente Teste"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <p v-if="registerForm.errors.header_example" class="mt-1 text-xs text-red-500">{{ registerForm.errors.header_example }}</p>
+                </div>
+
                 <!-- Body -->
                 <div>
                     <label class="mb-1 block text-sm font-medium text-foreground">Corpo do Template</label>
@@ -534,6 +644,83 @@ watch(registerOpen, (open) => {
                         />
                         <p v-if="registerForm.errors[`variable_examples.${index}`]" class="mt-1 text-xs text-red-500">{{ registerForm.errors[`variable_examples.${index}`] }}</p>
                     </div>
+                </div>
+
+                <!-- Footer (optional) -->
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-foreground">Rodapé <span class="text-xs font-normal text-muted-foreground">(opcional)</span></label>
+                    <input
+                        v-model="registerForm.footer_text"
+                        type="text"
+                        maxlength="60"
+                        placeholder="ex: Responda PARAR para sair."
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <p class="mt-0.5 text-[11px] text-muted-foreground">Texto fixo, sem variáveis, no máximo 60 caracteres.</p>
+                    <p v-if="registerForm.errors.footer_text" class="mt-1 text-xs text-red-500">{{ registerForm.errors.footer_text }}</p>
+                </div>
+
+                <!-- Buttons (optional) -->
+                <div>
+                    <div class="mb-1 flex items-center justify-between">
+                        <label class="block text-sm font-medium text-foreground">Botões <span class="text-xs font-normal text-muted-foreground">(opcional, até 10)</span></label>
+                        <button
+                            type="button"
+                            :disabled="registerForm.buttons.length >= 10"
+                            class="rounded-md border border-input px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                            @click="addButton"
+                        >
+                            + Adicionar botão
+                        </button>
+                    </div>
+                    <div v-if="registerForm.buttons.length" class="flex flex-col gap-3">
+                        <div
+                            v-for="(button, index) in registerForm.buttons"
+                            :key="index"
+                            class="rounded-md border border-sidebar-border/70 bg-muted/30 p-3 dark:border-sidebar-border"
+                        >
+                            <div class="flex items-center gap-2">
+                                <select
+                                    v-model="button.type"
+                                    class="rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                >
+                                    <option v-for="(label, value) in buttonTypeLabels" :key="value" :value="value">{{ label }}</option>
+                                </select>
+                                <input
+                                    v-model="button.text"
+                                    type="text"
+                                    maxlength="25"
+                                    placeholder="Texto do botão"
+                                    class="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                />
+                                <button
+                                    type="button"
+                                    class="rounded px-2 py-1 text-xs text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                                    @click="removeButton(index)"
+                                >
+                                    Remover
+                                </button>
+                            </div>
+                            <input
+                                v-if="button.type === 'URL'"
+                                v-model="button.url"
+                                type="url"
+                                placeholder="https://exemplo.com"
+                                class="mt-2 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                            <input
+                                v-if="button.type === 'PHONE_NUMBER'"
+                                v-model="button.phone_number"
+                                type="text"
+                                placeholder="ex: 5511999999999"
+                                class="mt-2 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                            <p v-if="registerForm.errors[`buttons.${index}.text`]" class="mt-1 text-xs text-red-500">{{ registerForm.errors[`buttons.${index}.text`] }}</p>
+                            <p v-if="registerForm.errors[`buttons.${index}.url`]" class="mt-1 text-xs text-red-500">{{ registerForm.errors[`buttons.${index}.url`] }}</p>
+                            <p v-if="registerForm.errors[`buttons.${index}.phone_number`]" class="mt-1 text-xs text-red-500">{{ registerForm.errors[`buttons.${index}.phone_number`] }}</p>
+                        </div>
+                    </div>
+                    <p v-if="registerForm.errors.buttons" class="mt-1 text-xs text-red-500">{{ registerForm.errors.buttons }}</p>
                 </div>
 
                 <!-- Category / Language -->
