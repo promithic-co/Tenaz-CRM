@@ -12,6 +12,7 @@ use App\Services\AgentContextResolver;
 use App\Services\AgentInteractionEventService;
 use App\Services\DebounceService;
 use App\Services\TemplateStatusUpdateService;
+use App\Services\WhatsApp\Providers\MetaCloudProvider;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -299,13 +300,10 @@ class MetaWebhookController extends Controller
             return false;
         }
 
-        $received = (string) $request->header('X-Hub-Signature-256', '');
-        if (! str_starts_with($received, 'sha256=')) {
-            return false;
-        }
-
-        $expected = 'sha256='.hash_hmac('sha256', $request->getContent(), $secret);
-
-        return hash_equals($expected, $received);
+        return MetaCloudProvider::isValidSignature(
+            $request->getContent(),
+            (string) $request->header('X-Hub-Signature-256', ''),
+            $secret,
+        );
     }
 }

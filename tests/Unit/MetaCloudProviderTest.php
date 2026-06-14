@@ -76,11 +76,14 @@ it('error code 130429 throws MetaRateLimitException', function (): void {
         ->toThrow(MetaRateLimitException::class);
 });
 
-it('error code 131047 throws MetaInvalidNumberException', function (): void {
-    Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['code' => 131047, 'message' => 'Invalid number']], 400)]);
+it('re-engagement code 131047 maps to permanent-skip, not invalid number', function (): void {
+    // Meta 131047 = re-engagement message (24h window expired), NOT an invalid number.
+    Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['code' => 131047, 'message' => 'Re-engagement message']], 400)]);
 
     expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
-        ->toThrow(MetaInvalidNumberException::class);
+        ->toThrow(MetaNoWhatsAppException::class)
+        ->and(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->not->toThrow(MetaInvalidNumberException::class);
 });
 
 it('error code 131026 throws MetaNoWhatsAppException', function (): void {
@@ -89,6 +92,20 @@ it('error code 131026 throws MetaNoWhatsAppException', function (): void {
     expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
         ->toThrow(MetaNoWhatsAppException::class);
 });
+
+it('per-user marketing-limit codes are permanent-skip', function (int $code): void {
+    Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['code' => $code, 'message' => 'Not delivered']], 400)]);
+
+    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->toThrow(MetaNoWhatsAppException::class);
+})->with([131049, 130472]);
+
+it('spam/throttle codes are retriable rate-limit errors', function (int $code): void {
+    Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['code' => $code, 'message' => 'Throttled']], 400)]);
+
+    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->toThrow(MetaRateLimitException::class);
+})->with([131048, 80007]);
 
 it('unknown error code throws base MetaApiException', function (): void {
     Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['code' => 500, 'message' => 'Server error']], 500)]);

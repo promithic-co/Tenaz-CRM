@@ -7,16 +7,14 @@ use App\Events\HumanHandoffCreated;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class HumanHandoffTransferService
 {
-    private const PAUSE_TTL = 36000; // 10 hours
-
     public function __construct(
         private readonly AgentInteractionEventService $events,
+        private readonly PauseService $pause,
     ) {}
 
     /**
@@ -39,7 +37,7 @@ class HumanHandoffTransferService
                 ->lockForUpdate()
                 ->first();
 
-            $priority = $this->inferPriority((string) Arr::get($data, 'reason', ''));
+            $priority = ServiceTicket::inferPriorityFromReason((string) Arr::get($data, 'reason', ''));
 
             $payload = array_filter([
                 'reason' => Arr::get($data, 'reason'),
@@ -60,7 +58,7 @@ class HumanHandoffTransferService
                     'type' => ServiceTicket::TYPE_ESCALATION,
                     'status' => ServiceTicket::STATUS_OPEN,
                     'priority' => $priority,
-                    'sla_due_at' => $this->slaForPriority($priority),
+                    'sla_due_at' => ServiceTicket::slaForPriority($priority),
                 ], $payload));
             }
 
@@ -109,42 +107,16 @@ class HumanHandoffTransferService
 
     private function writeHandoffState(Lead $lead): void
     {
-        Cache::put(
-            "pause:{$lead->tenant_id}:{$lead->whatsapp}",
-            'paused',
-            self::PAUSE_TTL
+        $this->pause->pause(
+            (string) $lead->whatsapp,
+            (string) $lead->tenant_id,
+            stage: Lead::STAGE_HUMAN_PENDING,
+            reason: 'handoff_requested_by_ai',
+            followupStatus: 'paused',
         );
 
-        $updates = [
-            'operational_stage' => Lead::STAGE_HUMAN_PENDING,
-            'ai_paused_until' => now()->addSeconds(self::PAUSE_TTL),
-            'ai_paused_reason' => 'handoff_requested_by_ai',
-            'ai_paused_by' => null,
-            'followup_status' => 'paused',
-        ];
-
         if ($lead->status !== 'escalado' && $lead->canTransitionTo('escalado')) {
-            $updates['status'] = 'escalado';
+            $lead->update(['status' => 'escalado']);
         }
-
-        $lead->update($updates);
-    }
-
-    private function inferPriority(string $reason): string
-    {
-        return match ($reason) {
-            'proposta_aceita', 'solicitacao_cliente', 'problema_tecnico' => ServiceTicket::PRIORITY_HIGH,
-            default => ServiceTicket::PRIORITY_NORMAL,
-        };
-    }
-
-    private function slaForPriority(string $priority): \Carbon\CarbonInterface
-    {
-        return match ($priority) {
-            ServiceTicket::PRIORITY_URGENT => now()->addMinutes(15),
-            ServiceTicket::PRIORITY_HIGH => now()->addHour(),
-            ServiceTicket::PRIORITY_LOW => now()->addDay(),
-            default => now()->addHours(4),
-        };
     }
 }

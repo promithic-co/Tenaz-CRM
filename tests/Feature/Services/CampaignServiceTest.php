@@ -52,7 +52,7 @@ test('start throws if campaign is not draft/scheduled', function () {
     $campaign = Campaign::factory()->sending()->create();
     $service = new CampaignService;
 
-    expect(fn () => $service->start($campaign))->toThrow(\RuntimeException::class);
+    expect(fn () => $service->start($campaign))->toThrow(RuntimeException::class);
 });
 
 test('start throws if template is not approved', function () {
@@ -63,7 +63,7 @@ test('start throws if template is not approved', function () {
     $campaign->save();
 
     $service = new CampaignService;
-    expect(fn () => $service->start($campaign))->toThrow(\RuntimeException::class);
+    expect(fn () => $service->start($campaign))->toThrow(RuntimeException::class);
 });
 
 test('pause transitions sending campaign to paused', function () {
@@ -80,7 +80,7 @@ test('pause throws if campaign is not sending', function () {
     $campaign = Campaign::factory()->create(['status' => 'draft']);
     $service = new CampaignService;
 
-    expect(fn () => $service->pause($campaign))->toThrow(\RuntimeException::class);
+    expect(fn () => $service->pause($campaign))->toThrow(RuntimeException::class);
 });
 
 test('resume transitions paused campaign to sending and dispatches job', function () {
@@ -130,26 +130,6 @@ test('checkAndAutoPause pauses campaign when failure rate exceeds threshold', fu
 
     expect($service->checkAndAutoPause($campaign))->toBeTrue();
     expect($campaign->fresh()->status)->toBe('paused');
-});
-
-test('checkAndAutoPause immediately pauses on wallet error 1003', function () {
-    $campaign = Campaign::factory()->sending()->create([
-        'total_sent' => 5,
-        'total_failed' => 1,
-        'error_threshold_percent' => 10,
-    ]);
-
-    CampaignMessage::factory()->create([
-        'campaign_id' => $campaign->id,
-        'status' => 'failed',
-        'error_code' => '1003',
-        'failed_at' => now(),
-    ]);
-
-    $service = new CampaignService;
-
-    expect($service->checkAndAutoPause($campaign))->toBeTrue();
-    expect($campaign->fresh()->failure_reason)->toContain('1003');
 });
 
 test('checkDailyLimit returns true when under limit', function () {

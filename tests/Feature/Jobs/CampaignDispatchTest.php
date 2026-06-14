@@ -157,11 +157,41 @@ test('SendCampaignMessageJob marks failed on provider exception', function () {
 
     $job = new SendCampaignMessageJob($message);
 
+    // Generic errors rethrow so the queue retries; the message must NOT be finalized
+    // mid-flight (otherwise tries/backoff are dead config).
     expect(fn () => $job->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class)))
         ->toThrow(RuntimeException::class);
 
+    expect($message->fresh()->status)->toBe('queued');
+
+    // Only once retries are exhausted does the framework failed() callback finalize it.
+    $job->failed(new RuntimeException('Provider error'));
+
     expect($message->fresh()->status)->toBe('failed');
-    expect($message->fresh()->error_code)->toBe('EXCEPTION');
+    expect($message->fresh()->error_code)->toBe('JOB_FAILED');
+    expect($campaign->fresh()->total_failed)->toBe(1);
+});
+
+test('DispatchCampaignJob suppresses opted-out entries before enqueueing', function () {
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create();
+
+    ContactListEntry::factory()->count(2)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+    ContactListEntry::factory()->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_out',
+    ]);
+
+    $job = new DispatchCampaignJob($campaign);
+    $job->handle(app(CampaignService::class));
+
+    // Only the 2 opted-in entries are enqueued; the opted-out one is skipped entirely.
+    expect(CampaignMessage::where('campaign_id', $campaign->id)->count())->toBe(2);
+    Queue::assertPushed(SendCampaignMessageJob::class, 2);
 });
 
 test('SendCampaignMessageJob resolves template params from mapping', function () {

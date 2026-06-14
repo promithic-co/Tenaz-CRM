@@ -96,7 +96,7 @@ class DispatchCampaignJob implements ShouldQueue
 
         // Stream entries with chunkById to avoid loading 100k+ IDs into memory at once.
         $campaign->contactList->entries()
-            ->select('id')
+            ->select(['id', 'opt_in_status'])
             ->orderBy('id')
             ->chunkById(500, function ($entries) use ($campaign, $service, $interactionEvents, &$index, &$stopped) {
                 $campaign->refresh();
@@ -117,6 +117,13 @@ class DispatchCampaignJob implements ShouldQueue
 
                 $chunkIds = $entries->pluck('id')->all();
 
+                // Suppress opted-out recipients before enqueueing any send. Consent is
+                // enforced here (pre-dispatch), never after a provider failure, so we
+                // never spend a Meta send on a contact who has opted out.
+                $optedOutSet = array_flip(
+                    $entries->where('opt_in_status', 'opted_out')->pluck('id')->all()
+                );
+
                 // Bulk-query already-processed entries in this chunk only.
                 $existing = CampaignMessage::where('campaign_id', $campaign->id)
                     ->whereIn('contact_list_entry_id', $chunkIds)
@@ -125,7 +132,7 @@ class DispatchCampaignJob implements ShouldQueue
                 $existingSet = array_flip($existing);
 
                 foreach ($chunkIds as $entryId) {
-                    if (isset($existingSet[$entryId])) {
+                    if (isset($existingSet[$entryId]) || isset($optedOutSet[$entryId])) {
                         continue;
                     }
 

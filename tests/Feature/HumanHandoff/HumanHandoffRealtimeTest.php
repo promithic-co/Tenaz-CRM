@@ -14,9 +14,10 @@ use App\Models\User;
 use App\Services\HumanHandoffTransferService;
 use App\Services\ServiceTicketLifecycleService;
 use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function realtimeTenant(): array
 {
@@ -158,6 +159,45 @@ test('resolve dispatches HumanHandoffResolved and AtendimentoCountersUpdated', f
     app(ServiceTicketLifecycleService::class)->resolve($ticket, $user, 'converted');
 
     Event::assertDispatched(HumanHandoffResolved::class, fn ($e) => $e->ticketId === $ticket->id);
+    Event::assertDispatched(AtendimentoCountersUpdated::class);
+});
+
+test('keepManual dispatches HumanHandoffResolved and AtendimentoCountersUpdated', function () {
+    Event::fake([HumanHandoffResolved::class, AtendimentoCountersUpdated::class]);
+    [$tenant, $user, $lead] = realtimeTenant();
+
+    $ticket = ServiceTicket::create([
+        'tenant_id' => (string) $tenant->id,
+        'lead_id' => $lead->id,
+        'type' => ServiceTicket::TYPE_ESCALATION,
+        'status' => ServiceTicket::STATUS_ASSIGNED,
+        'assigned_user_id' => $user->id,
+        'priority' => ServiceTicket::PRIORITY_NORMAL,
+        'sla_due_at' => now()->addHours(4),
+    ]);
+
+    app(ServiceTicketLifecycleService::class)->keepManual($ticket, $user);
+
+    Event::assertDispatched(HumanHandoffResolved::class, fn ($e) => $e->ticketId === $ticket->id);
+    Event::assertDispatched(AtendimentoCountersUpdated::class);
+});
+
+test('markHumanResponse dispatches AtendimentoCountersUpdated', function () {
+    Event::fake([AtendimentoCountersUpdated::class]);
+    [$tenant, $user, $lead] = realtimeTenant();
+
+    $ticket = ServiceTicket::create([
+        'tenant_id' => (string) $tenant->id,
+        'lead_id' => $lead->id,
+        'type' => ServiceTicket::TYPE_ESCALATION,
+        'status' => ServiceTicket::STATUS_ASSIGNED,
+        'assigned_user_id' => $user->id,
+        'priority' => ServiceTicket::PRIORITY_NORMAL,
+        'sla_due_at' => now()->addHours(4),
+    ]);
+
+    app(ServiceTicketLifecycleService::class)->markHumanResponse($lead, $user);
+
     Event::assertDispatched(AtendimentoCountersUpdated::class);
 });
 

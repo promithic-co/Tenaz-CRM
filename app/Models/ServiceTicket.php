@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -133,6 +134,47 @@ class ServiceTicket extends Model
         }
 
         return self::STATUS_ALIASES[$status] ?? $status;
+    }
+
+    /**
+     * Map an escalation reason to a ticket priority. Single source for the
+     * handoff transfer + ticket lifecycle services.
+     */
+    public static function inferPriorityFromReason(string $reason): string
+    {
+        return match ($reason) {
+            'proposta_aceita', 'solicitacao_cliente', 'problema_tecnico' => self::PRIORITY_HIGH,
+            default => self::PRIORITY_NORMAL,
+        };
+    }
+
+    public static function slaForPriority(string $priority): CarbonInterface
+    {
+        return match ($priority) {
+            self::PRIORITY_URGENT => now()->addMinutes(15),
+            self::PRIORITY_HIGH => now()->addHour(),
+            self::PRIORITY_LOW => now()->addDay(),
+            default => now()->addHours(4),
+        };
+    }
+
+    /**
+     * Create a new assigned escalation ticket. Shared by the claim-by-lead and
+     * conversation-transfer paths, which both open an escalation already assigned
+     * to a human when none is active.
+     */
+    public static function createAssignedEscalation(Lead $lead, int $assignedUserId): self
+    {
+        return self::create([
+            'tenant_id' => (string) $lead->tenant_id,
+            'lead_id' => $lead->id,
+            'type' => self::TYPE_ESCALATION,
+            'status' => self::STATUS_ASSIGNED,
+            'priority' => self::PRIORITY_NORMAL,
+            'assigned_user_id' => $assignedUserId,
+            'claimed_at' => now(),
+            'sla_due_at' => self::slaForPriority(self::PRIORITY_NORMAL),
+        ]);
     }
 
     public function setStatusAttribute(?string $value): void
