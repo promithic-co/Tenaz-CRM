@@ -54,67 +54,36 @@ class WhatsappTemplateController extends Controller
     public function store(StoreWhatsappTemplateRequest $request): RedirectResponse
     {
         $tenantId = (string) auth()->user()->tenantId;
-        $kind = TemplateKind::from((string) $request->validated('kind'));
-        $body = (string) ($request->validated('body') ?? '');
 
-        if ($kind === TemplateKind::MetaHsm) {
-            $instance = WhatsappInstance::where('tenant_id', $tenantId)
-                ->whereKey($request->validated('whatsapp_instance_id'))
-                ->firstOrFail();
+        $instance = WhatsappInstance::where('tenant_id', $tenantId)
+            ->whereKey($request->validated('whatsapp_instance_id'))
+            ->firstOrFail();
 
-            if (! filled($instance->meta_waba_id) || ! filled($instance->meta_access_token)) {
-                return back()->withErrors([
-                    'whatsapp_instance_id' => 'A instancia Meta selecionada nao possui WABA ID ou token configurado.',
-                ])->withInput();
-            }
-
-            $metaName = (string) $request->validated('meta_template_name');
-            $category = strtoupper((string) $request->validated('category'));
-            $language = (string) $request->validated('language');
-            $variableExamples = array_filter(
-                (array) ($request->validated('variable_examples') ?? []),
-                fn (mixed $value): bool => filled($value)
-            );
-            ksort($variableExamples, SORT_NUMERIC);
-
-            try {
-                $created = $this->metaTemplateService->createBodyTemplate(
-                    $instance,
-                    $metaName,
-                    $category,
-                    $language,
-                    $body,
-                    $variableExamples,
-                );
-            } catch (RequestException $exception) {
-                $message = $exception->response?->json('error.message')
-                    ?? 'A Meta recusou a criacao do template. Verifique os dados e tente novamente.';
-
-                return back()->withErrors(['meta_template' => $message])->withInput();
-            }
-
-            $metaResponse = is_array($created['response']) ? $created['response'] : [];
-
-            WhatsappTemplate::create([
-                'tenant_id' => $tenantId,
-                'kind' => $kind->value,
-                'whatsapp_instance_id' => $instance->id,
-                'name' => $request->validated('name'),
-                'meta_template_id' => $metaResponse['id'] ?? null,
-                'meta_template_name' => $metaName,
-                'meta_waba_id' => $instance->meta_waba_id,
-                'status' => strtoupper((string) ($metaResponse['status'] ?? 'PENDING')),
-                'category' => $category,
-                'language' => $language,
-                'body' => $body,
-                'components_json' => $created['components'],
-                'variables_count' => WhatsappTemplate::countVariablesIn($body),
-            ]);
-
-            return back()->with('success', 'Template enviado para analise da Meta.');
+        if (! filled($instance->meta_waba_id) || ! filled($instance->meta_access_token)) {
+            return back()->withErrors([
+                'whatsapp_instance_id' => 'A instancia Meta selecionada nao possui WABA ID ou token configurado.',
+            ])->withInput();
         }
 
-        return back()->withErrors(['kind' => 'Tipo de template inválido.'])->withInput();
+        try {
+            $this->metaTemplateService->createAndStoreBodyTemplate(
+                instance: $instance,
+                tenantId: $tenantId,
+                internalName: (string) $request->validated('name'),
+                metaName: (string) $request->validated('meta_template_name'),
+                category: strtoupper((string) $request->validated('category')),
+                language: (string) $request->validated('language'),
+                body: (string) ($request->validated('body') ?? ''),
+                variableExamples: (array) ($request->validated('variable_examples') ?? []),
+            );
+        } catch (RequestException $exception) {
+            $message = $exception->response?->json('error.message')
+                ?? 'A Meta recusou a criacao do template. Verifique os dados e tente novamente.';
+
+            return back()->withErrors(['meta_template' => $message])->withInput();
+        }
+
+        return back()->with('success', 'Template enviado para analise da Meta.');
     }
 
     public function update(UpdateWhatsappTemplateRequest $request, WhatsappTemplate $template): RedirectResponse
