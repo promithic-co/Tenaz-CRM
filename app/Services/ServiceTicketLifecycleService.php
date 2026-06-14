@@ -10,7 +10,6 @@ use App\Models\Lead;
 use App\Models\ServiceTicket;
 use App\Models\User;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -40,7 +39,7 @@ class ServiceTicketLifecycleService
                 'type' => $type,
                 'status' => ServiceTicket::STATUS_OPEN,
                 'priority' => $priority,
-                'sla_due_at' => Arr::get($data, 'sla_due_at') ?? $this->slaForPriority($priority),
+                'sla_due_at' => Arr::get($data, 'sla_due_at') ?? ServiceTicket::slaForPriority($priority),
                 'reason' => Arr::get($data, 'reason'),
                 'summary' => Arr::get($data, 'summary'),
                 'credit_available' => Arr::get($data, 'credit_available'),
@@ -150,16 +149,7 @@ class ServiceTicketLifecycleService
 
             if ($ticket === null) {
                 // No escalation ticket exists — create one for this claim.
-                $ticket = ServiceTicket::create([
-                    'tenant_id' => (string) $lockedLead->tenant_id,
-                    'lead_id' => $lockedLead->id,
-                    'type' => ServiceTicket::TYPE_ESCALATION,
-                    'status' => ServiceTicket::STATUS_ASSIGNED,
-                    'priority' => ServiceTicket::PRIORITY_NORMAL,
-                    'assigned_user_id' => $user->id,
-                    'claimed_at' => now(),
-                    'sla_due_at' => $this->slaForPriority(ServiceTicket::PRIORITY_NORMAL),
-                ]);
+                $ticket = ServiceTicket::createAssignedEscalation($lockedLead, $user->id);
             } else {
                 if ($ticket->assigned_user_id !== null && (int) $ticket->assigned_user_id !== (int) $user->id) {
                     throw ValidationException::withMessages([
@@ -194,16 +184,9 @@ class ServiceTicketLifecycleService
         return $result;
     }
 
-    public function claimLead(Lead $lead, User $user): Lead
-    {
-        $ticket = $this->claimByLead($lead, $user);
-
-        return $ticket->lead ?? $lead->fresh(['assignedUser']);
-    }
-
     public function markHumanResponse(Lead $lead, ?User $user = null): ?ServiceTicket
     {
-        return DB::transaction(function () use ($lead, $user): ?ServiceTicket {
+        $result = DB::transaction(function () use ($lead, $user): ?ServiceTicket {
             $ticket = ServiceTicket::query()
                 ->where('lead_id', $lead->id)
                 ->active()
@@ -238,6 +221,15 @@ class ServiceTicketLifecycleService
 
             return $ticket->fresh(['lead', 'assignedUser']);
         });
+
+        if ($result !== null) {
+            try {
+                event(new AtendimentoCountersUpdated((string) $result->tenant_id, $user?->id));
+            } catch (\Throwable) {
+            }
+        }
+
+        return $result;
     }
 
     public function resolve(ServiceTicket $ticket, User $user, ?string $reason = null, ?string $notes = null): ServiceTicket
@@ -339,7 +331,10 @@ class ServiceTicketLifecycleService
      */
     public function keepManual(ServiceTicket $ticket, User $user): ServiceTicket
     {
-        return DB::transaction(function () use ($ticket, $user): ServiceTicket {
+        $tenantId = (string) $ticket->tenant_id;
+        $leadId = $ticket->lead_id;
+
+        $result = DB::transaction(function () use ($ticket, $user): ServiceTicket {
             $ticket->fill([
                 'assigned_user_id' => $ticket->assigned_user_id ?? $user->id,
                 'status' => ServiceTicket::STATUS_CLOSED,
@@ -350,19 +345,33 @@ class ServiceTicketLifecycleService
             // Keep AI paused — do not resume. Lead stays assigned.
             return $ticket->fresh(['lead', 'assignedUser']);
         });
+
+        // Ticket left the active queue — refresh the atendimentos board.
+        try {
+            event(new HumanHandoffResolved(
+                tenantId: $tenantId,
+                ticketId: $result->id,
+                leadId: $leadId,
+                resolutionReason: ServiceTicket::RESOLUTION_MANUAL_KEEP,
+            ));
+            event(new AtendimentoCountersUpdated($tenantId, $user->id));
+        } catch (\Throwable) {
+        }
+
+        return $result;
     }
 
     private function pauseForClaim(Lead $lead, User $user): void
     {
-        $ttl = 36000;
-        Cache::put("pause:{$lead->tenant_id}:{$lead->whatsapp}", 'paused', $ttl);
-        $lead->update([
-            'assigned_user_id' => $user->id,
-            'operational_stage' => Lead::STAGE_HUMAN_ACTIVE,
-            'ai_paused_until' => now()->addSeconds($ttl),
-            'ai_paused_reason' => 'ticket_claimed',
-            'ai_paused_by' => $user->id,
-        ]);
+        $this->pause->pause(
+            (string) $lead->whatsapp,
+            (string) $lead->tenant_id,
+            stage: Lead::STAGE_HUMAN_ACTIVE,
+            reason: 'ticket_claimed',
+            pausedBy: $user->id,
+        );
+
+        $lead->update(['assigned_user_id' => $user->id]);
     }
 
     private function syncLeadConclusion(ServiceTicket $ticket, ?string $reason): void
@@ -394,16 +403,11 @@ class ServiceTicketLifecycleService
      */
     private function inferPriority(string $type, array $data): string
     {
-        $reason = (string) Arr::get($data, 'reason', '');
-
         if ($type === 'no_credit') {
             return ServiceTicket::PRIORITY_LOW;
         }
 
-        return match ($reason) {
-            'proposta_aceita', 'solicitacao_cliente', 'problema_tecnico' => ServiceTicket::PRIORITY_HIGH,
-            default => ServiceTicket::PRIORITY_NORMAL,
-        };
+        return ServiceTicket::inferPriorityFromReason((string) Arr::get($data, 'reason', ''));
     }
 
     private function normalizePriority(string $priority): string
@@ -414,15 +418,5 @@ class ServiceTicketLifecycleService
             ServiceTicket::PRIORITY_HIGH,
             ServiceTicket::PRIORITY_URGENT,
         ], true) ? $priority : ServiceTicket::PRIORITY_NORMAL;
-    }
-
-    private function slaForPriority(string $priority): \Carbon\CarbonInterface
-    {
-        return match ($priority) {
-            ServiceTicket::PRIORITY_URGENT => now()->addMinutes(15),
-            ServiceTicket::PRIORITY_HIGH => now()->addHour(),
-            ServiceTicket::PRIORITY_LOW => now()->addDay(),
-            default => now()->addHours(4),
-        };
     }
 }

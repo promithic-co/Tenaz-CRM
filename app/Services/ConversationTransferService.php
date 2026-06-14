@@ -7,12 +7,13 @@ use App\Events\ConversationAssignmentChanged;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ConversationTransferService
 {
+    public function __construct(private readonly PauseService $pause) {}
+
     /**
      * Transfer a conversation to a specific user (target_type=user).
      *
@@ -41,16 +42,7 @@ class ConversationTransferService
                 ->first();
 
             if ($ticket === null) {
-                $ticket = ServiceTicket::create([
-                    'tenant_id' => (string) $lockedLead->tenant_id,
-                    'lead_id' => $lockedLead->id,
-                    'type' => ServiceTicket::TYPE_ESCALATION,
-                    'status' => ServiceTicket::STATUS_ASSIGNED,
-                    'priority' => ServiceTicket::PRIORITY_NORMAL,
-                    'assigned_user_id' => $targetUser->id,
-                    'claimed_at' => now(),
-                    'sla_due_at' => now()->addHours(4),
-                ]);
+                $ticket = ServiceTicket::createAssignedEscalation($lockedLead, $targetUser->id);
             } else {
                 $ticket->fill([
                     'assigned_user_id' => $targetUser->id,
@@ -59,17 +51,16 @@ class ConversationTransferService
                 ])->save();
             }
 
-            $ttl = 36000;
-            Cache::put("pause:{$lockedLead->tenant_id}:{$lockedLead->whatsapp}", 'paused', $ttl);
+            $this->pause->pause(
+                (string) $lockedLead->whatsapp,
+                (string) $lockedLead->tenant_id,
+                stage: Lead::STAGE_HUMAN_ACTIVE,
+                reason: 'conversation_transferred_to_user',
+                pausedBy: $actor->id,
+                followupStatus: 'paused',
+            );
 
-            $lockedLead->update([
-                'assigned_user_id' => $targetUser->id,
-                'operational_stage' => Lead::STAGE_HUMAN_ACTIVE,
-                'ai_paused_until' => now()->addSeconds($ttl),
-                'ai_paused_reason' => 'conversation_transferred_to_user',
-                'ai_paused_by' => $actor->id,
-                'followup_status' => 'paused',
-            ]);
+            $lockedLead->update(['assigned_user_id' => $targetUser->id]);
 
             return $ticket->fresh(['lead', 'assignedUser']);
         });

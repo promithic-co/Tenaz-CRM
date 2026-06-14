@@ -7,10 +7,11 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappOutboxMessage;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 /**
  * CHARACTERIZATION TEST for ConversasController (Plan B.0).
@@ -146,6 +147,7 @@ test('characterization: show prop tree exposes activeConversation shape', functi
                     ->where('id', $lead->id)
                     ->where('nome', 'Ativo Lead')
                     ->where('status', 'qualificado')
+                    ->has('contact_id')
                     ->has('agent_id')
                     ->has('whatsapp')
                     ->has('cpf')
@@ -243,6 +245,40 @@ test('characterization: restricted user sees own-agent + assigned + unassigned-a
         ->toContain($assignedLead->id)
         ->toContain($unassignedLead->id)
         ->not->toContain($otherAgentLead->id);
+});
+
+test('restricted user selecting an instance filter still cannot see other agents leads', function () {
+    [$tenant, $owner, $restricted] = characterizationTenant();
+
+    $instance = WhatsappInstance::factory()->create([
+        'user_id' => $owner->id,
+        'tenant_id' => (string) $tenant->id,
+        'name' => 'inst-shared',
+    ]);
+
+    // Restricted user's own-agent lead on the instance — visible.
+    $ownAgent = Agent::factory()->create(['user_id' => $restricted->id, 'tenant_id' => $tenant->id]);
+    $ownLead = Lead::factory()->forAgent($ownAgent)->create([
+        'nome' => 'Visivel Own',
+        'whatsapp_instance_id' => $instance->id,
+    ]);
+
+    // Another agent's lead on the SAME instance — must stay hidden even with the filter.
+    $ownerAgent = Agent::factory()->create(['user_id' => $owner->id, 'tenant_id' => $tenant->id]);
+    $otherLead = Lead::factory()->forAgent($ownerAgent)->create([
+        'nome' => 'Oculto Other',
+        'assigned_user_id' => null,
+        'whatsapp_instance_id' => $instance->id,
+    ]);
+
+    $response = $this->actingAs($restricted)
+        ->get(route('conversas.index', ['instance' => 'inst-shared']))
+        ->assertOk();
+
+    $ids = collect($response->viewData('page')['props']['leads']['data'])->pluck('id')->all();
+
+    expect($ids)->toContain($ownLead->id)
+        ->not->toContain($otherLead->id);
 });
 
 test('characterization: restricted user cannot see cross-tenant leads', function () {

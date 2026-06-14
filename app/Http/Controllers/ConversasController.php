@@ -9,8 +9,10 @@ use App\Http\Requests\InboxFilterRequest;
 use App\Http\Requests\SendConversationMessageRequest;
 use App\Http\Resources\AgentInteractionEventResource;
 use App\Http\Resources\ConversationResource;
+use App\Models\AgentInteractionEvent;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
+use App\Models\StatusMachine;
 use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Services\AgentInteractionEventService;
@@ -26,6 +28,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -60,11 +64,11 @@ class ConversasController extends Controller
                 ->value('id');
 
             $query->where('whatsapp_instance_id', $instanceId ?? 0);
-        } else {
-            $query->visibleTo(auth()->user());
         }
 
-        return $query->inboxFiltered($filters);
+        // Always scope to what the actor may see — a restricted user must not bypass
+        // visibility by selecting an instance filter.
+        return $query->visibleTo(auth()->user())->inboxFiltered($filters);
     }
 
     /**
@@ -164,7 +168,7 @@ class ConversasController extends Controller
             'tags' => fn ($q) => $q->withPivot('source', 'ai_confidence', 'ai_evidence', 'ai_evaluated_at'),
         ]);
 
-        $availableTransitions = \App\Models\StatusMachine::forTenant((string) $lead->tenant_id)
+        $availableTransitions = StatusMachine::forTenant((string) $lead->tenant_id)
             ->getAvailableTransitions((string) $lead->status);
         $effectiveAiMode = app(ConversationAutomationService::class)
             ->resolveModesByInstanceId(collect([$lead]))[$lead->id];
@@ -178,7 +182,7 @@ class ConversasController extends Controller
             ->get(['attempt', 'message_text', 'tone', 'sent_at']);
 
         $recentEvents = AgentInteractionEventResource::collection(
-            \App\Models\AgentInteractionEvent::query()
+            AgentInteractionEvent::query()
                 ->where('lead_id', $lead->id)
                 ->whereIn('event_type', [
                     'ai_paused_manual',
@@ -300,7 +304,7 @@ class ConversasController extends Controller
 
         try {
             $lifecycle->claimByLead($lead, $user);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->with('flash', $e->getMessage());
         }
 
@@ -362,7 +366,12 @@ class ConversasController extends Controller
                     payload: ['actor_id' => $actor->id, 'target_user_id' => $targetUser->id],
                 );
                 $applied++;
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                Log::warning('Bulk transfer skipped a lead', [
+                    'lead_id' => $lead->id,
+                    'target_user_id' => $targetUser->id,
+                    'error' => $e->getMessage(),
+                ]);
                 $ignored++;
             }
         }
