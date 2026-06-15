@@ -11,17 +11,17 @@ defineProps<{
 
 <template>
     <AuthLayout
-        title="Verify email"
-        description="Email verification is disabled. You can access your account."
+        title="Verificar e-mail"
+        description="A verificação de e-mail está desativada. Você já pode acessar sua conta."
     >
-        <Head title="Email verification" />
+        <Head title="Verificação de e-mail" />
 
         <div class="space-y-6 text-center">
             <TextLink :href="dashboard()" class="inline-block">
-                Go to dashboard
+                Ir para o painel
             </TextLink>
             <TextLink :href="logout()" as="button" class="mx-auto block text-sm">
-                Log out
+                Sair
             </TextLink>
         </div>
     </AuthLayout>

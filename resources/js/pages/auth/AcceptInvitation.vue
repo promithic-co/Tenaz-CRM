@@ -106,7 +106,7 @@ function submit(event: Event) {
 
             <Button
                 type="submit"
-                class="w-full"
+                class="w-full border border-ink bg-ink text-white shadow-[4px_4px_0_var(--color-gold)] transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-ink hover:shadow-[6px_6px_0_var(--color-gold)]"
             >
                 Aceitar convite
             </Button>
