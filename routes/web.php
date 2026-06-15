@@ -35,7 +35,6 @@ use App\Http\Controllers\WhatsAppInstanceController;
 use App\Http\Controllers\WhatsappTemplateController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Laravel\Fortify\Features;
 
 Route::get('/__version', function (Request $request) {
     $token = config('credflow.version_endpoint_token');
@@ -84,9 +83,9 @@ Route::get('/__version', function (Request $request) {
     ]);
 })->name('meta.version');
 
-Route::inertia('/', 'Welcome', [
-    'canRegister' => Features::enabled(Features::registration()),
-])->name('home');
+Route::get('/', function () {
+    return redirect()->route(auth()->check() ? 'dashboard' : 'login');
+})->name('home');
 
 Route::get('/invite/{token}', [InvitationController::class, 'show'])->name('invitations.show');
 Route::post('/invite/{token}', [InvitationController::class, 'accept'])

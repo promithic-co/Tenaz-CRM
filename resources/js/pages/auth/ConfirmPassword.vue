@@ -11,10 +11,10 @@ import { store } from '@/routes/password/confirm';
 
 <template>
     <AuthLayout
-        title="Confirm your password"
-        description="This is a secure area of the application. Please confirm your password before continuing."
+        title="Confirme sua senha"
+        description="Esta é uma área protegida. Confirme sua senha para continuar."
     >
-        <Head title="Confirm password" />
+        <Head title="Confirmar senha" />
 
         <Form
             v-bind="store.form()"
@@ -23,7 +23,7 @@ import { store } from '@/routes/password/confirm';
         >
             <div class="space-y-6">
                 <div class="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">Senha</Label>
                     <Input
                         id="password"
                         type="password"
@@ -39,12 +39,12 @@ import { store } from '@/routes/password/confirm';
 
                 <div class="flex items-center">
                     <Button
-                        class="w-full"
+                        class="w-full border border-ink bg-ink text-white shadow-[4px_4px_0_var(--color-gold)] transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-ink hover:shadow-[6px_6px_0_var(--color-gold)]"
                         :disabled="processing"
                         data-test="confirm-password-button"
                     >
                         <Spinner v-if="processing" />
-                        Confirm password
+                        Confirmar senha
                     </Button>
                 </div>
             </div>

@@ -7,20 +7,20 @@ import { login } from '@/routes';
 
 <template>
     <AuthBase
-        title="Registration closed"
-        description="New accounts are created by administrators. Contact your administrator for access."
+        title="Cadastro restrito"
+        description="Novas contas são criadas pelos administradores. Fale com o administrador da sua conta para obter acesso."
     >
-        <Head title="Register" />
+        <Head title="Criar conta" />
 
         <div class="space-y-6 text-center">
             <p class="text-sm text-muted-foreground">
-                Already have an account?
+                Já tem uma conta?
             </p>
             <TextLink
                 :href="login()"
                 class="underline underline-offset-4"
             >
-                Log in
+                Entrar
             </TextLink>
         </div>
     </AuthBase>

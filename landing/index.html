@@ -3,27 +3,36 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>CredFlow IA - CRM com IA para operações de crédito</title>
+        <title>Tenaz CRM - CRM com IA para equipes de vendas</title>
         <meta
             name="description"
-            content="CredFlow IA e um CRM vertical para crédito com WhatsApp Business API oficial, agentes de IA, follow-up automatico e pipeline comercial para correspondentes bancarios."
+            content="Tenaz CRM centraliza atendimento, pipeline, follow-up e agentes de IA para equipes comerciais venderem com mais velocidade, método e acompanhamento."
         />
         <meta name="robots" content="index, follow" />
         <meta
             property="og:title"
-            content="CredFlow IA - CRM com IA para operações de crédito"
+            content="Tenaz CRM - CRM com IA para equipes de vendas"
         />
         <meta
             property="og:description"
-            content="WhatsApp oficial, agentes de IA especialistas e CRM para organizar leads de crédito do primeiro contato ao fechamento."
+            content="Atendimento, pipeline, WhatsApp Business oficial e IA no mesmo fluxo comercial."
         />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://tenazcrm.com.br" />
-        <meta name="theme-color" content="#f4f0e8" />
+        <meta
+            property="og:image"
+            content="https://tenazcrm.com.br/assets/brand/tenaz-wordmark-horizontal-black-2048w.png"
+        />
+        <meta name="theme-color" content="#f6f4ef" />
+        <link
+            rel="icon"
+            type="image/png"
+            href="/assets/brand/tenaz-favicon-32.png"
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
-            href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+            href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap"
             rel="stylesheet"
         />
         <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -37,25 +46,24 @@
             }
 
             :root {
-                --paper: #f5f3ee;
-                --paper-strong: #fffdf7;
-                --ink: #101a15;
-                --ink-soft: #4f5c55;
-                --muted: #747a73;
-                --line: #ddd8ce;
-                --line-strong: #b9b1a4;
-                --field: #ece8df;
-                --green: #115a43;
-                --green-deep: #083829;
-                --lime: #c8f169;
-                --amber: #d88923;
-                --rose: #af4b44;
-                --white: #fffdf8;
-                --shadow: 0 24px 70px rgba(8, 56, 41, 0.14);
-                --font-display:
-                    'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-                --font-body:
-                    'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+                --paper: #f6f4ef;
+                --paper-warm: #ece7dc;
+                --surface: #fffdfa;
+                --surface-muted: #f1eee7;
+                --ink: #111111;
+                --ink-soft: #4f4b45;
+                --muted: #746f66;
+                --line: #d8d1c5;
+                --line-strong: #1c1c1c;
+                --green: #214b36;
+                --green-soft: #dcebdd;
+                --gold: #c7a34d;
+                --blue: #1f4f76;
+                --red: #b75d46;
+                --white: #ffffff;
+                --shadow: 0 24px 60px rgba(17, 17, 17, 0.12);
+                --font-body: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+                --font-display: 'Instrument Serif', Georgia, serif;
                 --max-w: 1180px;
                 --radius: 8px;
             }
@@ -66,24 +74,7 @@
 
             body {
                 min-width: 320px;
-                background:
-                    radial-gradient(
-                        circle at 26% 12%,
-                        rgba(200, 241, 105, 0.18),
-                        transparent 28%
-                    ),
-                    linear-gradient(
-                        90deg,
-                        rgba(8, 56, 41, 0.055) 1px,
-                        transparent 1px
-                    ),
-                    linear-gradient(
-                        0deg,
-                        rgba(8, 56, 41, 0.04) 1px,
-                        transparent 1px
-                    ),
-                    var(--paper);
-                background-size: 42px 42px;
+                background: var(--paper);
                 color: var(--ink);
                 font-family: var(--font-body);
                 line-height: 1.5;
@@ -94,36 +85,39 @@
                 content: '';
                 position: fixed;
                 inset: 0;
-                pointer-events: none;
-                z-index: 100;
-                opacity: 0.34;
-                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.18'/%3E%3C/svg%3E");
-                mix-blend-mode: multiply;
+                z-index: -1;
+                background:
+                    linear-gradient(rgba(17, 17, 17, 0.035) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(17, 17, 17, 0.035) 1px, transparent 1px);
+                background-size: 44px 44px;
+                mask-image: linear-gradient(to bottom, black 0%, transparent 72%);
             }
 
             a {
                 color: inherit;
                 text-decoration: none;
             }
+
             button,
             input,
+            select,
             textarea {
                 font: inherit;
             }
 
             .skip-link {
                 position: absolute;
-                top: -100%;
                 left: 16px;
-                z-index: 200;
+                top: -120px;
+                z-index: 100;
                 border: 1px solid var(--ink);
-                background: var(--lime);
-                color: var(--ink);
-                padding: 9px 14px;
                 border-radius: 6px;
-                font-size: 14px;
-                font-weight: 800;
+                background: var(--gold);
+                color: var(--ink);
+                padding: 10px 14px;
+                font-weight: 700;
             }
+
             .skip-link:focus {
                 top: 16px;
             }
@@ -137,51 +131,39 @@
                 position: sticky;
                 top: 0;
                 z-index: 50;
-                border-bottom: 1px solid rgba(22, 32, 25, 0.16);
-                background: rgba(244, 240, 232, 0.88);
+                border-bottom: 1px solid rgba(17, 17, 17, 0.12);
+                background: rgba(246, 244, 239, 0.9);
                 backdrop-filter: blur(18px);
                 -webkit-backdrop-filter: blur(18px);
             }
 
             .nav-inner {
-                min-height: 70px;
+                min-height: 72px;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                gap: 20px;
+                gap: 24px;
             }
 
             .brand {
                 display: inline-flex;
                 align-items: center;
-                gap: 10px;
-                font-weight: 800;
-                letter-spacing: 0;
-                color: var(--ink);
+                gap: 12px;
             }
 
-            .brand-mark {
-                width: 34px;
-                height: 34px;
-                display: grid;
-                place-items: center;
-                border: 1px solid var(--ink);
-                border-radius: 50%;
-                background: var(--lime);
-                color: var(--ink);
-                font-family: var(--font-display);
-                font-size: 18px;
-                font-weight: 800;
-                line-height: 1;
+            .brand img {
+                width: 168px;
+                height: auto;
+                display: block;
             }
 
             .nav-links {
                 display: none;
                 align-items: center;
-                gap: 22px;
+                gap: 24px;
                 color: var(--ink-soft);
                 font-size: 13px;
-                font-weight: 800;
+                font-weight: 700;
                 text-transform: uppercase;
             }
 
@@ -189,79 +171,69 @@
                 color: var(--ink);
             }
 
-            .nav-cta,
-            .btn-primary,
-            .btn-secondary,
-            .btn-submit {
+            .nav-actions {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .btn {
                 min-height: 44px;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
                 gap: 9px;
-                border-radius: 8px;
-                font-weight: 800;
+                border-radius: var(--radius);
+                padding: 0 18px;
+                font-weight: 700;
                 line-height: 1;
                 transition:
                     transform 160ms ease,
                     box-shadow 160ms ease,
                     background 160ms ease,
-                    color 160ms ease;
+                    color 160ms ease,
+                    border-color 160ms ease;
                 cursor: pointer;
             }
 
-            .nav-cta,
-            .btn-primary,
-            .btn-submit {
-                border: 1px solid var(--green-deep);
-                background: var(--green-deep);
-                color: var(--white);
-                box-shadow:
-                    4px 4px 0 var(--lime),
-                    0 12px 24px rgba(8, 56, 41, 0.16);
-            }
-
-            .nav-cta {
-                padding: 0 16px;
-                font-size: 13px;
-            }
             .btn-primary {
-                padding: 0 20px;
+                border: 1px solid var(--ink);
+                background: var(--ink);
+                color: var(--white);
+                box-shadow: 4px 4px 0 var(--gold);
             }
 
-            .btn-primary:hover,
-            .btn-submit:hover,
-            .nav-cta:hover {
-                transform: translaté(-2px, -2px);
-                box-shadow: 6px 6px 0 var(--lime);
-                background: var(--green);
+            .btn-primary:hover {
+                transform: translate(-2px, -2px);
+                box-shadow: 6px 6px 0 var(--gold);
             }
 
             .btn-secondary {
-                border: 1px solid var(--line-strong);
-                background: rgba(255, 253, 248, 0.74);
+                border: 1px solid var(--line);
+                background: rgba(255, 255, 255, 0.76);
                 color: var(--ink);
-                padding: 0 18px;
-                box-shadow: 0 12px 26px rgba(8, 56, 41, 0.08);
             }
 
             .btn-secondary:hover {
                 border-color: var(--ink);
                 background: var(--white);
-                transform: translaté(-1px, -1px);
+            }
+
+            .nav-login {
+                display: none;
             }
 
             .hero {
-                min-height: calc(100vh - 70px);
-                padding: 74px 0 36px;
+                min-height: calc(100vh - 72px);
                 display: flex;
                 align-items: center;
-                overflow: hidden;
+                padding: 78px 0 54px;
             }
 
             .hero-grid {
                 display: grid;
                 grid-template-columns: minmax(0, 1fr);
-                gap: 42px;
+                gap: 46px;
                 align-items: center;
             }
 
@@ -270,641 +242,501 @@
                 align-items: center;
                 gap: 8px;
                 width: fit-content;
-                border: 1px solid var(--line-strong);
-                background: rgba(255, 253, 248, 0.76);
-                padding: 10px 15px;
+                border: 1px solid var(--line);
                 border-radius: 999px;
-                color: var(--green-deep);
+                background: rgba(255, 255, 255, 0.72);
+                padding: 9px 14px;
+                color: var(--green);
                 font-size: 13px;
-                font-weight: 800;
-                text-transform: uppercase;
-                box-shadow: 0 14px 30px rgba(8, 56, 41, 0.08);
+                font-weight: 700;
             }
 
             h1 {
-                max-width: 760px;
+                max-width: 820px;
                 margin-top: 24px;
-                color: var(--ink);
                 font-family: var(--font-display);
-                font-size: clamp(58px, 9vw, 112px);
-                font-weight: 800;
+                font-size: clamp(56px, 8vw, 112px);
+                font-weight: 400;
                 letter-spacing: 0;
                 line-height: 0.92;
             }
 
             .hero-sub {
-                max-width: 640px;
+                max-width: 710px;
                 margin-top: 26px;
                 color: var(--ink-soft);
-                font-size: clamp(18px, 2.1vw, 22px);
-                line-height: 1.62;
+                font-size: clamp(18px, 2vw, 22px);
+                line-height: 1.65;
             }
 
             .hero-actions {
                 display: flex;
                 flex-wrap: wrap;
-                gap: 14px;
-                margin-top: 34px;
+                gap: 12px;
+                margin-top: 32px;
             }
 
             .hero-note {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 10px;
+                max-width: 720px;
                 margin-top: 18px;
                 color: var(--muted);
-                font-size: 13px;
-                font-weight: 700;
+                font-size: 14px;
+                font-weight: 500;
             }
 
-            .hero-note span {
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-            }
-
-            .conversion-points {
+            .value-list {
                 display: grid;
                 grid-template-columns: 1fr;
                 gap: 10px;
-                max-width: 650px;
-                margin-top: 24px;
+                max-width: 720px;
+                margin-top: 28px;
             }
 
-            .conversion-point {
+            .value-item {
                 display: grid;
                 grid-template-columns: auto 1fr;
                 gap: 10px;
                 align-items: start;
-                border: 1px solid rgba(22, 32, 25, 0.18);
-                border-radius: 7px;
-                background: rgba(255, 253, 248, 0.7);
+                border: 1px solid rgba(17, 17, 17, 0.12);
+                border-radius: var(--radius);
+                background: rgba(255, 255, 255, 0.62);
                 padding: 12px;
                 color: var(--ink-soft);
-                font-size: 13px;
-                font-weight: 700;
+                font-size: 14px;
+                font-weight: 600;
             }
 
-            .conversion-point i {
-                color: var(--green-deep);
+            .value-item i {
+                color: var(--green);
                 margin-top: 1px;
             }
 
-            .conversion-point strong {
-                display: block;
-                color: var(--ink);
-                font-size: 13px;
-                line-height: 1.25;
-            }
-
-            .conversion-point span {
-                display: block;
-                margin-top: 3px;
-            }
-
-            .product-scene {
+            .product-panel {
                 position: relative;
-                min-height: 560px;
-            }
-
-            .pipeline-card,
-            .chat-card,
-            .metric-ticket {
                 border: 1px solid var(--ink);
                 border-radius: var(--radius);
-                background: var(--white);
+                background: var(--surface);
                 box-shadow: var(--shadow);
-            }
-
-            .pipeline-card {
-                position: relative;
-                z-index: 2;
-                padding: 16px;
-                transform: rotaté(1.4deg);
-            }
-
-            .window-bar {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                border-bottom: 1px solid var(--line);
-                padding-bottom: 12px;
-                color: var(--ink-soft);
-                font-size: 12px;
-                font-weight: 800;
-                text-transform: uppercase;
-            }
-
-            .dots {
-                display: flex;
-                gap: 6px;
-            }
-            .dots span {
-                width: 9px;
-                height: 9px;
-                border-radius: 50%;
-                background: var(--line-strong);
-            }
-            .dots span:nth-child(1) {
-                background: var(--rose);
-            }
-            .dots span:nth-child(2) {
-                background: var(--amber);
-            }
-            .dots span:nth-child(3) {
-                background: var(--green);
-            }
-
-            .pipeline-board {
-                display: grid;
-                grid-template-columns: repeat(3, minmax(130px, 1fr));
-                gap: 10px;
-                padding-top: 14px;
                 overflow: hidden;
             }
 
+            .panel-top {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                border-bottom: 1px solid var(--line);
+                padding: 16px;
+                color: var(--muted);
+                font-size: 12px;
+                font-weight: 700;
+                text-transform: uppercase;
+            }
+
+            .window-dots {
+                display: flex;
+                gap: 6px;
+            }
+
+            .window-dots span {
+                width: 9px;
+                height: 9px;
+                border-radius: 999px;
+                background: var(--line);
+            }
+
+            .window-dots span:nth-child(1) {
+                background: var(--red);
+            }
+
+            .window-dots span:nth-child(2) {
+                background: var(--gold);
+            }
+
+            .window-dots span:nth-child(3) {
+                background: var(--green);
+            }
+
+            .sales-board {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(150px, 1fr));
+                gap: 12px;
+                padding: 16px;
+                overflow: auto;
+            }
+
             .lane {
-                min-height: 290px;
+                min-height: 350px;
                 border: 1px solid var(--line);
-                border-radius: 6px;
-                background: #f7f2e8;
-                padding: 10px;
+                border-radius: 7px;
+                background: var(--surface-muted);
+                padding: 12px;
             }
 
             .lane h3 {
                 display: flex;
-                align-items: center;
                 justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 12px;
                 color: var(--ink-soft);
-                font-size: 11px;
-                font-weight: 900;
+                font-size: 12px;
+                font-weight: 700;
                 text-transform: uppercase;
-                margin-bottom: 10px;
             }
 
             .lane h3 span {
                 border-radius: 999px;
-                background: var(--field);
-                padding: 2px 7px;
+                background: var(--white);
+                padding: 2px 8px;
                 color: var(--ink);
             }
 
             .lead-card {
                 border: 1px solid var(--line);
-                border-radius: 6px;
-                background: var(--white);
-                padding: 10px;
-                margin-bottom: 9px;
+                border-radius: 7px;
+                background: var(--surface);
+                padding: 12px;
+                margin-bottom: 10px;
             }
 
             .lead-card strong {
                 display: block;
                 color: var(--ink);
-                font-size: 13px;
+                font-size: 14px;
                 line-height: 1.3;
             }
 
             .lead-card small {
                 display: block;
-                margin-top: 5px;
+                margin-top: 6px;
                 color: var(--muted);
+                font-size: 12px;
+                font-weight: 500;
+            }
+
+            .tag {
+                display: inline-flex;
+                margin-top: 10px;
+                border-radius: 999px;
+                background: var(--green-soft);
+                color: var(--green);
+                padding: 4px 8px;
                 font-size: 11px;
                 font-weight: 700;
             }
 
-            .lead-status {
-                display: inline-flex;
-                margin-top: 9px;
-                border-radius: 999px;
-                background: #e5f2cf;
-                color: var(--green-deep);
-                padding: 4px 7px;
-                font-size: 10px;
-                font-weight: 900;
-                text-transform: uppercase;
-            }
-
-            .chat-card {
+            .assistant-note {
                 position: absolute;
-                right: -8px;
-                bottom: 42px;
-                z-index: 3;
-                width: min(300px, 78vw);
-                padding: 14px;
-                transform: rotaté(-3deg);
+                right: 18px;
+                bottom: 18px;
+                width: min(280px, calc(100% - 36px));
+                border: 1px solid var(--ink);
+                border-radius: var(--radius);
+                background: var(--ink);
+                color: var(--white);
+                padding: 16px;
+                box-shadow: 8px 8px 0 var(--gold);
             }
 
-            .chat-header {
+            .assistant-note span {
                 display: flex;
                 align-items: center;
-                justify-content: space-between;
-                border-bottom: 1px solid var(--line);
-                padding-bottom: 10px;
+                gap: 8px;
+                color: var(--gold);
                 font-size: 12px;
-                font-weight: 900;
-            }
-
-            .chat-bubble {
-                width: fit-content;
-                max-width: 88%;
-                margin-top: 12px;
-                border-radius: 12px;
-                padding: 10px 12px;
-                font-size: 12px;
-                line-height: 1.45;
-            }
-
-            .chat-bubble.in {
-                background: var(--field);
-                color: var(--ink-soft);
-            }
-            .chat-bubble.out {
-                margin-left: auto;
-                background: var(--green-deep);
-                color: var(--white);
-            }
-
-            .metric-ticket {
-                position: absolute;
-                left: 18px;
-                bottom: 0;
-                z-index: 4;
-                padding: 16px;
-                width: 220px;
-                background: var(--lime);
-                transform: rotaté(-2deg);
-            }
-
-            .metric-ticket span {
-                display: block;
-                color: var(--green-deep);
-                font-size: 11px;
-                font-weight: 900;
+                font-weight: 700;
                 text-transform: uppercase;
             }
 
-            .metric-ticket strong {
-                display: block;
-                margin-top: 6px;
-                font-family: var(--font-display);
-                font-size: 38px;
-                font-weight: 800;
-                line-height: 1;
+            .assistant-note p {
+                margin-top: 9px;
+                font-size: 14px;
+                line-height: 1.55;
             }
 
             .section {
-                padding: 96px 0;
-                border-top: 1px solid rgba(22, 32, 25, 0.12);
+                padding: 92px 0;
+                border-top: 1px solid rgba(17, 17, 17, 0.12);
             }
 
             .section.dark {
-                background: var(--green-deep);
+                background: var(--ink);
                 color: var(--white);
             }
 
             .section-header {
-                max-width: 760px;
+                max-width: 790px;
                 margin-bottom: 42px;
             }
 
             .section-label {
+                margin-bottom: 10px;
                 color: var(--green);
                 font-size: 12px;
-                font-weight: 900;
-                letter-spacing: 0;
+                font-weight: 700;
                 text-transform: uppercase;
-                margin-bottom: 10px;
             }
 
             .dark .section-label {
-                color: var(--lime);
+                color: var(--gold);
             }
 
             .section-title {
-                color: inherit;
                 font-family: var(--font-display);
-                font-size: clamp(42px, 6vw, 72px);
-                font-weight: 800;
+                font-size: clamp(44px, 6vw, 76px);
+                font-weight: 400;
                 letter-spacing: 0;
-                line-height: 1.02;
+                line-height: 0.98;
             }
 
             .section-sub {
-                max-width: 660px;
+                max-width: 720px;
                 margin-top: 18px;
                 color: var(--ink-soft);
                 font-size: 18px;
-                line-height: 1.7;
+                line-height: 1.75;
             }
 
             .dark .section-sub {
-                color: rgba(255, 253, 248, 0.72);
+                color: rgba(255, 255, 255, 0.72);
             }
 
-            .section-header.split {
-                display: grid;
-                grid-template-columns: minmax(0, 0.9fr) minmax(280px, 0.7fr);
-                gap: 28px;
-                max-width: none;
-                align-items: end;
-            }
-
-            .section-kicker {
-                border: 1px solid var(--line-strong);
-                border-radius: var(--radius);
-                background: rgba(255, 253, 248, 0.72);
-                padding: 18px;
-                color: var(--ink-soft);
-                font-size: 14px;
-                font-weight: 700;
-            }
-
-            .section-kicker strong {
-                display: block;
-                margin-bottom: 6px;
-                color: var(--ink);
-                font-size: 15px;
-            }
-
-            .proof-strip {
+            .grid-3 {
                 display: grid;
                 grid-template-columns: 1fr;
-                border: 1px solid var(--ink);
-                border-radius: var(--radius);
-                background: var(--white);
-                overflow: hidden;
-            }
-
-            .proof-item {
-                padding: 24px;
-                border-bottom: 1px solid var(--line);
-            }
-
-            .proof-item:last-child {
-                border-bottom: none;
-            }
-            .proof-item strong {
-                display: block;
-                font-family: var(--font-display);
-                font-size: 38px;
-                font-weight: 800;
-                line-height: 1;
-            }
-
-            .proof-item span {
-                display: block;
-                margin-top: 8px;
-                color: var(--ink-soft);
-                font-size: 14px;
-                font-weight: 700;
-            }
-
-            .problem-layout {
-                display: grid;
-                grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-                gap: 44px;
-                align-items: start;
-            }
-
-            .quote-panel {
-                position: sticky;
-                top: 100px;
-                border: 1px solid var(--ink);
-                border-radius: var(--radius);
-                background: var(--amber);
-                padding: 28px;
-                color: var(--ink);
-                box-shadow: 10px 10px 0 rgba(22, 32, 25, 0.1);
-            }
-
-            .quote-panel p {
-                font-family: var(--font-display);
-                font-size: clamp(34px, 4vw, 52px);
-                font-weight: 800;
-                line-height: 1.04;
-            }
-
-            .quote-panel span {
-                display: block;
-                margin-top: 20px;
-                font-size: 13px;
-                font-weight: 900;
-                text-transform: uppercase;
-            }
-
-            .pain-list {
-                display: grid;
                 gap: 14px;
             }
 
-            .pain-item,
-            .pillar,
-            .step,
-            .contact-card,
-            .layer-card,
-            .plan-card,
-            .faq-item,
-            .compliance-card {
-                border: 1px solid var(--ink);
+            .card {
+                border: 1px solid var(--line);
                 border-radius: var(--radius);
-                background: var(--white);
+                background: rgba(255, 255, 255, 0.76);
+                padding: 24px;
             }
 
-            .pain-item {
-                display: grid;
-                grid-template-columns: auto 1fr;
-                gap: 18px;
-                padding: 22px;
-            }
-
-            .icon-tile {
-                width: 44px;
-                height: 44px;
+            .card-icon {
+                width: 42px;
+                height: 42px;
                 display: grid;
                 place-items: center;
-                border: 1px solid var(--line-strong);
-                border-radius: 6px;
-                background: var(--field);
-                color: var(--green-deep);
+                border: 1px solid var(--ink);
+                border-radius: 8px;
+                background: var(--surface);
+                color: var(--green);
+                margin-bottom: 20px;
             }
 
-            .pain-item h3,
-            .pillar h3,
-            .step h3 {
-                color: var(--ink);
-                font-size: 18px;
-                line-height: 1.3;
-                margin-bottom: 8px;
+            .card h3 {
+                font-size: 20px;
+                line-height: 1.25;
+                margin-bottom: 10px;
             }
 
-            .pain-item p,
-            .pillar p,
-            .step p {
+            .card p {
                 color: var(--ink-soft);
                 font-size: 15px;
-                line-height: 1.65;
+                line-height: 1.7;
             }
 
-            .pillar-grid {
+            .dark .card {
+                border-color: rgba(255, 255, 255, 0.16);
+                background: rgba(255, 255, 255, 0.06);
+            }
+
+            .dark .card p {
+                color: rgba(255, 255, 255, 0.72);
+            }
+
+            .dark .card-icon {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(255, 255, 255, 0.24);
+                color: var(--gold);
+            }
+
+            .split {
                 display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 16px;
+                grid-template-columns: 1fr;
+                gap: 34px;
+                align-items: start;
             }
 
-            .pillar {
-                padding: 24px;
-                min-height: 280px;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                transition:
-                    transform 180ms ease,
-                    box-shadow 180ms ease;
-            }
-
-            .pillar:hover {
-                transform: translaté(-4px, -4px);
-                box-shadow: 8px 8px 0 var(--lime);
-            }
-
-            .pillar-number {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                margin-bottom: 34px;
-                color: var(--muted);
-                font-size: 12px;
-                font-weight: 900;
-                text-transform: uppercase;
-            }
-
-            .layer-stack {
+            .process-list {
                 display: grid;
                 gap: 12px;
             }
 
-            .layer-card {
+            .process-item {
                 display: grid;
                 grid-template-columns: auto 1fr;
-                gap: 18px;
-                padding: 22px;
-                box-shadow: 8px 8px 0 rgba(17, 90, 67, 0.08);
+                gap: 14px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius);
+                background: var(--surface);
+                padding: 18px;
             }
 
-            .layer-number {
-                width: 52px;
-                height: 52px;
+            .process-index {
+                width: 32px;
+                height: 32px;
                 display: grid;
                 place-items: center;
-                border: 1px solid var(--ink);
-                border-radius: 6px;
-                background: var(--lime);
-                color: var(--green-deep);
-                font-family: var(--font-display);
-                font-size: 28px;
-                font-weight: 800;
-                line-height: 1;
+                border-radius: 999px;
+                background: var(--ink);
+                color: var(--white);
+                font-size: 13px;
+                font-weight: 700;
             }
 
-            .layer-card h3,
-            .plan-card h3,
-            .faq-item h3,
-            .compliance-card h3 {
-                color: var(--ink);
-                font-size: 19px;
-                line-height: 1.3;
-                margin-bottom: 8px;
+            .process-item h3 {
+                margin-bottom: 5px;
+                font-size: 17px;
             }
 
-            .layer-card p,
-            .plan-card p,
-            .faq-item p,
-            .compliance-card p {
+            .process-item p {
                 color: var(--ink-soft);
                 font-size: 15px;
                 line-height: 1.65;
             }
 
-            .feature-list {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-                margin-top: 12px;
+            .brand-block {
+                border: 1px solid var(--ink);
+                border-radius: var(--radius);
+                background: var(--surface);
+                padding: 28px;
+                box-shadow: 10px 10px 0 rgba(33, 75, 54, 0.15);
             }
 
-            .feature-list span {
-                border: 1px solid var(--line);
-                border-radius: 999px;
-                background: var(--field);
-                padding: 5px 9px;
-                color: var(--green-deep);
-                font-size: 11px;
-                font-weight: 900;
-                text-transform: uppercase;
-            }
-
-            .plan-grid,
-            .compliance-grid,
-            .faq-grid {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 16px;
-            }
-
-            .plan-card,
-            .compliance-card,
-            .faq-item {
-                padding: 24px;
-            }
-
-            .plan-card.featured {
-                background: var(--green-deep);
-                color: var(--white);
-                box-shadow: 8px 8px 0 var(--lime);
-            }
-
-            .plan-card.featured h3,
-            .plan-card.featured p {
-                color: var(--white);
-            }
-
-            .plan-price {
+            .brand-block img {
+                width: min(360px, 100%);
+                height: auto;
                 display: block;
-                margin: 18px 0 12px;
-                color: var(--green-deep);
+                margin-bottom: 28px;
+            }
+
+            .metric-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .metric {
+                border-top: 1px solid var(--line);
+                padding-top: 16px;
+            }
+
+            .metric strong {
+                display: block;
                 font-family: var(--font-display);
-                font-size: 32px;
-                font-weight: 800;
+                font-size: 42px;
+                font-weight: 400;
                 line-height: 1;
             }
 
-            .plan-card.featured .plan-price {
-                color: var(--lime);
-            }
-
-            .plan-card ul {
-                display: grid;
-                gap: 9px;
-                margin-top: 18px;
-                list-style: none;
-            }
-
-            .plan-card li {
-                color: var(--ink-soft);
-                font-size: 14px;
-                font-weight: 700;
-                line-height: 1.45;
-            }
-
-            .plan-card.featured li {
-                color: rgba(255, 253, 248, 0.76);
-            }
-
-            .legal-note {
-                margin-top: 18px;
+            .metric span {
+                display: block;
+                margin-top: 6px;
                 color: var(--muted);
                 font-size: 13px;
+                font-weight: 600;
+            }
+
+            .ai-panel {
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: var(--radius);
+                background: rgba(255, 255, 255, 0.06);
+                padding: 26px;
+            }
+
+            .ai-list {
+                display: grid;
+                gap: 13px;
+                margin-top: 22px;
+            }
+
+            .ai-list li {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 10px;
+                color: rgba(255, 255, 255, 0.78);
+                list-style: none;
+                font-size: 15px;
+                line-height: 1.6;
+            }
+
+            .ai-list i {
+                color: var(--gold);
+                margin-top: 3px;
+            }
+
+            .contact-layout {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 36px;
+                align-items: start;
+            }
+
+            .contact-card {
+                border: 1px solid var(--ink);
+                border-radius: var(--radius);
+                background: var(--surface);
+                padding: 24px;
+                box-shadow: var(--shadow);
+            }
+
+            .form-grid {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 14px;
+            }
+
+            .form-group {
+                display: grid;
+                gap: 7px;
+            }
+
+            label {
+                color: var(--ink);
+                font-size: 13px;
                 font-weight: 700;
+            }
+
+            input,
+            select,
+            textarea {
+                width: 100%;
+                border: 1px solid var(--line);
+                border-radius: 7px;
+                background: var(--surface);
+                color: var(--ink);
+                padding: 12px 13px;
+                outline: none;
+            }
+
+            textarea {
+                min-height: 112px;
+                resize: vertical;
+            }
+
+            input:focus,
+            select:focus,
+            textarea:focus {
+                border-color: var(--ink);
+                box-shadow: 0 0 0 3px rgba(199, 163, 77, 0.24);
+            }
+
+            .is-error {
+                border-color: var(--red);
+            }
+
+            .field-error {
+                display: none;
+                color: var(--red);
+                font-size: 12px;
+                font-weight: 700;
+            }
+
+            .field-error.visible {
+                display: block;
             }
 
             .checkbox-field {
@@ -912,272 +744,85 @@
                 grid-template-columns: auto 1fr;
                 gap: 10px;
                 align-items: start;
-                margin: 2px 0 16px;
+                margin: 18px 0;
                 color: var(--ink-soft);
                 font-size: 13px;
-                font-weight: 700;
-                line-height: 1.45;
+                line-height: 1.5;
+                cursor: pointer;
             }
 
             .checkbox-field input {
-                width: 18px;
-                height: 18px;
-                margin-top: 1px;
-                accent-color: var(--green-deep);
+                width: 17px;
+                height: 17px;
+                margin-top: 2px;
             }
 
             .checkbox-field a {
-                color: var(--green-deep);
+                color: var(--green);
+                font-weight: 700;
                 text-decoration: underline;
                 text-underline-offset: 3px;
             }
 
-            .followup-band {
-                display: grid;
-                grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-                gap: 42px;
-                align-items: center;
-            }
-
-            .cadence {
-                border: 1px solid rgba(255, 253, 248, 0.28);
-                border-radius: var(--radius);
-                background: rgba(255, 253, 248, 0.06);
-                padding: 20px;
-            }
-
-            .cadence-row {
-                display: grid;
-                grid-template-columns: 74px 1fr auto;
-                gap: 14px;
-                align-items: center;
-                border-bottom: 1px solid rgba(255, 253, 248, 0.16);
-                padding: 16px 0;
-            }
-
-            .cadence-row:last-child {
-                border-bottom: none;
-            }
-            .cadence-row span {
-                color: var(--lime);
-                font-family: var(--font-display);
-                font-size: 24px;
-                font-weight: 800;
-                line-height: 1;
-            }
-
-            .cadence-row strong {
-                display: block;
-                color: var(--white);
-                font-size: 15px;
-            }
-
-            .cadence-row small {
-                color: rgba(255, 253, 248, 0.64);
-                font-size: 12px;
-                font-weight: 700;
-            }
-
-            .cadence-row em {
-                border: 1px solid rgba(200, 241, 105, 0.4);
-                border-radius: 999px;
-                color: var(--lime);
-                padding: 5px 9px;
-                font-size: 11px;
-                font-style: normal;
-                font-weight: 900;
-                text-transform: uppercase;
-                white-space: nowrap;
-            }
-
-            .steps-grid {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 16px;
-            }
-
-            .step {
-                padding: 24px;
-                position: relative;
-                overflow: hidden;
-            }
-
-            .step::before {
-                content: attr(data-step);
-                position: absolute;
-                right: 16px;
-                top: 8px;
-                color: rgba(17, 90, 67, 0.12);
-                font-family: var(--font-display);
-                font-size: 92px;
-                font-weight: 800;
-                line-height: 1;
-            }
-
-            .step .icon-tile {
-                margin-bottom: 58px;
-                background: var(--lime);
-                border-color: var(--ink);
-            }
-
-            .contact-layout {
-                display: grid;
-                grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1fr);
-                gap: 44px;
-                align-items: start;
-            }
-
-            .contact-card {
-                padding: 24px;
-                box-shadow: 10px 10px 0 rgba(17, 90, 67, 0.12);
-            }
-
-            .contact-list {
-                display: grid;
-                gap: 12px;
-                margin-top: 24px;
-            }
-
-            .contact-list span {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                color: var(--ink-soft);
-                font-size: 14px;
-                font-weight: 700;
-            }
-
-            .form-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 14px;
-            }
-
-            .form-group {
-                margin-bottom: 14px;
-            }
-            .form-group.full {
-                grid-column: 1 / -1;
-            }
-
-            label {
-                display: block;
-                margin-bottom: 7px;
-                color: var(--ink-soft);
-                font-size: 12px;
-                font-weight: 900;
-                text-transform: uppercase;
-            }
-
-            input,
-            select,
-            textarea {
-                width: 100%;
-                border: 1px solid var(--line-strong);
-                border-radius: 6px;
-                background: var(--paper-strong);
-                color: var(--ink);
-                padding: 13px 14px;
-                outline: none;
-                transition:
-                    border-color 140ms ease,
-                    box-shadow 140ms ease,
-                    background 140ms ease;
-            }
-
-            textarea {
-                min-height: 128px;
-                resize: vertical;
-            }
-            input::placeholder,
-            select,
-            textarea::placeholder {
-                color: #9b968b;
-            }
-
-            input:focus,
-            select:focus,
-            textarea:focus {
-                border-color: var(--green);
-                background: var(--white);
-                box-shadow: 0 0 0 4px rgba(200, 241, 105, 0.48);
-            }
-
-            input.is-error,
-            select.is-error,
-            textarea.is-error {
-                border-color: var(--rose);
-                box-shadow: 0 0 0 4px rgba(175, 75, 68, 0.16);
-            }
-
-            .field-error {
-                display: none;
-                margin-top: 6px;
-                color: var(--rose);
-                font-size: 12px;
-                font-weight: 800;
-            }
-            .field-error.visible {
-                display: block;
-            }
-
             .btn-submit {
                 width: 100%;
-                border-radius: 6px;
-                padding: 0 18px;
-                margin-top: 6px;
-            }
-
-            .btn-submit:disabled {
-                opacity: 0.68;
-                cursor: not-allowed;
-                transform: none;
-                box-shadow: 4px 4px 0 var(--lime);
+                border: 1px solid var(--ink);
+                background: var(--ink);
+                color: var(--white);
             }
 
             .spinner {
-                width: 18px;
-                height: 18px;
-                border: 2px solid rgba(255, 255, 255, 0.34);
+                display: none;
+                width: 15px;
+                height: 15px;
+                border: 2px solid rgba(255, 255, 255, 0.35);
                 border-top-color: var(--white);
                 border-radius: 50%;
-                animation: spin 700ms linear infinite;
-                display: none;
+                animation: spin 800ms linear infinite;
             }
-            .btn-submit.loading .spinner {
-                display: block;
-            }
-            .btn-submit.loading .btn-label {
-                display: none;
-            }
-            @keyframes spin {
-                to {
-                    transform: rotaté(360deg);
-                }
+
+            .loading .spinner {
+                display: inline-block;
             }
 
             .form-success {
                 display: none;
                 border: 1px solid var(--green);
                 border-radius: var(--radius);
-                background: #e5f2cf;
-                padding: 24px;
+                background: var(--green-soft);
+                padding: 18px;
+                color: var(--green);
             }
 
             .form-success.visible {
                 display: block;
             }
-            .form-success h3 {
-                color: var(--green-deep);
-                font-size: 20px;
-                margin-bottom: 8px;
+
+            .faq-grid {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 12px;
             }
-            .form-success p {
+
+            .faq-item {
+                border-top: 1px solid var(--line);
+                padding: 22px 0;
+            }
+
+            .faq-item h3 {
+                margin-bottom: 8px;
+                font-size: 19px;
+            }
+
+            .faq-item p {
+                max-width: 760px;
                 color: var(--ink-soft);
+                font-size: 15px;
+                line-height: 1.7;
             }
 
             footer {
-                border-top: 1px solid rgba(22, 32, 25, 0.16);
+                border-top: 1px solid rgba(17, 17, 17, 0.14);
                 background: var(--ink);
                 color: var(--white);
                 padding: 32px 0;
@@ -1187,174 +832,125 @@
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                gap: 20px;
+                gap: 18px;
                 flex-wrap: wrap;
             }
 
-            .footer-copy {
-                color: rgba(255, 253, 248, 0.68);
+            .footer-copy,
+            .footer-links a {
+                color: rgba(255, 255, 255, 0.72);
                 font-size: 13px;
             }
+
             .footer-links {
                 display: flex;
                 gap: 18px;
+                flex-wrap: wrap;
             }
-            .footer-links a {
-                color: rgba(255, 253, 248, 0.76);
-                font-size: 13px;
-                font-weight: 800;
-            }
+
             .footer-links a:hover {
-                color: var(--lime);
+                color: var(--gold);
             }
 
             .fade-up {
                 opacity: 0;
-                transform: translatéY(20px);
+                transform: translateY(18px);
                 transition:
                     opacity 520ms ease,
                     transform 520ms ease;
             }
+
             .fade-up.visible {
                 opacity: 1;
-                transform: translatéY(0);
+                transform: translateY(0);
             }
 
             :focus-visible {
-                outline: 3px solid var(--amber);
+                outline: 3px solid var(--gold);
                 outline-offset: 3px;
             }
 
-            @media (min-width: 880px) {
-                .nav-links {
-                    display: flex;
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
                 }
+            }
+
+            @media (min-width: 760px) {
+                .nav-links,
+                .nav-login {
+                    display: inline-flex;
+                }
+
                 .hero-grid {
-                    grid-template-columns:
-                        minmax(0, 1.04fr)
-                        minmax(410px, 0.96fr);
+                    grid-template-columns: minmax(0, 1fr) minmax(420px, 0.78fr);
                 }
-                .proof-strip {
+
+                .grid-3 {
                     grid-template-columns: repeat(3, 1fr);
                 }
-                .conversion-points {
-                    grid-template-columns: repeat(3, 1fr);
+
+                .split {
+                    grid-template-columns: minmax(0, 0.86fr) minmax(340px, 0.68fr);
                 }
-                .proof-item {
-                    border-bottom: none;
-                    border-right: 1px solid var(--line);
+
+                .contact-layout {
+                    grid-template-columns: minmax(0, 0.86fr) minmax(360px, 0.7fr);
                 }
-                .proof-item:last-child {
-                    border-right: none;
+
+                .form-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+
+                .form-group.full {
+                    grid-column: 1 / -1;
                 }
             }
 
-            @media (max-width: 980px) {
-                .problem-layout,
-                .followup-band,
-                .contact-layout,
-                .section-header.split {
-                    grid-template-columns: 1fr;
-                }
-
-                .quote-panel {
-                    position: static;
-                }
-                .pillar-grid,
-                .steps-grid,
-                .plan-grid,
-                .compliance-grid,
-                .faq-grid {
-                    grid-template-columns: 1fr;
-                }
-                .pillar {
-                    min-height: auto;
-                }
-                .product-scene {
-                    min-height: 520px;
-                }
-            }
-
-            @media (max-width: 640px) {
+            @media (max-width: 720px) {
                 .container {
                     width: min(100% - 28px, var(--max-w));
                 }
+
                 .nav-inner {
-                    min-height: 62px;
+                    min-height: 64px;
                 }
-                .brand-mark {
-                    width: 30px;
-                    height: 30px;
-                    font-size: 19px;
+
+                .brand img {
+                    width: 138px;
                 }
-                .nav-cta {
-                    min-height: 40px;
-                    padding: 0 12px;
+
+                .nav-actions .btn-primary {
+                    padding: 0 13px;
+                    font-size: 13px;
                 }
+
                 .hero {
                     min-height: auto;
-                    padding-top: 50px;
+                    padding: 58px 0 42px;
                 }
+
                 h1 {
-                    font-size: clamp(48px, 17vw, 74px);
+                    font-size: clamp(52px, 16vw, 74px);
                 }
-                .product-scene {
-                    min-height: 470px;
-                    margin-top: 4px;
-                }
-                .pipeline-card {
-                    padding: 12px;
-                    transform: none;
-                }
-                .pipeline-board {
+
+                .sales-board {
                     grid-template-columns: 1fr;
-                    max-height: 310px;
-                    overflow: hidden;
+                    overflow: visible;
                 }
+
                 .lane {
                     min-height: auto;
                 }
-                .chat-card {
-                    right: 0;
-                    bottom: 42px;
-                    width: 260px;
-                }
-                .metric-ticket {
-                    left: 0;
-                    width: 190px;
-                }
-                .section {
-                    padding: 70px 0;
-                }
-                .pain-item {
-                    grid-template-columns: 1fr;
-                }
-                .layer-card {
-                    grid-template-columns: 1fr;
-                }
-                .cadence-row {
-                    grid-template-columns: 58px 1fr;
-                }
-                .cadence-row em {
-                    grid-column: 2;
-                    width: fit-content;
-                }
-                .form-grid {
-                    grid-template-columns: 1fr;
-                }
-                .footer-inner {
-                    align-items: flex-start;
-                }
-            }
 
-            @media (prefers-reduced-motion: reduce) {
-                *,
-                *::before,
-                *::after {
-                    animation-duration: 0.001ms !important;
-                    animation-iteration-count: 1 !important;
-                    scroll-behavior: auto !important;
-                    transition-duration: 0.001ms !important;
+                .assistant-note {
+                    position: static;
+                    width: auto;
+                    margin: 0 16px 16px;
+                }
+
+                .section {
+                    padding: 68px 0;
                 }
             }
         </style>
@@ -1362,38 +958,31 @@
     <body>
         <a href="#main" class="skip-link">Pular para o conteúdo principal</a>
 
-        <nav
-            class="site-nav"
-            role="navigation"
-            aria-label="Navegação principal"
-        >
+        <nav class="site-nav" role="navigation" aria-label="Navegação">
             <div class="nav-inner container">
-                <a
-                    href="./index.html"
-                    class="brand"
-                    aria-label="CredFlow IA - página inicial"
-                >
-                    <span class="brand-mark" aria-hidden="true">C</span>
-                    <span>CredFlow IA</span>
+                <a href="/" class="brand" aria-label="Tenaz CRM - página inicial">
+                    <img
+                        src="/assets/brand/tenaz-wordmark-horizontal-black-2048w.png"
+                        alt="Tenaz CRM"
+                        width="2048"
+                        height="512"
+                    />
                 </a>
-                <div class="nav-links" aria-label="Secoes da página">
-                    <a href="#produto">Produto</a>
-                    <a href="#funciona">Como funciona</a>
-                    <a href="#recursos">Recursos</a>
-                    <a href="#planos">Planos</a>
+                <div class="nav-links" aria-label="Seções da página">
+                    <a href="#problema">Problema</a>
+                    <a href="#solucao">Solução</a>
+                    <a href="#ia">IA</a>
                     <a href="#compliance">Compliance</a>
-                    <a href="#faq">FAQ</a>
-                    <a href="#contato">Contato</a>
                 </div>
-                <a href="https://app.tenazcrm.com.br" class="nav-cta">
-                    Entrar no sistema
-                    <i
-                        data-lucide="arrow-right"
-                        width="15"
-                        height="15"
-                        aria-hidden="true"
-                    ></i>
-                </a>
+                <div class="nav-actions">
+                    <a class="btn btn-secondary nav-login" href="https://app.tenazcrm.com.br">
+                        Entrar
+                    </a>
+                    <a class="btn btn-primary" href="#contato">
+                        <i data-lucide="calendar-check" width="17" height="17" aria-hidden="true"></i>
+                        Demonstração
+                    </a>
+                </div>
             </div>
         </nav>
 
@@ -1402,642 +991,314 @@
                 <div class="hero-grid container">
                     <div>
                         <div class="eyebrow">
-                            <i
-                                data-lucide="sparkles"
-                                width="15"
-                                height="15"
-                                aria-hidden="true"
-                            ></i>
-                            CRM COM IA INTEGRADA
+                            <i data-lucide="sparkles" width="16" height="16" aria-hidden="true"></i>
+                            CRM com IA para operação comercial
                         </div>
-                        <h1 id="hero-title">Nenhum lead perdido</h1>
+                        <h1 id="hero-title">
+                            CRM com IA para equipes de vendas que não podem deixar lead esfriar.
+                        </h1>
                         <p class="hero-sub">
-                            O CredFlow IA atende leads em segundos, qualifica
-                            pelo WhatsApp Business API oficial, registra tudo no
-                            funil e aciona follow-ups até a oportunidade
-                            avan&ccedil;ar.
+                            O Tenaz CRM centraliza atendimento, pipeline, follow-up e agentes de IA para ajudar sua equipe a responder mais rápido, manter cada oportunidade em movimento e vender com mais consistência.
                         </p>
                         <div class="hero-actions">
-                            <a href="#contato" class="btn-primary">
-                                Agendar diagnóstico
-                                <i
-                                    data-lucide="arrow-up-right"
-                                    width="18"
-                                    height="18"
-                                    aria-hidden="true"
-                                ></i>
+                            <a class="btn btn-primary" href="#contato">
+                                <i data-lucide="calendar-check" width="18" height="18" aria-hidden="true"></i>
+                                Solicitar demonstração
                             </a>
-                            <a href="#funciona" class="btn-secondary">
-                                Ver como funciona
-                                <i
-                                    data-lucide="play"
-                                    width="17"
-                                    height="17"
-                                    aria-hidden="true"
-                                ></i>
+                            <a class="btn btn-secondary" href="https://app.tenazcrm.com.br">
+                                <i data-lucide="log-in" width="18" height="18" aria-hidden="true"></i>
+                                Entrar no sistema
                             </a>
                         </div>
                         <p class="hero-note">
-                            <span
-                                ><i
-                                    data-lucide="check"
-                                    width="15"
-                                    height="15"
-                                    aria-hidden="true"
-                                ></i
-                                >Sem cartao de crédito</span
-                            >
-                            <span
-                                ><i
-                                    data-lucide="clock-3"
-                                    width="15"
-                                    height="15"
-                                    aria-hidden="true"
-                                ></i
-                                >Setup guiado para WhatsApp oficial</span
-                            >
+                            Para equipes comerciais que trabalham com alto volume de leads, múltiplos atendentes e necessidade de acompanhamento constante.
                         </p>
-                        <div
-                            class="conversion-points"
-                            aria-label="Motivos para agendar uma conversa"
-                        >
-                            <div class="conversion-point">
-                                <i
-                                    data-lucide="zap"
-                                    width="18"
-                                    height="18"
-                                    aria-hidden="true"
-                                ></i>
-                                <div>
-                                    <strong
-                                        >Resposta antes do lead sumir</strong
-                                    >
-                                    <span
-                                        >IA assume o primeiro contato e coleta o
-                                        contexto essencial.</span
-                                    >
-                                </div>
+                        <div class="value-list" aria-label="Principais benefícios">
+                            <div class="value-item">
+                                <i data-lucide="message-circle" width="18" height="18" aria-hidden="true"></i>
+                                <span>Atendimento conectado ao WhatsApp Business oficial.</span>
                             </div>
-                            <div class="conversion-point">
-                                <i
-                                    data-lucide="list-checks"
-                                    width="18"
-                                    height="18"
-                                    aria-hidden="true"
-                                ></i>
-                                <div>
-                                    <strong
-                                        >Pipeline com prioridade clara</strong
-                                    >
-                                    <span
-                                        >Status, histórico, operador e proxima
-                                        acao no mesmo painel.</span
-                                    >
-                                </div>
+                            <div class="value-item">
+                                <i data-lucide="brain-circuit" width="18" height="18" aria-hidden="true"></i>
+                                <span>IA apoiando qualificação, resumo, próximos passos e retomadas.</span>
                             </div>
-                            <div class="conversion-point">
-                                <i
-                                    data-lucide="repeat"
-                                    width="18"
-                                    height="18"
-                                    aria-hidden="true"
-                                ></i>
-                                <div>
-                                    <strong
-                                        >Follow-up que não depende de
-                                        memoria</strong
-                                    >
-                                    <span
-                                        >Cadencias persistentes pausam quando o
-                                        lead responde.</span
-                                    >
-                                </div>
+                            <div class="value-item">
+                                <i data-lucide="kanban-square" width="18" height="18" aria-hidden="true"></i>
+                                <span>Pipeline claro para acompanhar cada lead até a venda.</span>
                             </div>
                         </div>
                     </div>
 
-                    <div
-                        class="product-scene"
-                        aria-label="Previa visual do CRM CredFlow IA"
-                    >
-                        <div class="pipeline-card">
-                            <div class="window-bar">
-                                <div class="dots" aria-hidden="true">
-                                    <span></span><span></span><span></span>
-                                </div>
-                                <span>Fila comercial ao vivo</span>
+                    <div class="product-panel" aria-label="Prévia visual do Tenaz CRM">
+                        <div class="panel-top">
+                            <span>Pipeline comercial</span>
+                            <div class="window-dots" aria-hidden="true">
+                                <span></span>
+                                <span></span>
+                                <span></span>
                             </div>
-                            <div class="pipeline-board">
-                                <div class="lane">
-                                    <h3>Entrada <span>18</span></h3>
-                                    <div class="lead-card">
-                                        <strong
-                                            >Maria A. - Contrato novo</strong
-                                        >
-                                        <small>Veio do anuncio ha 2 min</small>
-                                        <span class="lead-status"
-                                            >Coletando perfil</span
-                                        >
-                                    </div>
-                                    <div class="lead-card">
-                                        <strong
-                                            >Jose P. - Credito
-                                            trabalhador</strong
-                                        >
-                                        <small>Quer simular parcela hoje</small>
-                                        <span class="lead-status"
-                                            >Em qualificação</span
-                                        >
-                                    </div>
+                        </div>
+                        <div class="sales-board">
+                            <div class="lane">
+                                <h3>Novos leads <span>18</span></h3>
+                                <div class="lead-card">
+                                    <strong>Mariana Oliveira</strong>
+                                    <small>Entrou pelo WhatsApp há 4 min</small>
+                                    <span class="tag">Responder agora</span>
                                 </div>
-                                <div class="lane">
-                                    <h3>Retomada <span>42</span></h3>
-                                    <div class="lead-card">
-                                        <strong>Ana C. - Portabilidade</strong>
-                                        <small>Comparando parcela atual</small>
-                                        <span class="lead-status"
-                                            >Enviar oferta</span
-                                        >
-                                    </div>
-                                    <div class="lead-card">
-                                        <strong
-                                            >Carlos R. - Refinanciamento</strong
-                                        >
-                                        <small
-                                            >Lead respondeu apos retomada</small
-                                        >
-                                        <span class="lead-status"
-                                            >Operador avisado</span
-                                        >
-                                    </div>
+                                <div class="lead-card">
+                                    <strong>Grupo Alfa</strong>
+                                    <small>Solicitou proposta comercial</small>
+                                    <span class="tag">IA qualificando</span>
                                 </div>
-                                <div class="lane">
-                                    <h3>Negociacao <span>9</span></h3>
-                                    <div class="lead-card">
-                                        <strong>Lucia M. - Consorcio</strong>
-                                        <small>Escolheu faixa de crédito</small>
-                                        <span class="lead-status"
-                                            >Proxima acao</span
-                                        >
-                                    </div>
+                            </div>
+                            <div class="lane">
+                                <h3>Em negociação <span>31</span></h3>
+                                <div class="lead-card">
+                                    <strong>Renova Serviços</strong>
+                                    <small>Próximo contato: hoje, 15h</small>
+                                    <span class="tag">Follow-up ativo</span>
+                                </div>
+                                <div class="lead-card">
+                                    <strong>João Martins</strong>
+                                    <small>Resumo da conversa disponível</small>
+                                    <span class="tag">Próximo passo sugerido</span>
+                                </div>
+                            </div>
+                            <div class="lane">
+                                <h3>Fechamento <span>9</span></h3>
+                                <div class="lead-card">
+                                    <strong>Empresa Norte</strong>
+                                    <small>Proposta enviada ontem</small>
+                                    <span class="tag">Retomar em 2h</span>
+                                </div>
+                                <div class="lead-card">
+                                    <strong>Carla Mendes</strong>
+                                    <small>Decisor identificado</small>
+                                    <span class="tag">Alta prioridade</span>
                                 </div>
                             </div>
                         </div>
-
-                        <div
-                            class="chat-card"
-                            aria-label="Exemplo de conversa automatizada"
-                        >
-                            <div class="chat-header">
-                                <span>WhatsApp oficial</span>
-                                <i
-                                    data-lucide="badge-check"
-                                    width="16"
-                                    height="16"
-                                    aria-hidden="true"
-                                ></i>
-                            </div>
-                            <div class="chat-bubble in">
-                                Oi, quero fazer um contrato novo. Consigo ver
-                                uma simulacao?
-                            </div>
-                            <div class="chat-bubble out">
-                                Claro. Vou confirmar seu perfil e te mostrar as
-                                opcoes disponíveis.
-                            </div>
-                            <div class="chat-bubble out">
-                                Se fizer sentido, deixo um consultor com o
-                                histórico completo para continuar.
-                            </div>
-                        </div>
-
-                        <div
-                            class="metric-ticket"
-                            aria-label="Indicador de follow-up"
-                        >
-                            <span>Leads parados</span>
-                            <strong>-63%</strong>
+                        <div class="assistant-note">
+                            <span>
+                                <i data-lucide="bot" width="15" height="15" aria-hidden="true"></i>
+                                Assistente de IA
+                            </span>
+                            <p>
+                                Lead retomado, histórico resumido e próxima ação sugerida para o vendedor.
+                            </p>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section class="section" aria-label="Indicadores da plataforma">
+            <section class="section" id="problema" aria-labelledby="problem-title">
                 <div class="container">
-                    <div class="proof-strip fade-up">
-                        <div class="proof-item">
-                            <strong>30s</strong>
-                            <span
-                                >Tempo alvo para primeira resposta quando o lead
-                                entra quente.</span
-                            >
-                        </div>
-                        <div class="proof-item">
-                            <strong>1 painel</strong>
-                            <span
-                                >CRM, histórico, status do funil e gestão do
-                                time no mesmo fluxo.</span
-                            >
-                        </div>
-                        <div class="proof-item">
-                            <strong>24/7</strong>
-                            <span
-                                >Qualificacao e follow-up rodando mesmo fora do
-                                horario comercial.</span
-                            >
-                        </div>
+                    <div class="section-header">
+                        <p class="section-label">O problema</p>
+                        <h2 class="section-title" id="problem-title">
+                            Quando o processo depende da memória da equipe, vendas escapam.
+                        </h2>
+                        <p class="section-sub">
+                            Leads chegam por vários canais, conversas ficam espalhadas, follow-ups atrasam e gestores perdem visibilidade sobre o que realmente está acontecendo. O problema não é só atender mais. É manter um processo comercial consistente do primeiro contato ao fechamento.
+                        </p>
+                    </div>
+                    <div class="grid-3">
+                        <article class="card fade-up">
+                            <div class="card-icon">
+                                <i data-lucide="timer-off" width="21" height="21" aria-hidden="true"></i>
+                            </div>
+                            <h3>Lead sem resposta rápida</h3>
+                            <p>
+                                Oportunidades esfriam quando ninguém assume o próximo passo no momento certo.
+                            </p>
+                        </article>
+                        <article class="card fade-up">
+                            <div class="card-icon">
+                                <i data-lucide="repeat-2" width="21" height="21" aria-hidden="true"></i>
+                            </div>
+                            <h3>Follow-up irregular</h3>
+                            <p>
+                                A equipe sabe que precisa retomar contatos, mas a rotina comercial engole as tarefas.
+                            </p>
+                        </article>
+                        <article class="card fade-up">
+                            <div class="card-icon">
+                                <i data-lucide="scan-search" width="21" height="21" aria-hidden="true"></i>
+                            </div>
+                            <h3>Gestão sem clareza</h3>
+                            <p>
+                                Sem pipeline confiável, fica difícil saber onde estão os gargalos e quais vendedores precisam de apoio.
+                            </p>
+                        </article>
                     </div>
                 </div>
             </section>
 
-            <section
-                class="section"
-                id="produto"
-                aria-labelledby="product-title"
-            >
-                <div class="problem-layout container">
-                    <div class="quote-panel fade-up">
-                        <p>
-                            O lead de crédito não espera. Quem responde primeiro
-                            entra na conversa.
-                        </p>
-                        <span
-                            >CredFlow IA organiza atendimento, IA e CRM no mesmo
-                            fluxo.</span
-                        >
-                    </div>
+            <section class="section" id="solucao" aria-labelledby="solution-title">
+                <div class="split container">
                     <div>
-                        <div class="section-header">
-                            <p class="section-label">Produto</p>
-                            <h2 class="section-title" id="product-title">
-                                Um CRM vertical para correspondentes bancarios.
-                            </h2>
-                            <p class="section-sub">
-                                Diferente de CRMs genericos e disparadores
-                                isolados, o CredFlow IA combina WhatsApp
-                                oficial, agentes especialistas em crédito,
-                                pipeline, histórico e follow-up em uma operação
-                                rastreavel.
-                            </p>
-                        </div>
-                        <div class="pain-list">
-                            <article class="pain-item fade-up">
-                                <div class="icon-tile" aria-hidden="true">
-                                    <i
-                                        data-lucide="shield-check"
-                                        width="22"
-                                        height="22"
-                                    ></i>
-                                </div>
-                                <div>
-                                    <h3>WhatsApp Business API oficial</h3>
-                                    <p>
-                                        Onboarding guiado, templates aprovados e
-                                        operação preparada para reduzir risco de
-                                        bloqueio por uso de canais não oficiais.
-                                    </p>
-                                </div>
-                            </article>
-                            <article class="pain-item fade-up">
-                                <div class="icon-tile" aria-hidden="true">
-                                    <i
-                                        data-lucide="bot"
-                                        width="22"
-                                        height="22"
-                                    ></i>
-                                </div>
-                                <div>
-                                    <h3>Agentes de IA para crédito</h3>
-                                    <p>
-                                        Atendimento 24/7 para qualificar,
-                                        coletar dados essenciais, entender audio
-                                        e imagem e encaminhar o lead com
-                                        contexto.
-                                    </p>
-                                </div>
-                            </article>
-                            <article class="pain-item fade-up">
-                                <div class="icon-tile" aria-hidden="true">
-                                    <i
-                                        data-lucide="kanban-square"
-                                        width="22"
-                                        height="22"
-                                    ></i>
-                                </div>
-                                <div>
-                                    <h3>CRM para não perder follow-up</h3>
-                                    <p>
-                                        Kanban, status automatizados, histórico
-                                        unificado, atribuicao de operadores e
-                                        proxima acao clara para cada lead.
-                                    </p>
-                                </div>
-                            </article>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section
-                class="section"
-                id="funciona"
-                aria-labelledby="steps-title"
-            >
-                <div class="container">
-                    <div class="section-header split">
-                        <div>
-                            <p class="section-label">Como funciona</p>
-                            <h2 class="section-title" id="steps-title">
-                                Do anuncio ao atendimento humano, sem perder
-                                contexto.
-                            </h2>
-                        </div>
-                        <p class="section-kicker">
-                            <strong>Fluxo comercial simples.</strong>
-                            O objetivo da IA não e prometer crédito: e
-                            responder, qualificar, organizar e avisar o time no
-                            momento certo.
-                        </p>
-                    </div>
-                    <div class="steps-grid">
-                        <article class="step fade-up" data-step="1">
-                            <div class="icon-tile" aria-hidden="true">
-                                <i
-                                    data-lucide="megaphone"
-                                    width="22"
-                                    height="22"
-                                ></i>
-                            </div>
-                            <h3>Lead entra pelo WhatsApp</h3>
-                            <p>
-                                Contatos vindos de campanhas, listas ou canais
-                                próprios chegam no fluxo oficial da operação.
-                            </p>
-                        </article>
-                        <article class="step fade-up" data-step="2">
-                            <div class="icon-tile" aria-hidden="true">
-                                <i data-lucide="bot" width="22" height="22"></i>
-                            </div>
-                            <h3>A IA qualifica e registra</h3>
-                            <p>
-                                O agente coleta intencao, convênio, dados
-                                necessários e histórico, sempre dentro das
-                                regras da operação.
-                            </p>
-                        </article>
-                        <article class="step fade-up" data-step="3">
-                            <div class="icon-tile" aria-hidden="true">
-                                <i
-                                    data-lucide="panel-top"
-                                    width="22"
-                                    height="22"
-                                ></i>
-                            </div>
-                            <h3>CRM prioriza a proxima acao</h3>
-                            <p>
-                                O lead aparece no Kanban com status, operador,
-                                origem, conversas e follow-ups em andamento.
-                            </p>
-                        </article>
-                    </div>
-                </div>
-            </section>
-
-            <section
-                class="section"
-                id="recursos"
-                aria-labelledby="features-title"
-            >
-                <div class="container">
-                    <div class="section-header">
-                        <p class="section-label">Recursos</p>
-                        <h2 class="section-title" id="features-title">
-                            Tres camadas para escalar atendimento sem inflar
-                            equipe.
+                        <p class="section-label">A solução</p>
+                        <h2 class="section-title" id="solution-title">
+                            O Tenaz organiza a operação e coloca IA para trabalhar junto com o time.
                         </h2>
                         <p class="section-sub">
-                            A estratégia do CredFlow IA e modular: canais
-                            oficiais, CRM com orquestracao e agentes
-                            especialistas por produto de crédito.
+                            O CRM reúne conversas, contatos, etapas, tarefas e automações em um fluxo único. A IA entra como apoio operacional: ajuda a qualificar leads, resumir históricos, sugerir respostas, identificar próximos passos e manter o ritmo do atendimento.
                         </p>
                     </div>
-                    <div class="layer-stack">
-                        <article class="layer-card fade-up">
-                            <div class="layer-number">1</div>
+                    <div class="process-list">
+                        <article class="process-item fade-up">
+                            <span class="process-index">1</span>
                             <div>
-                                <h3>Infra + canais</h3>
+                                <h3>Atendimento centralizado</h3>
                                 <p>
-                                    WhatsApp Business API oficial, templates,
-                                    disparo controlado, webhooks e base para
-                                    operar com rastreabilidade.
+                                    Concentre conversas e histórico comercial para que a equipe saiba exatamente quem é o lead, o que já foi tratado e qual deve ser o próximo movimento.
                                 </p>
-                                <div class="feature-list">
-                                    <span>WhatsApp oficial</span>
-                                    <span>Templates Meta</span>
-                                    <span>Disparo controlado</span>
-                                    <span>Webhooks</span>
-                                </div>
                             </div>
                         </article>
-                        <article class="layer-card fade-up">
-                            <div class="layer-number">2</div>
+                        <article class="process-item fade-up">
+                            <span class="process-index">2</span>
                             <div>
-                                <h3>CRM + orquestracao</h3>
+                                <h3>Pipeline acionável</h3>
                                 <p>
-                                    Pipeline, Kanban, histórico, status
-                                    automatizados, multiusuário, permissões e
-                                    handoff humano-IA.
+                                    Acompanhe oportunidades por etapa, prioridade e status, sem depender de planilhas paralelas ou controles manuais frágeis.
                                 </p>
-                                <div class="feature-list">
-                                    <span>Kanban</span>
-                                    <span>Historico unificado</span>
-                                    <span>Permissoes</span>
-                                    <span>Follow-up</span>
-                                </div>
                             </div>
                         </article>
-                        <article class="layer-card fade-up">
-                            <div class="layer-number">3</div>
+                        <article class="process-item fade-up">
+                            <span class="process-index">3</span>
                             <div>
-                                <h3>Agentes especialistas</h3>
+                                <h3>IA no processo de venda</h3>
                                 <p>
-                                    Agentes para INSS, SIAPE, FGTS e CLT, com
-                                    possibilidade de evoluir para outros
-                                    produtos quando a operação estiver pronta.
+                                    Use agentes e automações para reduzir trabalho repetitivo, acelerar respostas e manter follow-ups ativos com supervisão humana.
                                 </p>
-                                <div class="feature-list">
-                                    <span>INSS</span>
-                                    <span>SIAPE</span>
-                                    <span>FGTS</span>
-                                    <span>CLT</span>
-                                </div>
                             </div>
                         </article>
                     </div>
                 </div>
             </section>
 
-            <section
-                class="section dark"
-                id="followup"
-                aria-labelledby="followup-title"
-            >
-                <div class="followup-band container">
+            <section class="section" aria-labelledby="icp-title">
+                <div class="container">
+                    <div class="section-header">
+                        <p class="section-label">Para quem é</p>
+                        <h2 class="section-title" id="icp-title">
+                            Feito para equipes que precisam vender com método, velocidade e acompanhamento.
+                        </h2>
+                        <p class="section-sub">
+                            O Tenaz CRM foi pensado para operações comerciais que lidam com volume, recorrência e pressão por resposta. Ele ajuda gestores a enxergar o funil e ajuda vendedores a executar a rotina com menos dispersão.
+                        </p>
+                    </div>
+                    <div class="grid-3">
+                        <article class="card fade-up">
+                            <div class="card-icon">
+                                <i data-lucide="bar-chart-3" width="21" height="21" aria-hidden="true"></i>
+                            </div>
+                            <h3>Para gestores comerciais</h3>
+                            <p>
+                                Mais visibilidade sobre atendimento, etapas do funil, pendências e produtividade da equipe.
+                            </p>
+                        </article>
+                        <article class="card fade-up">
+                            <div class="card-icon">
+                                <i data-lucide="headphones" width="21" height="21" aria-hidden="true"></i>
+                            </div>
+                            <h3>Para vendedores</h3>
+                            <p>
+                                Menos troca de abas, menos esquecimento e mais clareza sobre o próximo contato.
+                            </p>
+                        </article>
+                        <article class="card fade-up">
+                            <div class="card-icon">
+                                <i data-lucide="message-square-text" width="21" height="21" aria-hidden="true"></i>
+                            </div>
+                            <h3>Para operações com WhatsApp</h3>
+                            <p>
+                                Uso do WhatsApp Business oficial com organização de contatos, mensagens, templates e histórico.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section dark" id="ia" aria-labelledby="ai-title">
+                <div class="split container">
                     <div>
-                        <p class="section-label">Follow-up</p>
-                        <h2 class="section-title" id="followup-title">
-                            Seus concorrentes desistem no segundo contato.
-                            CredFlow IA não.
+                        <p class="section-label">IA aplicada</p>
+                        <h2 class="section-title" id="ai-title">
+                            IA útil é IA dentro do processo, não fora dele.
                         </h2>
                         <p class="section-sub">
-                            A maioria das vendas exige varias tentativas. O
-                            CredFlow IA retoma conversas paradas, reativa leads
-                            frios e pausa a cadencia quando o lead responde ou
-                            quando seu time assume.
+                            No Tenaz, a IA não aparece como uma camada solta. Ela atua onde a operação precisa de ajuda: entender conversas, apoiar respostas, classificar oportunidades, sugerir ações e retomar contatos conforme as regras definidas pela empresa.
                         </p>
                     </div>
-                    <div
-                        class="cadence fade-up"
-                        aria-label="Exemplo de cadencia de follow-up"
-                    >
-                        <div class="cadence-row">
-                            <span>D0</span>
-                            <div>
-                                <strong>Qualificacao imediata</strong>
-                                <small
-                                    >Primeira resposta e coleta de contexto pelo
-                                    WhatsApp oficial.</small
-                                >
-                            </div>
-                            <em>Agora</em>
-                        </div>
-                        <div class="cadence-row">
-                            <span>D1</span>
-                            <div>
-                                <strong>Retomada contextual</strong>
-                                <small
-                                    >Mensagem muda conforme etapa, histórico e
-                                    resposta anterior.</small
-                                >
-                            </div>
-                            <em>Automatico</em>
-                        </div>
-                        <div class="cadence-row">
-                            <span>D7</span>
-                            <div>
-                                <strong>Reativacao de oportunidade</strong>
-                                <small
-                                    >Lead frio volta para o funil antes de
-                                    morrer na base.</small
-                                >
-                            </div>
-                            <em>Persistente</em>
-                        </div>
+                    <div class="ai-panel fade-up">
+                        <img
+                            src="/assets/brand/tenaz-wordmark-stacked-black-1024w.png"
+                            alt=""
+                            width="1024"
+                            height="640"
+                            style="width: min(260px, 76%); height: auto; filter: invert(1); opacity: 0.94"
+                        />
+                        <ul class="ai-list">
+                            <li>
+                                <i data-lucide="check-circle-2" width="18" height="18" aria-hidden="true"></i>
+                                <span>Resumo de conversas para acelerar contexto.</span>
+                            </li>
+                            <li>
+                                <i data-lucide="check-circle-2" width="18" height="18" aria-hidden="true"></i>
+                                <span>Sugestão de respostas com base no histórico.</span>
+                            </li>
+                            <li>
+                                <i data-lucide="check-circle-2" width="18" height="18" aria-hidden="true"></i>
+                                <span>Apoio na qualificação e organização de leads.</span>
+                            </li>
+                            <li>
+                                <i data-lucide="check-circle-2" width="18" height="18" aria-hidden="true"></i>
+                                <span>Follow-ups e rotinas automatizadas com controle da operação.</span>
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </section>
 
-            <section class="section" id="planos" aria-labelledby="plans-title">
+            <section class="section" id="compliance" aria-labelledby="compliance-title">
                 <div class="container">
                     <div class="section-header">
-                        <p class="section-label">Planos</p>
-                        <h2 class="section-title" id="plans-title">
-                            Planos sob consulta, de acordo com volume e
-                            operação.
-                        </h2>
-                        <p class="section-sub">
-                            O diagnóstico define o melhor pacote para seu
-                            momento: solo, equipe em crescimento ou operação com
-                            multiplas contas e integrações.
-                        </p>
-                    </div>
-                    <div class="plan-grid">
-                        <article class="plan-card fade-up">
-                            <h3>Starter</h3>
-                            <p>Para correspondente solo ou pequena operação.</p>
-                            <strong class="plan-price">Sob consulta</strong>
-                            <ul>
-                                <li>CRM + WhatsApp oficial</li>
-                                <li>1 agente IA para qualificação</li>
-                                <li>Follow-up automatico essencial</li>
-                                <li>Pipeline para 1-3 operadores</li>
-                            </ul>
-                        </article>
-                        <article class="plan-card featured fade-up">
-                            <h3>Growth</h3>
-                            <p>Para equipes que precisam organizar volume.</p>
-                            <strong class="plan-price">Sob consulta</strong>
-                            <ul>
-                                <li>Multioperador e permissões</li>
-                                <li>Dashboard e acompanhamento por campanha</li>
-                                <li>
-                                    Disparo controlado e cadencias avancadas
-                                </li>
-                                <li>Suporte a audio e imagem no atendimento</li>
-                            </ul>
-                        </article>
-                        <article class="plan-card fade-up">
-                            <h3>Scale</h3>
-                            <p>
-                                Para operações maiores e integrações proprias.
-                            </p>
-                            <strong class="plan-price">Sob consulta</strong>
-                            <ul>
-                                <li>Múltiplas contas WhatsApp</li>
-                                <li>API, webhooks e integrações</li>
-                                <li>Agentes por convênio ou produto</li>
-                                <li>Suporte prioritario de implantação</li>
-                            </ul>
-                        </article>
-                    </div>
-                    <p class="legal-note">
-                        Planos e recursos finais dependem do volume de leads,
-                        canais utilizados, templates e necessidades de
-                        integração.
-                    </p>
-                </div>
-            </section>
-
-            <section
-                class="section"
-                id="compliance"
-                aria-labelledby="compliance-title"
-            >
-                <div class="container">
-                    <div class="section-header">
-                        <p class="section-label">Compliance</p>
+                        <p class="section-label">Canais oficiais</p>
                         <h2 class="section-title" id="compliance-title">
-                            Preparado para uma operação comercial revisável.
+                            Preparado para operações comerciais com canais oficiais.
                         </h2>
                         <p class="section-sub">
-                            A landing deixa claro quem opera, quais canais são
-                            usados e como o visitante pode acessar termos,
-                            privacidade e contato antes de enviar dados.
+                            O Tenaz CRM trabalha com integrações oficiais e mantém páginas públicas de Política de Privacidade e Termos de Uso para deixar claro como dados, canais e responsabilidades são tratados.
                         </p>
                     </div>
-                    <div class="compliance-grid">
-                        <article class="compliance-card fade-up">
-                            <h3>WhatsApp oficial</h3>
+                    <div class="grid-3">
+                        <article class="card fade-up">
+                            <div class="card-icon">
+                                <i data-lucide="badge-check" width="21" height="21" aria-hidden="true"></i>
+                            </div>
+                            <h3>WhatsApp Business oficial</h3>
                             <p>
-                                Uso de WhatsApp Business API oficial, janela de
-                                atendimento e templates aprovados para retomadas
-                                fora da janela permitida.
+                                Uso de canais oficiais, templates e regras aplicáveis às comunicações comerciais.
                             </p>
                         </article>
-                        <article class="compliance-card fade-up">
-                            <h3>LGPD e consentimento</h3>
+                        <article class="card fade-up">
+                            <div class="card-icon">
+                                <i data-lucide="user-check" width="21" height="21" aria-hidden="true"></i>
+                            </div>
+                            <h3>Consentimento e opt-out</h3>
                             <p>
-                                Formulário com aceite de política de
-                                privacidade, uso de dados para contato comercial
-                                e acesso visível aos documentos legais.
+                                A operação deve respeitar bases legais, autorizações de contato e pedidos de interrupção de mensagens.
                             </p>
                         </article>
-                        <article class="compliance-card fade-up">
-                            <h3>Identificacao</h3>
+                        <article class="card fade-up">
+                            <div class="card-icon">
+                                <i data-lucide="shield-check" width="21" height="21" aria-hidden="true"></i>
+                            </div>
+                            <h3>Dados e privacidade</h3>
                             <p>
-                                Produto CredFlow IA, contato
-                                atendimento@tenazcrm.com.br e documentos legais
-                                públicados na página.
+                                Política pública explicando dados tratados, finalidades, provedores, retenção e solicitação de exclusão.
                             </p>
                         </article>
                     </div>
@@ -2049,94 +1310,52 @@
                     <div class="section-header">
                         <p class="section-label">FAQ</p>
                         <h2 class="section-title" id="faq-title">
-                            Perguntas comuns antes do diagnóstico.
+                            Perguntas comuns antes da demonstração.
                         </h2>
                     </div>
                     <div class="faq-grid">
                         <article class="faq-item fade-up">
-                            <h3>O CredFlow IA substitui meu CRM atual?</h3>
+                            <h3>O Tenaz substitui minha equipe de vendas?</h3>
                             <p>
-                                Não necessáriamente. Ele pode complementar a
-                                operação atual com atendimento, follow-up e
-                                funil especializado para crédito.
+                                Não. O Tenaz ajuda a equipe a executar melhor o processo comercial. A IA apoia atendimento, organização e follow-up, mas decisões comerciais continuam sob responsabilidade da operação.
                             </p>
                         </article>
                         <article class="faq-item fade-up">
-                            <h3>A ferramenta promete aprovação de crédito?</h3>
+                            <h3>A IA envia mensagens sozinha?</h3>
                             <p>
-                                Não. O produto organiza atendimento e
-                                qualificação. Analise, elegibilidade e aprovação
-                                dependem das regras da instituição financeira.
+                                Depende da configuração contratada. Automações e agentes devem operar conforme regras definidas pela empresa, com possibilidade de pausa, revisão e supervisão.
                             </p>
                         </article>
                         <article class="faq-item fade-up">
-                            <h3>Posso acessar o sistema atual?</h3>
+                            <h3>O Tenaz usa WhatsApp oficial?</h3>
                             <p>
-                                Sim. O acesso operacional continua em
-                                app.tenazcrm.com.br. Esta página é apenas a
-                                home pública do produto.
+                                Sim. A proposta é operar com integrações oficiais do WhatsApp Business, respeitando templates, consentimento, opt-out e políticas aplicáveis.
+                            </p>
+                        </article>
+                        <article class="faq-item fade-up">
+                            <h3>O CRM promete aumento de vendas?</h3>
+                            <p>
+                                Não prometemos resultado garantido. O Tenaz melhora organização, velocidade de resposta, acompanhamento e visibilidade do funil, fatores que ajudam equipes comerciais a trabalhar com mais consistência.
                             </p>
                         </article>
                     </div>
                 </div>
             </section>
 
-            <section
-                class="section"
-                id="contato"
-                aria-labelledby="contact-title"
-            >
+            <section class="section" id="contato" aria-labelledby="contact-title">
                 <div class="contact-layout container">
                     <div>
-                        <p class="section-label">Acesso antecipado</p>
+                        <p class="section-label">Demonstração</p>
                         <h2 class="section-title" id="contact-title">
-                            Veja onde sua operação esta perdendo leads.
+                            Veja como o Tenaz pode organizar sua operação comercial.
                         </h2>
                         <p class="section-sub">
-                            Em uma conversa curta, mapeamos canais, volume,
-                            tempo de resposta e pontos de fuga do funil. Depois
-                            indicamos como ligar o CredFlow IA a operação atual.
+                            Em uma demonstração, analisamos seu volume de leads, canais de atendimento, rotina de follow-up e pontos de perda no funil. A partir disso, mostramos como o CRM e a IA podem apoiar sua equipe no processo real de vendas.
                         </p>
-                        <div
-                            class="contact-list"
-                            aria-label="Informacoes de contato"
-                        >
-                            <span
-                                ><i
-                                    data-lucide="calendar-check"
-                                    width="17"
-                                    height="17"
-                                    aria-hidden="true"
-                                ></i
-                                >Retorno em até 1 dia util</span
-                            >
-                            <span
-                                ><i
-                                    data-lucide="shield-check"
-                                    width="17"
-                                    height="17"
-                                    aria-hidden="true"
-                                ></i
-                                >Uso da API oficial do WhatsApp Business</span
-                            >
-                            <span
-                                ><i
-                                    data-lucide="mail"
-                                    width="17"
-                                    height="17"
-                                    aria-hidden="true"
-                                ></i
-                                >atendimento@tenazcrm.com.br</span
-                            >
-                        </div>
                     </div>
 
                     <div class="contact-card">
-                        <form
-                            id="contact-form"
-                            novalidate
-                            aria-label="Formulário de contato"
-                        >
+                        <form id="contact-form" novalidate aria-label="Formulário de contato">
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label for="nome">Nome *</label>
@@ -2150,22 +1369,21 @@
                                         aria-required="true"
                                         aria-describedby="nome-error"
                                     />
-                                    <span
-                                        class="field-error"
-                                        id="nome-error"
-                                        role="alert"
-                                        >Informe seu nome.</span
-                                    >
+                                    <span class="field-error" id="nome-error" role="alert">Informe seu nome.</span>
                                 </div>
                                 <div class="form-group">
-                                    <label for="empresa">Empresa</label>
+                                    <label for="empresa">Empresa *</label>
                                     <input
                                         type="text"
                                         id="empresa"
                                         name="empresa"
-                                        placeholder="Nome da operação"
+                                        placeholder="Nome da empresa"
                                         autocomplete="organization"
+                                        required
+                                        aria-required="true"
+                                        aria-describedby="empresa-error"
                                     />
+                                    <span class="field-error" id="empresa-error" role="alert">Informe sua empresa.</span>
                                 </div>
                                 <div class="form-group full">
                                     <label for="whatsapp">WhatsApp *</label>
@@ -2179,55 +1397,33 @@
                                         aria-required="true"
                                         aria-describedby="whatsapp-error"
                                     />
-                                    <span
-                                        class="field-error"
-                                        id="whatsapp-error"
-                                        role="alert"
-                                        >Informe seu WhatsApp.</span
-                                    >
+                                    <span class="field-error" id="whatsapp-error" role="alert">Informe seu WhatsApp.</span>
                                 </div>
-                                <div class="form-group full">
-                                    <label for="volume"
-                                        >Volume mensal de leads</label
-                                    >
+                                <div class="form-group">
+                                    <label for="equipe">Tamanho da equipe</label>
+                                    <select id="equipe" name="equipe">
+                                        <option value="">Selecione</option>
+                                        <option value="1 a 5 vendedores">1 a 5 vendedores</option>
+                                        <option value="6 a 20 vendedores">6 a 20 vendedores</option>
+                                        <option value="21 a 50 vendedores">21 a 50 vendedores</option>
+                                        <option value="Mais de 50 vendedores">Mais de 50 vendedores</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="volume">Volume mensal de leads</label>
                                     <select id="volume" name="volume">
-                                        <option value="">
-                                            Selecione uma faixa
-                                        </option>
-                                        <option value="Ate 200 leads">
-                                            Ate 200 leads
-                                        </option>
-                                        <option value="200 a 1000 leads">
-                                            200 a 1000 leads
-                                        </option>
-                                        <option value="Mais de 1000 leads">
-                                            Mais de 1000 leads
-                                        </option>
+                                        <option value="">Selecione</option>
+                                        <option value="Até 200 leads">Até 200 leads</option>
+                                        <option value="200 a 1000 leads">200 a 1000 leads</option>
+                                        <option value="Mais de 1000 leads">Mais de 1000 leads</option>
                                     </select>
                                 </div>
                                 <div class="form-group full">
-                                    <label for="operacao"
-                                        >Operacao principal</label
-                                    >
-                                    <select id="operacao" name="operacao">
-                                        <option value="">
-                                            Selecione o foco da operação
-                                        </option>
-                                        <option value="INSS">INSS</option>
-                                        <option value="SIAPE">SIAPE</option>
-                                        <option value="CLT">CLT</option>
-                                        <option value="FGTS">FGTS</option>
-                                        <option value="Multiproduto">
-                                            Multiproduto
-                                        </option>
-                                    </select>
-                                </div>
-                                <div class="form-group full">
-                                    <label for="mensagem">Mensagem</label>
+                                    <label for="mensagem">Principal desafio comercial</label>
                                     <textarea
                                         id="mensagem"
                                         name="mensagem"
-                                        placeholder="Conte sobre seu volume de leads, canais e principal gargalo."
+                                        placeholder="Ex.: demora na resposta, follow-up irregular, baixa visibilidade do funil, muitos canais separados."
                                     ></textarea>
                                 </div>
                             </div>
@@ -2242,44 +1438,21 @@
                                 />
                                 <span>
                                     Li e aceito a
-                                    <a href="/politica"
-                                        >Política de Privacidade</a
-                                    >
+                                    <a href="/politica">Política de Privacidade</a>
                                     e os
-                                    <a href="/termos">Termos de Uso</a>
-                                    e autorizo contato comercial sobre o
-                                    CredFlow IA.
+                                    <a href="/termos">Termos de Uso</a>,
+                                    e autorizo contato comercial da Promithic sobre o Tenaz CRM.
                                 </span>
                             </label>
-                            <span
-                                class="field-error"
-                                id="privacy-error"
-                                role="alert"
-                                >Aceite a política para enviar.</span
-                            >
-                            <button
-                                type="submit"
-                                class="btn-submit"
-                                id="submit-btn"
-                            >
+                            <span class="field-error" id="privacy-error" role="alert">Aceite a política para enviar.</span>
+                            <button type="submit" class="btn btn-submit" id="submit-btn">
                                 <span class="spinner" aria-hidden="true"></span>
-                                <span class="btn-label"
-                                    >Quero diagnóstico do funil</span
-                                >
+                                <span class="btn-label">Agendar demonstração</span>
                             </button>
                         </form>
-                        <div
-                            class="form-success"
-                            id="form-success"
-                            role="status"
-                            aria-live="polite"
-                            aria-atomic="true"
-                        >
+                        <div class="form-success" id="form-success" role="status" aria-live="polite" aria-atomic="true">
                             <h3>Pedido recebido.</h3>
-                            <p>
-                                Nossa equipe vai entrar em contato pelo WhatsApp
-                                informado.
-                            </p>
+                            <p>Nossa equipe vai entrar em contato pelo WhatsApp informado.</p>
                         </div>
                     </div>
                 </div>
@@ -2288,15 +1461,11 @@
 
         <footer>
             <div class="footer-inner container">
-                <p class="footer-copy">
-                    &copy; 2026 CredFlow IA. Todos os direitos reservados.
-                </p>
+                <p class="footer-copy">&copy; 2026 Promithic. Todos os direitos reservados.</p>
                 <nav class="footer-links" aria-label="Links legais">
                     <a href="/politica">Política de Privacidade</a>
                     <a href="/termos">Termos de Uso</a>
-                    <a href="https://app.tenazcrm.com.br"
-                        >Entrar no sistema</a
-                    >
+                    <a href="https://app.tenazcrm.com.br">Entrar no sistema</a>
                 </nav>
             </div>
         </footer>
@@ -2318,9 +1487,7 @@
                 { threshold: 0.08 },
             );
 
-            document
-                .querySelectorAll('.fade-up')
-                .forEach((element) => observer.observe(element));
+            document.querySelectorAll('.fade-up').forEach((element) => observer.observe(element));
 
             const form = document.getElementById('contact-form');
             const submitBtn = document.getElementById('submit-btn');
@@ -2338,45 +1505,35 @@
                 return !empty;
             }
 
-            document.getElementById('nome').addEventListener('blur', () => {
-                validateField('nome', 'nome-error', 'Informe seu nome.');
-            });
-
-            document.getElementById('whatsapp').addEventListener('blur', () => {
-                validateField(
-                    'whatsapp',
-                    'whatsapp-error',
-                    'Informe seu WhatsApp.',
-                );
-            });
-
-            document
-                .getElementById('privacy-consent')
-                .addEventListener('change', () => {
-                    const consent = document.getElementById('privacy-consent');
-                    const error = document.getElementById('privacy-error');
-                    error.classList.toggle('visible', !consent.checked);
+            ['nome', 'empresa', 'whatsapp'].forEach((fieldId) => {
+                document.getElementById(fieldId).addEventListener('blur', () => {
+                    const messages = {
+                        nome: 'Informe seu nome.',
+                        empresa: 'Informe sua empresa.',
+                        whatsapp: 'Informe seu WhatsApp.',
+                    };
+                    validateField(fieldId, `${fieldId}-error`, messages[fieldId]);
                 });
+            });
+
+            document.getElementById('privacy-consent').addEventListener('change', () => {
+                const consent = document.getElementById('privacy-consent');
+                const error = document.getElementById('privacy-error');
+                error.classList.toggle('visible', !consent.checked);
+            });
 
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
 
-                const nomeOk = validateField(
-                    'nome',
-                    'nome-error',
-                    'Informe seu nome.',
-                );
-                const whatsappOk = validateField(
-                    'whatsapp',
-                    'whatsapp-error',
-                    'Informe seu WhatsApp.',
-                );
+                const nomeOk = validateField('nome', 'nome-error', 'Informe seu nome.');
+                const empresaOk = validateField('empresa', 'empresa-error', 'Informe sua empresa.');
+                const whatsappOk = validateField('whatsapp', 'whatsapp-error', 'Informe seu WhatsApp.');
                 const consent = document.getElementById('privacy-consent');
                 const privacyError = document.getElementById('privacy-error');
                 const consentOk = consent.checked;
                 privacyError.classList.toggle('visible', !consentOk);
 
-                if (!nomeOk || !whatsappOk || !consentOk) {
+                if (!nomeOk || !empresaOk || !whatsappOk || !consentOk) {
                     return;
                 }
 
@@ -2386,24 +1543,18 @@
 
                 const nome = document.getElementById('nome').value.trim();
                 const empresa = document.getElementById('empresa').value.trim();
-                const whatsapp = document
-                    .getElementById('whatsapp')
-                    .value.trim();
+                const whatsapp = document.getElementById('whatsapp').value.trim();
+                const equipe = document.getElementById('equipe').value.trim();
                 const volume = document.getElementById('volume').value.trim();
-                const operacao = document
-                    .getElementById('operacao')
-                    .value.trim();
-                const mensagem = document
-                    .getElementById('mensagem')
-                    .value.trim();
+                const mensagem = document.getElementById('mensagem').value.trim();
 
-                await new Promise((resolve) => setTimeout(resolve, 700));
+                await new Promise((resolve) => setTimeout(resolve, 500));
 
                 const body = encodeURIComponent(
-                    `Nome: ${nome}\nEmpresa: ${empresa || '-'}\nWhatsApp: ${whatsapp}\nVolume mensal de leads: ${volume || '-'}\nOperação principal: ${operacao || '-'}\nAceite LGPD: sim\n\n${mensagem || '(sem mensagem)'}`,
+                    `Nome: ${nome}\nEmpresa: ${empresa}\nWhatsApp: ${whatsapp}\nTamanho da equipe: ${equipe || '-'}\nVolume mensal de leads: ${volume || '-'}\nAceite LGPD: sim\n\nPrincipal desafio:\n${mensagem || '(sem mensagem)'}`,
                 );
 
-                window.location.href = `mailto:atendimento@tenazcrm.com.br?subject=Diagnóstico CredFlow IA - ${encodeURIComponent(nome)}&body=${body}`;
+                window.location.href = `mailto:atendimento@tenazcrm.com.br?subject=Demonstração Tenaz CRM - ${encodeURIComponent(nome)}&body=${body}`;
 
                 form.style.display = 'none';
                 successBox.classList.add('visible');
