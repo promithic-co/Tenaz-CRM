@@ -40,6 +40,20 @@ test('monitor-campaigns pauses on a wallet error that failed long after the row 
     expect($campaign->fresh()->status)->toBe('paused');
 });
 
+test('monitor-campaigns runs the failure-rate check on a sending campaign that has sent messages', function () {
+    // Regression: the failure-rate query used whereColumn('total_sent', '>', 'total_recipients * 0'),
+    // which Postgres treats as a (non-existent) column identifier and rejects, making the whole
+    // command exit 1 every run. A sending campaign with total_sent > 0 exercises that path.
+    Campaign::factory()->sending()->create([
+        'total_recipients' => 100,
+        'total_sent' => 50,
+        'total_failed' => 40,
+        'error_threshold_percent' => 10,
+    ]);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+});
+
 test('monitor-campaigns leaves campaigns without a wallet error untouched', function () {
     $campaign = Campaign::factory()->sending()->create();
 
