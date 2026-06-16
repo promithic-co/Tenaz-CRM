@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\TeamController::index
  * @see app/Http/Controllers/Settings/TeamController.php:22
@@ -42,6 +42,41 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\Settings\TeamController::index
+ * @see app/Http/Controllers/Settings/TeamController.php:22
+ * @route '/settings/team'
+ */
+    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: index.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\Settings\TeamController::index
+ * @see app/Http/Controllers/Settings/TeamController.php:22
+ * @route '/settings/team'
+ */
+        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\Settings\TeamController::index
+ * @see app/Http/Controllers/Settings/TeamController.php:22
+ * @route '/settings/team'
+ */
+        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    index.form = indexForm
 /**
 * @see \App\Http\Controllers\Settings\TeamController::inviteStore
  * @see app/Http/Controllers/Settings/TeamController.php:61
@@ -76,6 +111,27 @@ inviteStore.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\Settings\TeamController::inviteStore
+ * @see app/Http/Controllers/Settings/TeamController.php:61
+ * @route '/settings/team/invitations'
+ */
+    const inviteStoreForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: inviteStore.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Settings\TeamController::inviteStore
+ * @see app/Http/Controllers/Settings/TeamController.php:61
+ * @route '/settings/team/invitations'
+ */
+        inviteStoreForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: inviteStore.url(options),
+            method: 'post',
+        })
+    
+    inviteStore.form = inviteStoreForm
 /**
 * @see \App\Http\Controllers\Settings\TeamController::inviteDestroy
  * @see app/Http/Controllers/Settings/TeamController.php:89
@@ -134,6 +190,37 @@ inviteDestroy.delete = (args: { invitation: number | { id: number } } | [invitat
     method: 'delete',
 })
 
+    /**
+* @see \App\Http\Controllers\Settings\TeamController::inviteDestroy
+ * @see app/Http/Controllers/Settings/TeamController.php:89
+ * @route '/settings/team/invitations/{invitation}'
+ */
+    const inviteDestroyForm = (args: { invitation: number | { id: number } } | [invitation: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: inviteDestroy.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'DELETE',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Settings\TeamController::inviteDestroy
+ * @see app/Http/Controllers/Settings/TeamController.php:89
+ * @route '/settings/team/invitations/{invitation}'
+ */
+        inviteDestroyForm.delete = (args: { invitation: number | { id: number } } | [invitation: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: inviteDestroy.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'DELETE',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    inviteDestroy.form = inviteDestroyForm
 /**
 * @see \App\Http\Controllers\Settings\TeamController::memberUpdate
  * @see app/Http/Controllers/Settings/TeamController.php:97
@@ -192,6 +279,37 @@ memberUpdate.patch = (args: { user: number | { id: number } } | [user: number | 
     method: 'patch',
 })
 
+    /**
+* @see \App\Http\Controllers\Settings\TeamController::memberUpdate
+ * @see app/Http/Controllers/Settings/TeamController.php:97
+ * @route '/settings/team/members/{user}'
+ */
+    const memberUpdateForm = (args: { user: number | { id: number } } | [user: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: memberUpdate.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'PATCH',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Settings\TeamController::memberUpdate
+ * @see app/Http/Controllers/Settings/TeamController.php:97
+ * @route '/settings/team/members/{user}'
+ */
+        memberUpdateForm.patch = (args: { user: number | { id: number } } | [user: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: memberUpdate.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'PATCH',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    memberUpdate.form = memberUpdateForm
 /**
 * @see \App\Http\Controllers\Settings\TeamController::memberDestroy
  * @see app/Http/Controllers/Settings/TeamController.php:119
@@ -249,6 +367,38 @@ memberDestroy.delete = (args: { user: number | { id: number } } | [user: number 
     url: memberDestroy.url(args, options),
     method: 'delete',
 })
+
+    /**
+* @see \App\Http\Controllers\Settings\TeamController::memberDestroy
+ * @see app/Http/Controllers/Settings/TeamController.php:119
+ * @route '/settings/team/members/{user}'
+ */
+    const memberDestroyForm = (args: { user: number | { id: number } } | [user: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: memberDestroy.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'DELETE',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Settings\TeamController::memberDestroy
+ * @see app/Http/Controllers/Settings/TeamController.php:119
+ * @route '/settings/team/members/{user}'
+ */
+        memberDestroyForm.delete = (args: { user: number | { id: number } } | [user: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: memberDestroy.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'DELETE',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    memberDestroy.form = memberDestroyForm
 const TeamController = { index, inviteStore, inviteDestroy, memberUpdate, memberDestroy }
 
 export default TeamController

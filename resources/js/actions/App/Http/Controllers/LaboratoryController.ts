@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LaboratoryController::index
  * @see app/Http/Controllers/LaboratoryController.php:21
@@ -42,6 +42,41 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\LaboratoryController::index
+ * @see app/Http/Controllers/LaboratoryController.php:21
+ * @route '/laboratory'
+ */
+    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: index.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\LaboratoryController::index
+ * @see app/Http/Controllers/LaboratoryController.php:21
+ * @route '/laboratory'
+ */
+        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\LaboratoryController::index
+ * @see app/Http/Controllers/LaboratoryController.php:21
+ * @route '/laboratory'
+ */
+        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    index.form = indexForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::datasets
  * @see app/Http/Controllers/LaboratoryController.php:41
@@ -85,6 +120,41 @@ datasets.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\LaboratoryController::datasets
+ * @see app/Http/Controllers/LaboratoryController.php:41
+ * @route '/laboratory/datasets-page'
+ */
+    const datasetsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: datasets.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\LaboratoryController::datasets
+ * @see app/Http/Controllers/LaboratoryController.php:41
+ * @route '/laboratory/datasets-page'
+ */
+        datasetsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: datasets.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\LaboratoryController::datasets
+ * @see app/Http/Controllers/LaboratoryController.php:41
+ * @route '/laboratory/datasets-page'
+ */
+        datasetsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: datasets.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    datasets.form = datasetsForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::stressTest
  * @see app/Http/Controllers/LaboratoryController.php:61
@@ -128,6 +198,41 @@ stressTest.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\LaboratoryController::stressTest
+ * @see app/Http/Controllers/LaboratoryController.php:61
+ * @route '/laboratory/stress-test'
+ */
+    const stressTestForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: stressTest.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\LaboratoryController::stressTest
+ * @see app/Http/Controllers/LaboratoryController.php:61
+ * @route '/laboratory/stress-test'
+ */
+        stressTestForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: stressTest.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\LaboratoryController::stressTest
+ * @see app/Http/Controllers/LaboratoryController.php:61
+ * @route '/laboratory/stress-test'
+ */
+        stressTestForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: stressTest.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    stressTest.form = stressTestForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::stressTestResults
  * @see app/Http/Controllers/LaboratoryController.php:90
@@ -195,6 +300,41 @@ stressTestResults.head = (args: { run: number | { id: number } } | [run: number 
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\LaboratoryController::stressTestResults
+ * @see app/Http/Controllers/LaboratoryController.php:90
+ * @route '/laboratory/stress-test/{run}'
+ */
+    const stressTestResultsForm = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: stressTestResults.url(args, options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\LaboratoryController::stressTestResults
+ * @see app/Http/Controllers/LaboratoryController.php:90
+ * @route '/laboratory/stress-test/{run}'
+ */
+        stressTestResultsForm.get = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: stressTestResults.url(args, options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\LaboratoryController::stressTestResults
+ * @see app/Http/Controllers/LaboratoryController.php:90
+ * @route '/laboratory/stress-test/{run}'
+ */
+        stressTestResultsForm.head = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: stressTestResults.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    stressTestResults.form = stressTestResultsForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::aiUsage
  * @see app/Http/Controllers/LaboratoryController.php:144
@@ -238,6 +378,41 @@ aiUsage.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\LaboratoryController::aiUsage
+ * @see app/Http/Controllers/LaboratoryController.php:144
+ * @route '/laboratory/ai-usage'
+ */
+    const aiUsageForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: aiUsage.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\LaboratoryController::aiUsage
+ * @see app/Http/Controllers/LaboratoryController.php:144
+ * @route '/laboratory/ai-usage'
+ */
+        aiUsageForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: aiUsage.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\LaboratoryController::aiUsage
+ * @see app/Http/Controllers/LaboratoryController.php:144
+ * @route '/laboratory/ai-usage'
+ */
+        aiUsageForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: aiUsage.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    aiUsage.form = aiUsageForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::health
  * @see app/Http/Controllers/LaboratoryController.php:187
@@ -281,6 +456,41 @@ health.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\LaboratoryController::health
+ * @see app/Http/Controllers/LaboratoryController.php:187
+ * @route '/laboratory/health'
+ */
+    const healthForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: health.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\LaboratoryController::health
+ * @see app/Http/Controllers/LaboratoryController.php:187
+ * @route '/laboratory/health'
+ */
+        healthForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: health.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\LaboratoryController::health
+ * @see app/Http/Controllers/LaboratoryController.php:187
+ * @route '/laboratory/health'
+ */
+        healthForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: health.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    health.form = healthForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::interactionTimeline
  * @see app/Http/Controllers/LaboratoryController.php:202
@@ -343,6 +553,41 @@ interactionTimeline.head = (args: { interactionId: string | number } | [interact
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\LaboratoryController::interactionTimeline
+ * @see app/Http/Controllers/LaboratoryController.php:202
+ * @route '/laboratory/interactions/{interactionId}'
+ */
+    const interactionTimelineForm = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: interactionTimeline.url(args, options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\LaboratoryController::interactionTimeline
+ * @see app/Http/Controllers/LaboratoryController.php:202
+ * @route '/laboratory/interactions/{interactionId}'
+ */
+        interactionTimelineForm.get = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: interactionTimeline.url(args, options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\LaboratoryController::interactionTimeline
+ * @see app/Http/Controllers/LaboratoryController.php:202
+ * @route '/laboratory/interactions/{interactionId}'
+ */
+        interactionTimelineForm.head = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: interactionTimeline.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    interactionTimeline.form = interactionTimelineForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::leadInteractionTimeline
  * @see app/Http/Controllers/LaboratoryController.php:231
@@ -409,6 +654,42 @@ leadInteractionTimeline.head = (args: { lead: number | { id: number } } | [lead:
     url: leadInteractionTimeline.url(args, options),
     method: 'head',
 })
+
+    /**
+* @see \App\Http\Controllers\LaboratoryController::leadInteractionTimeline
+ * @see app/Http/Controllers/LaboratoryController.php:231
+ * @route '/laboratory/leads/{lead}/interactions'
+ */
+    const leadInteractionTimelineForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: leadInteractionTimeline.url(args, options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\LaboratoryController::leadInteractionTimeline
+ * @see app/Http/Controllers/LaboratoryController.php:231
+ * @route '/laboratory/leads/{lead}/interactions'
+ */
+        leadInteractionTimelineForm.get = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: leadInteractionTimeline.url(args, options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\LaboratoryController::leadInteractionTimeline
+ * @see app/Http/Controllers/LaboratoryController.php:231
+ * @route '/laboratory/leads/{lead}/interactions'
+ */
+        leadInteractionTimelineForm.head = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: leadInteractionTimeline.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    leadInteractionTimeline.form = leadInteractionTimelineForm
 const LaboratoryController = { index, datasets, stressTest, stressTestResults, aiUsage, health, interactionTimeline, leadInteractionTimeline }
 
 export default LaboratoryController

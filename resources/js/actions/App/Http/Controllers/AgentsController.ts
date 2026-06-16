@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\AgentsController::index
  * @see app/Http/Controllers/AgentsController.php:23
@@ -42,6 +42,41 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\AgentsController::index
+ * @see app/Http/Controllers/AgentsController.php:23
+ * @route '/agentes'
+ */
+    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: index.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\AgentsController::index
+ * @see app/Http/Controllers/AgentsController.php:23
+ * @route '/agentes'
+ */
+        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\AgentsController::index
+ * @see app/Http/Controllers/AgentsController.php:23
+ * @route '/agentes'
+ */
+        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    index.form = indexForm
 /**
 * @see \App\Http\Controllers\AgentsController::create
  * @see app/Http/Controllers/AgentsController.php:70
@@ -85,6 +120,41 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\AgentsController::create
+ * @see app/Http/Controllers/AgentsController.php:70
+ * @route '/agentes/create'
+ */
+    const createForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: create.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\AgentsController::create
+ * @see app/Http/Controllers/AgentsController.php:70
+ * @route '/agentes/create'
+ */
+        createForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: create.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\AgentsController::create
+ * @see app/Http/Controllers/AgentsController.php:70
+ * @route '/agentes/create'
+ */
+        createForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: create.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    create.form = createForm
 /**
 * @see \App\Http\Controllers\AgentsController::store
  * @see app/Http/Controllers/AgentsController.php:93
@@ -119,6 +189,27 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\AgentsController::store
+ * @see app/Http/Controllers/AgentsController.php:93
+ * @route '/agentes'
+ */
+    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: store.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\AgentsController::store
+ * @see app/Http/Controllers/AgentsController.php:93
+ * @route '/agentes'
+ */
+        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: store.url(options),
+            method: 'post',
+        })
+    
+    store.form = storeForm
 /**
 * @see \App\Http\Controllers\AgentsController::update
  * @see app/Http/Controllers/AgentsController.php:109
@@ -177,6 +268,37 @@ update.patch = (args: { agent: number | { id: number } } | [agent: number | { id
     method: 'patch',
 })
 
+    /**
+* @see \App\Http\Controllers\AgentsController::update
+ * @see app/Http/Controllers/AgentsController.php:109
+ * @route '/agentes/{agent}'
+ */
+    const updateForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: update.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'PATCH',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\AgentsController::update
+ * @see app/Http/Controllers/AgentsController.php:109
+ * @route '/agentes/{agent}'
+ */
+        updateForm.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: update.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'PATCH',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    update.form = updateForm
 /**
 * @see \App\Http\Controllers\AgentsController::destroy
  * @see app/Http/Controllers/AgentsController.php:119
@@ -235,6 +357,37 @@ destroy.delete = (args: { agent: number | { id: number } } | [agent: number | { 
     method: 'delete',
 })
 
+    /**
+* @see \App\Http\Controllers\AgentsController::destroy
+ * @see app/Http/Controllers/AgentsController.php:119
+ * @route '/agentes/{agent}'
+ */
+    const destroyForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: destroy.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'DELETE',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\AgentsController::destroy
+ * @see app/Http/Controllers/AgentsController.php:119
+ * @route '/agentes/{agent}'
+ */
+        destroyForm.delete = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: destroy.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'DELETE',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\AgentsController::restore
  * @see app/Http/Controllers/AgentsController.php:141
@@ -288,6 +441,37 @@ restore.patch = (args: { agent_id: string | number } | [agent_id: string | numbe
     method: 'patch',
 })
 
+    /**
+* @see \App\Http\Controllers\AgentsController::restore
+ * @see app/Http/Controllers/AgentsController.php:141
+ * @route '/agentes/{agent_id}/restore'
+ */
+    const restoreForm = (args: { agent_id: string | number } | [agent_id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: restore.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'PATCH',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\AgentsController::restore
+ * @see app/Http/Controllers/AgentsController.php:141
+ * @route '/agentes/{agent_id}/restore'
+ */
+        restoreForm.patch = (args: { agent_id: string | number } | [agent_id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: restore.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'PATCH',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    restore.form = restoreForm
 /**
 * @see \App\Http\Controllers\AgentsController::toggleActive
  * @see app/Http/Controllers/AgentsController.php:153
@@ -346,6 +530,37 @@ toggleActive.patch = (args: { agent: number | { id: number } } | [agent: number 
     method: 'patch',
 })
 
+    /**
+* @see \App\Http\Controllers\AgentsController::toggleActive
+ * @see app/Http/Controllers/AgentsController.php:153
+ * @route '/agentes/{agent}/toggle-active'
+ */
+    const toggleActiveForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: toggleActive.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'PATCH',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\AgentsController::toggleActive
+ * @see app/Http/Controllers/AgentsController.php:153
+ * @route '/agentes/{agent}/toggle-active'
+ */
+        toggleActiveForm.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: toggleActive.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'PATCH',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    toggleActive.form = toggleActiveForm
 /**
 * @see \App\Http\Controllers\AgentsController::updateInstance
  * @see app/Http/Controllers/AgentsController.php:169
@@ -404,6 +619,37 @@ updateInstance.patch = (args: { agent: number | { id: number } } | [agent: numbe
     method: 'patch',
 })
 
+    /**
+* @see \App\Http\Controllers\AgentsController::updateInstance
+ * @see app/Http/Controllers/AgentsController.php:169
+ * @route '/agentes/{agent}/instance'
+ */
+    const updateInstanceForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: updateInstance.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'PATCH',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\AgentsController::updateInstance
+ * @see app/Http/Controllers/AgentsController.php:169
+ * @route '/agentes/{agent}/instance'
+ */
+        updateInstanceForm.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: updateInstance.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'PATCH',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    updateInstance.form = updateInstanceForm
 /**
 * @see \App\Http\Controllers\AgentsController::assign
  * @see app/Http/Controllers/AgentsController.php:187
@@ -461,6 +707,38 @@ assign.patch = (args: { agent: number | { id: number } } | [agent: number | { id
     url: assign.url(args, options),
     method: 'patch',
 })
+
+    /**
+* @see \App\Http\Controllers\AgentsController::assign
+ * @see app/Http/Controllers/AgentsController.php:187
+ * @route '/agentes/{agent}/assign'
+ */
+    const assignForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: assign.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'PATCH',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\AgentsController::assign
+ * @see app/Http/Controllers/AgentsController.php:187
+ * @route '/agentes/{agent}/assign'
+ */
+        assignForm.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: assign.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'PATCH',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    assign.form = assignForm
 const AgentsController = { index, create, store, update, destroy, restore, toggleActive, updateInstance, assign }
 
 export default AgentsController

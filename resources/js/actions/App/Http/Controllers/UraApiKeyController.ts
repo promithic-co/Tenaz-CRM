@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\UraApiKeyController::index
  * @see app/Http/Controllers/UraApiKeyController.php:17
@@ -42,6 +42,41 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\UraApiKeyController::index
+ * @see app/Http/Controllers/UraApiKeyController.php:17
+ * @route '/ura'
+ */
+    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: index.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\UraApiKeyController::index
+ * @see app/Http/Controllers/UraApiKeyController.php:17
+ * @route '/ura'
+ */
+        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\UraApiKeyController::index
+ * @see app/Http/Controllers/UraApiKeyController.php:17
+ * @route '/ura'
+ */
+        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    index.form = indexForm
 /**
 * @see \App\Http\Controllers\UraApiKeyController::store
  * @see app/Http/Controllers/UraApiKeyController.php:45
@@ -76,6 +111,27 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\UraApiKeyController::store
+ * @see app/Http/Controllers/UraApiKeyController.php:45
+ * @route '/ura'
+ */
+    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: store.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\UraApiKeyController::store
+ * @see app/Http/Controllers/UraApiKeyController.php:45
+ * @route '/ura'
+ */
+        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: store.url(options),
+            method: 'post',
+        })
+    
+    store.form = storeForm
 /**
 * @see \App\Http\Controllers\UraApiKeyController::update
  * @see app/Http/Controllers/UraApiKeyController.php:68
@@ -134,6 +190,37 @@ update.patch = (args: { uraApiKey: number | { id: number } } | [uraApiKey: numbe
     method: 'patch',
 })
 
+    /**
+* @see \App\Http\Controllers\UraApiKeyController::update
+ * @see app/Http/Controllers/UraApiKeyController.php:68
+ * @route '/ura/{uraApiKey}'
+ */
+    const updateForm = (args: { uraApiKey: number | { id: number } } | [uraApiKey: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: update.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'PATCH',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\UraApiKeyController::update
+ * @see app/Http/Controllers/UraApiKeyController.php:68
+ * @route '/ura/{uraApiKey}'
+ */
+        updateForm.patch = (args: { uraApiKey: number | { id: number } } | [uraApiKey: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: update.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'PATCH',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    update.form = updateForm
 /**
 * @see \App\Http\Controllers\UraApiKeyController::destroy
  * @see app/Http/Controllers/UraApiKeyController.php:93
@@ -191,6 +278,38 @@ destroy.delete = (args: { uraApiKey: number | { id: number } } | [uraApiKey: num
     url: destroy.url(args, options),
     method: 'delete',
 })
+
+    /**
+* @see \App\Http\Controllers\UraApiKeyController::destroy
+ * @see app/Http/Controllers/UraApiKeyController.php:93
+ * @route '/ura/{uraApiKey}'
+ */
+    const destroyForm = (args: { uraApiKey: number | { id: number } } | [uraApiKey: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: destroy.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'DELETE',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\UraApiKeyController::destroy
+ * @see app/Http/Controllers/UraApiKeyController.php:93
+ * @route '/ura/{uraApiKey}'
+ */
+        destroyForm.delete = (args: { uraApiKey: number | { id: number } } | [uraApiKey: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: destroy.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'DELETE',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    destroy.form = destroyForm
 const UraApiKeyController = { index, store, update, destroy }
 
 export default UraApiKeyController

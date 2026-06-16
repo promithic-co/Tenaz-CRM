@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\UraInboundController::store
  * @see app/Http/Controllers/UraInboundController.php:14
@@ -33,6 +33,27 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\UraInboundController::store
+ * @see app/Http/Controllers/UraInboundController.php:14
+ * @route '/api/ura/inbound-lead'
+ */
+    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: store.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\UraInboundController::store
+ * @see app/Http/Controllers/UraInboundController.php:14
+ * @route '/api/ura/inbound-lead'
+ */
+        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: store.url(options),
+            method: 'post',
+        })
+    
+    store.form = storeForm
 /**
 * @see \App\Http\Controllers\UraInboundController::trigger
  * @see app/Http/Controllers/UraInboundController.php:29
@@ -66,6 +87,28 @@ trigger.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: trigger.url(options),
     method: 'post',
 })
+
+    /**
+* @see \App\Http\Controllers\UraInboundController::trigger
+ * @see app/Http/Controllers/UraInboundController.php:29
+ * @route '/api/ura/trigger'
+ */
+    const triggerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: trigger.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\UraInboundController::trigger
+ * @see app/Http/Controllers/UraInboundController.php:29
+ * @route '/api/ura/trigger'
+ */
+        triggerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: trigger.url(options),
+            method: 'post',
+        })
+    
+    trigger.form = triggerForm
 const UraInboundController = { store, trigger }
 
 export default UraInboundController

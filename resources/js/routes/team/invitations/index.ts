@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\TeamController::store
  * @see app/Http/Controllers/Settings/TeamController.php:61
@@ -33,6 +33,27 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\Settings\TeamController::store
+ * @see app/Http/Controllers/Settings/TeamController.php:61
+ * @route '/settings/team/invitations'
+ */
+    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: store.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Settings\TeamController::store
+ * @see app/Http/Controllers/Settings/TeamController.php:61
+ * @route '/settings/team/invitations'
+ */
+        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: store.url(options),
+            method: 'post',
+        })
+    
+    store.form = storeForm
 /**
 * @see \App\Http\Controllers\Settings\TeamController::destroy
  * @see app/Http/Controllers/Settings/TeamController.php:89
@@ -90,6 +111,38 @@ destroy.delete = (args: { invitation: number | { id: number } } | [invitation: n
     url: destroy.url(args, options),
     method: 'delete',
 })
+
+    /**
+* @see \App\Http\Controllers\Settings\TeamController::destroy
+ * @see app/Http/Controllers/Settings/TeamController.php:89
+ * @route '/settings/team/invitations/{invitation}'
+ */
+    const destroyForm = (args: { invitation: number | { id: number } } | [invitation: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: destroy.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'DELETE',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Settings\TeamController::destroy
+ * @see app/Http/Controllers/Settings/TeamController.php:89
+ * @route '/settings/team/invitations/{invitation}'
+ */
+        destroyForm.delete = (args: { invitation: number | { id: number } } | [invitation: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: destroy.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'DELETE',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    destroy.form = destroyForm
 const invitations = {
     store: Object.assign(store, store),
 destroy: Object.assign(destroy, destroy),

@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\AutoTagSettingsController::edit
  * @see app/Http/Controllers/Settings/AutoTagSettingsController.php:14
@@ -42,6 +42,41 @@ edit.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\Settings\AutoTagSettingsController::edit
+ * @see app/Http/Controllers/Settings/AutoTagSettingsController.php:14
+ * @route '/settings/auto-tag'
+ */
+    const editForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: edit.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\Settings\AutoTagSettingsController::edit
+ * @see app/Http/Controllers/Settings/AutoTagSettingsController.php:14
+ * @route '/settings/auto-tag'
+ */
+        editForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: edit.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\Settings\AutoTagSettingsController::edit
+ * @see app/Http/Controllers/Settings/AutoTagSettingsController.php:14
+ * @route '/settings/auto-tag'
+ */
+        editForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: edit.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    edit.form = editForm
 /**
 * @see \App\Http\Controllers\Settings\AutoTagSettingsController::update
  * @see app/Http/Controllers/Settings/AutoTagSettingsController.php:24
@@ -75,6 +110,38 @@ update.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     url: update.url(options),
     method: 'patch',
 })
+
+    /**
+* @see \App\Http\Controllers\Settings\AutoTagSettingsController::update
+ * @see app/Http/Controllers/Settings/AutoTagSettingsController.php:24
+ * @route '/settings/auto-tag'
+ */
+    const updateForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: update.url({
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'PATCH',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Settings\AutoTagSettingsController::update
+ * @see app/Http/Controllers/Settings/AutoTagSettingsController.php:24
+ * @route '/settings/auto-tag'
+ */
+        updateForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: update.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'PATCH',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    update.form = updateForm
 const autoTag = {
     edit: Object.assign(edit, edit),
 update: Object.assign(update, update),

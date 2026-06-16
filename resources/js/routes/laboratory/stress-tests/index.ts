@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\StressTestController::index
  * @see app/Http/Controllers/StressTestController.php:115
@@ -42,6 +42,41 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\StressTestController::index
+ * @see app/Http/Controllers/StressTestController.php:115
+ * @route '/laboratory/stress-tests'
+ */
+    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: index.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\StressTestController::index
+ * @see app/Http/Controllers/StressTestController.php:115
+ * @route '/laboratory/stress-tests'
+ */
+        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\StressTestController::index
+ * @see app/Http/Controllers/StressTestController.php:115
+ * @route '/laboratory/stress-tests'
+ */
+        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    index.form = indexForm
 /**
 * @see \App\Http\Controllers\StressTestController::store
  * @see app/Http/Controllers/StressTestController.php:142
@@ -76,6 +111,27 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\StressTestController::store
+ * @see app/Http/Controllers/StressTestController.php:142
+ * @route '/laboratory/stress-tests'
+ */
+    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: store.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\StressTestController::store
+ * @see app/Http/Controllers/StressTestController.php:142
+ * @route '/laboratory/stress-tests'
+ */
+        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: store.url(options),
+            method: 'post',
+        })
+    
+    store.form = storeForm
 /**
 * @see \App\Http\Controllers\StressTestController::show
  * @see app/Http/Controllers/StressTestController.php:177
@@ -143,6 +199,41 @@ show.head = (args: { run: number | { id: number } } | [run: number | { id: numbe
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\StressTestController::show
+ * @see app/Http/Controllers/StressTestController.php:177
+ * @route '/laboratory/stress-tests/{run}'
+ */
+    const showForm = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: show.url(args, options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\StressTestController::show
+ * @see app/Http/Controllers/StressTestController.php:177
+ * @route '/laboratory/stress-tests/{run}'
+ */
+        showForm.get = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: show.url(args, options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\StressTestController::show
+ * @see app/Http/Controllers/StressTestController.php:177
+ * @route '/laboratory/stress-tests/{run}'
+ */
+        showForm.head = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: show.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    show.form = showForm
 /**
 * @see \App\Http\Controllers\StressTestController::cancel
  * @see app/Http/Controllers/StressTestController.php:215
@@ -200,6 +291,28 @@ cancel.post = (args: { run: number | { id: number } } | [run: number | { id: num
     url: cancel.url(args, options),
     method: 'post',
 })
+
+    /**
+* @see \App\Http\Controllers\StressTestController::cancel
+ * @see app/Http/Controllers/StressTestController.php:215
+ * @route '/laboratory/stress-tests/{run}/cancel'
+ */
+    const cancelForm = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: cancel.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\StressTestController::cancel
+ * @see app/Http/Controllers/StressTestController.php:215
+ * @route '/laboratory/stress-tests/{run}/cancel'
+ */
+        cancelForm.post = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: cancel.url(args, options),
+            method: 'post',
+        })
+    
+    cancel.form = cancelForm
 const stressTests = {
     index: Object.assign(index, index),
 store: Object.assign(store, store),
