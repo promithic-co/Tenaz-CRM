@@ -53,8 +53,10 @@ docker build --no-cache \
     -t tenaz:latest .
 
 # Build landing site image (static nginx — tenazcrm.com.br)
+# --no-cache so edited landing/ HTML + assets always ship (COPY layer can
+# otherwise serve a stale static site).
 echo "[2b/5] Building landing image..."
-docker build -t tenaz-landing:latest -f docker/landing.Dockerfile .
+docker build --no-cache -t tenaz-landing:latest -f docker/landing.Dockerfile .
 
 # 5. Export env vars for stack (safe: grep/cut only — no sourcing)
 # docker stack deploy expands ${VAR} from this shell; container needs DB_*, APP_KEY, etc.
