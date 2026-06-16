@@ -106,8 +106,13 @@ if [ -n "$CONTAINER_ID" ]; then
     # Phase 56: seed template configs BEFORE cache:clear and BEFORE app fully serves traffic (Pitfall C1/M2)
     echo "  Seeding template configs (idempotent)..."
     docker exec "$CONTAINER_ID" php artisan db:seed --class=Database\\Seeders\\AgentTemplateConfigSeeder --force
-    echo "  Clearing application cache (stale agent_config_id_* shape, Pitfall M2)..."
-    docker exec "$CONTAINER_ID" php artisan cache:clear
+    # optimize:clear wipes cache store AND route/config/view/compiled caches.
+    # Clears stale agent_config_id_* shape (Pitfall M2) and any stale route/view
+    # cache from a previous image (e.g. an old `/` welcome page). Routes stay
+    # runtime-resolved (web.php has closure routes that cannot be route:cache'd),
+    # so the new `/` redirect is always picked up fresh.
+    echo "  Clearing application + route/config/view cache (optimize:clear)..."
+    docker exec "$CONTAINER_ID" php artisan optimize:clear
 else
     echo "WARNING: No running container found after 2 minutes."
     echo "Run manually: docker exec \$(docker ps -q -f name=${STACK_NAME}_tenaz) php artisan migrate --force"
