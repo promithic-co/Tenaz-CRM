@@ -88,7 +88,11 @@ services:
       update_config:
         parallelism: 1
         delay: 30s
-        order: start-first
+        # stop-first: replace one replica at a time WITHOUT needing a temporary
+        # extra container. start-first needed replicas+1 running at once, which
+        # the node could not fit (memory) -> new task stuck Pending, old image
+        # kept serving. stop-first trades a brief per-replica blip for schedulability.
+        order: stop-first
         failure_action: rollback
         monitor: 60s
       rollback_config:
