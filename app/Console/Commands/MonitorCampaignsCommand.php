@@ -80,9 +80,7 @@ class MonitorCampaignsCommand extends Command
      */
     private function checkHighFailureRate(AlertService $alertService): void
     {
-        $sendingCampaigns = Campaign::where('status', 'sending')
-            ->whereColumn('total_sent', '>', 'total_recipients * 0')
-            ->get();
+        $sendingCampaigns = Campaign::where('status', 'sending')->get();
 
         foreach ($sendingCampaigns as $campaign) {
             if ($campaign->total_sent <= 0) {
