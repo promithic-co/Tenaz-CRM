@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LeadAutoTagController::store
  * @see app/Http/Controllers/LeadAutoTagController.php:19
@@ -56,6 +56,28 @@ store.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
     url: store.url(args, options),
     method: 'post',
 })
+
+    /**
+* @see \App\Http\Controllers\LeadAutoTagController::store
+ * @see app/Http/Controllers/LeadAutoTagController.php:19
+ * @route '/leads/{lead}/auto-tag'
+ */
+    const storeForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: store.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadAutoTagController::store
+ * @see app/Http/Controllers/LeadAutoTagController.php:19
+ * @route '/leads/{lead}/auto-tag'
+ */
+        storeForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: store.url(args, options),
+            method: 'post',
+        })
+    
+    store.form = storeForm
 const LeadAutoTagController = { store }
 
 export default LeadAutoTagController

@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LeadManagementController::store
  * @see app/Http/Controllers/LeadManagementController.php:33
@@ -33,6 +33,27 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\LeadManagementController::store
+ * @see app/Http/Controllers/LeadManagementController.php:33
+ * @route '/conversas'
+ */
+    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: store.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadManagementController::store
+ * @see app/Http/Controllers/LeadManagementController.php:33
+ * @route '/conversas'
+ */
+        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: store.url(options),
+            method: 'post',
+        })
+    
+    store.form = storeForm
 /**
 * @see \App\Http\Controllers\LeadManagementController::bulkAction
  * @see app/Http/Controllers/LeadManagementController.php:96
@@ -67,6 +88,27 @@ bulkAction.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\LeadManagementController::bulkAction
+ * @see app/Http/Controllers/LeadManagementController.php:96
+ * @route '/conversas/bulk-action'
+ */
+    const bulkActionForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: bulkAction.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadManagementController::bulkAction
+ * @see app/Http/Controllers/LeadManagementController.php:96
+ * @route '/conversas/bulk-action'
+ */
+        bulkActionForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: bulkAction.url(options),
+            method: 'post',
+        })
+    
+    bulkAction.form = bulkActionForm
 /**
 * @see \App\Http\Controllers\LeadManagementController::destroy
  * @see app/Http/Controllers/LeadManagementController.php:58
@@ -125,6 +167,37 @@ destroy.delete = (args: { lead: number | { id: number } } | [lead: number | { id
     method: 'delete',
 })
 
+    /**
+* @see \App\Http\Controllers\LeadManagementController::destroy
+ * @see app/Http/Controllers/LeadManagementController.php:58
+ * @route '/conversas/{lead}'
+ */
+    const destroyForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: destroy.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'DELETE',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadManagementController::destroy
+ * @see app/Http/Controllers/LeadManagementController.php:58
+ * @route '/conversas/{lead}'
+ */
+        destroyForm.delete = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: destroy.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'DELETE',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\LeadManagementController::prepareCampaign
  * @see app/Http/Controllers/LeadManagementController.php:138
@@ -183,6 +256,27 @@ prepareCampaign.post = (args: { lead: number | { id: number } } | [lead: number 
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\LeadManagementController::prepareCampaign
+ * @see app/Http/Controllers/LeadManagementController.php:138
+ * @route '/conversas/{lead}/prepare-campaign'
+ */
+    const prepareCampaignForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: prepareCampaign.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadManagementController::prepareCampaign
+ * @see app/Http/Controllers/LeadManagementController.php:138
+ * @route '/conversas/{lead}/prepare-campaign'
+ */
+        prepareCampaignForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: prepareCampaign.url(args, options),
+            method: 'post',
+        })
+    
+    prepareCampaign.form = prepareCampaignForm
 /**
 * @see \App\Http\Controllers\LeadManagementController::addToContacts
  * @see app/Http/Controllers/LeadManagementController.php:197
@@ -240,6 +334,28 @@ addToContacts.post = (args: { lead: number | { id: number } } | [lead: number | 
     url: addToContacts.url(args, options),
     method: 'post',
 })
+
+    /**
+* @see \App\Http\Controllers\LeadManagementController::addToContacts
+ * @see app/Http/Controllers/LeadManagementController.php:197
+ * @route '/conversas/{lead}/add-to-contacts'
+ */
+    const addToContactsForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: addToContacts.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadManagementController::addToContacts
+ * @see app/Http/Controllers/LeadManagementController.php:197
+ * @route '/conversas/{lead}/add-to-contacts'
+ */
+        addToContactsForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: addToContacts.url(args, options),
+            method: 'post',
+        })
+    
+    addToContacts.form = addToContactsForm
 const LeadManagementController = { store, bulkAction, destroy, prepareCampaign, addToContacts }
 
 export default LeadManagementController

@@ -1,8 +1,8 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
 import followup from './followup'
 /**
 * @see \App\Http\Controllers\ConversasController::index
- * @see app/Http/Controllers/ConversasController.php:39
+ * @see app/Http/Controllers/ConversasController.php:43
  * @route '/conversas'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -17,7 +17,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::index
- * @see app/Http/Controllers/ConversasController.php:39
+ * @see app/Http/Controllers/ConversasController.php:43
  * @route '/conversas'
  */
 index.url = (options?: RouteQueryOptions) => {
@@ -26,7 +26,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\ConversasController::index
- * @see app/Http/Controllers/ConversasController.php:39
+ * @see app/Http/Controllers/ConversasController.php:43
  * @route '/conversas'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\ConversasController::index
- * @see app/Http/Controllers/ConversasController.php:39
+ * @see app/Http/Controllers/ConversasController.php:43
  * @route '/conversas'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -43,6 +43,41 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\ConversasController::index
+ * @see app/Http/Controllers/ConversasController.php:43
+ * @route '/conversas'
+ */
+    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: index.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConversasController::index
+ * @see app/Http/Controllers/ConversasController.php:43
+ * @route '/conversas'
+ */
+        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\ConversasController::index
+ * @see app/Http/Controllers/ConversasController.php:43
+ * @route '/conversas'
+ */
+        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    index.form = indexForm
 /**
 * @see \App\Http\Controllers\LeadManagementController::store
  * @see app/Http/Controllers/LeadManagementController.php:33
@@ -77,6 +112,27 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\LeadManagementController::store
+ * @see app/Http/Controllers/LeadManagementController.php:33
+ * @route '/conversas'
+ */
+    const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: store.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadManagementController::store
+ * @see app/Http/Controllers/LeadManagementController.php:33
+ * @route '/conversas'
+ */
+        storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: store.url(options),
+            method: 'post',
+        })
+    
+    store.form = storeForm
 /**
 * @see \App\Http\Controllers\LeadManagementController::bulkAction
  * @see app/Http/Controllers/LeadManagementController.php:96
@@ -111,9 +167,30 @@ bulkAction.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\LeadManagementController::bulkAction
+ * @see app/Http/Controllers/LeadManagementController.php:96
+ * @route '/conversas/bulk-action'
+ */
+    const bulkActionForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: bulkAction.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadManagementController::bulkAction
+ * @see app/Http/Controllers/LeadManagementController.php:96
+ * @route '/conversas/bulk-action'
+ */
+        bulkActionForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: bulkAction.url(options),
+            method: 'post',
+        })
+    
+    bulkAction.form = bulkActionForm
 /**
 * @see \App\Http\Controllers\ConversasController::transfer
- * @see app/Http/Controllers/ConversasController.php:332
+ * @see app/Http/Controllers/ConversasController.php:336
  * @route '/conversas/transfer'
  */
 export const transfer = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -128,7 +205,7 @@ transfer.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::transfer
- * @see app/Http/Controllers/ConversasController.php:332
+ * @see app/Http/Controllers/ConversasController.php:336
  * @route '/conversas/transfer'
  */
 transfer.url = (options?: RouteQueryOptions) => {
@@ -137,7 +214,7 @@ transfer.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\ConversasController::transfer
- * @see app/Http/Controllers/ConversasController.php:332
+ * @see app/Http/Controllers/ConversasController.php:336
  * @route '/conversas/transfer'
  */
 transfer.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -145,9 +222,30 @@ transfer.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\ConversasController::transfer
+ * @see app/Http/Controllers/ConversasController.php:336
+ * @route '/conversas/transfer'
+ */
+    const transferForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: transfer.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConversasController::transfer
+ * @see app/Http/Controllers/ConversasController.php:336
+ * @route '/conversas/transfer'
+ */
+        transferForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: transfer.url(options),
+            method: 'post',
+        })
+    
+    transfer.form = transferForm
 /**
 * @see \App\Http\Controllers\ConversasController::preview
- * @see app/Http/Controllers/ConversasController.php:223
+ * @see app/Http/Controllers/ConversasController.php:227
  * @route '/conversas/{lead}/preview'
  */
 export const preview = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -162,7 +260,7 @@ preview.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::preview
- * @see app/Http/Controllers/ConversasController.php:223
+ * @see app/Http/Controllers/ConversasController.php:227
  * @route '/conversas/{lead}/preview'
  */
 preview.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -195,7 +293,7 @@ preview.url = (args: { lead: number | { id: number } } | [lead: number | { id: n
 
 /**
 * @see \App\Http\Controllers\ConversasController::preview
- * @see app/Http/Controllers/ConversasController.php:223
+ * @see app/Http/Controllers/ConversasController.php:227
  * @route '/conversas/{lead}/preview'
  */
 preview.get = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -204,7 +302,7 @@ preview.get = (args: { lead: number | { id: number } } | [lead: number | { id: n
 })
 /**
 * @see \App\Http\Controllers\ConversasController::preview
- * @see app/Http/Controllers/ConversasController.php:223
+ * @see app/Http/Controllers/ConversasController.php:227
  * @route '/conversas/{lead}/preview'
  */
 preview.head = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -212,9 +310,44 @@ preview.head = (args: { lead: number | { id: number } } | [lead: number | { id: 
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\ConversasController::preview
+ * @see app/Http/Controllers/ConversasController.php:227
+ * @route '/conversas/{lead}/preview'
+ */
+    const previewForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: preview.url(args, options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConversasController::preview
+ * @see app/Http/Controllers/ConversasController.php:227
+ * @route '/conversas/{lead}/preview'
+ */
+        previewForm.get = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: preview.url(args, options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\ConversasController::preview
+ * @see app/Http/Controllers/ConversasController.php:227
+ * @route '/conversas/{lead}/preview'
+ */
+        previewForm.head = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: preview.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    preview.form = previewForm
 /**
 * @see \App\Http\Controllers\ConversasController::show
- * @see app/Http/Controllers/ConversasController.php:44
+ * @see app/Http/Controllers/ConversasController.php:48
  * @route '/conversas/{lead}'
  */
 export const show = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -229,7 +362,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::show
- * @see app/Http/Controllers/ConversasController.php:44
+ * @see app/Http/Controllers/ConversasController.php:48
  * @route '/conversas/{lead}'
  */
 show.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -262,7 +395,7 @@ show.url = (args: { lead: number | { id: number } } | [lead: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\ConversasController::show
- * @see app/Http/Controllers/ConversasController.php:44
+ * @see app/Http/Controllers/ConversasController.php:48
  * @route '/conversas/{lead}'
  */
 show.get = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -271,7 +404,7 @@ show.get = (args: { lead: number | { id: number } } | [lead: number | { id: numb
 })
 /**
 * @see \App\Http\Controllers\ConversasController::show
- * @see app/Http/Controllers/ConversasController.php:44
+ * @see app/Http/Controllers/ConversasController.php:48
  * @route '/conversas/{lead}'
  */
 show.head = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -279,6 +412,41 @@ show.head = (args: { lead: number | { id: number } } | [lead: number | { id: num
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\ConversasController::show
+ * @see app/Http/Controllers/ConversasController.php:48
+ * @route '/conversas/{lead}'
+ */
+    const showForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: show.url(args, options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConversasController::show
+ * @see app/Http/Controllers/ConversasController.php:48
+ * @route '/conversas/{lead}'
+ */
+        showForm.get = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: show.url(args, options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\ConversasController::show
+ * @see app/Http/Controllers/ConversasController.php:48
+ * @route '/conversas/{lead}'
+ */
+        showForm.head = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: show.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    show.form = showForm
 /**
 * @see \App\Http\Controllers\LeadManagementController::destroy
  * @see app/Http/Controllers/LeadManagementController.php:58
@@ -337,9 +505,40 @@ destroy.delete = (args: { lead: number | { id: number } } | [lead: number | { id
     method: 'delete',
 })
 
+    /**
+* @see \App\Http\Controllers\LeadManagementController::destroy
+ * @see app/Http/Controllers/LeadManagementController.php:58
+ * @route '/conversas/{lead}'
+ */
+    const destroyForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: destroy.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'DELETE',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadManagementController::destroy
+ * @see app/Http/Controllers/LeadManagementController.php:58
+ * @route '/conversas/{lead}'
+ */
+        destroyForm.delete = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: destroy.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'DELETE',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\ConversasController::pause
- * @see app/Http/Controllers/ConversasController.php:254
+ * @see app/Http/Controllers/ConversasController.php:258
  * @route '/conversas/{lead}/pause'
  */
 export const pause = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -354,7 +553,7 @@ pause.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::pause
- * @see app/Http/Controllers/ConversasController.php:254
+ * @see app/Http/Controllers/ConversasController.php:258
  * @route '/conversas/{lead}/pause'
  */
 pause.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -387,7 +586,7 @@ pause.url = (args: { lead: number | { id: number } } | [lead: number | { id: num
 
 /**
 * @see \App\Http\Controllers\ConversasController::pause
- * @see app/Http/Controllers/ConversasController.php:254
+ * @see app/Http/Controllers/ConversasController.php:258
  * @route '/conversas/{lead}/pause'
  */
 pause.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -395,9 +594,30 @@ pause.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\ConversasController::pause
+ * @see app/Http/Controllers/ConversasController.php:258
+ * @route '/conversas/{lead}/pause'
+ */
+    const pauseForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: pause.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConversasController::pause
+ * @see app/Http/Controllers/ConversasController.php:258
+ * @route '/conversas/{lead}/pause'
+ */
+        pauseForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: pause.url(args, options),
+            method: 'post',
+        })
+    
+    pause.form = pauseForm
 /**
 * @see \App\Http\Controllers\ConversasController::resume
- * @see app/Http/Controllers/ConversasController.php:272
+ * @see app/Http/Controllers/ConversasController.php:276
  * @route '/conversas/{lead}/resume'
  */
 export const resume = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -412,7 +632,7 @@ resume.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::resume
- * @see app/Http/Controllers/ConversasController.php:272
+ * @see app/Http/Controllers/ConversasController.php:276
  * @route '/conversas/{lead}/resume'
  */
 resume.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -445,7 +665,7 @@ resume.url = (args: { lead: number | { id: number } } | [lead: number | { id: nu
 
 /**
 * @see \App\Http\Controllers\ConversasController::resume
- * @see app/Http/Controllers/ConversasController.php:272
+ * @see app/Http/Controllers/ConversasController.php:276
  * @route '/conversas/{lead}/resume'
  */
 resume.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -453,9 +673,30 @@ resume.post = (args: { lead: number | { id: number } } | [lead: number | { id: n
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\ConversasController::resume
+ * @see app/Http/Controllers/ConversasController.php:276
+ * @route '/conversas/{lead}/resume'
+ */
+    const resumeForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: resume.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConversasController::resume
+ * @see app/Http/Controllers/ConversasController.php:276
+ * @route '/conversas/{lead}/resume'
+ */
+        resumeForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: resume.url(args, options),
+            method: 'post',
+        })
+    
+    resume.form = resumeForm
 /**
 * @see \App\Http\Controllers\ConversasController::claim
- * @see app/Http/Controllers/ConversasController.php:294
+ * @see app/Http/Controllers/ConversasController.php:298
  * @route '/conversas/{lead}/claim'
  */
 export const claim = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -470,7 +711,7 @@ claim.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::claim
- * @see app/Http/Controllers/ConversasController.php:294
+ * @see app/Http/Controllers/ConversasController.php:298
  * @route '/conversas/{lead}/claim'
  */
 claim.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -503,7 +744,7 @@ claim.url = (args: { lead: number | { id: number } } | [lead: number | { id: num
 
 /**
 * @see \App\Http\Controllers\ConversasController::claim
- * @see app/Http/Controllers/ConversasController.php:294
+ * @see app/Http/Controllers/ConversasController.php:298
  * @route '/conversas/{lead}/claim'
  */
 claim.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -511,9 +752,30 @@ claim.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\ConversasController::claim
+ * @see app/Http/Controllers/ConversasController.php:298
+ * @route '/conversas/{lead}/claim'
+ */
+    const claimForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: claim.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConversasController::claim
+ * @see app/Http/Controllers/ConversasController.php:298
+ * @route '/conversas/{lead}/claim'
+ */
+        claimForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: claim.url(args, options),
+            method: 'post',
+        })
+    
+    claim.form = claimForm
 /**
 * @see \App\Http\Controllers\ConversasController::aiMode
- * @see app/Http/Controllers/ConversasController.php:377
+ * @see app/Http/Controllers/ConversasController.php:386
  * @route '/conversas/{lead}/ai-mode'
  */
 export const aiMode = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -528,7 +790,7 @@ aiMode.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::aiMode
- * @see app/Http/Controllers/ConversasController.php:377
+ * @see app/Http/Controllers/ConversasController.php:386
  * @route '/conversas/{lead}/ai-mode'
  */
 aiMode.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -561,7 +823,7 @@ aiMode.url = (args: { lead: number | { id: number } } | [lead: number | { id: nu
 
 /**
 * @see \App\Http\Controllers\ConversasController::aiMode
- * @see app/Http/Controllers/ConversasController.php:377
+ * @see app/Http/Controllers/ConversasController.php:386
  * @route '/conversas/{lead}/ai-mode'
  */
 aiMode.patch = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -569,9 +831,40 @@ aiMode.patch = (args: { lead: number | { id: number } } | [lead: number | { id: 
     method: 'patch',
 })
 
+    /**
+* @see \App\Http\Controllers\ConversasController::aiMode
+ * @see app/Http/Controllers/ConversasController.php:386
+ * @route '/conversas/{lead}/ai-mode'
+ */
+    const aiModeForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: aiMode.url(args, {
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'PATCH',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConversasController::aiMode
+ * @see app/Http/Controllers/ConversasController.php:386
+ * @route '/conversas/{lead}/ai-mode'
+ */
+        aiModeForm.patch = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: aiMode.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'PATCH',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    aiMode.form = aiModeForm
 /**
 * @see \App\Http\Controllers\ConversasController::assume
- * @see app/Http/Controllers/ConversasController.php:322
+ * @see app/Http/Controllers/ConversasController.php:326
  * @route '/conversas/{lead}/assume'
  */
 export const assume = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -586,7 +879,7 @@ assume.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::assume
- * @see app/Http/Controllers/ConversasController.php:322
+ * @see app/Http/Controllers/ConversasController.php:326
  * @route '/conversas/{lead}/assume'
  */
 assume.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -619,7 +912,7 @@ assume.url = (args: { lead: number | { id: number } } | [lead: number | { id: nu
 
 /**
 * @see \App\Http\Controllers\ConversasController::assume
- * @see app/Http/Controllers/ConversasController.php:322
+ * @see app/Http/Controllers/ConversasController.php:326
  * @route '/conversas/{lead}/assume'
  */
 assume.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -627,9 +920,30 @@ assume.post = (args: { lead: number | { id: number } } | [lead: number | { id: n
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\ConversasController::assume
+ * @see app/Http/Controllers/ConversasController.php:326
+ * @route '/conversas/{lead}/assume'
+ */
+    const assumeForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: assume.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConversasController::assume
+ * @see app/Http/Controllers/ConversasController.php:326
+ * @route '/conversas/{lead}/assume'
+ */
+        assumeForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: assume.url(args, options),
+            method: 'post',
+        })
+    
+    assume.form = assumeForm
 /**
 * @see \App\Http\Controllers\ConversasController::clearHistory
- * @see app/Http/Controllers/ConversasController.php:395
+ * @see app/Http/Controllers/ConversasController.php:404
  * @route '/conversas/{lead}/clear-history'
  */
 export const clearHistory = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -644,7 +958,7 @@ clearHistory.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::clearHistory
- * @see app/Http/Controllers/ConversasController.php:395
+ * @see app/Http/Controllers/ConversasController.php:404
  * @route '/conversas/{lead}/clear-history'
  */
 clearHistory.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -677,7 +991,7 @@ clearHistory.url = (args: { lead: number | { id: number } } | [lead: number | { 
 
 /**
 * @see \App\Http\Controllers\ConversasController::clearHistory
- * @see app/Http/Controllers/ConversasController.php:395
+ * @see app/Http/Controllers/ConversasController.php:404
  * @route '/conversas/{lead}/clear-history'
  */
 clearHistory.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -685,9 +999,30 @@ clearHistory.post = (args: { lead: number | { id: number } } | [lead: number | {
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\ConversasController::clearHistory
+ * @see app/Http/Controllers/ConversasController.php:404
+ * @route '/conversas/{lead}/clear-history'
+ */
+    const clearHistoryForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: clearHistory.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConversasController::clearHistory
+ * @see app/Http/Controllers/ConversasController.php:404
+ * @route '/conversas/{lead}/clear-history'
+ */
+        clearHistoryForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: clearHistory.url(args, options),
+            method: 'post',
+        })
+    
+    clearHistory.form = clearHistoryForm
 /**
 * @see \App\Http\Controllers\ConversasController::send
- * @see app/Http/Controllers/ConversasController.php:419
+ * @see app/Http/Controllers/ConversasController.php:428
  * @route '/conversas/{lead}/send'
  */
 export const send = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -702,7 +1037,7 @@ send.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::send
- * @see app/Http/Controllers/ConversasController.php:419
+ * @see app/Http/Controllers/ConversasController.php:428
  * @route '/conversas/{lead}/send'
  */
 send.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -735,7 +1070,7 @@ send.url = (args: { lead: number | { id: number } } | [lead: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\ConversasController::send
- * @see app/Http/Controllers/ConversasController.php:419
+ * @see app/Http/Controllers/ConversasController.php:428
  * @route '/conversas/{lead}/send'
  */
 send.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -743,6 +1078,27 @@ send.post = (args: { lead: number | { id: number } } | [lead: number | { id: num
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\ConversasController::send
+ * @see app/Http/Controllers/ConversasController.php:428
+ * @route '/conversas/{lead}/send'
+ */
+    const sendForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: send.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConversasController::send
+ * @see app/Http/Controllers/ConversasController.php:428
+ * @route '/conversas/{lead}/send'
+ */
+        sendForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: send.url(args, options),
+            method: 'post',
+        })
+    
+    send.form = sendForm
 /**
 * @see \App\Http\Controllers\LeadManagementController::prepareCampaign
  * @see app/Http/Controllers/LeadManagementController.php:138
@@ -801,6 +1157,27 @@ prepareCampaign.post = (args: { lead: number | { id: number } } | [lead: number 
     method: 'post',
 })
 
+    /**
+* @see \App\Http\Controllers\LeadManagementController::prepareCampaign
+ * @see app/Http/Controllers/LeadManagementController.php:138
+ * @route '/conversas/{lead}/prepare-campaign'
+ */
+    const prepareCampaignForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: prepareCampaign.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadManagementController::prepareCampaign
+ * @see app/Http/Controllers/LeadManagementController.php:138
+ * @route '/conversas/{lead}/prepare-campaign'
+ */
+        prepareCampaignForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: prepareCampaign.url(args, options),
+            method: 'post',
+        })
+    
+    prepareCampaign.form = prepareCampaignForm
 /**
 * @see \App\Http\Controllers\LeadManagementController::addToContacts
  * @see app/Http/Controllers/LeadManagementController.php:197
@@ -858,6 +1235,28 @@ addToContacts.post = (args: { lead: number | { id: number } } | [lead: number | 
     url: addToContacts.url(args, options),
     method: 'post',
 })
+
+    /**
+* @see \App\Http\Controllers\LeadManagementController::addToContacts
+ * @see app/Http/Controllers/LeadManagementController.php:197
+ * @route '/conversas/{lead}/add-to-contacts'
+ */
+    const addToContactsForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: addToContacts.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadManagementController::addToContacts
+ * @see app/Http/Controllers/LeadManagementController.php:197
+ * @route '/conversas/{lead}/add-to-contacts'
+ */
+        addToContactsForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: addToContacts.url(args, options),
+            method: 'post',
+        })
+    
+    addToContacts.form = addToContactsForm
 const conversas = {
     index: Object.assign(index, index),
 store: Object.assign(store, store),

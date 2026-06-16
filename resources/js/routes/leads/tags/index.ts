@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LeadTagController::__invoke
  * @see app/Http/Controllers/LeadTagController.php:25
@@ -51,6 +51,28 @@ sync.post = (args: { lead: string | number } | [lead: string | number ] | string
     url: sync.url(args, options),
     method: 'post',
 })
+
+    /**
+* @see \App\Http\Controllers\LeadTagController::__invoke
+ * @see app/Http/Controllers/LeadTagController.php:25
+ * @route '/leads/{lead}/tags'
+ */
+    const syncForm = (args: { lead: string | number } | [lead: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: sync.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\LeadTagController::__invoke
+ * @see app/Http/Controllers/LeadTagController.php:25
+ * @route '/leads/{lead}/tags'
+ */
+        syncForm.post = (args: { lead: string | number } | [lead: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: sync.url(args, options),
+            method: 'post',
+        })
+    
+    sync.form = syncForm
 const tags = {
     sync: Object.assign(sync, sync),
 }

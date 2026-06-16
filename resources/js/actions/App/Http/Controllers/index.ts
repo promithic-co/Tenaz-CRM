@@ -3,6 +3,8 @@ import IvrController from './IvrController'
 import UraInboundController from './UraInboundController'
 import MetaWebhookController from './MetaWebhookController'
 import AgentController from './AgentController'
+import VersionController from './VersionController'
+import HomeRedirectController from './HomeRedirectController'
 import InvitationController from './InvitationController'
 import DashboardController from './DashboardController'
 import SearchController from './SearchController'
@@ -45,6 +47,8 @@ IvrController: Object.assign(IvrController, IvrController),
 UraInboundController: Object.assign(UraInboundController, UraInboundController),
 MetaWebhookController: Object.assign(MetaWebhookController, MetaWebhookController),
 AgentController: Object.assign(AgentController, AgentController),
+VersionController: Object.assign(VersionController, VersionController),
+HomeRedirectController: Object.assign(HomeRedirectController, HomeRedirectController),
 InvitationController: Object.assign(InvitationController, InvitationController),
 DashboardController: Object.assign(DashboardController, DashboardController),
 SearchController: Object.assign(SearchController, SearchController),

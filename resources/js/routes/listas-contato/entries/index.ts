@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\ContactListEntryController::store
  * @see app/Http/Controllers/ContactListEntryController.php:16
@@ -56,6 +56,28 @@ store.post = (args: { list: number | { id: number } } | [list: number | { id: nu
     url: store.url(args, options),
     method: 'post',
 })
+
+    /**
+* @see \App\Http\Controllers\ContactListEntryController::store
+ * @see app/Http/Controllers/ContactListEntryController.php:16
+ * @route '/listas-contato/{list}/entries'
+ */
+    const storeForm = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: store.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ContactListEntryController::store
+ * @see app/Http/Controllers/ContactListEntryController.php:16
+ * @route '/listas-contato/{list}/entries'
+ */
+        storeForm.post = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: store.url(args, options),
+            method: 'post',
+        })
+    
+    store.form = storeForm
 const entries = {
     store: Object.assign(store, store),
 }

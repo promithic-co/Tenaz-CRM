@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LaboratoryController::results
  * @see app/Http/Controllers/LaboratoryController.php:90
@@ -65,6 +65,42 @@ results.head = (args: { run: number | { id: number } } | [run: number | { id: nu
     url: results.url(args, options),
     method: 'head',
 })
+
+    /**
+* @see \App\Http\Controllers\LaboratoryController::results
+ * @see app/Http/Controllers/LaboratoryController.php:90
+ * @route '/laboratory/stress-test/{run}'
+ */
+    const resultsForm = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: results.url(args, options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\LaboratoryController::results
+ * @see app/Http/Controllers/LaboratoryController.php:90
+ * @route '/laboratory/stress-test/{run}'
+ */
+        resultsForm.get = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: results.url(args, options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\LaboratoryController::results
+ * @see app/Http/Controllers/LaboratoryController.php:90
+ * @route '/laboratory/stress-test/{run}'
+ */
+        resultsForm.head = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: results.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    results.form = resultsForm
 const stressTest = {
     results: Object.assign(results, results),
 }

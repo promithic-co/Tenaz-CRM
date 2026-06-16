@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \Laravel\Horizon\Http\Controllers\BatchesController::index
  * @see vendor/laravel/horizon/src/Http/Controllers/BatchesController.php:40
@@ -42,6 +42,41 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \Laravel\Horizon\Http\Controllers\BatchesController::index
+ * @see vendor/laravel/horizon/src/Http/Controllers/BatchesController.php:40
+ * @route '/horizon/api/batches'
+ */
+    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: index.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \Laravel\Horizon\Http\Controllers\BatchesController::index
+ * @see vendor/laravel/horizon/src/Http/Controllers/BatchesController.php:40
+ * @route '/horizon/api/batches'
+ */
+        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url(options),
+            method: 'get',
+        })
+            /**
+* @see \Laravel\Horizon\Http\Controllers\BatchesController::index
+ * @see vendor/laravel/horizon/src/Http/Controllers/BatchesController.php:40
+ * @route '/horizon/api/batches'
+ */
+        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    index.form = indexForm
 /**
 * @see \Laravel\Horizon\Http\Controllers\BatchesController::show
  * @see vendor/laravel/horizon/src/Http/Controllers/BatchesController.php:61
@@ -104,6 +139,41 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
     method: 'head',
 })
 
+    /**
+* @see \Laravel\Horizon\Http\Controllers\BatchesController::show
+ * @see vendor/laravel/horizon/src/Http/Controllers/BatchesController.php:61
+ * @route '/horizon/api/batches/{id}'
+ */
+    const showForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: show.url(args, options),
+        method: 'get',
+    })
+
+            /**
+* @see \Laravel\Horizon\Http\Controllers\BatchesController::show
+ * @see vendor/laravel/horizon/src/Http/Controllers/BatchesController.php:61
+ * @route '/horizon/api/batches/{id}'
+ */
+        showForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: show.url(args, options),
+            method: 'get',
+        })
+            /**
+* @see \Laravel\Horizon\Http\Controllers\BatchesController::show
+ * @see vendor/laravel/horizon/src/Http/Controllers/BatchesController.php:61
+ * @route '/horizon/api/batches/{id}'
+ */
+        showForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: show.url(args, {
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    show.form = showForm
 /**
 * @see \Laravel\Horizon\Http\Controllers\BatchesController::retry
  * @see vendor/laravel/horizon/src/Http/Controllers/BatchesController.php:108
@@ -156,6 +226,28 @@ retry.post = (args: { id: string | number } | [id: string | number ] | string | 
     url: retry.url(args, options),
     method: 'post',
 })
+
+    /**
+* @see \Laravel\Horizon\Http\Controllers\BatchesController::retry
+ * @see vendor/laravel/horizon/src/Http/Controllers/BatchesController.php:108
+ * @route '/horizon/api/batches/retry/{id}'
+ */
+    const retryForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: retry.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \Laravel\Horizon\Http\Controllers\BatchesController::retry
+ * @see vendor/laravel/horizon/src/Http/Controllers/BatchesController.php:108
+ * @route '/horizon/api/batches/retry/{id}'
+ */
+        retryForm.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: retry.url(args, options),
+            method: 'post',
+        })
+    
+    retry.form = retryForm
 const jobsBatches = {
     index: Object.assign(index, index),
 show: Object.assign(show, show),

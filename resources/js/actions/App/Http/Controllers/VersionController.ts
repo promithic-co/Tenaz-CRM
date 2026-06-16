@@ -1,15 +1,15 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\VersionController::__invoke
  * @see app/Http/Controllers/VersionController.php:13
  * @route '/__version'
  */
-export const version = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: version.url(options),
+const VersionController = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: VersionController.url(options),
     method: 'get',
 })
 
-version.definition = {
+VersionController.definition = {
     methods: ["get","head"],
     url: '/__version',
 } satisfies RouteDefinition<["get","head"]>
@@ -19,8 +19,8 @@ version.definition = {
  * @see app/Http/Controllers/VersionController.php:13
  * @route '/__version'
  */
-version.url = (options?: RouteQueryOptions) => {
-    return version.definition.url + queryParams(options)
+VersionController.url = (options?: RouteQueryOptions) => {
+    return VersionController.definition.url + queryParams(options)
 }
 
 /**
@@ -28,8 +28,8 @@ version.url = (options?: RouteQueryOptions) => {
  * @see app/Http/Controllers/VersionController.php:13
  * @route '/__version'
  */
-version.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: version.url(options),
+VersionController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: VersionController.url(options),
     method: 'get',
 })
 /**
@@ -37,8 +37,8 @@ version.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
  * @see app/Http/Controllers/VersionController.php:13
  * @route '/__version'
  */
-version.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
-    url: version.url(options),
+VersionController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: VersionController.url(options),
     method: 'head',
 })
 
@@ -47,8 +47,8 @@ version.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
  * @see app/Http/Controllers/VersionController.php:13
  * @route '/__version'
  */
-    const versionForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: version.url(options),
+    const VersionControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: VersionController.url(options),
         method: 'get',
     })
 
@@ -57,8 +57,8 @@ version.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
  * @see app/Http/Controllers/VersionController.php:13
  * @route '/__version'
  */
-        versionForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: version.url(options),
+        VersionControllerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: VersionController.url(options),
             method: 'get',
         })
             /**
@@ -66,8 +66,8 @@ version.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
  * @see app/Http/Controllers/VersionController.php:13
  * @route '/__version'
  */
-        versionForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: version.url({
+        VersionControllerForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: VersionController.url({
                         [options?.mergeQuery ? 'mergeQuery' : 'query']: {
                             _method: 'HEAD',
                             ...(options?.query ?? options?.mergeQuery ?? {}),
@@ -76,9 +76,5 @@ version.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             method: 'get',
         })
     
-    version.form = versionForm
-const meta = {
-    version: Object.assign(version, version),
-}
-
-export default meta
+    VersionController.form = VersionControllerForm
+export default VersionController

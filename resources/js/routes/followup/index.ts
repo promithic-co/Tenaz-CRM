@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\ConfiguracoesController::index
  * @see app/Http/Controllers/ConfiguracoesController.php:10
@@ -42,6 +42,41 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+    /**
+* @see \App\Http\Controllers\ConfiguracoesController::index
+ * @see app/Http/Controllers/ConfiguracoesController.php:10
+ * @route '/agente/follow-up'
+ */
+    const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        action: index.url(options),
+        method: 'get',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConfiguracoesController::index
+ * @see app/Http/Controllers/ConfiguracoesController.php:10
+ * @route '/agente/follow-up'
+ */
+        indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url(options),
+            method: 'get',
+        })
+            /**
+* @see \App\Http\Controllers\ConfiguracoesController::index
+ * @see app/Http/Controllers/ConfiguracoesController.php:10
+ * @route '/agente/follow-up'
+ */
+        indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+            action: index.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'HEAD',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'get',
+        })
+    
+    index.form = indexForm
 /**
 * @see \App\Http\Controllers\ConfiguracoesController::update
  * @see app/Http/Controllers/ConfiguracoesController.php:25
@@ -75,6 +110,28 @@ update.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: update.url(options),
     method: 'post',
 })
+
+    /**
+* @see \App\Http\Controllers\ConfiguracoesController::update
+ * @see app/Http/Controllers/ConfiguracoesController.php:25
+ * @route '/agente/follow-up'
+ */
+    const updateForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: update.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ConfiguracoesController::update
+ * @see app/Http/Controllers/ConfiguracoesController.php:25
+ * @route '/agente/follow-up'
+ */
+        updateForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: update.url(options),
+            method: 'post',
+        })
+    
+    update.form = updateForm
 const followup = {
     index: Object.assign(index, index),
 update: Object.assign(update, update),
