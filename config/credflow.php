@@ -1,5 +1,11 @@
 <?php
 
+use App\Ai\Agents\CltAgent;
+use App\Ai\Agents\CredFlowAgent;
+use App\Ai\Agents\CredFlowBulkAgent;
+use App\Ai\Agents\CredFlowFollowUpAgent;
+use App\Ai\Agents\SiapeAgent;
+
 return [
     // Janela de debounce em segundos (agrupa mensagens enviadas em sequência rápida)
     'debounce_seconds' => env('DEBOUNCE_SECONDS', 3),
@@ -20,6 +26,14 @@ return [
         'max_total_steps' => (int) env('TENAZ_AGENT_MAX_TOTAL_STEPS', env('CREDFLOW_AGENT_MAX_TOTAL_STEPS', env('ARIA_AGENT_MAX_TOTAL_STEPS', 12))),
         // Maximum elapsed seconds before AgentService skips a new prompt call
         'timeout_seconds' => (int) env('TENAZ_AGENT_TIMEOUT_SECONDS', env('CREDFLOW_AGENT_TIMEOUT_SECONDS', env('ARIA_AGENT_TIMEOUT_SECONDS', 45))),
+        // Runtime provider failover (F5): on a FailoverableException (rate limit / overload),
+        // laravel/ai retries the prompt against this provider/model before bubbling the error.
+        // Distinct from fallback_provider above, which is a config-default for resolution only.
+        'failover' => [
+            'enabled' => (bool) env('TENAZ_AGENT_FAILOVER_ENABLED', false),
+            'provider' => env('TENAZ_AGENT_FAILOVER_PROVIDER'),
+            'model' => env('TENAZ_AGENT_FAILOVER_MODEL'),
+        ],
         // Token budget warning thresholds (configurable per environment)
         'token_warning_prompt' => (int) env('TENAZ_TOKEN_WARNING_PROMPT', env('CREDFLOW_TOKEN_WARNING_PROMPT', env('ARIA_TOKEN_WARNING_PROMPT', 3000))),
         'token_warning_total' => (int) env('TENAZ_TOKEN_WARNING_TOTAL', env('CREDFLOW_TOKEN_WARNING_TOTAL', env('ARIA_TOKEN_WARNING_TOTAL', 4000))),
@@ -28,15 +42,15 @@ return [
     // Agent class registry: maps niche.modo → Agent FQCN
     'agents' => [
         'inss' => [
-            'receptivo' => \App\Ai\Agents\CredFlowAgent::class,
-            'bulk' => \App\Ai\Agents\CredFlowBulkAgent::class,
-            'followup' => \App\Ai\Agents\CredFlowFollowUpAgent::class,
+            'receptivo' => CredFlowAgent::class,
+            'bulk' => CredFlowBulkAgent::class,
+            'followup' => CredFlowFollowUpAgent::class,
         ],
         'siape' => [
-            'receptivo' => \App\Ai\Agents\SiapeAgent::class,
+            'receptivo' => SiapeAgent::class,
         ],
         'clt' => [
-            'receptivo' => \App\Ai\Agents\CltAgent::class,
+            'receptivo' => CltAgent::class,
         ],
     ],
 

@@ -57,12 +57,15 @@ class ToolCallGuardMiddleware
 
                 $callCount = $this->tracker->callsForTool($toolName);
                 if ($callCount > self::MAX_CALLS_PER_TOOL) {
-                    Log::warning('aria.tool_guard.excessive_calls', [
+                    Log::critical('aria.tool_guard.per_tool_ceiling_exceeded', [
                         'interaction_id' => $interactionId,
                         'agent' => class_basename($prompt->agent),
                         'tool' => $toolName,
                         'call_count' => $callCount,
+                        'max' => self::MAX_CALLS_PER_TOOL,
                     ]);
+
+                    throw new ToolCallCeilingExceededException($callCount, self::MAX_CALLS_PER_TOOL);
                 }
             }
 

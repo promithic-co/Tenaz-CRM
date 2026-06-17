@@ -10,6 +10,9 @@ use App\Contracts\AgentServiceInterface;
 use App\Models\Lead;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
+use Laravel\Ai\Exceptions\RateLimitedException;
+use Sentry\State\Scope;
 use Throwable;
 
 // @pint-ignore: used via app() container
@@ -18,6 +21,9 @@ class AgentService implements AgentServiceInterface
 {
     /** When the agent outputs this exact phrase, no message is sent to the user (same-turn no reply). */
     public const NO_REPLY_SENTINEL = '[CREDFLOW_NAO_RESPONDER]';
+
+    /** Safe message sent to the customer whenever the fact-check guardrail forces a human handoff. */
+    public const HUMAN_HANDOFF_MESSAGE = 'Houve uma inconsistência sistêmica na leitura detalhada do seu benefício e decidi por segurança passar seu atendimento para a nossa equipe humana. Em instantes um especialista da corretora vai confirmar seus valores e assumir o contato por aqui, ok?';
 
     private float $requestStartTime;
 
@@ -92,7 +98,7 @@ class AgentService implements AgentServiceInterface
         ]);
 
         if (app()->bound('sentry')) {
-            \Sentry\withScope(function (\Sentry\State\Scope $scope) use ($lead, $interactionId): void {
+            \Sentry\withScope(function (Scope $scope) use ($lead, $interactionId): void {
                 $scope->setUser(['id' => (string) $lead->id]);
                 $scope->setTag('lead_tenant', (string) $lead->tenant_id);
                 $scope->setTag('interaction_id', $interactionId);
@@ -279,7 +285,7 @@ class AgentService implements AgentServiceInterface
         }
 
         if ($this->hasExceededTimeout()) {
-            Log::warning('aria.fact_check_skipped_timeout', [
+            Log::critical('aria.fact_check_timeout_escalation', [
                 'interaction_id' => $interactionId,
                 'lead_id' => $lead->id,
             ]);
@@ -287,13 +293,14 @@ class AgentService implements AgentServiceInterface
             $this->interactionEvents->recordForLead(
                 interactionId: $interactionId,
                 lead: $lead,
-                eventType: 'fact_check_skipped',
+                eventType: 'fact_check_failed',
                 eventSource: 'agent_service',
-                payload: ['reason' => 'timeout', 'error' => $error],
-                severity: 'warning',
+                payload: ['reason' => 'timeout', 'error' => $error, 'action' => 'human_escalation'],
+                severity: 'critical',
             );
+            $lead->update(['status' => 'escalado']);
 
-            return $text;
+            return self::HUMAN_HANDOFF_MESSAGE;
         }
 
         Log::warning('aria.fact_check_retry', [
@@ -331,7 +338,7 @@ class AgentService implements AgentServiceInterface
             );
             $lead->update(['status' => 'escalado']);
 
-            return 'Houve uma inconsistência sistêmica na leitura detalhada do seu benefício e decidi por segurança passar seu atendimento para a nossa equipe humana. Em instantes um especialista da corretora vai confirmar seus valores e assumir o contato por aqui, ok?';
+            return self::HUMAN_HANDOFF_MESSAGE;
         }
 
         $this->interactionEvents->recordForLead(
@@ -370,8 +377,30 @@ class AgentService implements AgentServiceInterface
         return $message ? "{$mediaText}\n\n{$message}" : $mediaText;
     }
 
+    /**
+     * Classify a provider error by exception type and HTTP status code first, falling back
+     * to message-substring matching only for wrapped/opaque errors that expose no other signal.
+     */
     private function classifyError(Throwable $e): string
     {
+        if ($e instanceof RateLimitedException) {
+            return 'rate_limit';
+        }
+
+        if ($e instanceof ProviderOverloadedException) {
+            return 'server_error';
+        }
+
+        $statusTag = match ((int) $e->getCode()) {
+            429 => 'rate_limit',
+            500, 502, 503, 504 => 'server_error',
+            default => null,
+        };
+
+        if ($statusTag !== null) {
+            return $statusTag;
+        }
+
         $message = strtolower($e->getMessage());
 
         return match (true) {
@@ -399,18 +428,14 @@ class AgentService implements AgentServiceInterface
         };
     }
 
-    /** Determine if a RuntimeException is likely transient (network/AI) vs config error. */
+    /** Determine if an error is likely transient (network/AI) vs a config/programming error. */
     private function isTransientError(Throwable $e): bool
     {
-        $message = strtolower($e->getMessage());
-
-        return str_contains($message, 'timeout')
-            || str_contains($message, 'rate limit')
-            || str_contains($message, '429')
-            || str_contains($message, '500')
-            || str_contains($message, '502')
-            || str_contains($message, '503')
-            || str_contains($message, 'connection');
+        return in_array(
+            $this->classifyError($e),
+            ['timeout', 'rate_limit', 'server_error', 'connection_error'],
+            true,
+        );
     }
 
     private function persistMediaMeta(string $conversationId, string $content, MediaContext $media): void

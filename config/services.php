@@ -37,6 +37,18 @@ return [
 
     'credflow' => [
         'api_key' => env('TENAZ_API_KEY') ?: env('CREDFLOW_API_KEY') ?: env('ARIA_API_KEY'),
+        'default_tenant_id' => env('TENAZ_DEFAULT_TENANT_ID', 'default'),
+        'api_keys' => collect(explode(',', (string) env('TENAZ_API_KEYS', '')))
+            ->mapWithKeys(function (string $pair): array {
+                $parts = explode(':', trim($pair), 2);
+
+                if (count($parts) !== 2 || trim($parts[0]) === '' || trim($parts[1]) === '') {
+                    return [];
+                }
+
+                return [trim($parts[0]) => trim($parts[1])];
+            })
+            ->all(),
         'webhook_consulta' => env('TENAZ_WEBHOOK_CONSULTA') ?: env('CREDFLOW_WEBHOOK_CONSULTA') ?: env('ARIA_WEBHOOK_CONSULTA'),
         'webhook_consulta_siape' => env('TENAZ_WEBHOOK_CONSULTA_SIAPE') ?: env('CREDFLOW_WEBHOOK_CONSULTA_SIAPE') ?: env('ARIA_WEBHOOK_CONSULTA_SIAPE'),
         'webhook_escalar' => env('TENAZ_WEBHOOK_ESCALAR') ?: env('CREDFLOW_WEBHOOK_ESCALAR') ?: env('ARIA_WEBHOOK_ESCALAR'),
