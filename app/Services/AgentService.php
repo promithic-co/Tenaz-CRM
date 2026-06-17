@@ -10,6 +10,8 @@ use App\Contracts\AgentServiceInterface;
 use App\Models\Lead;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
+use Laravel\Ai\Exceptions\RateLimitedException;
 use Sentry\State\Scope;
 use Throwable;
 
@@ -375,8 +377,30 @@ class AgentService implements AgentServiceInterface
         return $message ? "{$mediaText}\n\n{$message}" : $mediaText;
     }
 
+    /**
+     * Classify a provider error by exception type and HTTP status code first, falling back
+     * to message-substring matching only for wrapped/opaque errors that expose no other signal.
+     */
     private function classifyError(Throwable $e): string
     {
+        if ($e instanceof RateLimitedException) {
+            return 'rate_limit';
+        }
+
+        if ($e instanceof ProviderOverloadedException) {
+            return 'server_error';
+        }
+
+        $statusTag = match ((int) $e->getCode()) {
+            429 => 'rate_limit',
+            500, 502, 503, 504 => 'server_error',
+            default => null,
+        };
+
+        if ($statusTag !== null) {
+            return $statusTag;
+        }
+
         $message = strtolower($e->getMessage());
 
         return match (true) {
@@ -404,18 +428,14 @@ class AgentService implements AgentServiceInterface
         };
     }
 
-    /** Determine if a RuntimeException is likely transient (network/AI) vs config error. */
+    /** Determine if an error is likely transient (network/AI) vs a config/programming error. */
     private function isTransientError(Throwable $e): bool
     {
-        $message = strtolower($e->getMessage());
-
-        return str_contains($message, 'timeout')
-            || str_contains($message, 'rate limit')
-            || str_contains($message, '429')
-            || str_contains($message, '500')
-            || str_contains($message, '502')
-            || str_contains($message, '503')
-            || str_contains($message, 'connection');
+        return in_array(
+            $this->classifyError($e),
+            ['timeout', 'rate_limit', 'server_error', 'connection_error'],
+            true,
+        );
     }
 
     private function persistMediaMeta(string $conversationId, string $content, MediaContext $media): void

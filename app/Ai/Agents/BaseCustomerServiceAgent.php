@@ -38,9 +38,12 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
 
     public function withModelOverride(?string $provider, ?string $model): static
     {
-        if ($model) {
-            $this->modelOverride = $model;
+        if ($provider !== null && $provider !== '') {
             $this->providerOverride = $provider;
+        }
+
+        if ($model !== null && $model !== '') {
+            $this->modelOverride = $model;
         }
 
         return $this;
@@ -59,13 +62,47 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
         return ($tenantId !== null && is_numeric($tenantId)) ? (int) $tenantId : null;
     }
 
-    public function provider(): string
+    /**
+     * Resolve the provider for this prompt. Returns a single provider string normally, or a
+     * [provider => model] failover chain consumed by laravel/ai's withModelFailover() when
+     * runtime failover is enabled and no explicit override is in effect.
+     *
+     * @return string|array<string, string|null>
+     */
+    public function provider(): string|array
     {
         if ($this->providerOverride) {
             return $this->providerOverride;
         }
 
-        return (string) $this->config()['agent_provider'];
+        $primaryProvider = (string) $this->config()['agent_provider'];
+
+        return $this->failoverChain($primaryProvider) ?? $primaryProvider;
+    }
+
+    /**
+     * Build a [provider => model] failover chain for the vendor failover path, or null when
+     * runtime failover is disabled, unconfigured, or would be a no-op (same provider).
+     *
+     * @return array<string, string|null>|null
+     */
+    private function failoverChain(string $primaryProvider): ?array
+    {
+        if (! config('credflow.agent.failover.enabled', false)) {
+            return null;
+        }
+
+        $fallbackProvider = config('credflow.agent.failover.provider');
+        if (! $fallbackProvider || (string) $fallbackProvider === $primaryProvider) {
+            return null;
+        }
+
+        $fallbackModel = config('credflow.agent.failover.model');
+
+        return [
+            $primaryProvider => $this->model(),
+            (string) $fallbackProvider => $fallbackModel ? (string) $fallbackModel : null,
+        ];
     }
 
     public function model(): ?string
