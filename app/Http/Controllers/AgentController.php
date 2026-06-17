@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\AuthenticateApiKey;
 use App\Models\Contact;
 use App\Models\Lead;
 use App\Services\AgentService;
@@ -46,7 +47,14 @@ class AgentController extends Controller
             'modo' => ['nullable', 'in:receptivo,bulk'],
         ]);
 
-        $tenantId = $request->tenant_id ?? 'default';
+        $resolvedTenantId = (string) $request->attributes->get(AuthenticateApiKey::TENANT_ATTRIBUTE);
+        $requestedTenantId = $request->input('tenant_id');
+
+        if ($requestedTenantId !== null && $requestedTenantId !== $resolvedTenantId) {
+            return response()->json(['error' => 'Forbidden: tenant mismatch'], 403);
+        }
+
+        $tenantId = $resolvedTenantId;
         $agentId = $request->integer('agent_id') ?: null;
 
         $lead = Lead::query()

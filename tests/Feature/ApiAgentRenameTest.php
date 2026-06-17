@@ -4,11 +4,18 @@ use App\Models\Lead;
 use App\Services\AgentService;
 
 beforeEach(function (): void {
-    config(['services.credflow.api_key' => 'test-secret']);
+    config([
+        'services.credflow.api_key' => 'test-secret',
+        'services.credflow.api_keys' => [
+            'key-tenaz' => 'tenant-tenaz',
+            'key-legacy' => 'tenant-legacy',
+            'key-optout' => 'tenant-optout',
+        ],
+    ]);
 });
 
 test('tenaz direct agent endpoint accepts the existing integration payload', function (): void {
-    $agentService = \Mockery::mock(AgentService::class);
+    $agentService = Mockery::mock(AgentService::class);
     $agentService
         ->shouldReceive('process')
         ->once()
@@ -22,7 +29,7 @@ test('tenaz direct agent endpoint accepts the existing integration payload', fun
         'tenant_id' => 'tenant-tenaz',
         'modo' => 'receptivo',
     ], [
-        'Authorization' => 'Bearer test-secret',
+        'Authorization' => 'Bearer key-tenaz',
     ])
         ->assertSuccessful()
         ->assertJson(['response' => 'Resposta Tenaz']);
@@ -34,7 +41,7 @@ test('tenaz direct agent endpoint accepts the existing integration payload', fun
 });
 
 test('legacy aria direct agent endpoint remains available', function (): void {
-    $agentService = \Mockery::mock(AgentService::class);
+    $agentService = Mockery::mock(AgentService::class);
     $agentService
         ->shouldReceive('process')
         ->once()
@@ -48,7 +55,7 @@ test('legacy aria direct agent endpoint remains available', function (): void {
         'tenant_id' => 'tenant-legacy',
         'modo' => 'receptivo',
     ], [
-        'Authorization' => 'Bearer test-secret',
+        'Authorization' => 'Bearer key-legacy',
     ])
         ->assertSuccessful()
         ->assertHeader('Deprecation', 'true')
@@ -61,7 +68,7 @@ test('legacy aria direct agent endpoint remains available', function (): void {
 });
 
 test('tenaz direct agent endpoint returns the opt-out response shape', function (): void {
-    $agentService = \Mockery::mock(AgentService::class);
+    $agentService = Mockery::mock(AgentService::class);
     $agentService
         ->shouldReceive('process')
         ->once()
@@ -75,7 +82,7 @@ test('tenaz direct agent endpoint returns the opt-out response shape', function 
         'tenant_id' => 'tenant-optout',
         'modo' => 'receptivo',
     ], [
-        'Authorization' => 'Bearer test-secret',
+        'Authorization' => 'Bearer key-optout',
     ])
         ->assertSuccessful()
         ->assertExactJson(['response' => null]);

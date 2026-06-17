@@ -7,7 +7,6 @@ use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappOutboxMessage;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 class WhatsappOutboxService
@@ -104,7 +103,7 @@ class WhatsappOutboxService
                 'text' => $text,
             ],
             provider: (string) ($instancePayload['provider'] ?? 'meta_cloud'),
-            idempotencyKey: $idempotencyKey ?? $this->defaultKey($lead, $source, $text),
+            idempotencyKey: $idempotencyKey ?? $this->defaultKey($lead, $source, $text, 0, $interactionId),
             lead: $lead,
             timelineMessage: $timeline,
             interactionId: $interactionId,
@@ -140,7 +139,7 @@ class WhatsappOutboxService
                 source: $source,
                 senderType: $senderType,
                 interactionId: $interactionId,
-                idempotencyKey: $this->defaultKey($lead, $source, $part, $index),
+                idempotencyKey: $this->defaultKey($lead, $source, $part, $index, $interactionId),
                 delaySeconds: $index * 2,
             ),
             $parts,
@@ -177,7 +176,13 @@ class WhatsappOutboxService
         ];
     }
 
-    private function defaultKey(Lead $lead, string $source, string $body, int $part = 0): string
+    /**
+     * Build a deterministic idempotency key for a send. The key is anchored to the
+     * per-turn interaction id (stable across job retries) rather than the lead's
+     * updated_at, which mutates mid-turn and previously defeated deduplication —
+     * letting a retried job send a second message with duplicate tool side effects.
+     */
+    private function defaultKey(Lead $lead, string $source, string $body, int $part = 0, ?string $interactionId = null): string
     {
         return implode(':', [
             'lead',
@@ -187,7 +192,7 @@ class WhatsappOutboxService
             Str::of(hash('sha256', implode('|', [
                 $lead->id,
                 $source,
-                Arr::get($lead->getAttributes(), 'updated_at', ''),
+                $interactionId ?? '',
                 $body,
             ])))->substr(0, 32),
         ]);
