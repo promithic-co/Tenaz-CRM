@@ -6,6 +6,7 @@ use App\Ai\Agents\BaseCustomerServiceAgent;
 use App\Jobs\LogAiUsageJob;
 use App\Services\AgentInteractionContext;
 use App\Services\AgentInteractionEventService;
+use App\Services\AiRunRecorder;
 use App\Services\LangfuseService;
 use Closure;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,7 @@ class AuditLogMiddleware
     public function __construct(
         private readonly AgentInteractionContext $interactionContext,
         private readonly AgentInteractionEventService $interactionEvents,
+        private readonly AiRunRecorder $aiRuns,
     ) {}
 
     public function handle(AgentPrompt $prompt, Closure $next)
@@ -44,6 +46,14 @@ class AuditLogMiddleware
                 $completionTokens = (int) ($response->usage?->completionTokens ?? 0);
 
                 if ($interactionId) {
+                    $this->aiRuns->recordModelCall(
+                        runId: $interactionId,
+                        model: $prompt->model ?? 'unknown',
+                        inputTokens: $promptTokens,
+                        outputTokens: $completionTokens,
+                        promptHash: hash('sha256', $prompt->prompt),
+                    );
+
                     $this->interactionEvents->recordForLead(
                         interactionId: $interactionId,
                         lead: $lead,

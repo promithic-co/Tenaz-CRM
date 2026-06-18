@@ -49,12 +49,38 @@ type BulkMetrics = {
     estimated_cost_today: number;
 };
 
+type AiRunSummary = {
+    runs: number;
+    avg_cost_usd: number;
+    avg_latency_ms: number;
+    p95_latency_ms: number;
+    avg_llm_calls: number;
+    avg_tool_calls: number;
+    success_rate: number;
+    fallback_rate: number;
+    error_rate: number;
+    human_handoff_rate: number;
+};
+
+type ArchitectureComparison = {
+    architecture_version: string;
+    runs: number;
+    avg_cost_usd: number;
+    avg_latency_ms: number;
+    p95_latency_ms: number;
+    avg_llm_calls: number;
+    avg_tool_calls: number;
+    success_rate: number;
+};
+
 type Props = {
     stats: Stats;
     errorPatterns: ErrorPattern[];
     hourlyFailures: Record<number, number>;
     recentFailures: RecentFailure[];
     recoveryRate: number;
+    aiRunSummary: AiRunSummary;
+    architectureComparison: ArchitectureComparison[];
     followupStats: FollowupStats;
     bulkMetrics: BulkMetrics;
     externalLinks: { langfuse: string; horizon: string };
@@ -88,6 +114,9 @@ function tagColor(tag: string): string {
 const maxHourlyCount = Math.max(...Object.values(props.hourlyFailures), 1);
 
 const hours = Array.from({ length: 24 }, (_, i) => i);
+
+const formatUsd = (value: number) => `$${value.toFixed(4)}`;
+const formatMs = (value: number) => `${value.toLocaleString('pt-BR')} ms`;
 </script>
 
 <template>
@@ -123,6 +152,72 @@ const hours = Array.from({ length: 24 }, (_, i) => i);
                         <ExternalLink class="h-3 w-3" />
                         Horizon
                     </a>
+                </div>
+            </div>
+
+            <!-- AI Architecture Snapshot -->
+            <div class="flex flex-col gap-3">
+                <div class="flex items-center gap-2">
+                    <BarChart2 class="h-4 w-4 text-muted-foreground" />
+                    <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Architecture Snapshot - últimos 30 dias</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Runs</span>
+                        <p class="mt-1 text-2xl font-bold text-foreground">{{ aiRunSummary.runs }}</p>
+                    </div>
+                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Custo Médio</span>
+                        <p class="mt-1 text-2xl font-bold text-foreground">{{ formatUsd(aiRunSummary.avg_cost_usd) }}</p>
+                    </div>
+                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latência Média</span>
+                        <p class="mt-1 text-2xl font-bold text-foreground">{{ formatMs(aiRunSummary.avg_latency_ms) }}</p>
+                        <p class="mt-0.5 text-xs text-muted-foreground">p95 {{ formatMs(aiRunSummary.p95_latency_ms) }}</p>
+                    </div>
+                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chamadas</span>
+                        <p class="mt-1 text-2xl font-bold text-foreground">{{ aiRunSummary.avg_llm_calls }}</p>
+                        <p class="mt-0.5 text-xs text-muted-foreground">LLM/run - tools {{ aiRunSummary.avg_tool_calls }}</p>
+                    </div>
+                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Taxas</span>
+                        <p class="mt-1 text-2xl font-bold text-foreground">{{ aiRunSummary.success_rate }}%</p>
+                        <p class="mt-0.5 text-xs text-muted-foreground">fallback {{ aiRunSummary.fallback_rate }}% - handoff {{ aiRunSummary.human_handoff_rate }}%</p>
+                    </div>
+                </div>
+
+                <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border">
+                    <div class="border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Comparação por Arquitetura</span>
+                    </div>
+                    <div v-if="architectureComparison.length === 0" class="px-4 py-8 text-center text-xs text-muted-foreground">
+                        Nenhum AI run registrado nos últimos 30 dias.
+                    </div>
+                    <table v-else class="w-full text-sm">
+                        <thead class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Arquitetura</th>
+                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Runs</th>
+                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Custo</th>
+                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Latência</th>
+                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">LLM</th>
+                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Tools</th>
+                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Sucesso</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border">
+                            <tr v-for="item in architectureComparison" :key="item.architecture_version">
+                                <td class="px-4 py-2 font-medium text-foreground">{{ item.architecture_version }}</td>
+                                <td class="px-4 py-2 text-right text-muted-foreground">{{ item.runs }}</td>
+                                <td class="px-4 py-2 text-right text-muted-foreground">{{ formatUsd(item.avg_cost_usd) }}</td>
+                                <td class="px-4 py-2 text-right text-muted-foreground">{{ formatMs(item.avg_latency_ms) }}</td>
+                                <td class="px-4 py-2 text-right text-muted-foreground">{{ item.avg_llm_calls }}</td>
+                                <td class="px-4 py-2 text-right text-muted-foreground">{{ item.avg_tool_calls }}</td>
+                                <td class="px-4 py-2 text-right font-semibold text-foreground">{{ item.success_rate }}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

@@ -34,6 +34,7 @@ class AgentService implements AgentServiceInterface
         private readonly AgentInteractionEventService $interactionEvents,
         private readonly AgentInteractionContext $interactionContext,
         private readonly ConversationContextSynchronizer $contextSync,
+        private readonly AiRunRecorder $aiRuns,
     ) {}
 
     /**
@@ -107,6 +108,12 @@ class AgentService implements AgentServiceInterface
 
         try {
             $agent = $this->agentFactory->make($lead);
+            $this->aiRuns->start(
+                runId: $interactionId,
+                lead: $lead,
+                agentName: class_basename($agent),
+                architectureVersion: $this->architectureVersion(),
+            );
 
             if ($lead->conversation_id) {
                 // Mirror any timeline rows the agent hasn't seen yet (operator turns,
@@ -169,6 +176,7 @@ class AgentService implements AgentServiceInterface
                     eventSource: 'agent_service',
                     payload: ['reason' => 'sentinel_or_empty'],
                 );
+                $this->aiRuns->finish($interactionId, 'success', 'no_response');
 
                 return null;
             }
@@ -186,14 +194,21 @@ class AgentService implements AgentServiceInterface
                 eventSource: 'agent_service',
                 payload: ['response_length' => strlen($text)],
             );
+            $this->aiRuns->finish(
+                runId: $interactionId,
+                status: $this->finalStatus($lead),
+                outcome: $this->finalOutcome($lead, $text),
+            );
 
             return $text;
 
         } catch (\PDOException $e) {
             // DB is down — rethrow so the job retries
+            $this->aiRuns->finish($interactionId, 'error', null, class_basename($e));
             throw $e;
         } catch (\InvalidArgumentException $e) {
             // Configuration/programming error — fail fast
+            $this->aiRuns->finish($interactionId, 'error', null, class_basename($e));
             throw $e;
         } catch (ToolCallCeilingExceededException $e) {
             // Tool call loop detected — return safe escalation
@@ -211,11 +226,13 @@ class AgentService implements AgentServiceInterface
                 payload: ['error' => $e->getMessage()],
                 severity: 'warning',
             );
+            $this->aiRuns->finish($interactionId, 'fallback', 'transferred', 'tool_loop');
 
             return 'Estou enfrentando uma dificuldade técnica neste momento. Vou passar seu atendimento para nossa equipe humana que poderá ajudá-lo diretamente.';
         } catch (Throwable $e) {
             // RuntimeException from config validation — rethrow
             if ($e instanceof \RuntimeException && ! $this->isTransientError($e)) {
+                $this->aiRuns->finish($interactionId, 'error', null, class_basename($e));
                 throw $e;
             }
 
@@ -250,9 +267,11 @@ class AgentService implements AgentServiceInterface
                     context: ['original_message' => $message],
                 );
             }
+            $this->aiRuns->finish($interactionId, 'fallback', 'no_response', $this->classifyError($e));
 
             return 'Vou verificar isso e já retorno em breve. Aguarde um momento.';
         } finally {
+            $this->aiRuns->finish($interactionId, 'fallback', 'no_response');
             $this->interactionContext->clear();
         }
     }
@@ -265,6 +284,30 @@ class AgentService implements AgentServiceInterface
         }
 
         return str_contains($trimmed, self::NO_REPLY_SENTINEL);
+    }
+
+    private function architectureVersion(): string
+    {
+        $version = (string) config('credflow.agent.architecture_version', 'legacy_prompt');
+
+        return in_array($version, ['legacy_prompt', 'folder_skills', 'hybrid'], true)
+            ? $version
+            : 'legacy_prompt';
+    }
+
+    private function finalStatus(Lead $lead): string
+    {
+        return $lead->status === 'escalado' ? 'human_handoff' : 'success';
+    }
+
+    private function finalOutcome(Lead $lead, string $text): string
+    {
+        return match ($lead->status) {
+            'qualificado' => 'qualified',
+            'convertido' => 'scheduled',
+            'escalado' => 'transferred',
+            default => str_ends_with(trim($text), '?') ? 'asked_next_question' : 'replied',
+        };
     }
 
     /**

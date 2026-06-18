@@ -1,9 +1,11 @@
 <?php
 
 use App\Models\Agent;
+use App\Models\AiRun;
 use App\Models\AiUsageDaily;
 use App\Models\Lead;
 use App\Models\User;
+use App\Services\AiRunRecorder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -102,6 +104,68 @@ test('ai usage page loads for authenticated user', function () {
             ->has('dailyUsage')
             ->has('byModel')
             ->has('totalMonth')
+            ->has('runs')
+            ->has('filters')
+        );
+});
+
+test('records minimal ai run metrics', function () {
+    $lead = Lead::factory()->create([
+        'agent_id' => $this->agent->id,
+        'tenant_id' => $this->user->tenantId,
+        'conversation_id' => (string) Str::uuid(),
+    ]);
+
+    $runId = (string) Str::uuid();
+    $recorder = app(AiRunRecorder::class);
+
+    $recorder->start($runId, $lead, 'CredFlowAgent', 'legacy_prompt');
+    $recorder->recordModelCall($runId, 'gpt-4o-mini', 1000, 500, hash('sha256', 'prompt'));
+    $recorder->recordToolCalls($runId, 2);
+    $recorder->finish($runId, 'success', 'replied');
+
+    $run = AiRun::where('run_id', $runId)->first();
+
+    expect($run)->not->toBeNull()
+        ->and($run->architecture_version)->toBe('legacy_prompt')
+        ->and($run->llm_calls)->toBe(1)
+        ->and($run->tool_calls)->toBe(2)
+        ->and($run->input_tokens)->toBe(1000)
+        ->and($run->output_tokens)->toBe(500)
+        ->and((float) $run->estimated_cost_usd)->toBeGreaterThan(0)
+        ->and($run->status)->toBe('success')
+        ->and($run->outcome)->toBe('replied');
+});
+
+test('ai usage page includes filtered ai runs', function () {
+    AiRun::create([
+        'run_id' => (string) Str::uuid(),
+        'trace_id' => (string) Str::uuid(),
+        'tenant_id' => (string) $this->user->tenantId,
+        'agent_id' => $this->agent->id,
+        'agent_name' => 'CredFlowAgent',
+        'architecture_version' => 'folder_skills',
+        'model' => 'gpt-4o-mini',
+        'started_at' => now(),
+        'ended_at' => now(),
+        'duration_ms' => 1200,
+        'llm_calls' => 1,
+        'tool_calls' => 1,
+        'input_tokens' => 100,
+        'output_tokens' => 50,
+        'estimated_cost_usd' => 0.001,
+        'status' => 'success',
+        'outcome' => 'asked_next_question',
+    ]);
+
+    $this->actingAs($this->user)
+        ->get('/laboratory/ai-usage?architecture_version=folder_skills')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('laboratory/AiUsage')
+            ->has('runs', 1)
+            ->where('runs.0.architecture_version', 'folder_skills')
+            ->where('runs.0.status', 'success')
         );
 });
 

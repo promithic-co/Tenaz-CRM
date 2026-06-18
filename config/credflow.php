@@ -26,6 +26,8 @@ return [
         'max_total_steps' => (int) env('TENAZ_AGENT_MAX_TOTAL_STEPS', env('CREDFLOW_AGENT_MAX_TOTAL_STEPS', env('ARIA_AGENT_MAX_TOTAL_STEPS', 12))),
         // Maximum elapsed seconds before AgentService skips a new prompt call
         'timeout_seconds' => (int) env('TENAZ_AGENT_TIMEOUT_SECONDS', env('CREDFLOW_AGENT_TIMEOUT_SECONDS', env('ARIA_AGENT_TIMEOUT_SECONDS', 45))),
+        // Minimal experiment marker used by Laboratory AI Runs.
+        'architecture_version' => env('TENAZ_AGENT_ARCHITECTURE_VERSION', env('CREDFLOW_AGENT_ARCHITECTURE_VERSION', 'legacy_prompt')),
         // Runtime provider failover (F5): on a FailoverableException (rate limit / overload),
         // laravel/ai retries the prompt against this provider/model before bubbling the error.
         // Distinct from fallback_provider above, which is a config-default for resolution only.
