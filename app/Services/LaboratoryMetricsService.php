@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\LaboratoryController;
+use App\Models\AiRun;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\FailedInteraction;
 use App\Models\FollowupMessage;
 use App\Models\Lead;
@@ -17,8 +20,8 @@ class LaboratoryMetricsService
      * Base failed-interaction query scoped to the Laboratory tenant string.
      *
      * The {@see Lead} relation bypasses every global scope because the Laboratory
-     * tenant key (see {@see \App\Http\Controllers\LaboratoryController::laboratoryTenantId})
-     * differs from the value applied by {@see \App\Models\Concerns\BelongsToTenant}.
+     * tenant key (see {@see LaboratoryController::laboratoryTenantId})
+     * differs from the value applied by {@see BelongsToTenant}.
      */
     private function failuresQuery(string $tenantId): Builder
     {
@@ -100,6 +103,74 @@ class LaboratoryMetricsService
     }
 
     /**
+     * @return array{runs: int, avg_cost_usd: float, avg_latency_ms: int, p95_latency_ms: int, avg_llm_calls: float, avg_tool_calls: float, success_rate: float, fallback_rate: float, error_rate: float, human_handoff_rate: float}
+     */
+    public function aiRunSummary(string $tenantId): array
+    {
+        $runs = AiRun::query()
+            ->where('tenant_id', $tenantId)
+            ->where('started_at', '>=', now()->subDays(30))
+            ->get();
+
+        $count = $runs->count();
+        if ($count === 0) {
+            return [
+                'runs' => 0,
+                'avg_cost_usd' => 0.0,
+                'avg_latency_ms' => 0,
+                'p95_latency_ms' => 0,
+                'avg_llm_calls' => 0.0,
+                'avg_tool_calls' => 0.0,
+                'success_rate' => 0.0,
+                'fallback_rate' => 0.0,
+                'error_rate' => 0.0,
+                'human_handoff_rate' => 0.0,
+            ];
+        }
+
+        return [
+            'runs' => $count,
+            'avg_cost_usd' => round((float) $runs->avg('estimated_cost_usd'), 6),
+            'avg_latency_ms' => (int) round((float) $runs->avg('duration_ms')),
+            'p95_latency_ms' => $this->percentile($runs->pluck('duration_ms')->filter()->values()->all(), 95),
+            'avg_llm_calls' => round((float) $runs->avg('llm_calls'), 2),
+            'avg_tool_calls' => round((float) $runs->avg('tool_calls'), 2),
+            'success_rate' => $this->rate($runs->where('status', 'success')->count(), $count),
+            'fallback_rate' => $this->rate($runs->where('status', 'fallback')->count(), $count),
+            'error_rate' => $this->rate($runs->whereIn('status', ['error', 'timeout'])->count(), $count),
+            'human_handoff_rate' => $this->rate($runs->where('status', 'human_handoff')->count(), $count),
+        ];
+    }
+
+    /**
+     * @return array<int, array{architecture_version: string, runs: int, avg_cost_usd: float, avg_latency_ms: int, p95_latency_ms: int, avg_llm_calls: float, avg_tool_calls: float, success_rate: float}>
+     */
+    public function architectureComparison(string $tenantId): array
+    {
+        return AiRun::query()
+            ->where('tenant_id', $tenantId)
+            ->where('started_at', '>=', now()->subDays(30))
+            ->get()
+            ->groupBy('architecture_version')
+            ->map(function ($runs, string $architecture): array {
+                $count = $runs->count();
+
+                return [
+                    'architecture_version' => $architecture,
+                    'runs' => $count,
+                    'avg_cost_usd' => round((float) $runs->avg('estimated_cost_usd'), 6),
+                    'avg_latency_ms' => (int) round((float) $runs->avg('duration_ms')),
+                    'p95_latency_ms' => $this->percentile($runs->pluck('duration_ms')->filter()->values()->all(), 95),
+                    'avg_llm_calls' => round((float) $runs->avg('llm_calls'), 2),
+                    'avg_tool_calls' => round((float) $runs->avg('tool_calls'), 2),
+                    'success_rate' => $this->rate($runs->where('status', 'success')->count(), $count),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array{active_count: int, paused_count: int, sent_today: int, failed_today: int, converted_from_followup: int}
      */
     public function followupStats(string $tenantId): array
@@ -169,5 +240,27 @@ class LaboratoryMetricsService
                 ->count(),
             'estimated_cost_today' => $sentToday > 0 ? round($sentToday * 0.05, 2) : 0,
         ];
+    }
+
+    /**
+     * @param  array<int, int|null>  $values
+     */
+    private function percentile(array $values, int $percentile): int
+    {
+        $values = array_values(array_filter(array_map(fn ($value) => $value === null ? null : (int) $value, $values)));
+        sort($values);
+
+        if ($values === []) {
+            return 0;
+        }
+
+        $index = (int) ceil(($percentile / 100) * count($values)) - 1;
+
+        return $values[max(0, min($index, count($values) - 1))];
+    }
+
+    private function rate(int $part, int $total): float
+    {
+        return $total > 0 ? round(($part / $total) * 100, 1) : 0.0;
     }
 }

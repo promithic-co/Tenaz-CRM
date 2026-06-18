@@ -3,14 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Ai\Tools\ConsultarCreditoInssTool;
+use App\Http\Requests\FilterAiUsageRunsRequest;
 use App\Models\AgentInteractionEvent;
+use App\Models\AiRun;
 use App\Models\AiUsageDaily;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\CpfDataset;
 use App\Models\Lead;
 use App\Models\StressTestRun;
+use App\Models\User;
 use App\Services\LaboratoryMetricsService;
 use App\Services\SystemHealthService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -28,6 +34,8 @@ class LaboratoryController extends Controller
             'hourlyFailures' => $metrics->hourlyFailures($tenantId),
             'recentFailures' => $metrics->recentFailures($tenantId),
             'recoveryRate' => $metrics->recoveryRate($tenantId),
+            'aiRunSummary' => $metrics->aiRunSummary($tenantId),
+            'architectureComparison' => $metrics->architectureComparison($tenantId),
             'followupStats' => $metrics->followupStats($tenantId),
             'bulkMetrics' => $metrics->bulkMetrics($tenantId),
             'externalLinks' => [
@@ -141,9 +149,10 @@ class LaboratoryController extends Controller
         ]);
     }
 
-    public function aiUsage(): Response
+    public function aiUsage(FilterAiUsageRunsRequest $request): Response
     {
         $tenantId = $this->laboratoryTenantId();
+        $filters = $request->validated();
 
         $dailyUsage = AiUsageDaily::where('tenant_id', $tenantId)
             ->where('date', '>=', now()->subDays(30)->toDateString())
@@ -177,10 +186,56 @@ class LaboratoryController extends Controller
             'cost_usd' => round($dailyUsage->sum('estimated_cost_usd'), 4),
         ];
 
+        $dateFrom = isset($filters['date_from'])
+            ? Carbon::parse($filters['date_from'])->startOfDay()
+            : now()->subDays(30)->startOfDay();
+        $dateTo = isset($filters['date_to'])
+            ? Carbon::parse($filters['date_to'])->endOfDay()
+            : now()->endOfDay();
+
+        $runsQuery = AiRun::query()
+            ->where('tenant_id', $tenantId)
+            ->where('started_at', '>=', $dateFrom)
+            ->where('started_at', '<=', $dateTo)
+            ->when($filters['agent_id'] ?? null, fn ($query, $agentId) => $query->where('agent_id', $agentId))
+            ->when($filters['architecture_version'] ?? null, fn ($query, $architecture) => $query->where('architecture_version', $architecture))
+            ->when($filters['model'] ?? null, fn ($query, $model) => $query->where('model', 'like', '%'.$model.'%'))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status));
+
+        $runs = $runsQuery
+            ->latest('started_at')
+            ->limit(100)
+            ->get()
+            ->map(fn (AiRun $run): array => [
+                'id' => $run->id,
+                'started_at' => $run->started_at?->toIso8601String(),
+                'agent_id' => $run->agent_id,
+                'agent_name' => $run->agent_name,
+                'architecture_version' => $run->architecture_version,
+                'prompt_hash' => $run->prompt_hash,
+                'skill_hash' => $run->skill_hash,
+                'model' => $run->model,
+                'estimated_cost_usd' => (float) $run->estimated_cost_usd,
+                'duration_ms' => $run->duration_ms,
+                'llm_calls' => $run->llm_calls,
+                'tool_calls' => $run->tool_calls,
+                'status' => $run->status,
+                'outcome' => $run->outcome,
+            ]);
+
         return Inertia::render('laboratory/AiUsage', [
             'dailyUsage' => $byDay,
             'byModel' => $byModel,
             'totalMonth' => $totalMonth,
+            'runs' => $runs,
+            'filters' => [
+                'date_from' => $filters['date_from'] ?? '',
+                'date_to' => $filters['date_to'] ?? '',
+                'agent_id' => $filters['agent_id'] ?? '',
+                'architecture_version' => $filters['architecture_version'] ?? '',
+                'model' => $filters['model'] ?? '',
+                'status' => $filters['status'] ?? '',
+            ],
         ]);
     }
 
@@ -256,10 +311,10 @@ class LaboratoryController extends Controller
 
     /**
      * Tenant key for Laboratory metrics: same string stored on {@see Lead::$tenant_id} / campaign rows.
-     * Uses {@see \App\Models\User::tenantId} when the user belongs to a Tenant pivot; otherwise falls back
-     * to {@see \App\Models\User::id} for legacy 1:1 data. Queries that mix this value with models using
-     * {@see \App\Models\Concerns\BelongsToTenant} must call {@see \Illuminate\Database\Eloquent\Builder::withoutGlobalScope}
-     * with `tenant`, because the global scope only applies {@see \App\Models\User::tenantId} (null without a pivot).
+     * Uses {@see User::tenantId} when the user belongs to a Tenant pivot; otherwise falls back
+     * to {@see User::id} for legacy 1:1 data. Queries that mix this value with models using
+     * {@see BelongsToTenant} must call {@see Builder::withoutGlobalScope}
+     * with `tenant`, because the global scope only applies {@see User::tenantId} (null without a pivot).
      */
     private function laboratoryTenantId(): string
     {

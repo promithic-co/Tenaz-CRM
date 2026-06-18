@@ -7,6 +7,7 @@ use App\Ai\Exceptions\ToolCallCeilingExceededException;
 use App\Ai\Support\ToolCallTracker;
 use App\Services\AgentInteractionContext;
 use App\Services\AgentInteractionEventService;
+use App\Services\AiRunRecorder;
 use Closure;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Prompts\AgentPrompt;
@@ -25,6 +26,7 @@ class ToolCallGuardMiddleware
         private readonly ToolCallTracker $tracker,
         private readonly AgentInteractionContext $interactionContext,
         private readonly AgentInteractionEventService $interactionEvents,
+        private readonly AiRunRecorder $aiRuns,
     ) {}
 
     public function handle(AgentPrompt $prompt, Closure $next)
@@ -34,6 +36,10 @@ class ToolCallGuardMiddleware
 
             if (empty($response->toolCalls)) {
                 return;
+            }
+
+            if ($interactionId) {
+                $this->aiRuns->recordToolCalls($interactionId, count($response->toolCalls));
             }
 
             foreach ($response->toolCalls as $call) {

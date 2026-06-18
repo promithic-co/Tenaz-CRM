@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Agent;
+use App\Models\AiRun;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
 use App\Models\FailedInteraction;
@@ -8,6 +9,7 @@ use App\Models\Lead;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -30,7 +32,11 @@ it('displays laboratory dashboard for authenticated users', function () {
     $this->actingAs($user)
         ->get(route('laboratory'))
         ->assertSuccessful()
-        ->assertInertia(fn ($page) => $page->component('laboratory/Index'));
+        ->assertInertia(fn ($page) => $page
+            ->component('laboratory/Index')
+            ->has('aiRunSummary')
+            ->has('architectureComparison')
+        );
 });
 
 it('redirects guests to login', function () {
@@ -235,5 +241,57 @@ it('shows bulk campaign metrics for the current tenant', function () {
             ->where('bulkMetrics.messages_delivered_today', 2)
             ->where('bulkMetrics.delivery_rate_today', 33.3)
             ->where('bulkMetrics.estimated_cost_today', 0.3)
+        );
+});
+
+it('shows minimal ai run architecture comparison for the current tenant', function () {
+    [$user, $tenant, $agent] = labUserWithTenant();
+
+    AiRun::create([
+        'run_id' => (string) Str::uuid(),
+        'trace_id' => (string) Str::uuid(),
+        'tenant_id' => (string) $user->tenantId,
+        'agent_id' => $agent->id,
+        'agent_name' => 'CredFlowAgent',
+        'architecture_version' => 'legacy_prompt',
+        'model' => 'gpt-4o-mini',
+        'started_at' => now(),
+        'ended_at' => now(),
+        'duration_ms' => 1000,
+        'llm_calls' => 1,
+        'tool_calls' => 1,
+        'input_tokens' => 100,
+        'output_tokens' => 50,
+        'estimated_cost_usd' => 0.001,
+        'status' => 'success',
+        'outcome' => 'replied',
+    ]);
+
+    AiRun::create([
+        'run_id' => (string) Str::uuid(),
+        'trace_id' => (string) Str::uuid(),
+        'tenant_id' => (string) $user->tenantId,
+        'agent_id' => $agent->id,
+        'agent_name' => 'CredFlowAgent',
+        'architecture_version' => 'folder_skills',
+        'model' => 'gpt-4o-mini',
+        'started_at' => now(),
+        'ended_at' => now(),
+        'duration_ms' => 800,
+        'llm_calls' => 1,
+        'tool_calls' => 0,
+        'input_tokens' => 80,
+        'output_tokens' => 40,
+        'estimated_cost_usd' => 0.0008,
+        'status' => 'success',
+        'outcome' => 'replied',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('laboratory'))
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->where('aiRunSummary.runs', 2)
+            ->has('architectureComparison', 2)
         );
 });
