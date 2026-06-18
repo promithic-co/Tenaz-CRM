@@ -1,8 +1,35 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { FlaskConical, RefreshCw, CheckCircle, AlertTriangle, Clock, ExternalLink, TrendingUp, Users, PauseCircle, Send, XCircle, Trophy, Megaphone, MessageSquare, BarChart2, Reply, DollarSign } from 'lucide-vue-next';
+import campanhas from '@/routes/campanhas';
+import conversas from '@/routes/conversas';
+import { laboratory as laboratoryIndex } from '@/routes';
+import laboratory from '@/routes/laboratory';
 import type { BreadcrumbItem } from '@/types';
+import { Head, Link } from '@inertiajs/vue3';
+import {
+    AlertTriangle,
+    BarChart2,
+    CheckCircle,
+    Clock,
+    DollarSign,
+    ExternalLink,
+    FlaskConical,
+    Gauge,
+    Megaphone,
+    MessageSquare,
+    PauseCircle,
+    RefreshCw,
+    Reply,
+    Send,
+    ShieldAlert,
+    Timer,
+    TrendingUp,
+    Trophy,
+    Users,
+    XCircle,
+    Zap,
+} from 'lucide-vue-next';
+import { computed } from 'vue';
 
 type Stats = {
     pending_retries: number;
@@ -46,7 +73,7 @@ type BulkMetrics = {
     messages_failed_today: number;
     delivery_rate_today: number;
     replies_from_campaigns_today: number;
-    estimated_cost_today: number;
+    estimated_cost_today_usd: number;
 };
 
 type AiRunSummary = {
@@ -73,6 +100,12 @@ type ArchitectureComparison = {
     success_rate: number;
 };
 
+type OperationalPosture = {
+    status: 'attention' | 'stable';
+    label: string;
+    note: string;
+};
+
 type Props = {
     stats: Stats;
     errorPatterns: ErrorPattern[];
@@ -83,466 +116,848 @@ type Props = {
     architectureComparison: ArchitectureComparison[];
     followupStats: FollowupStats;
     bulkMetrics: BulkMetrics;
+    operationalPosture: OperationalPosture;
     externalLinks: { langfuse: string; horizon: string };
 };
 
 const props = defineProps<Props>();
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Laboratory', href: '/laboratory' }];
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Laboratory', href: laboratoryIndex() },
+];
+const hours = Array.from({ length: 24 }, (_, i) => i);
+
+const maxHourlyCount = computed(() =>
+    Math.max(...Object.values(props.hourlyFailures), 1),
+);
+const openRecoveryWork = computed(
+    () =>
+        props.stats.pending_retries +
+        props.stats.retrying_now +
+        props.stats.escalated_open,
+);
+const operationalFailuresToday = computed(
+    () =>
+        props.followupStats.failed_today +
+        props.bulkMetrics.messages_failed_today,
+);
+const posture = computed(() => {
+    const isAttention = props.operationalPosture.status === 'attention';
+
+    return {
+        label: props.operationalPosture.label,
+        tone: isAttention
+            ? 'text-amber-700 dark:text-amber-400'
+            : 'text-emerald-700 dark:text-emerald-400',
+        bg: isAttention ? 'bg-amber-500/10' : 'bg-emerald-500/10',
+        icon: isAttention ? ShieldAlert : CheckCircle,
+        note: props.operationalPosture.note,
+    };
+});
+
+const navigationItems = [
+    { label: 'AI Usage', href: laboratory.aiUsage.url() },
+    { label: 'Stress Test', href: laboratory.stressTest.url() },
+    { label: 'Datasets', href: laboratory.datasets.url() },
+    { label: 'Health', href: laboratory.health.url() },
+];
+
+const aiMetrics = computed(() => [
+    {
+        label: 'AI Runs',
+        value: props.aiRunSummary.runs.toLocaleString('pt-BR'),
+        detail: 'últimos 30 dias',
+        icon: Zap,
+    },
+    {
+        label: 'Sucesso',
+        value: `${props.aiRunSummary.success_rate}%`,
+        detail: `erro ${props.aiRunSummary.error_rate}%`,
+        icon: CheckCircle,
+    },
+    {
+        label: 'Custo médio',
+        value: formatUsd(props.aiRunSummary.avg_cost_usd),
+        detail: 'por run',
+        icon: DollarSign,
+    },
+    {
+        label: 'Latência média',
+        value: formatMs(props.aiRunSummary.avg_latency_ms),
+        detail: `p95 ${formatMs(props.aiRunSummary.p95_latency_ms)}`,
+        icon: Timer,
+    },
+]);
+
+const recoveryMetrics = computed(() => [
+    {
+        label: 'Recovery rate',
+        value: `${props.recoveryRate}%`,
+        detail: 'últimos 7 dias',
+        icon: TrendingUp,
+    },
+    {
+        label: 'Pendentes',
+        value: props.stats.pending_retries,
+        detail: 'aguardando retry',
+        icon: Clock,
+    },
+    {
+        label: 'Em retry',
+        value: props.stats.retrying_now,
+        detail: 'processando agora',
+        icon: RefreshCw,
+    },
+    {
+        label: 'Escalados',
+        value: props.stats.escalated_open,
+        detail: 'abertos',
+        icon: AlertTriangle,
+    },
+]);
+
+const followupMetrics = computed(() => [
+    {
+        label: 'Ativos',
+        value: props.followupStats.active_count,
+        detail: 'leads em sequência',
+        icon: Users,
+    },
+    {
+        label: 'Pausados',
+        value: props.followupStats.paused_count,
+        detail: 'temporariamente parados',
+        icon: PauseCircle,
+    },
+    {
+        label: 'Enviados hoje',
+        value: props.followupStats.sent_today,
+        detail: 'mensagens enviadas',
+        icon: Send,
+    },
+    {
+        label: 'Falhas hoje',
+        value: props.followupStats.failed_today,
+        detail: 'jobs com falha',
+        icon: XCircle,
+    },
+    {
+        label: 'Convertidos 30d',
+        value: props.followupStats.converted_from_followup,
+        detail: 'via follow-up',
+        icon: Trophy,
+    },
+]);
+
+const campaignMetrics = computed(() => [
+    {
+        label: 'Campanhas ativas',
+        value: props.bulkMetrics.campaigns_active,
+        detail: 'enviando agora',
+        icon: Megaphone,
+        href: campanhas.index.url({ query: { status: 'sending' } }),
+    },
+    {
+        label: 'Enviadas hoje',
+        value: props.bulkMetrics.messages_sent_today,
+        detail: 'mensagens',
+        icon: MessageSquare,
+    },
+    {
+        label: 'Entrega hoje',
+        value: `${props.bulkMetrics.delivery_rate_today}%`,
+        detail: `${props.bulkMetrics.messages_delivered_today} entregues`,
+        icon: BarChart2,
+    },
+    {
+        label: 'Respostas',
+        value: props.bulkMetrics.replies_from_campaigns_today,
+        detail: 'de campanhas hoje',
+        icon: Reply,
+    },
+    {
+        label: 'Falhas hoje',
+        value: props.bulkMetrics.messages_failed_today,
+        detail: 'mensagens com falha',
+        icon: XCircle,
+    },
+    {
+        label: 'Custo estimado',
+        value: formatUsd(props.bulkMetrics.estimated_cost_today_usd),
+        detail: 'hoje',
+        icon: DollarSign,
+    },
+]);
 
 function statusColor(status: string): string {
     const map: Record<string, string> = {
-        pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-        retrying: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-        resolved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-        escalated: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        pending: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+        retrying: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
+        resolved: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        escalated: 'bg-red-500/10 text-red-700 dark:text-red-400',
     };
+
     return map[status] ?? 'bg-muted text-muted-foreground';
 }
 
 function tagColor(tag: string): string {
     const map: Record<string, string> = {
-        timeout: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-        rate_limit: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-        context_overflow: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
-        connection_error: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-        server_error: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+        timeout: 'bg-orange-500/10 text-orange-700 dark:text-orange-400',
+        rate_limit: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+        context_overflow:
+            'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
+        connection_error: 'bg-red-500/10 text-red-700 dark:text-red-400',
+        server_error: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
     };
+
     return map[tag] ?? 'bg-muted text-muted-foreground';
 }
 
-const maxHourlyCount = Math.max(...Object.values(props.hourlyFailures), 1);
+function formatUsd(value: number): string {
+    return `$${value.toFixed(4)}`;
+}
 
-const hours = Array.from({ length: 24 }, (_, i) => i);
-
-const formatUsd = (value: number) => `$${value.toFixed(4)}`;
-const formatMs = (value: number) => `${value.toLocaleString('pt-BR')} ms`;
+function formatMs(value: number): string {
+    return `${value.toLocaleString('pt-BR')} ms`;
+}
 </script>
 
 <template>
     <Head title="Laboratory" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-6 p-4">
-
-            <!-- Header -->
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <FlaskConical class="h-5 w-5 text-muted-foreground" />
-                    <h1 class="text-lg font-semibold text-foreground">Laboratory</h1>
-                    <span class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Observability & Recovery</span>
+        <div class="mx-auto flex max-w-7xl flex-col gap-6 p-4 lg:p-6">
+            <header
+                class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
+            >
+                <div class="flex min-w-0 items-start gap-3">
+                    <div
+                        class="flex size-10 shrink-0 items-center justify-center rounded-lg border border-sidebar-border bg-card text-muted-foreground"
+                    >
+                        <FlaskConical class="size-5" />
+                    </div>
+                    <div class="min-w-0">
+                        <h1 class="text-xl font-semibold text-foreground">
+                            Laboratory
+                        </h1>
+                        <p class="mt-1 max-w-2xl text-sm text-muted-foreground">
+                            Centro de operação para qualidade, custo,
+                            recuperação e sinais recentes do agente.
+                        </p>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <Link
+                                v-for="item in navigationItems"
+                                :key="item.href"
+                                :href="item.href"
+                                class="rounded-md border border-sidebar-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            >
+                                {{ item.label }}
+                            </Link>
+                        </div>
+                    </div>
                 </div>
-                <!-- External links -->
-                <div class="flex items-center gap-2">
+
+                <div class="flex flex-wrap items-center gap-2">
                     <a
                         :href="externalLinks.langfuse"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-sidebar-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
-                        <ExternalLink class="h-3 w-3" />
+                        <ExternalLink class="size-3.5" />
                         Langfuse
                     </a>
                     <a
                         :href="externalLinks.horizon"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-sidebar-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
-                        <ExternalLink class="h-3 w-3" />
+                        <ExternalLink class="size-3.5" />
                         Horizon
                     </a>
                 </div>
-            </div>
+            </header>
 
-            <!-- AI Architecture Snapshot -->
-            <div class="flex flex-col gap-3">
-                <div class="flex items-center gap-2">
-                    <BarChart2 class="h-4 w-4 text-muted-foreground" />
-                    <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Architecture Snapshot - últimos 30 dias</span>
-                </div>
-                <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Runs</span>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ aiRunSummary.runs }}</p>
+            <section class="grid gap-3 lg:grid-cols-[1.25fr_1fr_1fr]">
+                <div
+                    class="rounded-lg border border-sidebar-border bg-card p-4 shadow-sm"
+                >
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p
+                                class="text-xs font-medium text-muted-foreground"
+                            >
+                                Postura operacional
+                            </p>
+                            <p
+                                :class="[
+                                    'mt-1 text-2xl font-semibold',
+                                    posture.tone,
+                                ]"
+                            >
+                                {{ posture.label }}
+                            </p>
+                        </div>
+                        <div
+                            :class="[
+                                'flex size-10 items-center justify-center rounded-lg',
+                                posture.bg,
+                                posture.tone,
+                            ]"
+                        >
+                            <component :is="posture.icon" class="size-5" />
+                        </div>
                     </div>
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Custo Médio</span>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ formatUsd(aiRunSummary.avg_cost_usd) }}</p>
-                    </div>
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latência Média</span>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ formatMs(aiRunSummary.avg_latency_ms) }}</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">p95 {{ formatMs(aiRunSummary.p95_latency_ms) }}</p>
-                    </div>
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chamadas</span>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ aiRunSummary.avg_llm_calls }}</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">LLM/run - tools {{ aiRunSummary.avg_tool_calls }}</p>
-                    </div>
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Taxas</span>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ aiRunSummary.success_rate }}%</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">fallback {{ aiRunSummary.fallback_rate }}% - handoff {{ aiRunSummary.human_handoff_rate }}%</p>
-                    </div>
+                    <p class="mt-3 text-sm text-muted-foreground">
+                        {{ posture.note }}
+                    </p>
                 </div>
 
-                <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border">
-                    <div class="border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Comparação por Arquitetura</span>
+                <div
+                    class="rounded-lg border border-sidebar-border bg-card p-4 shadow-sm"
+                >
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p
+                                class="text-xs font-medium text-muted-foreground"
+                            >
+                                Trabalho aberto
+                            </p>
+                            <p
+                                class="mt-1 text-2xl font-semibold text-foreground"
+                            >
+                                {{ openRecoveryWork }}
+                            </p>
+                        </div>
+                        <Gauge class="size-5 text-muted-foreground" />
                     </div>
-                    <div v-if="architectureComparison.length === 0" class="px-4 py-8 text-center text-xs text-muted-foreground">
-                        Nenhum AI run registrado nos últimos 30 dias.
+                    <p class="mt-3 text-sm text-muted-foreground">
+                        Retries, processamentos e escalamentos em aberto.
+                    </p>
+                </div>
+
+                <div
+                    class="rounded-lg border border-sidebar-border bg-card p-4 shadow-sm"
+                >
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p
+                                class="text-xs font-medium text-muted-foreground"
+                            >
+                                Falhas hoje
+                            </p>
+                            <p
+                                :class="[
+                                    'mt-1 text-2xl font-semibold',
+                                    operationalFailuresToday > 0
+                                        ? 'text-red-700 dark:text-red-400'
+                                        : 'text-foreground',
+                                ]"
+                            >
+                                {{ operationalFailuresToday }}
+                            </p>
+                        </div>
+                        <AlertTriangle class="size-5 text-muted-foreground" />
                     </div>
-                    <table v-else class="w-full text-sm">
-                        <thead class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border">
+                    <p class="mt-3 text-sm text-muted-foreground">
+                        Soma de follow-up e disparos em massa.
+                    </p>
+                </div>
+            </section>
+
+            <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div
+                    v-for="metric in aiMetrics"
+                    :key="metric.label"
+                    class="rounded-lg border border-sidebar-border bg-card p-4 shadow-sm"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p
+                                class="text-xs font-medium text-muted-foreground"
+                            >
+                                {{ metric.label }}
+                            </p>
+                            <p
+                                class="mt-1 truncate text-2xl font-semibold text-foreground"
+                            >
+                                {{ metric.value }}
+                            </p>
+                            <p class="mt-1 text-xs text-muted-foreground">
+                                {{ metric.detail }}
+                            </p>
+                        </div>
+                        <component
+                            :is="metric.icon"
+                            class="size-4 shrink-0 text-muted-foreground"
+                        />
+                    </div>
+                </div>
+            </section>
+
+            <section
+                class="overflow-hidden rounded-lg border border-sidebar-border bg-card shadow-sm"
+            >
+                <div
+                    class="flex flex-col gap-1 border-b border-sidebar-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div>
+                        <h2 class="text-sm font-semibold text-foreground">
+                            Comparação por arquitetura
+                        </h2>
+                        <p class="text-xs text-muted-foreground">
+                            Últimos 30 dias de AI runs registrados.
+                        </p>
+                    </div>
+                    <Link
+                        :href="laboratory.aiUsage.url()"
+                        class="text-xs font-medium text-primary hover:text-primary/80"
+                    >
+                        Ver AI Usage
+                    </Link>
+                </div>
+                <div
+                    v-if="architectureComparison.length === 0"
+                    class="px-4 py-8 text-center text-sm text-muted-foreground"
+                >
+                    Nenhum AI run registrado nos últimos 30 dias.
+                </div>
+                <div v-else class="overflow-x-auto">
+                    <table class="w-full min-w-[780px] text-sm">
+                        <thead
+                            class="border-b border-sidebar-border bg-muted/40 text-xs text-muted-foreground"
+                        >
                             <tr>
-                                <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Arquitetura</th>
-                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Runs</th>
-                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Custo</th>
-                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Latência</th>
-                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">LLM</th>
-                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Tools</th>
-                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Sucesso</th>
+                                <th class="px-4 py-2 text-left font-medium">
+                                    Arquitetura
+                                </th>
+                                <th class="px-4 py-2 text-right font-medium">
+                                    Runs
+                                </th>
+                                <th class="px-4 py-2 text-right font-medium">
+                                    Custo médio
+                                </th>
+                                <th class="px-4 py-2 text-right font-medium">
+                                    Latência
+                                </th>
+                                <th class="px-4 py-2 text-right font-medium">
+                                    p95
+                                </th>
+                                <th class="px-4 py-2 text-right font-medium">
+                                    LLM
+                                </th>
+                                <th class="px-4 py-2 text-right font-medium">
+                                    Tools
+                                </th>
+                                <th class="px-4 py-2 text-right font-medium">
+                                    Sucesso
+                                </th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border">
-                            <tr v-for="item in architectureComparison" :key="item.architecture_version">
-                                <td class="px-4 py-2 font-medium text-foreground">{{ item.architecture_version }}</td>
-                                <td class="px-4 py-2 text-right text-muted-foreground">{{ item.runs }}</td>
-                                <td class="px-4 py-2 text-right text-muted-foreground">{{ formatUsd(item.avg_cost_usd) }}</td>
-                                <td class="px-4 py-2 text-right text-muted-foreground">{{ formatMs(item.avg_latency_ms) }}</td>
-                                <td class="px-4 py-2 text-right text-muted-foreground">{{ item.avg_llm_calls }}</td>
-                                <td class="px-4 py-2 text-right text-muted-foreground">{{ item.avg_tool_calls }}</td>
-                                <td class="px-4 py-2 text-right font-semibold text-foreground">{{ item.success_rate }}%</td>
+                        <tbody class="divide-y divide-sidebar-border">
+                            <tr
+                                v-for="item in architectureComparison"
+                                :key="item.architecture_version"
+                                class="hover:bg-muted/40"
+                            >
+                                <td
+                                    class="px-4 py-3 font-medium text-foreground"
+                                >
+                                    {{ item.architecture_version }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-right text-muted-foreground"
+                                >
+                                    {{ item.runs }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-right text-muted-foreground"
+                                >
+                                    {{ formatUsd(item.avg_cost_usd) }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-right text-muted-foreground"
+                                >
+                                    {{ formatMs(item.avg_latency_ms) }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-right text-muted-foreground"
+                                >
+                                    {{ formatMs(item.p95_latency_ms) }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-right text-muted-foreground"
+                                >
+                                    {{ item.avg_llm_calls }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-right text-muted-foreground"
+                                >
+                                    {{ item.avg_tool_calls }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-right font-semibold text-foreground"
+                                >
+                                    {{ item.success_rate }}%
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
 
-            <!-- Stats cards -->
-            <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
-                <!-- Recovery rate -->
-                <div class="col-span-1 overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recovery Rate</span>
-                        <TrendingUp class="h-4 w-4 text-green-500" />
+            <section class="grid gap-6 lg:grid-cols-2">
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center gap-2">
+                        <RefreshCw class="size-4 text-muted-foreground" />
+                        <h2 class="text-sm font-semibold text-foreground">
+                            Recovery engine
+                        </h2>
                     </div>
-                    <p class="mt-1 text-2xl font-bold" :class="recoveryRate >= 80 ? 'text-green-600 dark:text-green-400' : recoveryRate >= 60 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'">
-                        {{ recoveryRate }}%
-                    </p>
-                    <p class="mt-0.5 text-xs text-muted-foreground">últimos 7 dias</p>
-                </div>
-
-                <!-- Pending retries -->
-                <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pendentes</span>
-                        <Clock class="h-4 w-4 text-yellow-500" />
-                    </div>
-                    <p class="mt-1 text-2xl font-bold text-foreground">{{ stats.pending_retries }}</p>
-                    <p class="mt-0.5 text-xs text-muted-foreground">aguardando retry</p>
-                </div>
-
-                <!-- Retrying now -->
-                <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Em Retry</span>
-                        <RefreshCw class="h-4 w-4 text-blue-500" />
-                    </div>
-                    <p class="mt-1 text-2xl font-bold text-foreground">{{ stats.retrying_now }}</p>
-                    <p class="mt-0.5 text-xs text-muted-foreground">processando agora</p>
-                </div>
-
-                <!-- Resolved today -->
-                <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resolvidos</span>
-                        <CheckCircle class="h-4 w-4 text-green-500" />
-                    </div>
-                    <p class="mt-1 text-2xl font-bold text-foreground">{{ stats.resolved_today }}</p>
-                    <p class="mt-0.5 text-xs text-muted-foreground">hoje</p>
-                </div>
-
-                <!-- Escalated -->
-                <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Escalados</span>
-                        <AlertTriangle class="h-4 w-4 text-red-500" />
-                    </div>
-                    <p class="mt-1 text-2xl font-bold" :class="stats.escalated_open > 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'">
-                        {{ stats.escalated_open }}
-                    </p>
-                    <p class="mt-0.5 text-xs text-muted-foreground">abertos</p>
-                </div>
-            </div>
-
-            <!-- Follow-Up Engine -->
-            <div class="flex flex-col gap-3">
-                <div class="flex items-center gap-2">
-                    <Send class="h-4 w-4 text-muted-foreground" />
-                    <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Follow-Up Engine</span>
-                </div>
-                <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
-                    <!-- Ativos -->
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ativos</span>
-                            <Users class="h-4 w-4 text-blue-500" />
-                        </div>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ followupStats.active_count }}</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">leads em sequência</p>
-                    </div>
-
-                    <!-- Pausados -->
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pausados</span>
-                            <PauseCircle class="h-4 w-4 text-yellow-500" />
-                        </div>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ followupStats.paused_count }}</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">temporariamente parados</p>
-                    </div>
-
-                    <!-- Enviados Hoje -->
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Enviados Hoje</span>
-                            <Send class="h-4 w-4 text-blue-500" />
-                        </div>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ followupStats.sent_today }}</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">mensagens enviadas</p>
-                    </div>
-
-                    <!-- Falhas Hoje -->
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Falhas Hoje</span>
-                            <XCircle :class="['h-4 w-4', followupStats.failed_today > 0 ? 'text-red-500' : 'text-green-500']" />
-                        </div>
-                        <p class="mt-1 text-2xl font-bold" :class="followupStats.failed_today > 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'">
-                            {{ followupStats.failed_today }}
-                        </p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">jobs com falha</p>
-                    </div>
-
-                    <!-- Convertidos (30d) -->
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Convertidos (30d)</span>
-                            <Trophy class="h-4 w-4 text-green-500" />
-                        </div>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ followupStats.converted_from_followup }}</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">via follow-up</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Disparos em Massa -->
-            <div class="flex flex-col gap-3">
-                <div class="flex items-center gap-2">
-                    <Megaphone class="h-4 w-4 text-muted-foreground" />
-                    <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Disparos em Massa</span>
-                </div>
-                <!-- Row 1: 4 cards -->
-                <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <!-- Campanhas Ativas -->
-                    <Link href="/campanhas?status=sending" class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 transition-colors hover:bg-muted/40 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Campanhas Ativas</span>
-                            <Megaphone class="h-4 w-4 text-green-500" />
-                        </div>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ bulkMetrics.campaigns_active }}</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">enviando agora</p>
-                    </Link>
-
-                    <!-- Mensagens Enviadas Hoje -->
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Enviadas Hoje</span>
-                            <MessageSquare class="h-4 w-4 text-blue-500" />
-                        </div>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ bulkMetrics.messages_sent_today }}</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">mensagens</p>
-                    </div>
-
-                    <!-- Taxa de Entrega -->
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Taxa Entrega</span>
-                            <BarChart2 class="h-4 w-4 text-green-500" />
-                        </div>
-                        <p
-                            class="mt-1 text-2xl font-bold"
-                            :class="bulkMetrics.delivery_rate_today >= 90 ? 'text-green-600 dark:text-green-400' : bulkMetrics.delivery_rate_today >= 70 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'"
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div
+                            v-for="metric in recoveryMetrics"
+                            :key="metric.label"
+                            class="rounded-lg border border-sidebar-border bg-card p-4 shadow-sm"
                         >
-                            {{ bulkMetrics.delivery_rate_today }}%
-                        </p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">hoje</p>
-                    </div>
-
-                    <!-- Respostas de Campanha -->
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Respostas</span>
-                            <Reply class="h-4 w-4 text-orange-500" />
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p
+                                        class="text-xs font-medium text-muted-foreground"
+                                    >
+                                        {{ metric.label }}
+                                    </p>
+                                    <p
+                                        class="mt-1 text-2xl font-semibold text-foreground"
+                                    >
+                                        {{ metric.value }}
+                                    </p>
+                                    <p
+                                        class="mt-1 text-xs text-muted-foreground"
+                                    >
+                                        {{ metric.detail }}
+                                    </p>
+                                </div>
+                                <component
+                                    :is="metric.icon"
+                                    class="size-4 text-muted-foreground"
+                                />
+                            </div>
                         </div>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ bulkMetrics.replies_from_campaigns_today }}</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">de campanhas hoje</p>
                     </div>
                 </div>
 
-                <!-- Row 2: 3 cards -->
-                <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                    <!-- Concluídas Hoje -->
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Concluídas Hoje</span>
-                            <CheckCircle class="h-4 w-4 text-green-500" />
-                        </div>
-                        <p class="mt-1 text-2xl font-bold text-foreground">{{ bulkMetrics.campaigns_completed_today }}</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">campanhas finalizadas</p>
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center gap-2">
+                        <Send class="size-4 text-muted-foreground" />
+                        <h2 class="text-sm font-semibold text-foreground">
+                            Follow-up engine
+                        </h2>
                     </div>
-
-                    <!-- Falhas Hoje -->
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Falhas Hoje</span>
-                            <XCircle :class="['h-4 w-4', bulkMetrics.messages_failed_today > 0 ? 'text-red-500' : 'text-green-500']" />
+                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        <div
+                            v-for="metric in followupMetrics"
+                            :key="metric.label"
+                            class="rounded-lg border border-sidebar-border bg-card p-4 shadow-sm"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p
+                                        class="text-xs font-medium text-muted-foreground"
+                                    >
+                                        {{ metric.label }}
+                                    </p>
+                                    <p
+                                        class="mt-1 text-2xl font-semibold text-foreground"
+                                    >
+                                        {{ metric.value }}
+                                    </p>
+                                    <p
+                                        class="mt-1 text-xs text-muted-foreground"
+                                    >
+                                        {{ metric.detail }}
+                                    </p>
+                                </div>
+                                <component
+                                    :is="metric.icon"
+                                    class="size-4 text-muted-foreground"
+                                />
+                            </div>
                         </div>
-                        <p class="mt-1 text-2xl font-bold" :class="bulkMetrics.messages_failed_today > 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'">
-                            {{ bulkMetrics.messages_failed_today }}
-                        </p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">mensagens com falha</p>
-                    </div>
-
-                    <!-- Custo Estimado -->
-                    <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Custo Estimado</span>
-                            <DollarSign class="h-4 w-4 text-yellow-500" />
-                        </div>
-                        <p class="mt-1 text-2xl font-bold text-foreground">
-                            R$ {{ bulkMetrics.estimated_cost_today.toFixed(2).replace('.', ',') }}
-                        </p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">hoje (R$0,05/msg)</p>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Two-column layout: Error patterns + Hourly heatmap -->
-            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <section class="flex flex-col gap-3">
+                <div class="flex items-center gap-2">
+                    <Megaphone class="size-4 text-muted-foreground" />
+                    <h2 class="text-sm font-semibold text-foreground">
+                        Disparos em massa
+                    </h2>
+                </div>
+                <div
+                    class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
+                >
+                    <component
+                        :is="metric.href ? Link : 'div'"
+                        v-for="metric in campaignMetrics"
+                        :key="metric.label"
+                        :href="metric.href"
+                        class="rounded-lg border border-sidebar-border bg-card p-4 shadow-sm transition-colors hover:bg-muted/40"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p
+                                    class="text-xs font-medium text-muted-foreground"
+                                >
+                                    {{ metric.label }}
+                                </p>
+                                <p
+                                    class="mt-1 text-2xl font-semibold text-foreground"
+                                >
+                                    {{ metric.value }}
+                                </p>
+                                <p class="mt-1 text-xs text-muted-foreground">
+                                    {{ metric.detail }}
+                                </p>
+                            </div>
+                            <component
+                                :is="metric.icon"
+                                class="size-4 text-muted-foreground"
+                            />
+                        </div>
+                    </component>
+                </div>
+            </section>
 
-                <!-- Error Pattern Map -->
-                <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border">
-                    <div class="border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Padrões de Erro — últimos 7 dias</span>
+            <section class="grid gap-6 lg:grid-cols-2">
+                <div
+                    class="overflow-hidden rounded-lg border border-sidebar-border bg-card shadow-sm"
+                >
+                    <div class="border-b border-sidebar-border px-4 py-3">
+                        <h2 class="text-sm font-semibold text-foreground">
+                            Padrões de erro
+                        </h2>
+                        <p class="text-xs text-muted-foreground">
+                            Últimos 7 dias por tag e fonte.
+                        </p>
                     </div>
-                    <div v-if="errorPatterns.length === 0" class="px-4 py-8 text-center text-xs text-muted-foreground">
+                    <div
+                        v-if="errorPatterns.length === 0"
+                        class="px-4 py-8 text-center text-sm text-muted-foreground"
+                    >
                         Nenhum erro registrado nos últimos 7 dias.
                     </div>
-                    <table v-else class="w-full text-sm">
-                        <thead class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border">
-                            <tr>
-                                <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Tag</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Fonte</th>
-                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Ocorrências</th>
-                                <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Avg Retries</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border">
-                            <tr v-for="pattern in errorPatterns" :key="`${pattern.error_tag}-${pattern.error_source}`">
-                                <td class="px-4 py-2">
-                                    <span :class="['rounded-full px-2 py-0.5 text-xs font-medium', tagColor(pattern.error_tag)]">
-                                        {{ pattern.error_tag }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-2 text-xs text-muted-foreground">{{ pattern.error_source }}</td>
-                                <td class="px-4 py-2 text-right text-xs font-semibold text-foreground">{{ pattern.count }}</td>
-                                <td class="px-4 py-2 text-right text-xs text-muted-foreground">{{ Number(pattern.avg_retries).toFixed(1) }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div v-else class="overflow-x-auto">
+                        <table class="w-full min-w-[520px] text-sm">
+                            <thead
+                                class="border-b border-sidebar-border bg-muted/40 text-xs text-muted-foreground"
+                            >
+                                <tr>
+                                    <th class="px-4 py-2 text-left font-medium">
+                                        Tag
+                                    </th>
+                                    <th class="px-4 py-2 text-left font-medium">
+                                        Fonte
+                                    </th>
+                                    <th
+                                        class="px-4 py-2 text-right font-medium"
+                                    >
+                                        Ocorrências
+                                    </th>
+                                    <th
+                                        class="px-4 py-2 text-right font-medium"
+                                    >
+                                        Retries médios
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-sidebar-border">
+                                <tr
+                                    v-for="pattern in errorPatterns"
+                                    :key="`${pattern.error_tag}-${pattern.error_source}`"
+                                    class="hover:bg-muted/40"
+                                >
+                                    <td class="px-4 py-3">
+                                        <span
+                                            :class="[
+                                                'rounded-md px-2 py-1 text-xs font-medium',
+                                                tagColor(pattern.error_tag),
+                                            ]"
+                                        >
+                                            {{ pattern.error_tag }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-muted-foreground">
+                                        {{ pattern.error_source }}
+                                    </td>
+                                    <td
+                                        class="px-4 py-3 text-right font-semibold text-foreground"
+                                    >
+                                        {{ pattern.count }}
+                                    </td>
+                                    <td
+                                        class="px-4 py-3 text-right text-muted-foreground"
+                                    >
+                                        {{
+                                            Number(pattern.avg_retries).toFixed(
+                                                1,
+                                            )
+                                        }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <!-- Hourly Failure Heatmap -->
-                <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border">
-                    <div class="border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Falhas por Hora — últimos 7 dias</span>
+                <div
+                    class="rounded-lg border border-sidebar-border bg-card shadow-sm"
+                >
+                    <div class="border-b border-sidebar-border px-4 py-3">
+                        <h2 class="text-sm font-semibold text-foreground">
+                            Falhas por hora
+                        </h2>
+                        <p class="text-xs text-muted-foreground">
+                            Distribuição dos últimos 7 dias.
+                        </p>
                     </div>
                     <div class="p-4">
-                        <div class="flex items-end gap-1" style="height: 120px;">
+                        <div class="flex h-36 items-end gap-1">
                             <div
                                 v-for="hour in hours"
                                 :key="hour"
-                                class="group relative flex flex-1 flex-col items-center"
+                                class="group relative flex h-full flex-1 flex-col justify-end"
                             >
                                 <div
-                                    class="w-full rounded-t transition-colors"
-                                    :class="(hourlyFailures[hour] ?? 0) > 0 ? 'bg-red-400 dark:bg-red-500 group-hover:bg-red-500 dark:group-hover:bg-red-400' : 'bg-muted/40'"
-                                    :style="{ height: `${((hourlyFailures[hour] ?? 0) / maxHourlyCount) * 100}px`, minHeight: '2px' }"
+                                    class="min-h-0.5 w-full rounded-t bg-muted transition-colors group-hover:bg-muted-foreground/30"
+                                    :class="
+                                        (hourlyFailures[hour] ?? 0) > 0
+                                            ? 'bg-red-500/70 group-hover:bg-red-500'
+                                            : ''
+                                    "
+                                    :style="{
+                                        height: `${((hourlyFailures[hour] ?? 0) / maxHourlyCount) * 100}%`,
+                                    }"
                                     :title="`${hour}h: ${hourlyFailures[hour] ?? 0} falhas`"
                                 />
-                                <span v-if="hour % 6 === 0" class="mt-1 text-[9px] text-muted-foreground">{{ hour }}h</span>
+                                <span
+                                    v-if="hour % 6 === 0"
+                                    class="mt-1 text-center text-[10px] text-muted-foreground"
+                                    >{{ hour }}h</span
+                                >
                             </div>
                         </div>
-                        <p v-if="Object.keys(hourlyFailures).length === 0" class="mt-2 text-center text-xs text-muted-foreground">
-                            Nenhuma falha registrada.
-                        </p>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Live Failure Feed -->
-            <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border">
-                <div class="border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
-                    <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Feed de Falhas Recentes</span>
+            <section
+                class="overflow-hidden rounded-lg border border-sidebar-border bg-card shadow-sm"
+            >
+                <div class="border-b border-sidebar-border px-4 py-3">
+                    <h2 class="text-sm font-semibold text-foreground">
+                        Feed de falhas recentes
+                    </h2>
+                    <p class="text-xs text-muted-foreground">
+                        Últimos registros com retry ou escalamento.
+                    </p>
                 </div>
-                <div v-if="recentFailures.length === 0" class="px-4 py-8 text-center text-xs text-muted-foreground">
+                <div
+                    v-if="recentFailures.length === 0"
+                    class="px-4 py-8 text-center text-sm text-muted-foreground"
+                >
                     Nenhuma falha registrada.
                 </div>
-                <table v-else class="w-full text-sm">
-                    <thead class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border">
-                        <tr>
-                            <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Lead</th>
-                            <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Erro</th>
-                            <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Status</th>
-                            <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Retries</th>
-                            <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Próx. Retry</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border">
-                        <tr v-for="failure in recentFailures" :key="failure.id" class="transition-colors hover:bg-muted/40">
-                            <td class="px-4 py-2">
-                                <div v-if="failure.lead">
-                                    <Link :href="`/conversas/${failure.lead.id}`" class="font-medium text-foreground hover:text-primary">
-                                        {{ failure.lead.nome }}
-                                    </Link>
-                                    <p class="text-xs text-muted-foreground">{{ failure.lead.whatsapp }}</p>
-                                </div>
-                                <span v-else class="text-xs text-muted-foreground">—</span>
-                            </td>
-                            <td class="px-4 py-2">
-                                <span :class="['rounded-full px-2 py-0.5 text-xs font-medium', tagColor(failure.error_tag)]">
-                                    {{ failure.error_tag }}
-                                </span>
-                                <p class="mt-0.5 text-[10px] text-muted-foreground">{{ failure.error_source }}</p>
-                            </td>
-                            <td class="px-4 py-2">
-                                <span :class="['rounded-full px-2 py-0.5 text-xs font-medium', statusColor(failure.status)]">
-                                    {{ failure.status }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-2 text-xs text-muted-foreground">{{ failure.retry_count }}x</td>
-                            <td class="px-4 py-2 text-xs text-muted-foreground">
-                                {{ failure.next_retry_at ?? '—' }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
+                <div v-else class="overflow-x-auto">
+                    <table class="w-full min-w-[760px] text-sm">
+                        <thead
+                            class="border-b border-sidebar-border bg-muted/40 text-xs text-muted-foreground"
+                        >
+                            <tr>
+                                <th class="px-4 py-2 text-left font-medium">
+                                    Lead
+                                </th>
+                                <th class="px-4 py-2 text-left font-medium">
+                                    Erro
+                                </th>
+                                <th class="px-4 py-2 text-left font-medium">
+                                    Status
+                                </th>
+                                <th class="px-4 py-2 text-left font-medium">
+                                    Retries
+                                </th>
+                                <th class="px-4 py-2 text-left font-medium">
+                                    Próximo retry
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-sidebar-border">
+                            <tr
+                                v-for="failure in recentFailures"
+                                :key="failure.id"
+                                class="hover:bg-muted/40"
+                            >
+                                <td class="px-4 py-3">
+                                    <div v-if="failure.lead">
+                                        <Link
+                                            :href="
+                                                conversas.show(failure.lead.id)
+                                                    .url
+                                            "
+                                            class="font-medium text-foreground hover:text-primary"
+                                        >
+                                            {{ failure.lead.nome }}
+                                        </Link>
+                                        <p
+                                            class="text-xs text-muted-foreground"
+                                        >
+                                            {{ failure.lead.whatsapp }}
+                                        </p>
+                                    </div>
+                                    <span
+                                        v-else
+                                        class="text-xs text-muted-foreground"
+                                        >-</span
+                                    >
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span
+                                        :class="[
+                                            'rounded-md px-2 py-1 text-xs font-medium',
+                                            tagColor(failure.error_tag),
+                                        ]"
+                                    >
+                                        {{ failure.error_tag }}
+                                    </span>
+                                    <p
+                                        class="mt-1 text-xs text-muted-foreground"
+                                    >
+                                        {{ failure.error_source }}
+                                    </p>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span
+                                        :class="[
+                                            'rounded-md px-2 py-1 text-xs font-medium',
+                                            statusColor(failure.status),
+                                        ]"
+                                    >
+                                        {{ failure.status }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-muted-foreground">
+                                    {{ failure.retry_count }}x
+                                </td>
+                                <td class="px-4 py-3 text-muted-foreground">
+                                    {{ failure.next_retry_at ?? '-' }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </div>
     </AppLayout>
 </template>

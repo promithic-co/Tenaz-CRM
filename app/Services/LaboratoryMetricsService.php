@@ -46,6 +46,62 @@ class LaboratoryMetricsService
     }
 
     /**
+     * @param  array{pending_retries: int, retrying_now: int, resolved_today: int, escalated_open: int}  $stats
+     * @param  array{runs: int, avg_cost_usd: float, avg_latency_ms: int, p95_latency_ms: int, avg_llm_calls: float, avg_tool_calls: float, success_rate: float, fallback_rate: float, error_rate: float, human_handoff_rate: float}  $aiRunSummary
+     * @param  array{active_count: int, paused_count: int, sent_today: int, failed_today: int, converted_from_followup: int}  $followupStats
+     * @param  array{campaigns_active: int, campaigns_completed_today: int, messages_sent_today: int, messages_delivered_today: int, messages_failed_today: int, delivery_rate_today: float|int, replies_from_campaigns_today: int, estimated_cost_today_usd: float|int}  $bulkMetrics
+     * @return array{status: 'attention'|'stable', label: string, note: string}
+     */
+    public function operationalPosture(
+        array $stats,
+        float $recoveryRate,
+        array $aiRunSummary,
+        array $followupStats,
+        array $bulkMetrics,
+    ): array {
+        $openRecoveryWork = $stats['pending_retries'] + $stats['retrying_now'] + $stats['escalated_open'];
+        $operationalFailuresToday = $followupStats['failed_today'] + $bulkMetrics['messages_failed_today'];
+
+        if ($stats['escalated_open'] > 0) {
+            return [
+                'status' => 'attention',
+                'label' => 'Atenção',
+                'note' => 'Escalamentos abertos precisam de triagem antes de considerar a operação estável.',
+            ];
+        }
+
+        if ($operationalFailuresToday > 0) {
+            return [
+                'status' => 'attention',
+                'label' => 'Atenção',
+                'note' => 'Falhas de follow-up ou disparos em massa foram registradas hoje.',
+            ];
+        }
+
+        if ($aiRunSummary['error_rate'] >= 10) {
+            return [
+                'status' => 'attention',
+                'label' => 'Atenção',
+                'note' => 'A taxa de erro de IA está acima do limite operacional de 10%.',
+            ];
+        }
+
+        if ($openRecoveryWork > 0 || $recoveryRate < 95.0) {
+            return [
+                'status' => 'attention',
+                'label' => 'Atenção',
+                'note' => 'Há retries pendentes ou recuperação abaixo de 95% nos últimos 7 dias.',
+            ];
+        }
+
+        return [
+            'status' => 'stable',
+            'label' => 'Estável',
+            'note' => 'Sem sinais críticos nas métricas de operação exibidas.',
+        ];
+    }
+
+    /**
      * @return Collection<int, FailedInteraction>
      */
     public function errorPatterns(string $tenantId): Collection
@@ -207,7 +263,7 @@ class LaboratoryMetricsService
     }
 
     /**
-     * @return array{campaigns_active: int, campaigns_completed_today: int, messages_sent_today: int, messages_delivered_today: int, messages_failed_today: int, delivery_rate_today: float|int, replies_from_campaigns_today: int, estimated_cost_today: float|int}
+     * @return array{campaigns_active: int, campaigns_completed_today: int, messages_sent_today: int, messages_delivered_today: int, messages_failed_today: int, delivery_rate_today: float|int, replies_from_campaigns_today: int, estimated_cost_today_usd: float|int}
      */
     public function bulkMetrics(string $tenantId): array
     {
@@ -238,7 +294,7 @@ class LaboratoryMetricsService
                 ->where('modo', 'bulk')
                 ->whereDate('created_at', today())
                 ->count(),
-            'estimated_cost_today' => $sentToday > 0 ? round($sentToday * 0.05, 2) : 0,
+            'estimated_cost_today_usd' => $sentToday > 0 ? round($sentToday * 0.05, 2) : 0,
         ];
     }
 

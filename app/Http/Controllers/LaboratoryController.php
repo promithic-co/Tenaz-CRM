@@ -27,17 +27,29 @@ class LaboratoryController extends Controller
     public function index(LaboratoryMetricsService $metrics): Response
     {
         $tenantId = $this->laboratoryTenantId();
+        $stats = $metrics->stats($tenantId);
+        $recoveryRate = $metrics->recoveryRate($tenantId);
+        $aiRunSummary = $metrics->aiRunSummary($tenantId);
+        $followupStats = $metrics->followupStats($tenantId);
+        $bulkMetrics = $metrics->bulkMetrics($tenantId);
 
         return Inertia::render('laboratory/Index', [
-            'stats' => $metrics->stats($tenantId),
+            'stats' => $stats,
             'errorPatterns' => $metrics->errorPatterns($tenantId),
             'hourlyFailures' => $metrics->hourlyFailures($tenantId),
             'recentFailures' => $metrics->recentFailures($tenantId),
-            'recoveryRate' => $metrics->recoveryRate($tenantId),
-            'aiRunSummary' => $metrics->aiRunSummary($tenantId),
+            'recoveryRate' => $recoveryRate,
+            'aiRunSummary' => $aiRunSummary,
             'architectureComparison' => $metrics->architectureComparison($tenantId),
-            'followupStats' => $metrics->followupStats($tenantId),
-            'bulkMetrics' => $metrics->bulkMetrics($tenantId),
+            'followupStats' => $followupStats,
+            'bulkMetrics' => $bulkMetrics,
+            'operationalPosture' => $metrics->operationalPosture(
+                $stats,
+                $recoveryRate,
+                $aiRunSummary,
+                $followupStats,
+                $bulkMetrics,
+            ),
             'externalLinks' => [
                 'langfuse' => config('laboratory.langfuse.dashboard_url')
                     ?: rtrim(config('laboratory.langfuse.host'), '/'),

@@ -36,6 +36,7 @@ it('displays laboratory dashboard for authenticated users', function () {
             ->component('laboratory/Index')
             ->has('aiRunSummary')
             ->has('architectureComparison')
+            ->has('operationalPosture')
         );
 });
 
@@ -165,6 +166,31 @@ it('calculates recovery rate correctly for the current tenant', function () {
         ->assertInertia(fn ($page) => $page
             ->component('laboratory/Index')
             ->where('recoveryRate', 66.7)
+            ->where('operationalPosture.status', 'attention')
+        );
+});
+
+it('marks laboratory posture as attention when recovery work is still open', function () {
+    [$user, $tenant, $agent] = labUserWithTenant();
+    $lead = Lead::factory()->create([
+        'agent_id' => $agent->id,
+        'tenant_id' => $user->tenantId,
+    ]);
+
+    FailedInteraction::create([
+        'lead_id' => $lead->id, 'agent_id' => $agent->id,
+        'error_tag' => 'timeout', 'error_source' => 'openai',
+        'error_message' => 'Test', 'status' => 'pending',
+        'next_retry_at' => now()->addMinutes(15),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('laboratory'))
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->where('stats.pending_retries', 1)
+            ->where('recoveryRate', 0)
+            ->where('operationalPosture.status', 'attention')
         );
 });
 
@@ -240,7 +266,7 @@ it('shows bulk campaign metrics for the current tenant', function () {
             ->where('bulkMetrics.messages_sent_today', 6)
             ->where('bulkMetrics.messages_delivered_today', 2)
             ->where('bulkMetrics.delivery_rate_today', 33.3)
-            ->where('bulkMetrics.estimated_cost_today', 0.3)
+            ->where('bulkMetrics.estimated_cost_today_usd', 0.3)
         );
 });
 
