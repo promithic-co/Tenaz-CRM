@@ -253,15 +253,20 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::prefix('playground')->name('playground.')->group(function () {
         Route::get('/', [PlaygroundController::class, 'index'])->name('index');
         Route::post('/', [PlaygroundController::class, 'store'])->name('store');
-        Route::post('/generate-scenario', [PlaygroundController::class, 'generateScenario'])->name('generateScenario');
-        Route::post('/scan-blindspots', [PlaygroundController::class, 'scanBlindspots'])->name('scanBlindspots');
         Route::delete('/{lead}', [PlaygroundController::class, 'destroy'])->name('destroy');
         Route::post('/{lead}/reset', [PlaygroundController::class, 'reset'])->name('reset');
         Route::post('/{lead}/prompt', [PlaygroundController::class, 'updatePrompt'])->name('updatePrompt');
-        Route::post('/{lead}/chat', [PlaygroundController::class, 'chat'])->name('chat');
-        Route::post('/{lead}/tester-chat', [PlaygroundController::class, 'testerChat'])->name('testerChat');
-        Route::post('/{lead}/evaluate', [PlaygroundController::class, 'evaluate'])->name('evaluate');
         Route::get('/{lead}/messages', [PlaygroundController::class, 'messages'])->name('messages');
+
+        // LLM-invoking endpoints — throttled as abuse control (F8). Applies to all
+        // users equally; not a feature gate.
+        Route::middleware('throttle:30,1')->group(function () {
+            Route::post('/generate-scenario', [PlaygroundController::class, 'generateScenario'])->name('generateScenario');
+            Route::post('/scan-blindspots', [PlaygroundController::class, 'scanBlindspots'])->name('scanBlindspots');
+            Route::post('/{lead}/chat', [PlaygroundController::class, 'chat'])->name('chat');
+            Route::post('/{lead}/tester-chat', [PlaygroundController::class, 'testerChat'])->name('testerChat');
+            Route::post('/{lead}/evaluate', [PlaygroundController::class, 'evaluate'])->name('evaluate');
+        });
     });
 });
 

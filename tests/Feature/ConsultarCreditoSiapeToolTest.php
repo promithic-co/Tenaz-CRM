@@ -3,12 +3,13 @@
 use App\Ai\Tools\ConsultarCreditoSiapeTool;
 use App\Models\Lead;
 use App\Services\PromosysService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\Tools\Request;
 use Mockery\MockInterface;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 /** Simulates n8n returning already-qualified SIAPE JSON */
 function makeSiapeWebhookResponse(array $overrides = []): array
@@ -191,7 +192,10 @@ test('uses direct Promosys SIAPE consultation when configured', function () {
 
 test('circuit breaker blocks requests after threshold', function () {
     $lead = Lead::factory()->create(['tenant_id' => 1]);
+    // Open state = failure count at threshold AND the cooldown gate active (set together
+    // by incrementCircuitBreaker when the threshold is crossed).
     Cache::put('circuit_breaker_siape_1', 5, now()->addMinutes(5));
+    Cache::put('circuit_breaker_siape_1_open', 1, now()->addMinutes(5));
 
     $result = (new ConsultarCreditoSiapeTool($lead))->handle(new Request(['cpf' => '69747830191']));
 

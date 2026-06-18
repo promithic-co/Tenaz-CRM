@@ -8,6 +8,7 @@ use App\Models\Lead;
 use App\Services\FollowUpWindowService;
 use App\Support\CpfValidator;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -64,7 +65,7 @@ abstract class AbstractConsultaCreditoTool implements Tool
      * niche-specific qualification service.
      *
      * @param  array<string, mixed>  $rawData
-     * @param  \Illuminate\Support\Collection<int, AgentOperationalRule>  $rules
+     * @param  Collection<int, AgentOperationalRule>  $rules
      * @return array<string, mixed>
      */
     abstract protected function qualify(array $rawData, $rules): array;
@@ -97,9 +98,8 @@ abstract class AbstractConsultaCreditoTool implements Tool
             return ToolResult::success(static::formatPayloadForAgent($this->lead->credito_json));
         }
 
-        $threshold = config('credflow.circuit_breaker.consultas_falhas_threshold', 5);
         $circuitKey = "circuit_breaker_{$this->circuitSlug()}_{$this->lead->tenant_id}";
-        if (Cache::get($circuitKey, 0) >= $threshold) {
+        if ($this->circuitState($circuitKey) === 'open') {
             Log::warning('aria.tool.consulta_circuit_breaker_open', ['niche' => $niche, 'lead_id' => $this->lead->id]);
 
             return ToolResult::error(
@@ -141,8 +141,8 @@ abstract class AbstractConsultaCreditoTool implements Tool
                 );
             }
 
-            // Sucesso limpa o contador
-            Cache::forget($circuitKey);
+            // Sucesso fecha o circuito (limpa contador, cooldown e probe half-open)
+            $this->closeCircuit($circuitKey);
 
             $rawData = $response->json();
 
@@ -217,13 +217,61 @@ abstract class AbstractConsultaCreditoTool implements Tool
         ];
     }
 
+    /**
+     * Resolve the breaker state for this request: 'closed' (let it through),
+     * 'open' (fast-fail), or 'half_open' (this request is the single probe allowed
+     * after the cooldown elapsed).
+     */
+    protected function circuitState(string $circuitKey): string
+    {
+        $threshold = (int) config('credflow.circuit_breaker.consultas_falhas_threshold', 5);
+
+        if ((int) Cache::get($circuitKey, 0) < $threshold) {
+            return 'closed';
+        }
+
+        // Threshold reached. While the cooldown key is alive the circuit is fully open.
+        if (Cache::get("{$circuitKey}_open") !== null) {
+            return 'open';
+        }
+
+        // Cooldown elapsed → let exactly one request through as a half-open probe.
+        // Cache::add is atomic (SETNX): only the first concurrent caller wins.
+        return Cache::add("{$circuitKey}_probe", 1, now()->addSeconds(30)) ? 'half_open' : 'open';
+    }
+
+    /**
+     * Atomically register a failure. Cache::add (SETNX) seeds the counter with its
+     * window TTL exactly once — concurrent callers can't reset the window — then
+     * Cache::increment bumps it atomically. Crossing the threshold (re-)opens the
+     * circuit with a per-tenant jittered cooldown to avoid synchronized retries.
+     */
     protected function incrementCircuitBreaker(string $circuitKey): void
     {
-        $windowMinutes = config('credflow.circuit_breaker.window_minutes', 5);
-        if (! Cache::has($circuitKey)) {
-            Cache::put($circuitKey, 0, now()->addMinutes($windowMinutes));
+        $threshold = (int) config('credflow.circuit_breaker.consultas_falhas_threshold', 5);
+        $windowMinutes = (int) config('credflow.circuit_breaker.window_minutes', 5);
+
+        Cache::add($circuitKey, 0, now()->addMinutes($windowMinutes));
+        $count = (int) Cache::increment($circuitKey);
+
+        // A failed half-open probe must re-open, so drop the spent probe claim.
+        Cache::forget("{$circuitKey}_probe");
+
+        if ($count >= $threshold) {
+            $jitterSeconds = random_int(0, 30);
+            Cache::put("{$circuitKey}_open", 1, now()->addMinutes($windowMinutes)->addSeconds($jitterSeconds));
         }
-        Cache::increment($circuitKey);
+    }
+
+    /**
+     * Close the circuit: clear the failure counter, the cooldown gate, and any
+     * outstanding half-open probe claim.
+     */
+    protected function closeCircuit(string $circuitKey): void
+    {
+        Cache::forget($circuitKey);
+        Cache::forget("{$circuitKey}_open");
+        Cache::forget("{$circuitKey}_probe");
     }
 
     protected static function brl(float $value): string

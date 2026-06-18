@@ -301,6 +301,35 @@ it('POST dispatches delivery tracking job when payload has statuses', function (
         && $job->eventType === 'delivered');
 });
 
+it('POST dispatches an inbound wamid only once across duplicate deliveries (replay guard)', function (): void {
+    Queue::fake();
+    config()->set('services.meta.app_secret', 'test-secret');
+
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'meta_phone_number_id' => '888781',
+    ]);
+
+    // 'oi' is a quick command → immediate ProcessIncomingWhatsAppMessageJob dispatch (no Redis debounce).
+    $payload = metaTextPayload('888781', $instance->meta_waba_id, text: 'oi');
+    $body = json_encode($payload);
+    $headers = metaSignedHeaders($body, 'test-secret');
+
+    $deliver = fn () => $this->call(
+        'POST',
+        '/api/webhooks/meta',
+        [],
+        [],
+        [],
+        ['HTTP_X_HUB_SIGNATURE_256' => $headers['X-Hub-Signature-256'], 'CONTENT_TYPE' => 'application/json'],
+        $body
+    );
+
+    $deliver()->assertSuccessful();
+    $deliver()->assertSuccessful();
+
+    Queue::assertPushed(ProcessIncomingWhatsAppMessageJob::class, 1);
+});
+
 it('POST updates template status and pauses campaigns on rejected template webhook', function (): void {
     config()->set('services.meta.app_secret', 'test-secret');
 

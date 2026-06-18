@@ -16,6 +16,7 @@ use App\Services\WhatsApp\Providers\MetaCloudProvider;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class MetaWebhookController extends Controller
@@ -108,6 +109,18 @@ class MetaWebhookController extends Controller
 
         $dto = $provider->parseWebhook($request);
         if (! $dto) {
+            return response()->noContent();
+        }
+
+        // Replay guard (F10): Meta re-delivers the same wamid when our ACK misses its
+        // ~15s retry window. SETNX after signature verification — first delivery wins,
+        // duplicates are ACKed without re-dispatching. Covers both text and media paths.
+        if ($dto->messageId !== null && ! Cache::add("wamid:{$dto->messageId}", 1, now()->addDay())) {
+            Log::info('meta.webhook_replay_skipped', [
+                'provider_message_id' => $dto->messageId,
+                'instance' => $instance->name,
+            ]);
+
             return response()->noContent();
         }
 

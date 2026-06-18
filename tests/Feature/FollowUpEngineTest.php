@@ -9,9 +9,15 @@ use App\Models\FollowupMessage;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use App\Services\AgentService;
+use App\Services\FollowUpSettingsResolver;
+use App\Services\FollowUpWindowService;
+use App\Services\PauseService;
+use App\Services\WhatsappOutboxService;
 use App\Services\WhatsAppService;
 use Carbon\Carbon;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -40,7 +46,7 @@ describe('CheckFollowUpsCommand', function () {
         Queue::fake();
 
         // Freeze time within business hours (12:00 UTC = within 08-20 São Paulo window)
-        $this->travelTo(\Carbon\Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
 
         Lead::factory()->create([
             'is_sandbox' => false,
@@ -147,10 +153,10 @@ describe('ProcessLeadFollowUpJob', function () {
 
         $job = new ProcessLeadFollowUpJob($lead);
         $job->handle(
-            app(\App\Services\WhatsappOutboxService::class),
-            app(\App\Services\FollowUpSettingsResolver::class),
-            app(\App\Services\FollowUpWindowService::class),
-            app(\App\Services\PauseService::class),
+            app(WhatsappOutboxService::class),
+            app(FollowUpSettingsResolver::class),
+            app(FollowUpWindowService::class),
+            app(PauseService::class),
         );
 
         CredFlowFollowUpAgent::assertNeverPrompted();
@@ -168,10 +174,10 @@ describe('ProcessLeadFollowUpJob', function () {
 
         $job = new ProcessLeadFollowUpJob($lead);
         $job->handle(
-            app(\App\Services\WhatsappOutboxService::class),
-            app(\App\Services\FollowUpSettingsResolver::class),
-            app(\App\Services\FollowUpWindowService::class),
-            app(\App\Services\PauseService::class),
+            app(WhatsappOutboxService::class),
+            app(FollowUpSettingsResolver::class),
+            app(FollowUpWindowService::class),
+            app(PauseService::class),
         );
 
         CredFlowFollowUpAgent::assertNeverPrompted();
@@ -194,10 +200,10 @@ describe('ProcessLeadFollowUpJob', function () {
 
         $job = new ProcessLeadFollowUpJob($lead);
         $job->handle(
-            app(\App\Services\WhatsappOutboxService::class),
-            app(\App\Services\FollowUpSettingsResolver::class),
-            app(\App\Services\FollowUpWindowService::class),
-            app(\App\Services\PauseService::class),
+            app(WhatsappOutboxService::class),
+            app(FollowUpSettingsResolver::class),
+            app(FollowUpWindowService::class),
+            app(PauseService::class),
         );
 
         CredFlowFollowUpAgent::assertNeverPrompted();
@@ -223,10 +229,10 @@ describe('ProcessLeadFollowUpJob', function () {
 
         $job = new ProcessLeadFollowUpJob($lead);
         $job->handle(
-            app(\App\Services\WhatsappOutboxService::class),
-            app(\App\Services\FollowUpSettingsResolver::class),
-            app(\App\Services\FollowUpWindowService::class),
-            app(\App\Services\PauseService::class),
+            app(WhatsappOutboxService::class),
+            app(FollowUpSettingsResolver::class),
+            app(FollowUpWindowService::class),
+            app(PauseService::class),
         );
 
         expect($lead->fresh()->followup_count)->toBe(1);
@@ -255,10 +261,10 @@ describe('ProcessLeadFollowUpJob', function () {
 
         $job = new ProcessLeadFollowUpJob($lead);
         $job->handle(
-            app(\App\Services\WhatsappOutboxService::class),
-            app(\App\Services\FollowUpSettingsResolver::class),
-            app(\App\Services\FollowUpWindowService::class),
-            app(\App\Services\PauseService::class),
+            app(WhatsappOutboxService::class),
+            app(FollowUpSettingsResolver::class),
+            app(FollowUpWindowService::class),
+            app(PauseService::class),
         );
 
         $lead->refresh();
@@ -275,6 +281,49 @@ describe('ProcessLeadFollowUpJob', function () {
         expect($job->tries)->toBe(3)
             ->and($job->backoff)->toBe([60, 300])
             ->and($job->timeout)->toBe(120);
+    });
+
+    test('is unique-until-processing with a 600s window keyed on the lead', function () {
+        $lead = Lead::factory()->create();
+        $job = new ProcessLeadFollowUpJob($lead);
+
+        expect($job)->toBeInstanceOf(ShouldBeUniqueUntilProcessing::class)
+            ->and($job->uniqueFor)->toBe(600)
+            ->and($job->uniqueId())->toBe("followup_{$lead->id}");
+    });
+
+    test('skips the send when the per-attempt claim is already held (retry guard)', function () {
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+        CredFlowFollowUpAgent::fake(['unused']);
+
+        $instance = WhatsappInstance::factory()->create([
+            'tenant_id' => 'default',
+            'name' => 'test-instance',
+        ]);
+
+        $lead = Lead::factory()->create([
+            'tenant_id' => 'default',
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subHours(2),
+            'last_inbound_at' => now()->subHours(2),
+            'whatsapp_instance_id' => $instance->id,
+        ]);
+
+        // A prior attempt already claimed this send (attempt = followup_count + 1).
+        Cache::add("followup_send:{$lead->id}:1", 1, now()->addMinutes(10));
+
+        $job = new ProcessLeadFollowUpJob($lead);
+        $job->handle(
+            app(WhatsappOutboxService::class),
+            app(FollowUpSettingsResolver::class),
+            app(FollowUpWindowService::class),
+            app(PauseService::class),
+        );
+
+        CredFlowFollowUpAgent::assertNeverPrompted();
+        expect($lead->fresh()->followup_count)->toBe(0)
+            ->and(FollowupMessage::where('lead_id', $lead->id)->count())->toBe(0);
     });
 });
 

@@ -17,11 +17,12 @@ use App\Services\FollowUpWindowService;
 use App\Services\PauseService;
 use App\Services\WhatsappOutboxService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -29,7 +30,7 @@ use Illuminate\Support\Facades\Log;
 // BelongsToTenant global scope is inactive in queue context (no auth), but no cross-tenant
 // data can be accessed because all queries are scoped by specific IDs (agent_id, lead_id).
 // FollowupMessage::create() explicitly sets tenant_id from $this->lead->tenant_id.
-class ProcessLeadFollowUpJob implements ShouldBeUnique, ShouldQueue
+class ProcessLeadFollowUpJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -40,6 +41,11 @@ class ProcessLeadFollowUpJob implements ShouldBeUnique, ShouldQueue
     public int $timeout = 120;
 
     public int $maxExceptions = 2;
+
+    // Release the uniqueness lock once processing starts (not at completion), so the
+    // next scheduled follow-up can enqueue while this one runs. Covers the retry backoff
+    // window [60, 300] with margin so a queued retry can't double-enqueue.
+    public int $uniqueFor = 600;
 
     public function __construct(public Lead $lead)
     {
@@ -174,6 +180,30 @@ class ProcessLeadFollowUpJob implements ShouldBeUnique, ShouldQueue
             'agent_id' => $this->lead->agent_id,
             'source' => 'followup',
         ]);
+
+        // Per-attempt send claim (F7), mirroring the outbox idempotency guard (F3). Keyed on the
+        // attempt number (current count + 1) so a retry that fires after the message was already
+        // queued — but before the lead's followup_count is committed — does not send a duplicate.
+        $sendClaimKey = "followup_send:{$this->lead->id}:".($this->lead->followup_count + 1);
+        if (! Cache::add($sendClaimKey, 1, now()->addMinutes(10))) {
+            Log::info('ProcessLeadFollowUpJob: skipped (send already claimed)', [
+                'interaction_id' => $interactionId,
+                'lead_id' => $this->lead->id,
+                'attempt' => $this->lead->followup_count + 1,
+            ]);
+
+            $interactionEvents->recordForLead(
+                interactionId: $interactionId,
+                lead: $this->lead,
+                eventType: 'followup_skipped',
+                eventSource: 'process_lead_followup_job',
+                payload: ['reason' => 'duplicate_send', 'attempt' => $this->lead->followup_count + 1],
+            );
+
+            $interactionContext->clear();
+
+            return;
+        }
 
         try {
             $agent = app(CredFlowFollowUpAgent::class, ['lead' => $this->lead]);

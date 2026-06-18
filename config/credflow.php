@@ -16,6 +16,16 @@ return [
         'fallback_model' => env('TENAZ_AGENT_FALLBACK_MODEL', env('CREDFLOW_AGENT_FALLBACK_MODEL', 'anthropic/claude-haiku-4-5')),
         // Allowed LLM provider values for super-admin template config (StoreAgentTemplateConfigRequest whitelist)
         'provider_whitelist' => ['openai', 'openrouter', 'groq', 'anthropic', 'gemini'],
+        // Allow-list of model identifiers selectable from the Playground (F8). Mirrors the
+        // frontend MODEL_CATALOG dropdown — any model_override / tester_model posted to the
+        // LLM-invoking playground endpoints must be one of these (cost-abuse / provider-injection guard).
+        'playground_models' => [
+            'gpt-5.4-pro', 'gpt-5.4', 'o4-mini', 'gpt-4o', 'gpt-4o-mini',
+            'anthropic/claude-sonnet-4-6', 'anthropic/claude-haiku-4-5',
+            'google/gemini-2.5-flash', 'google/gemini-3-flash',
+            'deepseek/deepseek-v3.2',
+            'moonshotai/kimi-k2', 'moonshotai/kimi-k2.5',
+        ],
         // Sliding window: últimas N mensagens enviadas ao LLM (reduz custo em conversas longas)
         'max_conversation_messages' => (int) env('TENAZ_AGENT_MAX_MESSAGES', env('CREDFLOW_AGENT_MAX_MESSAGES', env('ARIA_AGENT_MAX_MESSAGES', 24))),
         // Consistência e fluência (0.2–0.5 para CS; evita alucinações)
