@@ -7,27 +7,18 @@ use App\Actions\SendOperatorMessageAction;
 use App\Http\Requests\BulkTransferRequest;
 use App\Http\Requests\InboxFilterRequest;
 use App\Http\Requests\SendConversationMessageRequest;
-use App\Http\Resources\AgentInteractionEventResource;
-use App\Http\Resources\ConversationResource;
-use App\Models\AgentInteractionEvent;
 use App\Models\Lead;
-use App\Models\ServiceTicket;
-use App\Models\StatusMachine;
 use App\Models\User;
-use App\Models\WhatsappInstance;
 use App\Services\AgentInteractionEventService;
 use App\Services\ConversationAutomationService;
+use App\Services\ConversationInboxPropsBuilder;
 use App\Services\ConversationTimelineService;
 use App\Services\ConversationTransferService;
-use App\Services\HumanHandoffStateService;
 use App\Services\PauseService;
 use App\Services\ServiceTicketLifecycleService;
-use App\Services\WhatsApp\WhatsAppConversationWindowResolver;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -38,190 +29,19 @@ class ConversasController extends Controller
     public function __construct(
         private readonly PauseService $pause,
         private readonly ConversationTimelineService $timeline,
+        private readonly ConversationInboxPropsBuilder $inboxProps,
     ) {}
 
     public function index(InboxFilterRequest $request): Response
     {
-        return Inertia::render('conversas/Index', $this->inboxProps($request));
+        return Inertia::render('conversas/Index', $this->inboxProps->build($request));
     }
 
     public function show(InboxFilterRequest $request, Lead $lead): Response
     {
         $this->authorize('view', $lead);
 
-        return Inertia::render('conversas/Index', $this->inboxProps($request, $lead));
-    }
-
-    /** @param array<string, mixed> $filters */
-    private function buildInboxQuery(array $filters, string $tenantId): Builder
-    {
-        $query = Lead::production()->forTenant($tenantId)->with(['assignedUser', 'tags:id,name,color,slug,is_hot']);
-
-        if ($filters['instance'] !== '') {
-            $instanceId = WhatsappInstance::query()
-                ->where('tenant_id', $tenantId)
-                ->where('name', $filters['instance'])
-                ->value('id');
-
-            $query->where('whatsapp_instance_id', $instanceId ?? 0);
-        }
-
-        // Always scope to what the actor may see — a restricted user must not bypass
-        // visibility by selecting an instance filter.
-        return $query->visibleTo(auth()->user())->inboxFiltered($filters);
-    }
-
-    /**
-     * @return array{
-     *     leads: mixed,
-     *     filters: array<string, string>,
-     *     instances: mixed,
-     *     activeConversation: array<string, mixed>|null
-     * }
-     */
-    private function inboxProps(InboxFilterRequest $request, ?Lead $activeLead = null): array
-    {
-        $filters = $request->filters();
-        $tenantId = (string) auth()->user()->tenantId;
-
-        $instances = WhatsappInstance::query()
-            ->where('tenant_id', $tenantId)
-            ->orderBy('display_name')
-            ->orderBy('name')
-            ->get(['name', 'display_name']);
-
-        $paginator = $this->buildInboxQuery($filters, $tenantId)
-            ->paginate(15)
-            ->withQueryString();
-
-        $pageLeads = $paginator->getCollection();
-
-        // Bulk-resolve effective AI modes for the page (eliminates N+1 inside through()).
-        $effectiveModes = app(ConversationAutomationService::class)->resolveModesByInstanceId($pageLeads);
-
-        // Bulk-resolve pause state using a single Cache::many() instead of N Cache::has() calls.
-        $pauseKeys = $pageLeads->map(fn ($l) => "pause:{$tenantId}:{$l->whatsapp}")->all();
-        $pauseCacheValues = $pauseKeys === [] ? [] : Cache::many($pauseKeys);
-        $pauseMap = [];
-        foreach ($pageLeads as $l) {
-            $cached = $pauseCacheValues["pause:{$tenantId}:{$l->whatsapp}"] ?? null;
-            $pauseMap[$l->whatsapp] = $cached !== null
-                || ($l->ai_paused_until !== null && $l->ai_paused_until->isFuture());
-        }
-
-        $leads = $paginator->through(fn ($l) => [
-            'id' => $l->id,
-            'nome' => $l->nome ?? $l->whatsapp,
-            'whatsapp' => $l->whatsapp,
-            'status' => $l->status,
-            'followup_status' => $l->followup_status,
-            'followup_count' => $l->followup_count,
-            'ai_mode' => $l->ai_mode,
-            'effective_ai_mode' => $effectiveModes[$l->id],
-            'operational_stage' => $l->operational_stage,
-            'assigned_user_id' => $l->assigned_user_id,
-            'assigned_user_name' => $l->assignedUser?->name,
-            'ultima_interacao' => $l->last_interaction_at?->diffForHumans() ?? $l->created_at?->diffForHumans(),
-            'pausado' => $pauseMap[$l->whatsapp] ?? false,
-            'whatsapp_instance_id' => $l->whatsapp_instance_id,
-        ]);
-
-        $transferTargets = $this->transferTargetsFor($tenantId);
-
-        return [
-            'leads' => $leads,
-            'filters' => $filters,
-            'instances' => $instances->map(fn (WhatsappInstance $instance) => [
-                'name' => $instance->name,
-                'label' => $instance->label(),
-            ]),
-            'transfer_targets' => $transferTargets,
-            'activeConversation' => $activeLead ? $this->conversationProps($activeLead) : null,
-        ];
-    }
-
-    /**
-     * @return array{
-     *     lead: array<string, mixed>,
-     *     mensagens: array<int, array<string, mixed>>,
-     *     pausado: bool,
-     *     followupStatus: string,
-     *     followupHistory: mixed
-     * }
-     */
-    private function conversationProps(Lead $lead): array
-    {
-        // Timeline is the single source of truth for the conversation UI. The legacy
-        // fallback to agent_conversation_messages was removed in Phase 45 — that table
-        // is now a derived mirror managed by ConversationContextSynchronizer and must
-        // not be read directly by the UI layer.
-        $mensagens = $this->timeline->forLead($lead);
-
-        // Legacy backfill: if timeline is empty but a laravel/ai conversation exists,
-        // synthesize a minimal view so old leads (pre-timeline) don't show as empty.
-        if ($mensagens === [] && $lead->conversation_id) {
-            $mensagens = $this->timeline->legacyMessages($lead);
-        }
-
-        $lead->load([
-            'whatsappInstance',
-            'tags' => fn ($q) => $q->withPivot('source', 'ai_confidence', 'ai_evidence', 'ai_evaluated_at'),
-        ]);
-
-        $availableTransitions = StatusMachine::forTenant((string) $lead->tenant_id)
-            ->getAvailableTransitions((string) $lead->status);
-        $effectiveAiMode = app(ConversationAutomationService::class)
-            ->resolveModesByInstanceId(collect([$lead]))[$lead->id];
-
-        $leadData = (new ConversationResource($lead, $availableTransitions, $effectiveAiMode))
-            ->resolve(request());
-
-        $followupHistory = $lead->followupMessages()
-            ->orderByDesc('sent_at')
-            ->limit(10)
-            ->get(['attempt', 'message_text', 'tone', 'sent_at']);
-
-        $recentEvents = AgentInteractionEventResource::collection(
-            AgentInteractionEvent::query()
-                ->where('lead_id', $lead->id)
-                ->whereIn('event_type', [
-                    'ai_paused_manual',
-                    'ai_resumed_manual',
-                    'history_cleared_manual',
-                    'lead_created_manual',
-                    'lead_deleted_manual',
-                    'lead_bulk_action',
-                    'followup_skipped',
-                ])
-                ->orderByDesc('created_at')
-                ->limit(5)
-                ->get(['event_type', 'created_at', 'severity', 'payload_json'])
-        );
-
-        $isPrivileged = auth()->user()?->isOwnerOrAdmin() ?? false;
-
-        $handoffState = app(HumanHandoffStateService::class);
-        $activeTicket = ServiceTicket::query()->activeEscalation($lead->id)->with('assignedUser')->latest()->first();
-        $activeHandoff = $activeTicket ? $handoffState->activeHandoffPayload($lead) : null;
-        $derivedState = $handoffState->deriveState($lead, $activeTicket);
-        $handoffActions = $handoffState->handoffActions($activeTicket);
-
-        $transferTargets = $this->transferTargetsFor((string) $lead->tenant_id);
-
-        return [
-            'lead' => $leadData,
-            'mensagens' => $mensagens,
-            'pausado' => $this->pause->isPaused($lead->whatsapp, $lead->tenant_id),
-            'followupStatus' => $lead->followup_status,
-            'followupHistory' => $followupHistory,
-            'conversationWindow' => app(WhatsAppConversationWindowResolver::class)->resolve($lead),
-            'recentEvents' => $recentEvents,
-            'canStartCampaign' => $isPrivileged,
-            'active_handoff' => $activeHandoff,
-            'handoff_state' => $derivedState,
-            'handoff_actions' => $handoffActions,
-            'transfer_targets' => $transferTargets,
-        ];
+        return Inertia::render('conversas/Index', $this->inboxProps->build($request, $lead));
     }
 
     public function preview(Lead $lead): JsonResponse
@@ -450,27 +270,5 @@ class ConversasController extends Controller
             'message' => $result['message'],
             'outbox_id' => $result['outbox_id'],
         ]);
-    }
-
-    /**
-     * Privileged-only transfer targets for a tenant: the tenant's members
-     * projected to the frontend `{type,id,name}` shape, or an empty list when
-     * the current user is not an owner/admin. Dedupes the inbox + conversation
-     * panel target lists.
-     *
-     * @return list<array{type: string, id: int, name: string}>
-     */
-    private function transferTargetsFor(string $tenantId): array
-    {
-        if (! (auth()->user()?->isOwnerOrAdmin() ?? false)) {
-            return [];
-        }
-
-        return User::query()
-            ->whereHas('tenants', fn ($q) => $q->where('tenants.id', $tenantId))
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn ($u) => ['type' => 'user', 'id' => $u->id, 'name' => $u->name])
-            ->all();
     }
 }

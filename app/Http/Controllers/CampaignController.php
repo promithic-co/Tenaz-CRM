@@ -5,10 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCampaignRequest;
 use App\Http\Requests\UpdateCampaignRequest;
 use App\Models\Campaign;
-use App\Models\ContactList;
-use App\Models\Lead;
-use App\Models\WhatsappInstance;
-use App\Models\WhatsappTemplate;
+use App\Services\CampaignPagePropsBuilder;
 use App\Services\CampaignService;
 use App\Services\MetaQualityRiskService;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +15,10 @@ use Inertia\Response;
 
 class CampaignController extends Controller
 {
+    public function __construct(
+        private readonly CampaignPagePropsBuilder $pageProps,
+    ) {}
+
     public function index(): Response
     {
         // BelongsToTenant global scope on Campaign handles tenant filtering automatically
@@ -33,22 +34,7 @@ class CampaignController extends Controller
 
     public function create(Request $request): Response
     {
-        $defaults = [
-            'contact_list_id' => $request->integer('contact_list_id') ?: null,
-            'whatsapp_instance_id' => $request->integer('whatsapp_instance_id') ?: null,
-        ];
-
-        // BelongsToTenant global scope on each model handles tenant filtering automatically
-        return Inertia::render('campanhas/Create', [
-            'contactLists' => ContactList::query()
-                ->get(['id', 'name', 'is_dynamic', 'entries_count', 'last_resolved_count', 'last_resolved_at', 'filters_json']),
-            'templates' => WhatsappTemplate::query()
-                ->where('status', 'APPROVED')
-                ->with('whatsappInstance')
-                ->get(['id', 'name', 'kind', 'element_name', 'body', 'variables_count', 'whatsapp_instance_id']),
-            'instances' => WhatsappInstance::query()->get(['id', 'name', 'display_name', 'provider']),
-            'defaults' => $defaults,
-        ]);
+        return Inertia::render('campanhas/Create', $this->pageProps->create($request));
     }
 
     public function store(StoreCampaignRequest $request): RedirectResponse
@@ -77,25 +63,7 @@ class CampaignController extends Controller
     {
         $this->authorize('view', $campanha);
 
-        $campanha->load([
-            'contactList:id,name',
-            'whatsappTemplate:id,name,body,variables_count',
-            'whatsappInstance:id,name,display_name,meta_quality_rating',
-        ]);
-
-        $statusFilter = $request->input('status');
-
-        $messagesQuery = $campanha->messages()->with(['contactListEntry:id,name,phone']);
-
-        if ($statusFilter) {
-            $messagesQuery->where('status', $statusFilter);
-        }
-
-        return Inertia::render('campanhas/Show', [
-            'campaign' => $campanha,
-            'messages' => $messagesQuery->orderByDesc('sent_at')->paginate(25),
-            'repliedCount' => Lead::where('campaign_id', $campanha->id)->count(),
-        ]);
+        return Inertia::render('campanhas/Show', $this->pageProps->show($campanha, $request));
     }
 
     public function update(UpdateCampaignRequest $request, Campaign $campanha): RedirectResponse

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\TemplateKind;
 use App\Http\Requests\StoreWhatsappTemplateRequest;
 use App\Http\Requests\UpdateWhatsappTemplateRequest;
 use App\Jobs\SyncMetaTemplatesJob;
@@ -10,6 +9,7 @@ use App\Models\Campaign;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use App\Services\WhatsApp\MetaTemplateService;
+use App\Services\WhatsappTemplateIndexPropsBuilder;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,36 +19,16 @@ use Inertia\Response;
 
 class WhatsappTemplateController extends Controller
 {
-    public function __construct(private readonly MetaTemplateService $metaTemplateService) {}
+    public function __construct(
+        private readonly MetaTemplateService $metaTemplateService,
+        private readonly WhatsappTemplateIndexPropsBuilder $indexProps,
+    ) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $tenantId = (string) auth()->user()->tenantId;
 
-        $templates = WhatsappTemplate::ofKind(TemplateKind::MetaHsm)
-            ->with('whatsappInstance')
-            ->when(request('status'), fn ($q, $status) => $q->where('status', $status))
-            ->orderByDesc('created_at')
-            ->paginate(20);
-
-        $instances = WhatsappInstance::where('tenant_id', $tenantId)
-            ->get(['id', 'name', 'display_name', 'provider', 'meta_waba_id', 'meta_access_token'])
-            ->map(fn (WhatsappInstance $instance): array => [
-                'id' => $instance->id,
-                'name' => $instance->name,
-                'display_name' => $instance->display_name,
-                'provider' => $instance->provider->value,
-                'meta_waba_id' => $instance->meta_waba_id,
-                'has_meta_access_token' => filled($instance->meta_access_token),
-            ]);
-
-        return Inertia::render('templates/Index', [
-            'templates' => $templates,
-            'instances' => $instances,
-            'currentKind' => TemplateKind::MetaHsm->value,
-            'flash' => session('success'),
-            'error' => session('error'),
-        ]);
+        return Inertia::render('templates/Index', $this->indexProps->build($request, $tenantId));
     }
 
     public function store(StoreWhatsappTemplateRequest $request): RedirectResponse
