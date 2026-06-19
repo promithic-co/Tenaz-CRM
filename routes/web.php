@@ -206,6 +206,10 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
         Route::post('campanhas/{campanha}/start', [CampaignController::class, 'start'])->name('campanhas.start');
         Route::post('campanhas/{campanha}/pause', [CampaignController::class, 'pause'])->name('campanhas.pause');
         Route::post('campanhas/{campanha}/resume', [CampaignController::class, 'resume'])->name('campanhas.resume');
+        Route::post('campanhas/{campanha}/quality-risk/keep-paused', [CampaignController::class, 'keepPausedForQualityRisk'])
+            ->name('campanhas.quality-risk.keep-paused');
+        Route::post('campanhas/{campanha}/quality-risk/continue', [CampaignController::class, 'continueWithQualityRisk'])
+            ->name('campanhas.quality-risk.continue');
 
         Route::post('listas-contato/preview', [ContactListController::class, 'preview'])->name('listas-contato.preview');
         Route::get('listas-contato/create', [ContactListController::class, 'create'])->name('listas-contato.create');

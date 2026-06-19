@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\WhatsAppProvider;
+use App\Exceptions\MetaApiException;
+use App\Models\WhatsappInstance;
 use App\Services\WhatsApp\Providers\MetaCloudProvider;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 
@@ -16,10 +18,22 @@ it('WhatsAppProvider enum has only MetaCloud case', function () {
 });
 
 it('test_factory_makeProvider_meta_cloud', function () {
-    $instance = \App\Models\WhatsappInstance::factory()->metaCloud()->create();
+    $instance = WhatsappInstance::factory()->metaCloud()->create();
 
     $factory = app(WhatsAppProviderFactory::class);
     $provider = $factory->makeProvider($instance);
 
     expect($provider)->toBeInstanceOf(MetaCloudProvider::class);
+});
+
+it('factory blocks Meta provider creation when temporary token is expired', function () {
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'meta_token_permanent' => false,
+        'meta_token_expires_at' => now()->subMinute(),
+    ]);
+
+    $factory = app(WhatsAppProviderFactory::class);
+
+    expect(fn () => $factory->makeProvider($instance))
+        ->toThrow(MetaApiException::class, 'Meta access token expired');
 });

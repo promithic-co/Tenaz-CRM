@@ -368,7 +368,7 @@ search.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     search.form = searchForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::laboratory
- * @see app/Http/Controllers/LaboratoryController.php:21
+ * @see app/Http/Controllers/LaboratoryController.php:27
  * @route '/laboratory'
  */
 export const laboratory = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -383,7 +383,7 @@ laboratory.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::laboratory
- * @see app/Http/Controllers/LaboratoryController.php:21
+ * @see app/Http/Controllers/LaboratoryController.php:27
  * @route '/laboratory'
  */
 laboratory.url = (options?: RouteQueryOptions) => {
@@ -392,7 +392,7 @@ laboratory.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::laboratory
- * @see app/Http/Controllers/LaboratoryController.php:21
+ * @see app/Http/Controllers/LaboratoryController.php:27
  * @route '/laboratory'
  */
 laboratory.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -401,7 +401,7 @@ laboratory.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::laboratory
- * @see app/Http/Controllers/LaboratoryController.php:21
+ * @see app/Http/Controllers/LaboratoryController.php:27
  * @route '/laboratory'
  */
 laboratory.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -411,7 +411,7 @@ laboratory.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::laboratory
- * @see app/Http/Controllers/LaboratoryController.php:21
+ * @see app/Http/Controllers/LaboratoryController.php:27
  * @route '/laboratory'
  */
     const laboratoryForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -421,7 +421,7 @@ laboratory.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::laboratory
- * @see app/Http/Controllers/LaboratoryController.php:21
+ * @see app/Http/Controllers/LaboratoryController.php:27
  * @route '/laboratory'
  */
         laboratoryForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -430,7 +430,7 @@ laboratory.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::laboratory
- * @see app/Http/Controllers/LaboratoryController.php:21
+ * @see app/Http/Controllers/LaboratoryController.php:27
  * @route '/laboratory'
  */
         laboratoryForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

@@ -30,6 +30,12 @@ class SyncMetaTemplatesJob implements ShouldQueue
             return;
         }
 
+        if ($instance->hasExpiredMetaToken()) {
+            Log::warning('SyncMetaTemplatesJob: Meta token expired', ['instance_id' => $instance->id]);
+
+            return;
+        }
+
         $version = config('services.meta.graph_api_version', 'v23.0');
         $url = "https://graph.facebook.com/{$version}/{$instance->meta_waba_id}/message_templates?limit=100";
         $token = $instance->meta_access_token;

@@ -83,6 +83,22 @@ class MetaCloudProvider implements WhatsAppProviderInterface
         }
 
         $msg = $messages[0];
+        $contacts = $request->input('entry.0.changes.0.value.contacts', []);
+
+        return $this->parseMessage(
+            is_array($msg) ? $msg : [],
+            is_array($contacts) ? $contacts : [],
+            $request->all(),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $msg
+     * @param  array<int, array<string, mixed>>  $contacts
+     * @param  array<string, mixed>  $rawPayload
+     */
+    public function parseMessage(array $msg, array $contacts = [], array $rawPayload = []): ?IncomingMessageDTO
+    {
         $phone = preg_replace('/\D/', '', (string) ($msg['from'] ?? ''));
         if (! $phone) {
             return null;
@@ -100,7 +116,7 @@ class MetaCloudProvider implements WhatsAppProviderInterface
         };
 
         $hasMedia = in_array($msgType, ['image', 'audio', 'video', 'document', 'sticker'], true);
-        $pushName = $request->input('entry.0.changes.0.value.contacts.0.profile.name');
+        $pushName = $this->resolvePushName($contacts, $phone);
 
         return new IncomingMessageDTO(
             phone: $phone,
@@ -111,9 +127,25 @@ class MetaCloudProvider implements WhatsAppProviderInterface
             hasMedia: $hasMedia,
             media: null,
             messageId: $msg['id'] ?? null,
-            rawPayload: $request->all(),
+            rawPayload: $rawPayload,
             referral: $this->extractReferral($msg),
         );
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $contacts
+     */
+    private function resolvePushName(array $contacts, string $phone): ?string
+    {
+        foreach ($contacts as $contact) {
+            if ((string) ($contact['wa_id'] ?? '') === $phone) {
+                return isset($contact['profile']['name']) ? (string) $contact['profile']['name'] : null;
+            }
+        }
+
+        $first = $contacts[0] ?? null;
+
+        return is_array($first) && isset($first['profile']['name']) ? (string) $first['profile']['name'] : null;
     }
 
     /**
@@ -263,11 +295,17 @@ class MetaCloudProvider implements WhatsAppProviderInterface
     {
         $code = (int) ($response->json('error.code') ?? 0);
         $message = (string) ($response->json('error.message') ?? 'Meta API error');
+        $type = $response->json('error.type');
+        $subcode = $response->json('error.error_subcode');
+        $fbtraceId = $response->json('error.fbtrace_id');
 
         Log::error('meta.api_error', [
             'phone_number_id' => $this->phoneNumberId,
             'status' => $response->status(),
             'code' => $code,
+            'type' => is_scalar($type) ? (string) $type : null,
+            'error_subcode' => is_scalar($subcode) ? (int) $subcode : null,
+            'fbtrace_id' => is_scalar($fbtraceId) ? (string) $fbtraceId : null,
             'message' => $message,
         ]);
 

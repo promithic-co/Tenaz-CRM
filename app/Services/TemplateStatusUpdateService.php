@@ -23,6 +23,14 @@ class TemplateStatusUpdateService
     {
         $value = $request->input('entry.0.changes.0.value', []);
 
+        $this->handleValue($instance, $field, is_array($value) ? $value : []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $value
+     */
+    public function handleValue(WhatsappInstance $instance, string $field, array $value): void
+    {
         if ($field === 'phone_number_quality_update') {
             $event = (string) ($value['event'] ?? '');
             $newRating = match ($event) {
@@ -34,6 +42,10 @@ class TemplateStatusUpdateService
             InstanceQualityRatingChanged::dispatch($instance->id, $newRating);
             app(DashboardMetricsService::class)->dispatchUpdate((string) $instance->tenant_id);
             Log::info('meta.quality_phone_update', ['instance' => $instance->name, 'rating' => $newRating, 'event' => $event]);
+
+            if ($newRating === 'RED') {
+                DispatchMetaQualityAutoPauseJob::dispatch($instance->id);
+            }
 
             return;
         }
@@ -93,6 +105,25 @@ class TemplateStatusUpdateService
             return;
         }
 
-        Log::info('meta.template_category_update', ['instance' => $instance->name, 'value' => $value]);
+        if ($field === 'template_category_update') {
+            $templateName = $value['message_template_name'] ?? $value['template_name'] ?? null;
+            $language = $value['message_template_language'] ?? $value['language'] ?? null;
+            $newCategory = $value['new_category'] ?? $value['category'] ?? null;
+
+            Log::info('meta.template_category_update', [
+                'instance' => $instance->name,
+                'template' => $templateName,
+                'language' => $language,
+                'new_category' => $newCategory,
+            ]);
+
+            if ($templateName && $newCategory) {
+                WhatsappTemplate::withoutGlobalScope('tenant')
+                    ->where('whatsapp_instance_id', $instance->id)
+                    ->where('meta_template_name', (string) $templateName)
+                    ->when($language, fn ($query) => $query->where('language', (string) $language))
+                    ->update(['category' => strtoupper((string) $newCategory)]);
+            }
+        }
     }
 }

@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\MetaWebhookController::verify
- * @see app/Http/Controllers/MetaWebhookController.php:36
+ * @see app/Http/Controllers/MetaWebhookController.php:37
  * @route '/api/webhooks/meta'
  */
 export const verify = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ verify.definition = {
 
 /**
 * @see \App\Http\Controllers\MetaWebhookController::verify
- * @see app/Http/Controllers/MetaWebhookController.php:36
+ * @see app/Http/Controllers/MetaWebhookController.php:37
  * @route '/api/webhooks/meta'
  */
 verify.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ verify.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\MetaWebhookController::verify
- * @see app/Http/Controllers/MetaWebhookController.php:36
+ * @see app/Http/Controllers/MetaWebhookController.php:37
  * @route '/api/webhooks/meta'
  */
 verify.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ verify.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\MetaWebhookController::verify
- * @see app/Http/Controllers/MetaWebhookController.php:36
+ * @see app/Http/Controllers/MetaWebhookController.php:37
  * @route '/api/webhooks/meta'
  */
 verify.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ verify.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\MetaWebhookController::verify
- * @see app/Http/Controllers/MetaWebhookController.php:36
+ * @see app/Http/Controllers/MetaWebhookController.php:37
  * @route '/api/webhooks/meta'
  */
     const verifyForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ verify.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\MetaWebhookController::verify
- * @see app/Http/Controllers/MetaWebhookController.php:36
+ * @see app/Http/Controllers/MetaWebhookController.php:37
  * @route '/api/webhooks/meta'
  */
         verifyForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ verify.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\MetaWebhookController::verify
- * @see app/Http/Controllers/MetaWebhookController.php:36
+ * @see app/Http/Controllers/MetaWebhookController.php:37
  * @route '/api/webhooks/meta'
  */
         verifyForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -79,7 +79,7 @@ verify.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     verify.form = verifyForm
 /**
 * @see \App\Http\Controllers\MetaWebhookController::handle
- * @see app/Http/Controllers/MetaWebhookController.php:61
+ * @see app/Http/Controllers/MetaWebhookController.php:62
  * @route '/api/webhooks/meta'
  */
 export const handle = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -94,7 +94,7 @@ handle.definition = {
 
 /**
 * @see \App\Http\Controllers\MetaWebhookController::handle
- * @see app/Http/Controllers/MetaWebhookController.php:61
+ * @see app/Http/Controllers/MetaWebhookController.php:62
  * @route '/api/webhooks/meta'
  */
 handle.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ handle.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\MetaWebhookController::handle
- * @see app/Http/Controllers/MetaWebhookController.php:61
+ * @see app/Http/Controllers/MetaWebhookController.php:62
  * @route '/api/webhooks/meta'
  */
 handle.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -113,7 +113,7 @@ handle.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\MetaWebhookController::handle
- * @see app/Http/Controllers/MetaWebhookController.php:61
+ * @see app/Http/Controllers/MetaWebhookController.php:62
  * @route '/api/webhooks/meta'
  */
     const handleForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -123,7 +123,7 @@ handle.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\MetaWebhookController::handle
- * @see app/Http/Controllers/MetaWebhookController.php:61
+ * @see app/Http/Controllers/MetaWebhookController.php:62
  * @route '/api/webhooks/meta'
  */
         handleForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

@@ -301,6 +301,99 @@ it('POST dispatches delivery tracking job when payload has statuses', function (
         && $job->eventType === 'delivered');
 });
 
+it('POST dispatches every status in a multi-status webhook payload', function (): void {
+    Queue::fake();
+    config()->set('services.meta.app_secret', 'test-secret');
+
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'meta_phone_number_id' => '777667',
+    ]);
+
+    $payload = [
+        'entry' => [[
+            'id' => $instance->meta_waba_id,
+            'changes' => [[
+                'field' => 'messages',
+                'value' => [
+                    'metadata' => ['phone_number_id' => '777667'],
+                    'statuses' => [
+                        ['id' => 'wamid.ONE', 'status' => 'delivered'],
+                        ['id' => 'wamid.TWO', 'status' => 'read'],
+                    ],
+                ],
+            ]],
+        ]],
+    ];
+    $body = json_encode($payload);
+    $headers = metaSignedHeaders($body, 'test-secret');
+
+    $this->call(
+        'POST',
+        '/api/webhooks/meta',
+        [],
+        [],
+        [],
+        ['HTTP_X_HUB_SIGNATURE_256' => $headers['X-Hub-Signature-256'], 'CONTENT_TYPE' => 'application/json'],
+        $body
+    )->assertNoContent();
+
+    Queue::assertPushed(ProcessCampaignDeliveryEventJob::class, 2);
+    Queue::assertPushed(ProcessCampaignDeliveryEventJob::class, fn ($job) => $job->providerMessageId === 'wamid.ONE'
+        && $job->eventType === 'delivered');
+    Queue::assertPushed(ProcessCampaignDeliveryEventJob::class, fn ($job) => $job->providerMessageId === 'wamid.TWO'
+        && $job->eventType === 'read');
+});
+
+it('POST dispatches every inbound message in a multi-message webhook payload', function (): void {
+    Queue::fake();
+    config()->set('services.meta.app_secret', 'test-secret');
+
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'meta_phone_number_id' => '888782',
+    ]);
+
+    $payload = metaTextPayload('888782', $instance->meta_waba_id, from: '5511999990001', text: 'oi');
+    $payload['entry'][0]['changes'][0]['value']['contacts'] = [
+        ['profile' => ['name' => 'User One'], 'wa_id' => '5511999990001'],
+        ['profile' => ['name' => 'User Two'], 'wa_id' => '5511999990002'],
+    ];
+    $payload['entry'][0]['changes'][0]['value']['messages'] = [
+        [
+            'from' => '5511999990001',
+            'id' => 'wamid.MULTI1',
+            'timestamp' => (string) time(),
+            'type' => 'text',
+            'text' => ['body' => 'oi'],
+        ],
+        [
+            'from' => '5511999990002',
+            'id' => 'wamid.MULTI2',
+            'timestamp' => (string) time(),
+            'type' => 'text',
+            'text' => ['body' => 'oi'],
+        ],
+    ];
+
+    $body = json_encode($payload);
+    $headers = metaSignedHeaders($body, 'test-secret');
+
+    $this->call(
+        'POST',
+        '/api/webhooks/meta',
+        [],
+        [],
+        [],
+        ['HTTP_X_HUB_SIGNATURE_256' => $headers['X-Hub-Signature-256'], 'CONTENT_TYPE' => 'application/json'],
+        $body
+    )->assertNoContent();
+
+    Queue::assertPushed(ProcessIncomingWhatsAppMessageJob::class, 2);
+    Queue::assertPushed(ProcessIncomingWhatsAppMessageJob::class, fn (ProcessIncomingWhatsAppMessageJob $job): bool => $job->providerMessageId === 'wamid.MULTI1'
+        && $job->name === 'User One');
+    Queue::assertPushed(ProcessIncomingWhatsAppMessageJob::class, fn (ProcessIncomingWhatsAppMessageJob $job): bool => $job->providerMessageId === 'wamid.MULTI2'
+        && $job->name === 'User Two');
+});
+
 it('POST dispatches an inbound wamid only once across duplicate deliveries (replay guard)', function (): void {
     Queue::fake();
     config()->set('services.meta.app_secret', 'test-secret');
@@ -378,4 +471,48 @@ it('POST updates template status and pauses campaigns on rejected template webho
     expect($template->fresh()->status)->toBe('REJECTED');
     expect($template->fresh()->rejected_reason)->toBe('INVALID_FORMAT');
     expect($campaign->fresh()->status)->toBe('paused');
+});
+
+it('POST updates template category on template_category_update webhook', function (): void {
+    config()->set('services.meta.app_secret', 'test-secret');
+
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'meta_phone_number_id' => '777668',
+    ]);
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $instance->tenant_id,
+        'whatsapp_instance_id' => $instance->id,
+        'meta_template_name' => 'promo_category',
+        'status' => 'APPROVED',
+        'category' => 'MARKETING',
+        'language' => 'pt_BR',
+    ]);
+
+    $payload = [
+        'entry' => [[
+            'id' => $instance->meta_waba_id,
+            'changes' => [[
+                'field' => 'template_category_update',
+                'value' => [
+                    'message_template_name' => 'promo_category',
+                    'message_template_language' => 'pt_BR',
+                    'new_category' => 'utility',
+                ],
+            ]],
+        ]],
+    ];
+    $body = json_encode($payload);
+    $headers = metaSignedHeaders($body, 'test-secret');
+
+    $this->call(
+        'POST',
+        '/api/webhooks/meta',
+        [],
+        [],
+        [],
+        ['HTTP_X_HUB_SIGNATURE_256' => $headers['X-Hub-Signature-256'], 'CONTENT_TYPE' => 'application/json'],
+        $body
+    )->assertNoContent();
+
+    expect($template->fresh()->category)->toBe('UTILITY');
 });

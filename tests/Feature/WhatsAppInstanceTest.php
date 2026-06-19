@@ -4,10 +4,11 @@ use App\Models\Agent;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\WhatsappInstance;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 // ─── Guests ───────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,66 @@ test('user can create a meta cloud instance via embedded signup', function () {
         ->assertRedirect();
 
     expect(WhatsappInstance::where('user_id', $user->id)->where('name', 'vendas-sp')->exists())->toBeTrue();
+});
+
+test('meta cloud signup does not create instance when phone registration fails', function () {
+    Http::fake([
+        'graph.facebook.com/*/register' => Http::response(['error' => ['message' => 'Invalid PIN']], 400),
+        'graph.facebook.com/*/subscribed_apps' => Http::response(['success' => true], 200),
+    ]);
+
+    $user = User::factory()->create();
+    $token = str_repeat('c', 64);
+
+    Cache::put("meta_signup:{$token}", [
+        'access_token' => 'test-token',
+        'system_user_id' => null,
+        'permanent' => true,
+        'waba_id' => 'waba-register-fail',
+        'phone_number_id' => 'phone-register-fail',
+        'mode' => 'new',
+        'meta_pin' => '000000',
+    ], now()->addMinutes(30));
+
+    $this->actingAs($user)
+        ->post(route('whatsapp.store'), [
+            'display_name' => 'Registro Falha',
+            'name' => 'registro-falha',
+            'provider' => 'meta_cloud',
+            'meta_signup_token' => $token,
+        ])
+        ->assertSessionHasErrors(['meta_pin']);
+
+    expect(WhatsappInstance::where('name', 'registro-falha')->exists())->toBeFalse();
+});
+
+test('meta cloud signup does not create instance when WABA subscription fails', function () {
+    Http::fake([
+        'graph.facebook.com/*/subscribed_apps' => Http::response(['error' => ['message' => 'Missing permission']], 400),
+    ]);
+
+    $user = User::factory()->create();
+    $token = str_repeat('d', 64);
+
+    Cache::put("meta_signup:{$token}", [
+        'access_token' => 'test-token',
+        'system_user_id' => null,
+        'permanent' => true,
+        'waba_id' => 'waba-subscribe-fail',
+        'phone_number_id' => 'phone-subscribe-fail',
+        'mode' => 'coexistence',
+    ], now()->addMinutes(30));
+
+    $this->actingAs($user)
+        ->post(route('whatsapp.store'), [
+            'display_name' => 'Webhook Falha',
+            'name' => 'webhook-falha',
+            'provider' => 'meta_cloud',
+            'meta_signup_token' => $token,
+        ])
+        ->assertSessionHasErrors(['meta_signup_token']);
+
+    expect(WhatsappInstance::where('name', 'webhook-falha')->exists())->toBeFalse();
 });
 
 test('store validates required fields', function () {
@@ -193,6 +254,20 @@ test('status returns close when meta cloud instance has no access token', functi
         ->getJson(route('whatsapp.status', $instance))
         ->assertSuccessful()
         ->assertJsonPath('state', 'close');
+});
+
+test('status returns close when meta cloud temporary token is expired', function () {
+    $user = User::factory()->create();
+    $instance = WhatsappInstance::factory()->metaCloud()->for($user)->create([
+        'meta_token_permanent' => false,
+        'meta_token_expires_at' => now()->subMinute(),
+    ]);
+
+    $this->actingAs($user)
+        ->getJson(route('whatsapp.status', $instance))
+        ->assertSuccessful()
+        ->assertJsonPath('state', 'close')
+        ->assertJsonPath('reason', 'token_expired');
 });
 
 test('user cannot check status of another tenants instance', function () {

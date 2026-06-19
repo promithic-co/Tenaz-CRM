@@ -7,6 +7,7 @@ use App\Exceptions\MetaRateLimitException;
 use App\Services\WhatsApp\Providers\MetaCloudProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 function makeProvider(string $appSecret = 'test-secret'): MetaCloudProvider
 {
@@ -115,6 +116,30 @@ it('unknown error code throws base MetaApiException', function (): void {
 });
 
 // ─── verifyWebhook ────────────────────────────────────────────────────────────
+
+it('logs Meta synchronous error audit fields', function (): void {
+    Log::shouldReceive('error')
+        ->once()
+        ->with('meta.api_error', Mockery::on(fn (array $context): bool => $context['status'] === 400
+            && $context['code'] === 131000
+            && $context['type'] === 'OAuthException'
+            && $context['error_subcode'] === 2494010
+            && $context['fbtrace_id'] === 'FBTRACE123'
+            && $context['message'] === 'Template rejected'));
+
+    Http::fake(['graph.facebook.com/*' => Http::response([
+        'error' => [
+            'message' => 'Template rejected',
+            'type' => 'OAuthException',
+            'code' => 131000,
+            'error_subcode' => 2494010,
+            'fbtrace_id' => 'FBTRACE123',
+        ],
+    ], 400)]);
+
+    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->toThrow(MetaApiException::class);
+});
 
 it('verifyWebhook accepts valid HMAC signature', function (): void {
     $body = '{"test":true}';

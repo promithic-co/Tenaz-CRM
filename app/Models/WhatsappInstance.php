@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\WhatsAppProvider;
 use App\Models\Concerns\BelongsToTenant;
+use Database\Factories\WhatsappInstanceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +12,7 @@ use Illuminate\Support\Facades\Cache;
 
 class WhatsappInstance extends Model
 {
-    /** @use HasFactory<\Database\Factories\WhatsappInstanceFactory> */
+    /** @use HasFactory<WhatsappInstanceFactory> */
     use BelongsToTenant, HasFactory;
 
     public const AI_MODE_AUTOMATIC = Lead::AI_MODE_AUTOMATIC;
@@ -52,7 +54,7 @@ class WhatsappInstance extends Model
     protected function casts(): array
     {
         return [
-            'provider' => \App\Enums\WhatsAppProvider::class,
+            'provider' => WhatsAppProvider::class,
             'meta_access_token' => 'encrypted',
             'meta_token_permanent' => 'boolean',
             'meta_token_expires_at' => 'datetime',
@@ -106,5 +108,12 @@ class WhatsappInstance extends Model
     public function hasProxy(): bool
     {
         return filled($this->proxy_host) && filled($this->proxy_port);
+    }
+
+    public function hasExpiredMetaToken(): bool
+    {
+        return ! $this->meta_token_permanent
+            && $this->meta_token_expires_at !== null
+            && $this->meta_token_expires_at->isPast();
     }
 }

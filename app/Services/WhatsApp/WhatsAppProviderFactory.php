@@ -5,14 +5,19 @@ namespace App\Services\WhatsApp;
 use App\Contracts\WhatsApp\InstanceManagerInterface;
 use App\Contracts\WhatsApp\WhatsAppProviderInterface;
 use App\Enums\WhatsAppProvider;
+use App\Exceptions\MetaApiException;
 use App\Models\WhatsappInstance;
 use App\Services\WhatsApp\Providers\MetaCloudInstanceManager;
 use App\Services\WhatsApp\Providers\MetaCloudProvider;
 
 class WhatsAppProviderFactory
 {
-    public function makeProvider(WhatsappInstance $instance): WhatsAppProviderInterface
+    public function makeProvider(WhatsappInstance $instance, bool $allowExpiredToken = false): WhatsAppProviderInterface
     {
+        if (! $allowExpiredToken && $instance->provider === WhatsAppProvider::MetaCloud && $instance->hasExpiredMetaToken()) {
+            throw new MetaApiException('Meta access token expired. Reconnect the WhatsApp instance before sending messages.');
+        }
+
         return match ($instance->provider) {
             WhatsAppProvider::MetaCloud => new MetaCloudProvider(
                 phoneNumberId: (string) $instance->meta_phone_number_id,
@@ -30,6 +35,7 @@ class WhatsAppProviderFactory
                 phoneNumberId: (string) $instance->meta_phone_number_id,
                 accessToken: $instance->meta_access_token,
                 ownerPhoneNumber: $instance->phone_number,
+                tokenExpired: $instance->hasExpiredMetaToken(),
                 graphApiVersion: (string) config('services.meta.graph_api_version', 'v23.0'),
             ),
         };

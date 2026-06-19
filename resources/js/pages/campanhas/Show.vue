@@ -4,8 +4,9 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 import CampaignController from '@/actions/App/Http/Controllers/CampaignController';
+import { AlertTriangle } from 'lucide-vue-next';
 
-type WhatsappInstance = { id: number; name: string; display_name: string | null };
+type WhatsappInstance = { id: number; name: string; display_name: string | null; meta_quality_rating: string | null };
 type ContactList = { id: number; name: string };
 type WhatsappTemplate = { id: number; name: string; body: string | null; variables_count: number };
 
@@ -14,6 +15,10 @@ type Campaign = {
     name: string;
     status: string;
     failure_reason: string | null;
+    pause_reason_code: string | null;
+    paused_from_status: string | null;
+    risk_acknowledged_at: string | null;
+    risk_acknowledged_by: number | null;
     total_recipients: number;
     total_sent: number;
     total_delivered: number;
@@ -94,6 +99,14 @@ function resumeCampaign(): void {
     router.post(CampaignController.resume(props.campaign.id).url, {}, { preserveScroll: true });
 }
 
+function keepPausedForQualityRisk(): void {
+    router.post(CampaignController.keepPausedForQualityRisk(props.campaign.id).url, {}, { preserveScroll: true });
+}
+
+function continueWithQualityRisk(): void {
+    router.post(CampaignController.continueWithQualityRisk(props.campaign.id).url, {}, { preserveScroll: true });
+}
+
 // Status helpers
 function statusBadgeClass(status: string): string {
     const map: Record<string, string> = {
@@ -145,6 +158,8 @@ const sentPercent = computed(() => safePercent(props.campaign.total_sent, props.
 const deliveryRate = computed(() => safePercent(props.campaign.total_delivered, props.campaign.total_sent));
 const readRate = computed(() => safePercent(props.campaign.total_read, props.campaign.total_delivered));
 const failureRate = computed(() => safePercent(props.campaign.total_failed, props.campaign.total_sent));
+const hasMetaQualityRisk = computed(() => props.campaign.pause_reason_code === 'meta_quality_red_auto_pause');
+const qualityRiskNeedsDecision = computed(() => hasMetaQualityRisk.value && props.campaign.status === 'paused' && !props.campaign.risk_acknowledged_at);
 const funnelTotal = computed(() => Math.max(props.campaign.total_recipients, 1));
 const funnelBars = computed(() => [
     { label: 'Enviados', count: props.campaign.total_sent, color: 'bg-blue-500' },
@@ -205,6 +220,45 @@ function applyFilter(): void {
                         >
                             Retomar
                         </button>
+                    </div>
+                </div>
+
+                <!-- Meta quality risk alert -->
+                <div
+                    v-if="hasMetaQualityRisk"
+                    class="mx-4 mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200"
+                >
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="flex min-w-0 gap-3">
+                            <AlertTriangle class="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-300" />
+                            <div>
+                                <p class="font-semibold">Risco de restricao/banimento</p>
+                                <p class="mt-1 leading-5">
+                                    A qualidade Meta da instancia
+                                    <strong>{{ campaign.whatsapp_instance?.display_name ?? campaign.whatsapp_instance?.name ?? 'Meta' }}</strong>
+                                    esta RED. A campanha foi pausada para reduzir risco de restricao ou banimento.
+                                </p>
+                                <p v-if="campaign.risk_acknowledged_at" class="mt-1 text-xs text-red-700 dark:text-red-300">
+                                    Risco confirmado em {{ campaign.risk_acknowledged_at }}.
+                                </p>
+                            </div>
+                        </div>
+                        <div v-if="qualityRiskNeedsDecision" class="flex shrink-0 flex-wrap gap-2">
+                            <button
+                                type="button"
+                                class="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-900 hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-100 dark:hover:bg-red-900/60"
+                                @click="keepPausedForQualityRisk"
+                            >
+                                Manter pausada
+                            </button>
+                            <button
+                                type="button"
+                                class="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                                @click="continueWithQualityRisk"
+                            >
+                                Continuar por risco
+                            </button>
+                        </div>
                     </div>
                 </div>
 

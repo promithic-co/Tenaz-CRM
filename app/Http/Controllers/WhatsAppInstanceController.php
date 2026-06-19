@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\WhatsAppProvider;
 use App\Http\Requests\StoreWhatsappInstanceRequest;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
@@ -12,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -110,7 +112,7 @@ class WhatsAppInstanceController extends Controller
             'default_ai_mode' => Lead::AI_MODE_MANUAL,
         ];
 
-        if ($provider === \App\Enums\WhatsAppProvider::MetaCloud->value) {
+        if ($provider === WhatsAppProvider::MetaCloud->value) {
             $signupToken = (string) $request->validated('meta_signup_token');
             $cached = Cache::pull("meta_signup:{$signupToken}");
 
@@ -131,26 +133,38 @@ class WhatsAppInstanceController extends Controller
             // Register phone number on Cloud API for modes A (new) and B (migrate)
             if (! $attributes['meta_coexistence'] && $attributes['meta_phone_number_id']) {
                 $pin = (string) ($request->validated('meta_pin') ?? $cached['meta_pin'] ?? '000000');
-                $this->metaTokenService->registerPhoneNumber(
+                $registered = $this->metaTokenService->registerPhoneNumber(
                     $attributes['meta_phone_number_id'],
                     $attributes['meta_access_token'],
                     $pin,
                 );
+
+                if (! $registered) {
+                    return back()->withErrors([
+                        'meta_pin' => 'Nao foi possivel registrar o numero na Meta. Revise o PIN e refaca a vinculacao.',
+                    ]);
+                }
             }
 
             // Subscribe WABA to this app so Meta delivers webhook events
             if ($attributes['meta_waba_id'] && $attributes['meta_access_token']) {
-                $this->metaTokenService->subscribeWaba(
+                $subscribed = $this->metaTokenService->subscribeWaba(
                     $attributes['meta_waba_id'],
                     $attributes['meta_access_token'],
                 );
+
+                if (! $subscribed) {
+                    return back()->withErrors([
+                        'meta_signup_token' => 'Nao foi possivel assinar os webhooks da WABA na Meta. Refaca a vinculacao antes de criar a instancia.',
+                    ]);
+                }
             }
         }
 
         $instance = WhatsappInstance::create($attributes);
 
         // Populate display phone number right away so the card reflects the WABA number on first render.
-        if ($provider === \App\Enums\WhatsAppProvider::MetaCloud->value) {
+        if ($provider === WhatsAppProvider::MetaCloud->value) {
             $info = $this->factory->makeInstanceManager($instance)->fetchInstanceInfo();
             if ($info && ! empty($info['phone_number'])) {
                 $instance->update(['phone_number' => $info['phone_number']]);
@@ -176,7 +190,10 @@ class WhatsAppInstanceController extends Controller
         $data = $this->factory->makeInstanceManager($instance)->status();
         $state = $data['state'] ?? 'close';
 
-        return response()->json(['state' => $state]);
+        return response()->json([
+            'state' => $state,
+            'reason' => $data['reason'] ?? null,
+        ]);
     }
 
     public function connect(WhatsappInstance $instance): JsonResponse
@@ -210,7 +227,7 @@ class WhatsAppInstanceController extends Controller
             'user_id' => [
                 'nullable',
                 'integer',
-                \Illuminate\Validation\Rule::exists('tenant_user', 'user_id')
+                Rule::exists('tenant_user', 'user_id')
                     ->where(fn ($q) => $q->where('tenant_id', $request->user()->tenantId)),
             ],
         ]);

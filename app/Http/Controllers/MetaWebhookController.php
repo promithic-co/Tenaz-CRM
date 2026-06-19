@@ -29,11 +29,6 @@ class MetaWebhookController extends Controller
         private readonly TemplateStatusUpdateService $templateStatus,
     ) {}
 
-    /**
-     * GET /webhooks/meta — subscription challenge handshake.
-     * Meta sends hub.mode=subscribe&hub.verify_token={token}&hub.challenge={string}.
-     * PHP converts dots to underscores in query keys.
-     */
     public function verify(Request $request): Response
     {
         $mode = $request->query('hub_mode');
@@ -55,10 +50,6 @@ class MetaWebhookController extends Controller
         return response('', 403);
     }
 
-    /**
-     * POST /webhooks/meta — verify the signature first (security boundary),
-     * resolve the instance, then route to the correct typed handler.
-     */
     public function handle(Request $request): Response
     {
         if (! $this->verifyGlobalSignature($request)) {
@@ -69,20 +60,36 @@ class MetaWebhookController extends Controller
             return response()->noContent(401);
         }
 
-        $phoneNumberId = $request->input('entry.0.changes.0.value.metadata.phone_number_id');
-        $changeField = $request->input('entry.0.changes.0.field');
-        $wabaId = $request->input('entry.0.id');
+        foreach ((array) $request->input('entry', []) as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
 
-        $instance = null;
-        if ($phoneNumberId) {
-            $instance = WhatsappInstance::withoutGlobalScope('tenant')
-                ->where('meta_phone_number_id', (string) $phoneNumberId)
-                ->first();
-        } elseif ($wabaId) {
-            $instance = WhatsappInstance::withoutGlobalScope('tenant')
-                ->where('meta_waba_id', (string) $wabaId)
-                ->first();
+            foreach ((array) ($entry['changes'] ?? []) as $change) {
+                if (is_array($change)) {
+                    $this->handleChange($request, $entry, $change);
+                }
+            }
         }
+
+        return response()->noContent();
+    }
+
+    /**
+     * @param  array<string, mixed>  $entry
+     * @param  array<string, mixed>  $change
+     */
+    private function handleChange(Request $request, array $entry, array $change): void
+    {
+        $value = $change['value'] ?? [];
+        if (! is_array($value)) {
+            return;
+        }
+
+        $changeField = (string) ($change['field'] ?? '');
+        $phoneNumberId = $value['metadata']['phone_number_id'] ?? null;
+        $wabaId = $entry['id'] ?? null;
+        $instance = $this->resolveInstance($phoneNumberId, $wabaId);
 
         if (! $instance) {
             Log::info('meta.webhook_unknown_instance', [
@@ -91,37 +98,69 @@ class MetaWebhookController extends Controller
                 'field' => $changeField,
             ]);
 
-            return response()->noContent();
+            return;
         }
-
-        $provider = $this->factory->makeProvider($instance);
 
         if (in_array($changeField, ['message_template_status_update', 'phone_number_quality_update', 'template_category_update'], true)) {
-            $this->templateStatus->handle($request, $instance, $changeField);
+            $this->templateStatus->handleValue($instance, $changeField, $value);
 
-            return response()->noContent();
+            return;
         }
 
-        $statuses = $request->input('entry.0.changes.0.value.statuses', []);
+        $statuses = $value['statuses'] ?? [];
         if (is_array($statuses) && $statuses !== []) {
-            return $this->handleStatuses($statuses);
+            $this->handleStatuses($statuses);
         }
 
-        $dto = $provider->parseWebhook($request);
-        if (! $dto) {
-            return response()->noContent();
+        $messages = $value['messages'] ?? [];
+        if (! is_array($messages) || $messages === []) {
+            return;
         }
 
-        // Replay guard (F10): Meta re-delivers the same wamid when our ACK misses its
-        // ~15s retry window. SETNX after signature verification — first delivery wins,
-        // duplicates are ACKed without re-dispatching. Covers both text and media paths.
+        $contacts = $value['contacts'] ?? [];
+        $provider = $this->factory->makeProvider($instance, allowExpiredToken: true);
+
+        foreach ($messages as $messageData) {
+            if (! is_array($messageData)) {
+                continue;
+            }
+
+            $dto = $provider->parseMessage($messageData, is_array($contacts) ? $contacts : [], $request->all());
+            if ($dto) {
+                $this->handleIncomingMessage($request, $instance, $dto, $messageData);
+            }
+        }
+    }
+
+    private function resolveInstance(mixed $phoneNumberId, mixed $wabaId): ?WhatsappInstance
+    {
+        if ($phoneNumberId) {
+            return WhatsappInstance::withoutGlobalScope('tenant')
+                ->where('meta_phone_number_id', (string) $phoneNumberId)
+                ->first();
+        }
+
+        if ($wabaId) {
+            return WhatsappInstance::withoutGlobalScope('tenant')
+                ->where('meta_waba_id', (string) $wabaId)
+                ->first();
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $messageData
+     */
+    private function handleIncomingMessage(Request $request, WhatsappInstance $instance, IncomingMessageDTO $dto, array $messageData): void
+    {
         if ($dto->messageId !== null && ! Cache::add("wamid:{$dto->messageId}", 1, now()->addDay())) {
             Log::info('meta.webhook_replay_skipped', [
                 'provider_message_id' => $dto->messageId,
                 'instance' => $instance->name,
             ]);
 
-            return response()->noContent();
+            return;
         }
 
         $context = $this->agentContext->resolveFromInstanceName($instance->name);
@@ -129,23 +168,19 @@ class MetaWebhookController extends Controller
         $agentId = $context['agent_id'];
         $interactionId = $this->interactionEvents->newInteractionId();
 
-        // Defer media download to a background job so the webhook returns inside Meta's
-        // ~15s retry window even when the Graph API media URL is slow. Text-only messages
-        // dispatch the processing job directly as before.
         if ($dto->hasMedia) {
-            return $this->handleMedia($request, $instance, $dto, (string) $tenantId, $agentId, $interactionId);
+            $this->handleMedia($request, $instance, $dto, (string) $tenantId, $agentId, $interactionId, $messageData);
+
+            return;
         }
 
-        return $this->handleText($instance, $dto, $tenantId, $agentId, $interactionId);
+        $this->handleText($instance, $dto, $tenantId, $agentId, $interactionId);
     }
 
     /**
-     * Delivery status callbacks → fan out one ProcessCampaignDeliveryEventJob
-     * per status entry.
-     *
      * @param  array<int, array<string, mixed>>  $statuses
      */
-    private function handleStatuses(array $statuses): Response
+    private function handleStatuses(array $statuses): void
     {
         foreach ($statuses as $status) {
             $wamid = $status['id'] ?? null;
@@ -156,13 +191,10 @@ class MetaWebhookController extends Controller
                 ProcessCampaignDeliveryEventJob::dispatch((string) $wamid, (string) $eventType, is_array($errors) ? $errors : []);
             }
         }
-
-        return response()->noContent();
     }
 
     /**
-     * Inbound media message → record the interaction and queue the deferred
-     * Graph API download so the HTTP worker returns inside Meta's retry window.
+     * @param  array<string, mixed>  $messageData
      */
     private function handleMedia(
         Request $request,
@@ -171,9 +203,8 @@ class MetaWebhookController extends Controller
         string $tenantId,
         ?int $agentId,
         string $interactionId,
-    ): Response {
-        $messageData = $request->input('entry.0.changes.0.value.messages.0', []);
-
+        array $messageData,
+    ): void {
         Log::info('meta.incoming_media_queued', [
             'interaction_id' => $interactionId,
             'phone' => $dto->phone,
@@ -211,25 +242,17 @@ class MetaWebhookController extends Controller
             $dto->messageId,
             $dto->referral,
         );
-
-        return response()->noContent();
     }
 
-    /**
-     * Inbound text message → buffer non-greetings through the debounce window
-     * (drained by a delayed job), or process short greetings immediately.
-     */
     private function handleText(
         WhatsappInstance $instance,
         IncomingMessageDTO $dto,
         mixed $tenantId,
         ?int $agentId,
         string $interactionId,
-    ): Response {
+    ): void {
         $message = $dto->text ?? '';
 
-        // Mensagens não-saudação passam pelo buffer de debounce, drenado por um
-        // job atrasado — o worker HTTP nunca bloqueia esperando a janela.
         if (! $this->debounce->isQuickCommand($message)) {
             if ($this->debounce->push($dto->phone, $message)) {
                 AggregateDebouncedMessageJob::dispatch(
@@ -245,10 +268,9 @@ class MetaWebhookController extends Controller
                 )->delay(now()->addSeconds((int) config('credflow.debounce_seconds', 3)));
             }
 
-            return response()->noContent();
+            return;
         }
 
-        // Saudações curtas são processadas imediatamente.
         Log::info('meta.incoming', [
             'interaction_id' => $interactionId,
             'phone' => $dto->phone,
@@ -287,8 +309,6 @@ class MetaWebhookController extends Controller
             null,
             $dto->referral,
         );
-
-        return response()->noContent();
     }
 
     private function verifyGlobalSignature(Request $request): bool

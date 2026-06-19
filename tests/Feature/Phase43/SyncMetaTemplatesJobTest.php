@@ -17,6 +17,19 @@ it('skips when instance id does not exist', function () {
     Http::assertNothingSent();
 });
 
+it('skips when Meta temporary token is expired', function () {
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'meta_token_permanent' => false,
+        'meta_token_expires_at' => now()->subMinute(),
+    ]);
+
+    Http::fake();
+
+    (new SyncMetaTemplatesJob($instance->id))->handle();
+
+    Http::assertNothingSent();
+});
+
 it('syncs Meta templates with encrypted token + 60s timeout', function () {
     $user = userWithTenant();
     $instance = WhatsappInstance::factory()->metaCloud()->create([

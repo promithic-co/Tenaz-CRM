@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ServiceTicket;
+use App\Notifications\MetaQualityRedNotification;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -47,10 +49,32 @@ class HandleInertiaRequests extends Middleware
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'escalation_count' => fn () => auth()->check()
-                ? \App\Models\ServiceTicket::where('tenant_id', auth()->user()->tenantId)
+                ? ServiceTicket::where('tenant_id', auth()->user()->tenantId)
                     ->active()
                     ->count()
                 : 0,
+            'critical_notification_count' => fn () => $user
+                ? $user->unreadNotifications()
+                    ->where('type', MetaQualityRedNotification::class)
+                    ->count()
+                : 0,
+            'critical_notifications' => fn () => $user
+                ? $user->unreadNotifications()
+                    ->where('type', MetaQualityRedNotification::class)
+                    ->latest()
+                    ->limit(5)
+                    ->get()
+                    ->map(fn ($notification): array => [
+                        'id' => $notification->id,
+                        'title' => $notification->data['title'] ?? 'Alerta critico',
+                        'body' => $notification->data['body'] ?? '',
+                        'campaign_id' => $notification->data['campaign_id'] ?? null,
+                        'campaign_name' => $notification->data['campaign_name'] ?? null,
+                        'action_url' => $notification->data['action_url'] ?? null,
+                        'created_at' => $notification->created_at?->toIso8601String(),
+                    ])
+                    ->values()
+                : [],
             'flash' => fn () => $request->session()->get('flash'),
             'flash_error' => fn () => $request->session()->get('flash_error'),
         ];

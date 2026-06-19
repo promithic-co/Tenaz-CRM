@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Database\Factories\CampaignFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Campaign extends Model
 {
-    /** @use HasFactory<\Database\Factories\CampaignFactory> */
+    /** @use HasFactory<CampaignFactory> */
     use BelongsToTenant, HasFactory, SoftDeletes;
 
     protected $fillable = [
@@ -36,6 +37,10 @@ class Campaign extends Model
         'total_read',
         'total_failed',
         'failure_reason',
+        'pause_reason_code',
+        'paused_from_status',
+        'risk_acknowledged_at',
+        'risk_acknowledged_by',
     ];
 
     protected function casts(): array
@@ -46,6 +51,7 @@ class Campaign extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'paused_at' => 'datetime',
+            'risk_acknowledged_at' => 'datetime',
             'total_recipients' => 'integer',
             'total_sent' => 'integer',
             'total_delivered' => 'integer',

@@ -16,12 +16,17 @@ class MetaCloudInstanceManager implements InstanceManagerInterface
         private readonly string $phoneNumberId,
         private readonly ?string $accessToken,
         private readonly ?string $ownerPhoneNumber = null,
+        private readonly bool $tokenExpired = false,
         private readonly string $graphApiVersion = 'v23.0',
     ) {}
 
     /** @return array{state: string} */
     public function status(): array
     {
+        if ($this->tokenExpired) {
+            return ['state' => 'close', 'reason' => 'token_expired'];
+        }
+
         return ['state' => filled($this->accessToken) ? 'open' : 'close'];
     }
 

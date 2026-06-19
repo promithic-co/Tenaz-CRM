@@ -10,6 +10,7 @@ use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use App\Services\CampaignService;
+use App\Services\MetaQualityRiskService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -79,7 +80,7 @@ class CampaignController extends Controller
         $campanha->load([
             'contactList:id,name',
             'whatsappTemplate:id,name,body,variables_count',
-            'whatsappInstance:id,name,display_name',
+            'whatsappInstance:id,name,display_name,meta_quality_rating',
         ]);
 
         $statusFilter = $request->input('status');
@@ -167,5 +168,31 @@ class CampaignController extends Controller
         }
 
         return back()->with('success', 'Campanha retomada.');
+    }
+
+    public function keepPausedForQualityRisk(Campaign $campanha, MetaQualityRiskService $riskService): RedirectResponse
+    {
+        $this->authorize('update', $campanha);
+
+        try {
+            $riskService->acknowledgePaused($campanha, auth()->user());
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['campaign' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Campanha mantida pausada por risco Meta RED.');
+    }
+
+    public function continueWithQualityRisk(Campaign $campanha, MetaQualityRiskService $riskService): RedirectResponse
+    {
+        $this->authorize('update', $campanha);
+
+        try {
+            $riskService->continueWithRisk($campanha, auth()->user());
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['campaign' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Campanha retomada com risco Meta RED confirmado.');
     }
 }

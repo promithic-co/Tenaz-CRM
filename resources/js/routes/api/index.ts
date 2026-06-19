@@ -79,7 +79,7 @@ health.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     health.form = healthForm
 /**
 * @see \App\Http\Controllers\AgentController::tenaz
- * @see app/Http/Controllers/AgentController.php:21
+ * @see app/Http/Controllers/AgentController.php:22
  * @route '/api/tenaz'
  */
 export const tenaz = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -94,7 +94,7 @@ tenaz.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentController::tenaz
- * @see app/Http/Controllers/AgentController.php:21
+ * @see app/Http/Controllers/AgentController.php:22
  * @route '/api/tenaz'
  */
 tenaz.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ tenaz.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\AgentController::tenaz
- * @see app/Http/Controllers/AgentController.php:21
+ * @see app/Http/Controllers/AgentController.php:22
  * @route '/api/tenaz'
  */
 tenaz.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -113,7 +113,7 @@ tenaz.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\AgentController::tenaz
- * @see app/Http/Controllers/AgentController.php:21
+ * @see app/Http/Controllers/AgentController.php:22
  * @route '/api/tenaz'
  */
     const tenazForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -123,7 +123,7 @@ tenaz.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\AgentController::tenaz
- * @see app/Http/Controllers/AgentController.php:21
+ * @see app/Http/Controllers/AgentController.php:22
  * @route '/api/tenaz'
  */
         tenazForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -134,7 +134,7 @@ tenaz.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     tenaz.form = tenazForm
 /**
 * @see \App\Http\Controllers\AgentController::aria
- * @see app/Http/Controllers/AgentController.php:32
+ * @see app/Http/Controllers/AgentController.php:33
  * @route '/api/aria'
  */
 export const aria = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -149,7 +149,7 @@ aria.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentController::aria
- * @see app/Http/Controllers/AgentController.php:32
+ * @see app/Http/Controllers/AgentController.php:33
  * @route '/api/aria'
  */
 aria.url = (options?: RouteQueryOptions) => {
@@ -158,7 +158,7 @@ aria.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\AgentController::aria
- * @see app/Http/Controllers/AgentController.php:32
+ * @see app/Http/Controllers/AgentController.php:33
  * @route '/api/aria'
  */
 aria.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -168,7 +168,7 @@ aria.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\AgentController::aria
- * @see app/Http/Controllers/AgentController.php:32
+ * @see app/Http/Controllers/AgentController.php:33
  * @route '/api/aria'
  */
     const ariaForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -178,7 +178,7 @@ aria.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\AgentController::aria
- * @see app/Http/Controllers/AgentController.php:32
+ * @see app/Http/Controllers/AgentController.php:33
  * @route '/api/aria'
  */
         ariaForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

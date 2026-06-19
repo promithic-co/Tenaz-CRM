@@ -75,7 +75,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
                     }),
             method: 'get',
         })
-    
+
     index.form = indexForm
 /**
 * @see \App\Http\Controllers\PlaygroundController::store
@@ -130,118 +130,8 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             action: store.url(options),
             method: 'post',
         })
-    
+
     store.form = storeForm
-/**
-* @see \App\Http\Controllers\PlaygroundController::generateScenario
- * @see app/Http/Controllers/PlaygroundController.php:257
- * @route '/playground/generate-scenario'
- */
-export const generateScenario = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: generateScenario.url(options),
-    method: 'post',
-})
-
-generateScenario.definition = {
-    methods: ["post"],
-    url: '/playground/generate-scenario',
-} satisfies RouteDefinition<["post"]>
-
-/**
-* @see \App\Http\Controllers\PlaygroundController::generateScenario
- * @see app/Http/Controllers/PlaygroundController.php:257
- * @route '/playground/generate-scenario'
- */
-generateScenario.url = (options?: RouteQueryOptions) => {
-    return generateScenario.definition.url + queryParams(options)
-}
-
-/**
-* @see \App\Http\Controllers\PlaygroundController::generateScenario
- * @see app/Http/Controllers/PlaygroundController.php:257
- * @route '/playground/generate-scenario'
- */
-generateScenario.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: generateScenario.url(options),
-    method: 'post',
-})
-
-    /**
-* @see \App\Http\Controllers\PlaygroundController::generateScenario
- * @see app/Http/Controllers/PlaygroundController.php:257
- * @route '/playground/generate-scenario'
- */
-    const generateScenarioForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: generateScenario.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\PlaygroundController::generateScenario
- * @see app/Http/Controllers/PlaygroundController.php:257
- * @route '/playground/generate-scenario'
- */
-        generateScenarioForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: generateScenario.url(options),
-            method: 'post',
-        })
-    
-    generateScenario.form = generateScenarioForm
-/**
-* @see \App\Http\Controllers\PlaygroundController::scanBlindspots
- * @see app/Http/Controllers/PlaygroundController.php:188
- * @route '/playground/scan-blindspots'
- */
-export const scanBlindspots = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: scanBlindspots.url(options),
-    method: 'post',
-})
-
-scanBlindspots.definition = {
-    methods: ["post"],
-    url: '/playground/scan-blindspots',
-} satisfies RouteDefinition<["post"]>
-
-/**
-* @see \App\Http\Controllers\PlaygroundController::scanBlindspots
- * @see app/Http/Controllers/PlaygroundController.php:188
- * @route '/playground/scan-blindspots'
- */
-scanBlindspots.url = (options?: RouteQueryOptions) => {
-    return scanBlindspots.definition.url + queryParams(options)
-}
-
-/**
-* @see \App\Http\Controllers\PlaygroundController::scanBlindspots
- * @see app/Http/Controllers/PlaygroundController.php:188
- * @route '/playground/scan-blindspots'
- */
-scanBlindspots.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: scanBlindspots.url(options),
-    method: 'post',
-})
-
-    /**
-* @see \App\Http\Controllers\PlaygroundController::scanBlindspots
- * @see app/Http/Controllers/PlaygroundController.php:188
- * @route '/playground/scan-blindspots'
- */
-    const scanBlindspotsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: scanBlindspots.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\PlaygroundController::scanBlindspots
- * @see app/Http/Controllers/PlaygroundController.php:188
- * @route '/playground/scan-blindspots'
- */
-        scanBlindspotsForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: scanBlindspots.url(options),
-            method: 'post',
-        })
-    
-    scanBlindspots.form = scanBlindspotsForm
 /**
 * @see \App\Http\Controllers\PlaygroundController::destroy
  * @see app/Http/Controllers/PlaygroundController.php:87
@@ -270,7 +160,7 @@ destroy.url = (args: { lead: number | { id: number } } | [lead: number | { id: n
             if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
             args = { lead: args.id }
         }
-    
+
     if (Array.isArray(args)) {
         args = {
                     lead: args[0],
@@ -329,7 +219,7 @@ destroy.delete = (args: { lead: number | { id: number } } | [lead: number | { id
                     }),
             method: 'post',
         })
-    
+
     destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\PlaygroundController::reset
@@ -359,7 +249,7 @@ reset.url = (args: { lead: number | { id: number } } | [lead: number | { id: num
             if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
             args = { lead: args.id }
         }
-    
+
     if (Array.isArray(args)) {
         args = {
                     lead: args[0],
@@ -408,7 +298,7 @@ reset.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
             action: reset.url(args, options),
             method: 'post',
         })
-    
+
     reset.form = resetForm
 /**
 * @see \App\Http\Controllers\PlaygroundController::updatePrompt
@@ -438,7 +328,7 @@ updatePrompt.url = (args: { lead: number | { id: number } } | [lead: number | { 
             if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
             args = { lead: args.id }
         }
-    
+
     if (Array.isArray(args)) {
         args = {
                     lead: args[0],
@@ -487,245 +377,8 @@ updatePrompt.post = (args: { lead: number | { id: number } } | [lead: number | {
             action: updatePrompt.url(args, options),
             method: 'post',
         })
-    
+
     updatePrompt.form = updatePromptForm
-/**
-* @see \App\Http\Controllers\PlaygroundController::chat
- * @see app/Http/Controllers/PlaygroundController.php:126
- * @route '/playground/{lead}/chat'
- */
-export const chat = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: chat.url(args, options),
-    method: 'post',
-})
-
-chat.definition = {
-    methods: ["post"],
-    url: '/playground/{lead}/chat',
-} satisfies RouteDefinition<["post"]>
-
-/**
-* @see \App\Http\Controllers\PlaygroundController::chat
- * @see app/Http/Controllers/PlaygroundController.php:126
- * @route '/playground/{lead}/chat'
- */
-chat.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
-    if (typeof args === 'string' || typeof args === 'number') {
-        args = { lead: args }
-    }
-
-            if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
-            args = { lead: args.id }
-        }
-    
-    if (Array.isArray(args)) {
-        args = {
-                    lead: args[0],
-                }
-    }
-
-    args = applyUrlDefaults(args)
-
-    const parsedArgs = {
-                        lead: typeof args.lead === 'object'
-                ? args.lead.id
-                : args.lead,
-                }
-
-    return chat.definition.url
-            .replace('{lead}', parsedArgs.lead.toString())
-            .replace(/\/+$/, '') + queryParams(options)
-}
-
-/**
-* @see \App\Http\Controllers\PlaygroundController::chat
- * @see app/Http/Controllers/PlaygroundController.php:126
- * @route '/playground/{lead}/chat'
- */
-chat.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: chat.url(args, options),
-    method: 'post',
-})
-
-    /**
-* @see \App\Http\Controllers\PlaygroundController::chat
- * @see app/Http/Controllers/PlaygroundController.php:126
- * @route '/playground/{lead}/chat'
- */
-    const chatForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: chat.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\PlaygroundController::chat
- * @see app/Http/Controllers/PlaygroundController.php:126
- * @route '/playground/{lead}/chat'
- */
-        chatForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: chat.url(args, options),
-            method: 'post',
-        })
-    
-    chat.form = chatForm
-/**
-* @see \App\Http\Controllers\PlaygroundController::testerChat
- * @see app/Http/Controllers/PlaygroundController.php:145
- * @route '/playground/{lead}/tester-chat'
- */
-export const testerChat = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: testerChat.url(args, options),
-    method: 'post',
-})
-
-testerChat.definition = {
-    methods: ["post"],
-    url: '/playground/{lead}/tester-chat',
-} satisfies RouteDefinition<["post"]>
-
-/**
-* @see \App\Http\Controllers\PlaygroundController::testerChat
- * @see app/Http/Controllers/PlaygroundController.php:145
- * @route '/playground/{lead}/tester-chat'
- */
-testerChat.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
-    if (typeof args === 'string' || typeof args === 'number') {
-        args = { lead: args }
-    }
-
-            if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
-            args = { lead: args.id }
-        }
-    
-    if (Array.isArray(args)) {
-        args = {
-                    lead: args[0],
-                }
-    }
-
-    args = applyUrlDefaults(args)
-
-    const parsedArgs = {
-                        lead: typeof args.lead === 'object'
-                ? args.lead.id
-                : args.lead,
-                }
-
-    return testerChat.definition.url
-            .replace('{lead}', parsedArgs.lead.toString())
-            .replace(/\/+$/, '') + queryParams(options)
-}
-
-/**
-* @see \App\Http\Controllers\PlaygroundController::testerChat
- * @see app/Http/Controllers/PlaygroundController.php:145
- * @route '/playground/{lead}/tester-chat'
- */
-testerChat.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: testerChat.url(args, options),
-    method: 'post',
-})
-
-    /**
-* @see \App\Http\Controllers\PlaygroundController::testerChat
- * @see app/Http/Controllers/PlaygroundController.php:145
- * @route '/playground/{lead}/tester-chat'
- */
-    const testerChatForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: testerChat.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\PlaygroundController::testerChat
- * @see app/Http/Controllers/PlaygroundController.php:145
- * @route '/playground/{lead}/tester-chat'
- */
-        testerChatForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: testerChat.url(args, options),
-            method: 'post',
-        })
-    
-    testerChat.form = testerChatForm
-/**
-* @see \App\Http\Controllers\PlaygroundController::evaluate
- * @see app/Http/Controllers/PlaygroundController.php:176
- * @route '/playground/{lead}/evaluate'
- */
-export const evaluate = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: evaluate.url(args, options),
-    method: 'post',
-})
-
-evaluate.definition = {
-    methods: ["post"],
-    url: '/playground/{lead}/evaluate',
-} satisfies RouteDefinition<["post"]>
-
-/**
-* @see \App\Http\Controllers\PlaygroundController::evaluate
- * @see app/Http/Controllers/PlaygroundController.php:176
- * @route '/playground/{lead}/evaluate'
- */
-evaluate.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
-    if (typeof args === 'string' || typeof args === 'number') {
-        args = { lead: args }
-    }
-
-            if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
-            args = { lead: args.id }
-        }
-    
-    if (Array.isArray(args)) {
-        args = {
-                    lead: args[0],
-                }
-    }
-
-    args = applyUrlDefaults(args)
-
-    const parsedArgs = {
-                        lead: typeof args.lead === 'object'
-                ? args.lead.id
-                : args.lead,
-                }
-
-    return evaluate.definition.url
-            .replace('{lead}', parsedArgs.lead.toString())
-            .replace(/\/+$/, '') + queryParams(options)
-}
-
-/**
-* @see \App\Http\Controllers\PlaygroundController::evaluate
- * @see app/Http/Controllers/PlaygroundController.php:176
- * @route '/playground/{lead}/evaluate'
- */
-evaluate.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: evaluate.url(args, options),
-    method: 'post',
-})
-
-    /**
-* @see \App\Http\Controllers\PlaygroundController::evaluate
- * @see app/Http/Controllers/PlaygroundController.php:176
- * @route '/playground/{lead}/evaluate'
- */
-    const evaluateForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: evaluate.url(args, options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\PlaygroundController::evaluate
- * @see app/Http/Controllers/PlaygroundController.php:176
- * @route '/playground/{lead}/evaluate'
- */
-        evaluateForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: evaluate.url(args, options),
-            method: 'post',
-        })
-    
-    evaluate.form = evaluateForm
 /**
 * @see \App\Http\Controllers\PlaygroundController::messages
  * @see app/Http/Controllers/PlaygroundController.php:137
@@ -754,7 +407,7 @@ messages.url = (args: { lead: number | { id: number } } | [lead: number | { id: 
             if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
             args = { lead: args.id }
         }
-    
+
     if (Array.isArray(args)) {
         args = {
                     lead: args[0],
@@ -826,20 +479,367 @@ messages.head = (args: { lead: number | { id: number } } | [lead: number | { id:
                     }),
             method: 'get',
         })
-    
+
     messages.form = messagesForm
+/**
+* @see \App\Http\Controllers\PlaygroundController::generateScenario
+ * @see app/Http/Controllers/PlaygroundController.php:257
+ * @route '/playground/generate-scenario'
+ */
+export const generateScenario = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: generateScenario.url(options),
+    method: 'post',
+})
+
+generateScenario.definition = {
+    methods: ["post"],
+    url: '/playground/generate-scenario',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\PlaygroundController::generateScenario
+ * @see app/Http/Controllers/PlaygroundController.php:257
+ * @route '/playground/generate-scenario'
+ */
+generateScenario.url = (options?: RouteQueryOptions) => {
+    return generateScenario.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\PlaygroundController::generateScenario
+ * @see app/Http/Controllers/PlaygroundController.php:257
+ * @route '/playground/generate-scenario'
+ */
+generateScenario.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: generateScenario.url(options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\PlaygroundController::generateScenario
+ * @see app/Http/Controllers/PlaygroundController.php:257
+ * @route '/playground/generate-scenario'
+ */
+    const generateScenarioForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: generateScenario.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\PlaygroundController::generateScenario
+ * @see app/Http/Controllers/PlaygroundController.php:257
+ * @route '/playground/generate-scenario'
+ */
+        generateScenarioForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: generateScenario.url(options),
+            method: 'post',
+        })
+
+    generateScenario.form = generateScenarioForm
+/**
+* @see \App\Http\Controllers\PlaygroundController::scanBlindspots
+ * @see app/Http/Controllers/PlaygroundController.php:188
+ * @route '/playground/scan-blindspots'
+ */
+export const scanBlindspots = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: scanBlindspots.url(options),
+    method: 'post',
+})
+
+scanBlindspots.definition = {
+    methods: ["post"],
+    url: '/playground/scan-blindspots',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\PlaygroundController::scanBlindspots
+ * @see app/Http/Controllers/PlaygroundController.php:188
+ * @route '/playground/scan-blindspots'
+ */
+scanBlindspots.url = (options?: RouteQueryOptions) => {
+    return scanBlindspots.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\PlaygroundController::scanBlindspots
+ * @see app/Http/Controllers/PlaygroundController.php:188
+ * @route '/playground/scan-blindspots'
+ */
+scanBlindspots.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: scanBlindspots.url(options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\PlaygroundController::scanBlindspots
+ * @see app/Http/Controllers/PlaygroundController.php:188
+ * @route '/playground/scan-blindspots'
+ */
+    const scanBlindspotsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: scanBlindspots.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\PlaygroundController::scanBlindspots
+ * @see app/Http/Controllers/PlaygroundController.php:188
+ * @route '/playground/scan-blindspots'
+ */
+        scanBlindspotsForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: scanBlindspots.url(options),
+            method: 'post',
+        })
+
+    scanBlindspots.form = scanBlindspotsForm
+/**
+* @see \App\Http\Controllers\PlaygroundController::chat
+ * @see app/Http/Controllers/PlaygroundController.php:126
+ * @route '/playground/{lead}/chat'
+ */
+export const chat = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: chat.url(args, options),
+    method: 'post',
+})
+
+chat.definition = {
+    methods: ["post"],
+    url: '/playground/{lead}/chat',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\PlaygroundController::chat
+ * @see app/Http/Controllers/PlaygroundController.php:126
+ * @route '/playground/{lead}/chat'
+ */
+chat.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { lead: args }
+    }
+
+            if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
+            args = { lead: args.id }
+        }
+
+    if (Array.isArray(args)) {
+        args = {
+                    lead: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        lead: typeof args.lead === 'object'
+                ? args.lead.id
+                : args.lead,
+                }
+
+    return chat.definition.url
+            .replace('{lead}', parsedArgs.lead.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\PlaygroundController::chat
+ * @see app/Http/Controllers/PlaygroundController.php:126
+ * @route '/playground/{lead}/chat'
+ */
+chat.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: chat.url(args, options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\PlaygroundController::chat
+ * @see app/Http/Controllers/PlaygroundController.php:126
+ * @route '/playground/{lead}/chat'
+ */
+    const chatForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: chat.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\PlaygroundController::chat
+ * @see app/Http/Controllers/PlaygroundController.php:126
+ * @route '/playground/{lead}/chat'
+ */
+        chatForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: chat.url(args, options),
+            method: 'post',
+        })
+
+    chat.form = chatForm
+/**
+* @see \App\Http\Controllers\PlaygroundController::testerChat
+ * @see app/Http/Controllers/PlaygroundController.php:145
+ * @route '/playground/{lead}/tester-chat'
+ */
+export const testerChat = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: testerChat.url(args, options),
+    method: 'post',
+})
+
+testerChat.definition = {
+    methods: ["post"],
+    url: '/playground/{lead}/tester-chat',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\PlaygroundController::testerChat
+ * @see app/Http/Controllers/PlaygroundController.php:145
+ * @route '/playground/{lead}/tester-chat'
+ */
+testerChat.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { lead: args }
+    }
+
+            if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
+            args = { lead: args.id }
+        }
+
+    if (Array.isArray(args)) {
+        args = {
+                    lead: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        lead: typeof args.lead === 'object'
+                ? args.lead.id
+                : args.lead,
+                }
+
+    return testerChat.definition.url
+            .replace('{lead}', parsedArgs.lead.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\PlaygroundController::testerChat
+ * @see app/Http/Controllers/PlaygroundController.php:145
+ * @route '/playground/{lead}/tester-chat'
+ */
+testerChat.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: testerChat.url(args, options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\PlaygroundController::testerChat
+ * @see app/Http/Controllers/PlaygroundController.php:145
+ * @route '/playground/{lead}/tester-chat'
+ */
+    const testerChatForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: testerChat.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\PlaygroundController::testerChat
+ * @see app/Http/Controllers/PlaygroundController.php:145
+ * @route '/playground/{lead}/tester-chat'
+ */
+        testerChatForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: testerChat.url(args, options),
+            method: 'post',
+        })
+
+    testerChat.form = testerChatForm
+/**
+* @see \App\Http\Controllers\PlaygroundController::evaluate
+ * @see app/Http/Controllers/PlaygroundController.php:176
+ * @route '/playground/{lead}/evaluate'
+ */
+export const evaluate = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: evaluate.url(args, options),
+    method: 'post',
+})
+
+evaluate.definition = {
+    methods: ["post"],
+    url: '/playground/{lead}/evaluate',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\PlaygroundController::evaluate
+ * @see app/Http/Controllers/PlaygroundController.php:176
+ * @route '/playground/{lead}/evaluate'
+ */
+evaluate.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { lead: args }
+    }
+
+            if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
+            args = { lead: args.id }
+        }
+
+    if (Array.isArray(args)) {
+        args = {
+                    lead: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        lead: typeof args.lead === 'object'
+                ? args.lead.id
+                : args.lead,
+                }
+
+    return evaluate.definition.url
+            .replace('{lead}', parsedArgs.lead.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\PlaygroundController::evaluate
+ * @see app/Http/Controllers/PlaygroundController.php:176
+ * @route '/playground/{lead}/evaluate'
+ */
+evaluate.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: evaluate.url(args, options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\PlaygroundController::evaluate
+ * @see app/Http/Controllers/PlaygroundController.php:176
+ * @route '/playground/{lead}/evaluate'
+ */
+    const evaluateForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: evaluate.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\PlaygroundController::evaluate
+ * @see app/Http/Controllers/PlaygroundController.php:176
+ * @route '/playground/{lead}/evaluate'
+ */
+        evaluateForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: evaluate.url(args, options),
+            method: 'post',
+        })
+
+    evaluate.form = evaluateForm
 const playground = {
     index: Object.assign(index, index),
 store: Object.assign(store, store),
-generateScenario: Object.assign(generateScenario, generateScenario),
-scanBlindspots: Object.assign(scanBlindspots, scanBlindspots),
 destroy: Object.assign(destroy, destroy),
 reset: Object.assign(reset, reset),
 updatePrompt: Object.assign(updatePrompt, updatePrompt),
+messages: Object.assign(messages, messages),
+generateScenario: Object.assign(generateScenario, generateScenario),
+scanBlindspots: Object.assign(scanBlindspots, scanBlindspots),
 chat: Object.assign(chat, chat),
 testerChat: Object.assign(testerChat, testerChat),
 evaluate: Object.assign(evaluate, evaluate),
-messages: Object.assign(messages, messages),
 }
 
 export default playground

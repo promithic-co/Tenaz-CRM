@@ -3,6 +3,7 @@
 namespace App\Services\WhatsApp;
 
 use App\Enums\TemplateKind;
+use App\Exceptions\MetaApiException;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use Illuminate\Http\Client\RequestException;
@@ -176,6 +177,10 @@ class MetaTemplateService
         string $language,
         array $components,
     ): array {
+        if ($instance->hasExpiredMetaToken()) {
+            throw new MetaApiException('Meta access token expired. Reconnect the WhatsApp instance before creating templates.');
+        }
+
         $version = config('services.meta.graph_api_version', 'v23.0');
         $url = "https://graph.facebook.com/{$version}/{$instance->meta_waba_id}/message_templates";
 
