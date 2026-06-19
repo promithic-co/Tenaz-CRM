@@ -20,6 +20,7 @@ class WhatsappOutboxMessage extends Model
         'idempotency_key',
         'provider_message_id',
         'attempts',
+        'provider_attempted_at',
         'last_error',
         'scheduled_at',
         'sent_at',
@@ -34,6 +35,7 @@ class WhatsappOutboxMessage extends Model
         return [
             'payload_json' => 'array',
             'scheduled_at' => 'datetime',
+            'provider_attempted_at' => 'datetime',
             'sent_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
@@ -55,6 +57,39 @@ class WhatsappOutboxMessage extends Model
         $this->update([
             'status' => 'sending',
             'attempts' => $this->attempts + 1,
+        ]);
+    }
+
+    /**
+     * Stamp the moment a provider POST is about to be attempted. Set only after
+     * pre-flight succeeds (instance resolved, payload built) so a pre-send failure
+     * never leaves a false in-doubt marker that would block a safe retry.
+     */
+    public function markProviderAttempted(): void
+    {
+        $this->update(['provider_attempted_at' => now()]);
+    }
+
+    /**
+     * Clear the in-doubt marker on a path that PROVES the message was not sent
+     * (provider rejected, or connection refused before any bytes left the client),
+     * so a normal retry may re-send without tripping the in-doubt guard.
+     */
+    public function clearProviderAttempt(): void
+    {
+        $this->update(['provider_attempted_at' => null]);
+    }
+
+    /**
+     * Terminal-but-unconfirmed state: the provider POST may or may not have reached
+     * Meta. We must NOT blindly re-send. The row is resolved later by a webhook status
+     * carrying the opaque key, or by manual/automated reconciliation.
+     */
+    public function markInDoubt(string $error): void
+    {
+        $this->update([
+            'status' => 'in_doubt',
+            'last_error' => $error,
         ]);
     }
 

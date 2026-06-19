@@ -1,10 +1,12 @@
 <?php
 
+use App\Exceptions\MetaAmbiguousSendException;
 use App\Exceptions\MetaApiException;
 use App\Exceptions\MetaInvalidNumberException;
 use App\Exceptions\MetaNoWhatsAppException;
 use App\Exceptions\MetaRateLimitException;
 use App\Services\WhatsApp\Providers\MetaCloudProvider;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -113,6 +115,47 @@ it('unknown error code throws base MetaApiException', function (): void {
 
     expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
         ->toThrow(MetaApiException::class);
+});
+
+// ─── ambiguous-send classification (IDEM-A) ────────────────────────────────────
+
+it('injects biz_opaque_callback_data when an opaque id is provided', function (): void {
+    Http::fake(['graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.test']]], 200)]);
+
+    makeProvider()->sendText('5511999999999', 'Hello', 'opaque-key-123');
+
+    Http::assertSent(fn ($request) => $request['biz_opaque_callback_data'] === 'opaque-key-123');
+});
+
+it('omits biz_opaque_callback_data when no opaque id is provided', function (): void {
+    Http::fake(['graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.test']]], 200)]);
+
+    makeProvider()->sendText('5511999999999', 'Hello');
+
+    Http::assertSent(fn ($request) => ! isset($request['biz_opaque_callback_data']));
+});
+
+it('maps a 5xx response to an ambiguous-send exception (not blind-retryable)', function (): void {
+    Http::fake(['graph.facebook.com/*' => Http::response('upstream error', 503)]);
+
+    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->toThrow(MetaAmbiguousSendException::class);
+});
+
+it('maps a transport timeout to an ambiguous-send exception', function (): void {
+    Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out after 15000 ms'));
+
+    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->toThrow(MetaAmbiguousSendException::class);
+});
+
+it('rethrows a connection-refused failure as retryable (definitely not sent)', function (): void {
+    Http::fake(fn () => throw new ConnectionException('cURL error 7: Failed to connect to graph.facebook.com'));
+
+    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->toThrow(ConnectionException::class)
+        ->and(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->not->toThrow(MetaAmbiguousSendException::class);
 });
 
 // ─── verifyWebhook ────────────────────────────────────────────────────────────

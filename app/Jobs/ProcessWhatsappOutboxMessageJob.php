@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\MetaAmbiguousSendException;
 use App\Models\CampaignMessage;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappOutboxMessage;
@@ -10,6 +11,7 @@ use App\Services\ConversationTimelineService;
 use App\Services\WhatsAppService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -34,12 +36,21 @@ class ProcessWhatsappOutboxMessageJob implements ShouldQueue
     {
         $outbox = WhatsappOutboxMessage::query()->find($this->outboxId);
 
-        if (! $outbox || $outbox->status === 'sent') {
+        if (! $outbox || in_array($outbox->status, ['sent', 'in_doubt'], true)) {
             return;
         }
 
         if ($outbox->scheduled_at && $outbox->scheduled_at->isFuture()) {
             $this->release(now()->diffInSeconds($outbox->scheduled_at));
+
+            return;
+        }
+
+        // Defensive in-doubt guard: a prior attempt already reached the provider POST
+        // stage but never confirmed a send. Re-POSTing risks a duplicate, so we mark the
+        // row in_doubt and let a webhook (or reconciliation) resolve it instead.
+        if ($outbox->provider_attempted_at !== null) {
+            $this->finalizeInDoubt($outbox, 'Re-execution after an unconfirmed provider attempt; not re-sending.');
 
             return;
         }
@@ -54,25 +65,34 @@ class ProcessWhatsappOutboxMessageJob implements ShouldQueue
         try {
             $payload = $outbox->payload_json;
             $instance = $this->resolveInstance($payload, (string) $outbox->tenant_id);
+            $mediaBase64 = ($payload['type'] ?? 'text') === 'media' ? $this->resolveMediaBase64($payload) : null;
+
+            // Pre-flight is complete. Stamp the attempt immediately before the HTTP POST so
+            // that an ambiguous transport failure (timeout/reset/5xx) is never blindly retried.
+            $outbox->markProviderAttempted();
+
             $providerMessageId = match ($payload['type'] ?? 'text') {
                 'media' => $whatsapp->sendMediaViaInstance(
                     instance: $instance,
                     phone: (string) $payload['phone'],
-                    mediaContent: $this->resolveMediaBase64($payload),
+                    mediaContent: (string) $mediaBase64,
                     mimeType: (string) $payload['mime_type'],
                     mediaType: (string) $payload['media_type'],
                     fileName: $payload['file_name'] ?? null,
                     caption: $payload['caption'] ?? null,
+                    opaqueId: $outbox->idempotency_key,
                 ),
                 default => $whatsapp->sendTextViaInstance(
                     instance: $instance,
                     phone: (string) $payload['phone'],
                     text: (string) $payload['text'],
+                    opaqueId: $outbox->idempotency_key,
                 ),
             };
 
             if ($providerMessageId === null || $providerMessageId === '') {
-                throw new \RuntimeException("WhatsApp provider did not confirm delivery for instance {$instance->name}.");
+                // A 2xx with no message id is undecidable — do not retry into a duplicate.
+                throw new MetaAmbiguousSendException("WhatsApp provider returned no message id for instance {$instance->name}.");
             }
 
             $outbox->markSent($providerMessageId);
@@ -98,7 +118,18 @@ class ProcessWhatsappOutboxMessageJob implements ShouldQueue
                     ],
                 );
             }
+        } catch (MetaAmbiguousSendException $e) {
+            // The POST may have reached Meta. Do NOT rethrow (no retry, no duplicate).
+            $this->finalizeInDoubt($outbox, $e->getMessage());
+
+            return;
         } catch (Throwable $e) {
+            // Connection-refused / DNS proves nothing reached Meta — clear the marker so
+            // the retry re-sends. Other unknown errors keep it (possibly-sent → in_doubt).
+            if ($e instanceof ConnectionException) {
+                $outbox->clearProviderAttempt();
+            }
+
             $outbox->markFailed($e->getMessage());
 
             if ($outbox->timelineMessage) {
@@ -127,6 +158,36 @@ class ProcessWhatsappOutboxMessageJob implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    /**
+     * Mark an outbox row as in-doubt: the provider POST may or may not have been
+     * accepted. We stop retrying and leave the row for webhook/reconciliation. The
+     * timeline message is NOT marked failed (it might have been delivered) — it stays
+     * in 'sending' so the UI does not falsely report a failure.
+     */
+    private function finalizeInDoubt(WhatsappOutboxMessage $outbox, string $reason): void
+    {
+        $outbox->markInDoubt($reason);
+
+        if ($outbox->lead) {
+            app(AgentInteractionEventService::class)->recordForLead(
+                interactionId: $outbox->interaction_id ?? app(AgentInteractionEventService::class)->newInteractionId(),
+                lead: $outbox->lead,
+                eventType: 'outbound_in_doubt',
+                eventSource: 'process_whatsapp_outbox_message_job',
+                payload: [
+                    'outbox_id' => $outbox->id,
+                    'reason' => $reason,
+                ],
+                severity: 'error',
+            );
+        }
+
+        Log::warning('whatsapp_outbox.in_doubt', [
+            'outbox_id' => $outbox->id,
+            'reason' => $reason,
+        ]);
     }
 
     /**

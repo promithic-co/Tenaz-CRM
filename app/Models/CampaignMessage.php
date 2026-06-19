@@ -18,6 +18,7 @@ class CampaignMessage extends Model
         'contact_list_entry_id',
         'provider_message_id',
         'status',
+        'provider_attempted_at',
         'error_code',
         'error_subcode',
         'error_message',
@@ -32,6 +33,7 @@ class CampaignMessage extends Model
     {
         return [
             'template_params_resolved' => 'array',
+            'provider_attempted_at' => 'datetime',
             'sent_at' => 'datetime',
             'delivered_at' => 'datetime',
             'read_at' => 'datetime',
@@ -72,10 +74,11 @@ class CampaignMessage extends Model
     private const STATUS_ORDER = [
         'pending' => 0,
         'queued' => 1,
-        'sent' => 2,
-        'delivered' => 3,
-        'read' => 4,
-        'failed' => 5,
+        'in_doubt' => 2,
+        'sent' => 3,
+        'delivered' => 4,
+        'read' => 5,
+        'failed' => 6,
     ];
 
     public function statusOrder(): int
@@ -125,6 +128,39 @@ class CampaignMessage extends Model
             'error_code' => $errorCode,
             'error_message' => $errorMessage,
             'failed_at' => now(),
+        ]);
+    }
+
+    /**
+     * Stamp the moment a provider POST is about to be attempted. Set only after
+     * pre-flight succeeds so a pre-send failure never leaves a false in-doubt marker.
+     */
+    public function markProviderAttempted(): void
+    {
+        $this->update(['provider_attempted_at' => now()]);
+    }
+
+    /**
+     * Clear the in-doubt marker on a path that PROVES the message was not sent
+     * (Meta rejected, or connection refused before any bytes left the client), so a
+     * normal retry/release may re-send without tripping the in-doubt guard.
+     */
+    public function clearProviderAttempt(): void
+    {
+        $this->update(['provider_attempted_at' => null]);
+    }
+
+    /**
+     * Ambiguous send: the provider POST may or may not have reached Meta. Do NOT
+     * blindly re-send. The row carries no wamid (response was lost) and is resolved
+     * later by a webhook status echoing the opaque key, or by reconciliation.
+     */
+    public function markInDoubt(string $errorMessage): void
+    {
+        $this->update([
+            'status' => 'in_doubt',
+            'error_code' => 'IN_DOUBT',
+            'error_message' => $errorMessage,
         ]);
     }
 }

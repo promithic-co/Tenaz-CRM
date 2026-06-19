@@ -6,9 +6,11 @@ use App\Ai\DTOs\MediaContext;
 use App\Contracts\WhatsApp\WhatsAppProviderInterface;
 use App\DTOs\WhatsApp\IncomingMessageDTO;
 use App\Enums\MediaType;
+use App\Exceptions\MetaAmbiguousSendException;
 use App\Exceptions\MetaApiException;
 use App\Exceptions\MetaNoWhatsAppException;
 use App\Exceptions\MetaRateLimitException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -25,17 +27,17 @@ class MetaCloudProvider implements WhatsAppProviderInterface
         private readonly string $graphApiVersion = 'v23.0',
     ) {}
 
-    public function sendText(string $phone, string $text): string
+    public function sendText(string $phone, string $text, ?string $opaqueId = null): string
     {
         return $this->postMessage([
             'messaging_product' => 'whatsapp',
             'to' => $this->normalizePhone($phone),
             'type' => 'text',
             'text' => ['body' => $text],
-        ]);
+        ], $opaqueId);
     }
 
-    public function sendTemplate(string $phone, string $templateName, string $langCode, array $components = []): string
+    public function sendTemplate(string $phone, string $templateName, string $langCode, array $components = [], ?string $opaqueId = null): string
     {
         return $this->postMessage([
             'messaging_product' => 'whatsapp',
@@ -46,10 +48,10 @@ class MetaCloudProvider implements WhatsAppProviderInterface
                 'language' => ['code' => $langCode],
                 'components' => $components,
             ],
-        ]);
+        ], $opaqueId);
     }
 
-    public function sendMedia(string $phone, string $mediaContent, string $mimeType, string $mediaType, ?string $fileName = null, ?string $caption = null): string
+    public function sendMedia(string $phone, string $mediaContent, string $mimeType, string $mediaType, ?string $fileName = null, ?string $caption = null, ?string $opaqueId = null): string
     {
         $metaType = $this->resolveMetaMediaType($mimeType, $mediaType);
         $mediaBlock = [];
@@ -72,7 +74,7 @@ class MetaCloudProvider implements WhatsAppProviderInterface
             'to' => $this->normalizePhone($phone),
             'type' => $metaType,
             $metaType => $mediaBlock,
-        ]);
+        ], $opaqueId);
     }
 
     public function parseWebhook(Request $request): ?IncomingMessageDTO
@@ -276,19 +278,60 @@ class MetaCloudProvider implements WhatsAppProviderInterface
         }
     }
 
-    private function postMessage(array $payload): string
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function postMessage(array $payload, ?string $opaqueId = null): string
     {
         $url = "https://graph.facebook.com/{$this->graphApiVersion}/{$this->phoneNumberId}/messages";
 
-        $response = Http::withToken($this->accessToken)
-            ->timeout(15)
-            ->post($url, $payload);
+        if ($opaqueId !== null && $opaqueId !== '') {
+            $payload['biz_opaque_callback_data'] = $opaqueId;
+        }
+
+        try {
+            $response = Http::withToken($this->accessToken)
+                ->timeout(15)
+                ->post($url, $payload);
+        } catch (ConnectionException $e) {
+            // Transport-level failure. A connect-refused / DNS failure means no bytes
+            // reached Meta (safe to retry). A timeout/reset may have happened AFTER the
+            // request was written, so the message MAY have been accepted — that is
+            // ambiguous and must never be blindly re-sent.
+            if ($this->isDefiniteConnectFailure($e->getMessage())) {
+                throw $e;
+            }
+
+            throw new MetaAmbiguousSendException($e->getMessage(), 0, $e);
+        }
 
         if (! $response->successful()) {
+            // 5xx: the request reached Meta but the outcome is undecidable — treat as
+            // ambiguous rather than retrying into a possible duplicate.
+            if ($response->status() >= 500) {
+                throw new MetaAmbiguousSendException('Meta returned a 5xx response', $response->status());
+            }
+
             $this->handleErrorResponse($response);
         }
 
         return (string) $response->json('messages.0.id', '');
+    }
+
+    /**
+     * True only when the transport error proves the request never left the client
+     * (connection refused, host unresolved). Timeouts are intentionally excluded:
+     * a cURL-28 can fire after the request body was written.
+     */
+    private function isDefiniteConnectFailure(string $message): bool
+    {
+        $message = strtolower($message);
+
+        return str_contains($message, 'could not resolve host')
+            || str_contains($message, 'failed to connect')
+            || str_contains($message, 'connection refused')
+            || str_contains($message, 'curl error 6')
+            || str_contains($message, 'curl error 7');
     }
 
     private function handleErrorResponse(Response $response): void

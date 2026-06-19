@@ -41,7 +41,7 @@ test('delivery event job marks message read and increments counter', function ()
 test('delivery event job ignores event without message id match', function () {
     $job = new ProcessCampaignDeliveryEventJob('non-existent-provider-id', 'delivered');
 
-    expect(fn () => $job->handle())->not->toThrow(\Throwable::class);
+    expect(fn () => $job->handle())->not->toThrow(Throwable::class);
 });
 
 test('delivery event job skips backwards status transitions', function () {
@@ -68,4 +68,40 @@ test('delivery event job dispatched to queue', function () {
     Queue::assertPushed(ProcessCampaignDeliveryEventJob::class, fn ($job) => $job->providerMessageId === 'provider-queued-001'
         && $job->eventType === 'delivered'
     );
+});
+
+test('duplicate delivered events increment the counter exactly once', function () {
+    $campaign = Campaign::factory()->sending()->create(['total_sent' => 1]);
+
+    $message = CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'provider_message_id' => 'provider-dup-001',
+    ]);
+
+    (new ProcessCampaignDeliveryEventJob('provider-dup-001', 'delivered'))->handle();
+    (new ProcessCampaignDeliveryEventJob('provider-dup-001', 'delivered'))->handle();
+
+    expect($message->fresh()->status)->toBe('delivered')
+        ->and($campaign->fresh()->total_delivered)->toBe(1);
+});
+
+test('an in_doubt message is resolved and the send is counted when a webhook status arrives', function () {
+    $campaign = Campaign::factory()->sending()->create(['total_sent' => 0]);
+
+    // Ambiguous send: no wamid stored, status in_doubt.
+    $message = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'in_doubt',
+        'provider_message_id' => null,
+        'provider_attempted_at' => now(),
+    ]);
+
+    // Webhook echoes biz_opaque_callback_data = the campaign_message id.
+    (new ProcessCampaignDeliveryEventJob('wamid.resolved.001', 'delivered', [], (string) $message->id))->handle();
+
+    $fresh = $message->fresh();
+    expect($fresh->status)->toBe('delivered')
+        ->and($fresh->provider_message_id)->toBe('wamid.resolved.001')
+        ->and($campaign->fresh()->total_sent)->toBe(1)
+        ->and($campaign->fresh()->total_delivered)->toBe(1);
 });

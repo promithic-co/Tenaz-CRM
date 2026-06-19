@@ -16,18 +16,18 @@ class WhatsAppService
     /**
      * Provider-agnostic text send via WhatsappInstance model.
      */
-    public function sendTextViaInstance(WhatsappInstance $instance, string $phone, string $text): string
+    public function sendTextViaInstance(WhatsappInstance $instance, string $phone, string $text, ?string $opaqueId = null): string
     {
         $provider = $this->factory->makeProvider($instance);
 
-        return $provider->sendText($phone, $text);
+        return $provider->sendText($phone, $text, $opaqueId);
     }
 
-    public function sendTemplateViaInstance(WhatsappInstance $instance, string $phone, string $templateName, string $langCode = 'pt_BR', array $components = []): string
+    public function sendTemplateViaInstance(WhatsappInstance $instance, string $phone, string $templateName, string $langCode = 'pt_BR', array $components = [], ?string $opaqueId = null): string
     {
         $provider = $this->factory->makeProvider($instance);
 
-        return $provider->sendTemplate($phone, $templateName, $langCode, $components);
+        return $provider->sendTemplate($phone, $templateName, $langCode, $components, $opaqueId);
     }
 
     /**
@@ -42,10 +42,11 @@ class WhatsAppService
         string $mediaType,
         ?string $fileName = null,
         ?string $caption = null,
+        ?string $opaqueId = null,
     ): string {
         $provider = $this->factory->makeProvider($instance);
 
-        return $provider->sendMedia($phone, $mediaContent, $mimeType, $mediaType, $fileName, $caption);
+        return $provider->sendMedia($phone, $mediaContent, $mimeType, $mediaType, $fileName, $caption, $opaqueId);
     }
 
     /**

@@ -186,10 +186,30 @@ class MetaWebhookController extends Controller
             $wamid = $status['id'] ?? null;
             $eventType = $status['status'] ?? null;
             $errors = $status['errors'] ?? [];
+            $opaqueId = $status['biz_opaque_callback_data'] ?? null;
 
-            if ($wamid && $eventType) {
-                ProcessCampaignDeliveryEventJob::dispatch((string) $wamid, (string) $eventType, is_array($errors) ? $errors : []);
+            if (! $wamid || ! $eventType) {
+                continue;
             }
+
+            // Defense-in-depth dedupe: Meta retries and can deliver duplicate status
+            // events. Drop an obvious replay before it reaches the queue. The job's
+            // row-locked transition is the authoritative idempotency guarantee.
+            if (! Cache::add("wamid_status:{$wamid}:{$eventType}", 1, now()->addDay())) {
+                Log::info('meta.webhook_status_replay_skipped', [
+                    'provider_message_id' => $wamid,
+                    'event_type' => $eventType,
+                ]);
+
+                continue;
+            }
+
+            ProcessCampaignDeliveryEventJob::dispatch(
+                (string) $wamid,
+                (string) $eventType,
+                is_array($errors) ? $errors : [],
+                is_scalar($opaqueId) ? (string) $opaqueId : null,
+            );
         }
     }
 

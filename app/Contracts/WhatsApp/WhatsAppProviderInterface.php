@@ -8,11 +8,11 @@ use Illuminate\Http\Request;
 
 interface WhatsAppProviderInterface
 {
-    public function sendText(string $phone, string $text): string;
+    public function sendText(string $phone, string $text, ?string $opaqueId = null): string;
 
-    public function sendTemplate(string $phone, string $templateName, string $langCode, array $components = []): string;
+    public function sendTemplate(string $phone, string $templateName, string $langCode, array $components = [], ?string $opaqueId = null): string;
 
-    public function sendMedia(string $phone, string $mediaContent, string $mimeType, string $mediaType, ?string $fileName = null, ?string $caption = null): string;
+    public function sendMedia(string $phone, string $mediaContent, string $mimeType, string $mediaType, ?string $fileName = null, ?string $caption = null, ?string $opaqueId = null): string;
 
     public function parseWebhook(Request $request): ?IncomingMessageDTO;
 

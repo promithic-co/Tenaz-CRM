@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\CampaignProgressUpdated;
+use App\Exceptions\MetaAmbiguousSendException;
 use App\Exceptions\MetaInvalidNumberException;
 use App\Exceptions\MetaNoWhatsAppException;
 use App\Exceptions\MetaRateLimitException;
@@ -18,6 +19,7 @@ use App\Services\WhatsApp\PhoneNumberValidator;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
@@ -64,6 +66,14 @@ class SendCampaignMessageJob implements ShouldQueue
         }
 
         if (! in_array($message->status, ['pending', 'queued'])) {
+            return;
+        }
+
+        // Defensive in-doubt guard: a prior attempt already reached the provider POST
+        // stage without confirming. Re-POSTing risks a duplicate template send.
+        if ($message->provider_attempted_at !== null) {
+            $message->markInDoubt('Re-execution after an unconfirmed provider attempt; not re-sending.');
+
             return;
         }
 
@@ -189,12 +199,21 @@ class SendCampaignMessageJob implements ShouldQueue
         try {
             $provider = $factory->makeProvider($instance);
 
+            // Stamp immediately before the POST so an ambiguous failure is never retried.
+            $message->markProviderAttempted();
+
             $providerMessageId = $provider->sendTemplate(
                 phone: $destination,
                 templateName: (string) ($template->meta_template_name ?? $template->name),
                 langCode: (string) ($template->language ?? 'pt_BR'),
                 components: $this->buildMetaComponents($resolvedParams, $template),
+                opaqueId: (string) $message->id,
             );
+
+            if ($providerMessageId === null || $providerMessageId === '') {
+                // 2xx with no message id is undecidable — do not retry into a duplicate.
+                throw new MetaAmbiguousSendException('Meta returned no message id for the template send.');
+            }
 
             $message->markSent($providerMessageId);
             $campaign->incrementCounter('total_sent');
@@ -246,7 +265,10 @@ class SendCampaignMessageJob implements ShouldQueue
             );
 
             // Reset to pending so the job's status check on re-execution lets it through.
+            // Meta rejected the send (nothing delivered) — clear the in-doubt marker so the
+            // released retry is allowed to actually re-send.
             $message->update(['status' => 'pending']);
+            $message->clearProviderAttempt();
             $this->release($delay + random_int(0, 60));
 
             return;
@@ -275,7 +297,35 @@ class SendCampaignMessageJob implements ShouldQueue
             );
 
             return;
+        } catch (MetaAmbiguousSendException $e) {
+            // Undecidable send (timeout/reset/5xx/empty id). The message MAY have reached
+            // the contact, so we neither re-send nor count it as failed. The row is left
+            // in_doubt for a webhook (echoing the opaque id) or reconciliation to resolve.
+            $message->markInDoubt($e->getMessage());
+
+            $interactionEvents->record(
+                interactionId: $interactionId,
+                tenantId: $campaign->tenant_id,
+                eventType: 'outbound_in_doubt',
+                eventSource: 'send_campaign_message_job',
+                payload: [
+                    'campaign_id' => $campaign->id,
+                    'campaign_message_id' => $message->id,
+                    'error' => $e->getMessage(),
+                    'destination' => $destination,
+                ],
+                severity: 'error',
+            );
+
+            return;
         } catch (Throwable $e) {
+            // A connection-refused / DNS failure proves nothing reached Meta — clear the
+            // in-doubt marker so the retry re-sends. Any other unknown error keeps the
+            // marker (possibly-sent), so a retry resolves to in_doubt rather than duplicating.
+            if ($e instanceof ConnectionException) {
+                $message->clearProviderAttempt();
+            }
+
             // Transient/unknown error: rethrow WITHOUT finalizing so the queue retries
             // (tries=3, backoff). The message stays 'queued', and only the framework's
             // failed() callback marks it failed + counts it once after retries exhaust.
