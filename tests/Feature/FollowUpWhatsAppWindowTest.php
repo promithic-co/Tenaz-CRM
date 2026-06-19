@@ -186,10 +186,12 @@ test('outbox is not marked sent when provider returns no message confirmation', 
         $mock->shouldReceive('sendTextViaInstance')->once()->andReturn('');
     });
 
-    expect(fn () => app()->call([new ProcessWhatsappOutboxMessageJob($outbox->id), 'handle']))
-        ->toThrow(RuntimeException::class);
+    // A 2xx with no message id is an undecidable send: the message MAY have reached
+    // Meta, so we must NOT blindly retry (no duplicate). The row is parked in_doubt for
+    // a webhook / reconciliation to resolve, and never marked sent.
+    app()->call([new ProcessWhatsappOutboxMessageJob($outbox->id), 'handle']);
 
-    expect($outbox->fresh()->status)->toBe('failed')
+    expect($outbox->fresh()->status)->toBe('in_doubt')
         ->and($outbox->fresh()->provider_message_id)->toBeNull();
 });
 
