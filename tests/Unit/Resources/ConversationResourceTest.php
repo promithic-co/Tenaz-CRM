@@ -22,6 +22,7 @@ function legacyLeadData(Lead $lead, array $availableTransitions, string $effecti
     return [
         'id' => $lead->id,
         'agent_id' => $lead->agent_id,
+        'contact_id' => $lead->contact_id,
         'nome' => $lead->nome ?? $lead->whatsapp,
         'whatsapp' => $lead->whatsapp,
         'cpf' => $lead->cpf,
