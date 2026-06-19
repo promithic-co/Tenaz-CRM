@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\WhatsappInstance;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Illuminate\Support\Facades\Log;
@@ -47,36 +46,6 @@ class WhatsAppService
         $provider = $this->factory->makeProvider($instance);
 
         return $provider->sendMedia($phone, $mediaContent, $mimeType, $mediaType, $fileName, $caption, $opaqueId);
-    }
-
-    /**
-     * Split messages and send with delay via instance model.
-     */
-    public function sendSplitMessagesViaInstance(WhatsappInstance $instance, string $phone, string $text): void
-    {
-        $parts = array_filter(
-            array_map('trim', explode("\n\n", $text)),
-            fn ($p) => strlen($p) > 0
-        );
-
-        if (empty($parts)) {
-            return;
-        }
-
-        if (count($parts) === 1) {
-            $this->sendTextViaInstance($instance, $phone, reset($parts));
-
-            return;
-        }
-
-        foreach (array_values($parts) as $index => $part) {
-            SendWhatsAppMessageJob::dispatch(
-                instance: $instance->name,
-                number: $phone,
-                text: trim($part),
-                instanceId: $instance->id,
-            )->delay(now()->addSeconds($index * 2));
-        }
     }
 
     /**
@@ -131,40 +100,6 @@ class WhatsAppService
         }
 
         return $this->sendMediaLegacy($instance, $number, $base64, $mimeType, $mediaType, $fileName, $caption);
-    }
-
-    /**
-     * Legacy: keep existing string-based signature working.
-     */
-    public function sendSplitMessages(string $instance, string $number, string $text): void
-    {
-        $instanceModel = WhatsappInstance::where('name', $instance)->first();
-
-        if ($instanceModel) {
-            $this->sendSplitMessagesViaInstance($instanceModel, $number, $text);
-
-            return;
-        }
-
-        $parts = array_filter(
-            array_map('trim', explode("\n\n", $text)),
-            fn ($p) => strlen($p) > 0
-        );
-
-        if (empty($parts)) {
-            return;
-        }
-
-        if (count($parts) === 1) {
-            $this->sendText($instance, $number, reset($parts));
-
-            return;
-        }
-
-        foreach (array_values($parts) as $index => $part) {
-            SendWhatsAppMessageJob::dispatch($instance, $number, trim($part))
-                ->delay(now()->addSeconds($index * 2));
-        }
     }
 
     private function sendTextLegacy(string $instance, string $number, string $text): ?string
