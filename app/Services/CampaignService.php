@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\DispatchCampaignJob;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CampaignService
@@ -14,22 +15,31 @@ class CampaignService
      */
     public function start(Campaign $campaign): void
     {
-        if (! $campaign->canStart()) {
-            throw new \RuntimeException("Campanha '{$campaign->name}' não pode ser iniciada (status: {$campaign->status}).");
-        }
-
-        if (! $campaign->whatsappTemplate?->isApproved()) {
-            throw new \RuntimeException('O template da campanha não está aprovado.');
-        }
-
         $totalRecipients = $campaign->contactList->entries()->count();
 
-        $campaign->update([
-            'status' => 'sending',
-            'started_at' => now(),
-            'paused_at' => null,
-            'total_recipients' => $totalRecipients,
-        ]);
+        // Concurrency guard (DB-5): lock the row, re-evaluate the guard against the locked
+        // state, then transition — so a control action racing the dispatcher or another
+        // control action cannot both pass canStart() and clobber each other (last-writer-wins).
+        DB::transaction(function () use ($campaign, $totalRecipients): void {
+            $locked = Campaign::query()->whereKey($campaign->getKey())->lockForUpdate()->first();
+
+            if (! $locked || ! $locked->canStart()) {
+                throw new \RuntimeException("Campanha '{$campaign->name}' não pode ser iniciada (status: {$campaign->status}).");
+            }
+
+            if (! $locked->whatsappTemplate?->isApproved()) {
+                throw new \RuntimeException('O template da campanha não está aprovado.');
+            }
+
+            $locked->update([
+                'status' => 'sending',
+                'started_at' => now(),
+                'paused_at' => null,
+                'total_recipients' => $totalRecipients,
+            ]);
+
+            $campaign->setRawAttributes($locked->getAttributes());
+        });
 
         Log::info('CampaignService.start', ['campaign_id' => $campaign->id, 'recipients' => $totalRecipients]);
 
@@ -41,14 +51,20 @@ class CampaignService
      */
     public function pause(Campaign $campaign): void
     {
-        if (! $campaign->canPause()) {
-            throw new \RuntimeException("Campanha '{$campaign->name}' não pode ser pausada (status: {$campaign->status}).");
-        }
+        DB::transaction(function () use ($campaign): void {
+            $locked = Campaign::query()->whereKey($campaign->getKey())->lockForUpdate()->first();
 
-        $campaign->update([
-            'status' => 'paused',
-            'paused_at' => now(),
-        ]);
+            if (! $locked || ! $locked->canPause()) {
+                throw new \RuntimeException("Campanha '{$campaign->name}' não pode ser pausada (status: {$campaign->status}).");
+            }
+
+            $locked->update([
+                'status' => 'paused',
+                'paused_at' => now(),
+            ]);
+
+            $campaign->setRawAttributes($locked->getAttributes());
+        });
 
         Log::info('CampaignService.pause', ['campaign_id' => $campaign->id]);
     }
@@ -58,14 +74,20 @@ class CampaignService
      */
     public function resume(Campaign $campaign): void
     {
-        if (! $campaign->canResume()) {
-            throw new \RuntimeException("Campanha '{$campaign->name}' não pode ser retomada (status: {$campaign->status}).");
-        }
+        DB::transaction(function () use ($campaign): void {
+            $locked = Campaign::query()->whereKey($campaign->getKey())->lockForUpdate()->first();
 
-        $campaign->update([
-            'status' => 'sending',
-            'paused_at' => null,
-        ]);
+            if (! $locked || ! $locked->canResume()) {
+                throw new \RuntimeException("Campanha '{$campaign->name}' não pode ser retomada (status: {$campaign->status}).");
+            }
+
+            $locked->update([
+                'status' => 'sending',
+                'paused_at' => null,
+            ]);
+
+            $campaign->setRawAttributes($locked->getAttributes());
+        });
 
         Log::info('CampaignService.resume', ['campaign_id' => $campaign->id]);
 
@@ -77,14 +99,20 @@ class CampaignService
      */
     public function cancel(Campaign $campaign): void
     {
-        if (! in_array($campaign->status, ['sending', 'paused'])) {
-            throw new \RuntimeException("Campanha '{$campaign->name}' não pode ser cancelada (status: {$campaign->status}).");
-        }
+        DB::transaction(function () use ($campaign): void {
+            $locked = Campaign::query()->whereKey($campaign->getKey())->lockForUpdate()->first();
 
-        $campaign->update([
-            'status' => 'failed',
-            'failure_reason' => 'Cancelada manualmente',
-        ]);
+            if (! $locked || ! in_array($locked->status, ['sending', 'paused'], true)) {
+                throw new \RuntimeException("Campanha '{$campaign->name}' não pode ser cancelada (status: {$campaign->status}).");
+            }
+
+            $locked->update([
+                'status' => 'failed',
+                'failure_reason' => 'Cancelada manualmente',
+            ]);
+
+            $campaign->setRawAttributes($locked->getAttributes());
+        });
 
         Log::info('CampaignService.cancel', ['campaign_id' => $campaign->id]);
     }
@@ -98,33 +126,40 @@ class CampaignService
      */
     public function checkAndAutoPause(Campaign $campaign): bool
     {
-        $campaign->refresh();
+        // Concurrency guard (DB-5): evaluate + pause against a locked row so the auto-pause
+        // safety control cannot be clobbered by a racing resume (which would let a campaign
+        // keep sending past its failure threshold and keep burning Meta reputation).
+        return DB::transaction(function () use ($campaign): bool {
+            $locked = Campaign::query()->whereKey($campaign->getKey())->lockForUpdate()->first();
 
-        if (! $campaign->isSending()) {
+            if (! $locked || ! $locked->isSending()) {
+                return false;
+            }
+
+            // Check if we have enough sent messages to evaluate threshold
+            if ($locked->total_sent < 10) {
+                return false;
+            }
+
+            if ($locked->failureRate() > $locked->error_threshold_percent) {
+                $locked->update([
+                    'status' => 'paused',
+                    'paused_at' => now(),
+                    'failure_reason' => "Taxa de falha ({$locked->failureRate()}%) excedeu o limite ({$locked->error_threshold_percent}%).",
+                ]);
+
+                Log::warning('CampaignService.auto_pause_threshold', [
+                    'campaign_id' => $locked->id,
+                    'failure_rate' => $locked->failureRate(),
+                ]);
+
+                $campaign->setRawAttributes($locked->getAttributes());
+
+                return true;
+            }
+
             return false;
-        }
-
-        // Check if we have enough sent messages to evaluate threshold
-        if ($campaign->total_sent < 10) {
-            return false;
-        }
-
-        if ($campaign->failureRate() > $campaign->error_threshold_percent) {
-            $campaign->update([
-                'status' => 'paused',
-                'paused_at' => now(),
-                'failure_reason' => "Taxa de falha ({$campaign->failureRate()}%) excedeu o limite ({$campaign->error_threshold_percent}%).",
-            ]);
-
-            Log::warning('CampaignService.auto_pause_threshold', [
-                'campaign_id' => $campaign->id,
-                'failure_rate' => $campaign->failureRate(),
-            ]);
-
-            return true;
-        }
-
-        return false;
+        });
     }
 
     /**
