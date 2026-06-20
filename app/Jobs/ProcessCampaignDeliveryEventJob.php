@@ -7,6 +7,7 @@ use App\Models\CampaignMessage;
 use App\Models\WhatsappOutboxMessage;
 use App\Services\ConversationTimelineService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +28,8 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
         public readonly string $eventType,
         public readonly array $errors = [],
         public readonly ?string $opaqueId = null,
+        public readonly ?int $whatsappInstanceId = null,
+        public readonly ?string $tenantId = null,
     ) {
         $this->onQueue('campaigns');
     }
@@ -103,16 +106,18 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
      */
     private function resolveMessageId(): ?int
     {
-        $id = CampaignMessage::query()
-            ->where('provider_message_id', $this->providerMessageId)
-            ->value('id');
+        $id = $this->scopeToTenant(
+            CampaignMessage::query()->where('provider_message_id', $this->providerMessageId)
+        )->value('id');
 
         if ($id !== null) {
             return (int) $id;
         }
 
         if ($this->opaqueId !== null && $this->opaqueId !== '' && ctype_digit($this->opaqueId)) {
-            $candidate = CampaignMessage::query()->whereKey((int) $this->opaqueId)->first(['id', 'status']);
+            $candidate = $this->scopeToTenant(
+                CampaignMessage::query()->whereKey((int) $this->opaqueId)
+            )->first(['id', 'status']);
 
             if ($candidate && $candidate->status === 'in_doubt') {
                 return (int) $candidate->id;
@@ -120,6 +125,24 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
         }
 
         return null;
+    }
+
+    /**
+     * Defense-in-depth tenant binding (TEN-2): when the webhook resolved an owning
+     * instance/tenant, constrain CampaignMessage lookups to that tenant so a status
+     * event for instance A can never mutate tenant B's row if a wamid/opaque id
+     * collides. Null tenant (legacy/untenanted dispatch) preserves prior behavior.
+     *
+     * @param  Builder<CampaignMessage>  $query
+     * @return Builder<CampaignMessage>
+     */
+    private function scopeToTenant(Builder $query): Builder
+    {
+        if ($this->tenantId !== null) {
+            $query->whereHas('campaign', fn ($q) => $q->where('tenant_id', $this->tenantId));
+        }
+
+        return $query;
     }
 
     /**
@@ -150,6 +173,7 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
 
         $outbox = WhatsappOutboxMessage::query()
             ->where('provider_message_id', $this->providerMessageId)
+            ->when($this->tenantId !== null, fn ($q) => $q->where('tenant_id', $this->tenantId))
             ->first();
 
         // Fall back to the opaque key (idempotency_key) for an in-doubt outbox whose
@@ -158,6 +182,7 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
             $outbox = WhatsappOutboxMessage::query()
                 ->where('idempotency_key', $this->opaqueId)
                 ->where('status', 'in_doubt')
+                ->when($this->tenantId !== null, fn ($q) => $q->where('tenant_id', $this->tenantId))
                 ->first();
         }
 

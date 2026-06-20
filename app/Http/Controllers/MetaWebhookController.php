@@ -109,7 +109,7 @@ class MetaWebhookController extends Controller
 
         $statuses = $value['statuses'] ?? [];
         if (is_array($statuses) && $statuses !== []) {
-            $this->handleStatuses($statuses);
+            $this->handleStatuses($statuses, $instance);
         }
 
         $messages = $value['messages'] ?? [];
@@ -180,7 +180,7 @@ class MetaWebhookController extends Controller
     /**
      * @param  array<int, array<string, mixed>>  $statuses
      */
-    private function handleStatuses(array $statuses): void
+    private function handleStatuses(array $statuses, WhatsappInstance $instance): void
     {
         foreach ($statuses as $status) {
             $wamid = $status['id'] ?? null;
@@ -209,6 +209,8 @@ class MetaWebhookController extends Controller
                 (string) $eventType,
                 is_array($errors) ? $errors : [],
                 is_scalar($opaqueId) ? (string) $opaqueId : null,
+                $instance->id,
+                (string) $instance->tenant_id,
             );
         }
     }
