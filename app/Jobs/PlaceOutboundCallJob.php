@@ -5,8 +5,10 @@ namespace App\Jobs;
 use App\Models\VoiceCampaignCall;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use Twilio\Rest\Client;
 
 class PlaceOutboundCallJob implements ShouldQueue
 {
@@ -42,7 +44,27 @@ class PlaceOutboundCallJob implements ShouldQueue
             return;
         }
 
-        $client = new \Twilio\Rest\Client(
+        // Idempotency: never place the same call twice. A persisted call_sid means a prior
+        // attempt already succeeded; the cache claim covers the lost-response window where
+        // tries=3 would re-dial (and re-bill PSTN minutes) after the Twilio POST reached Twilio.
+        if ($call->call_sid !== null) {
+            Log::info('ivr.call_already_placed', [
+                'call_id' => $call->id,
+                'call_sid' => $call->call_sid,
+            ]);
+
+            return;
+        }
+
+        if (! Cache::add("voice_call_place:{$call->id}", 1, now()->addMinutes(10))) {
+            Log::info('ivr.call_place_already_claimed', [
+                'call_id' => $call->id,
+            ]);
+
+            return;
+        }
+
+        $client = new Client(
             config('services.twilio.sid'),
             config('services.twilio.token')
         );
