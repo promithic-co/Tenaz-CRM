@@ -121,6 +121,19 @@ class SendUraTemplateJob implements ShouldQueue
 
         $components = $this->buildMetaComponents($template->variables_count);
 
+        // Per-send idempotency claim (mirrors ProcessLeadFollowUpJob). tries=3 + a lost Meta
+        // response would otherwise re-POST the template on retry, double-messaging the lead.
+        $sendClaimKey = "ura_template_send:{$this->uraApiKeyId}:{$normalizedPhone}:".md5(serialize($this->variables));
+        if (! Cache::add($sendClaimKey, 1, now()->addMinutes(10))) {
+            Log::info('ura.trigger.send_already_claimed', [
+                'interaction_id' => $interactionId,
+                'ura_api_key_id' => $this->uraApiKeyId,
+                'phone' => $normalizedPhone,
+            ]);
+
+            return;
+        }
+
         $whatsapp->sendTemplateViaInstance(
             $whatsappInstance,
             $normalizedPhone,

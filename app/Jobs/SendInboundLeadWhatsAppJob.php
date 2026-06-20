@@ -107,6 +107,19 @@ class SendInboundLeadWhatsAppJob implements ShouldQueue
             return;
         }
 
+        // Per-send idempotency claim (mirrors ProcessLeadFollowUpJob). tries=3 + a lost Meta
+        // response would otherwise re-POST the template on retry, double-messaging the lead.
+        $sendClaimKey = "ura_inbound_send:{$this->voiceInstanceId}:{$normalizedPhone}";
+        if (! Cache::add($sendClaimKey, 1, now()->addMinutes(10))) {
+            Log::info('ura.inbound_whatsapp_send_already_claimed', [
+                'interaction_id' => $interactionId,
+                'voice_instance_id' => $this->voiceInstanceId,
+                'phone' => $normalizedPhone,
+            ]);
+
+            return;
+        }
+
         $whatsapp->sendTemplateViaInstance(
             $whatsappInstance,
             $normalizedPhone,

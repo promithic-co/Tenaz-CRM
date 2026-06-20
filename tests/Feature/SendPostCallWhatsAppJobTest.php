@@ -68,6 +68,16 @@ test('new contact: lead created and whatsapp template sent', function () {
     expect($lead->modo)->toBe('receptivo');
 });
 
+test('retry does not re-send the template (idempotency claim)', function () {
+    $this->whatsappService->shouldReceive('sendTemplateViaInstance')->once();
+
+    [$call] = makeCallWithMetaTemplate();
+
+    $job = new SendPostCallWhatsAppJob($call->id);
+    $job->handle($this->whatsappService);
+    $job->handle($this->whatsappService);
+});
+
 test('existing lead: reused, no duplicate, template sent', function () {
     $this->whatsappService->shouldReceive('sendTemplateViaInstance')->once();
 
@@ -88,7 +98,7 @@ test('existing lead: reused, no duplicate, template sent', function () {
 
 test('voice instance without whatsapp instance: job aborts silently', function () {
     $this->whatsappService->shouldNotReceive('sendTemplateViaInstance');
-    Log::shouldReceive('warning')->once()->with('ivr.no_whatsapp_instance', \Mockery::any());
+    Log::shouldReceive('warning')->once()->with('ivr.no_whatsapp_instance', Mockery::any());
 
     $user = userWithTenant();
     $tenant = $user->tenants()->first();

@@ -77,6 +77,18 @@ class SendPostCallWhatsAppJob implements ShouldQueue
             return;
         }
 
+        // Per-send idempotency claim (mirrors ProcessLeadFollowUpJob). tries=3 + a lost Meta
+        // response would otherwise re-POST the template on retry, double-messaging the lead.
+        $sendClaimKey = "postcall_send:{$this->voiceCampaignCallId}";
+        if (! Cache::add($sendClaimKey, 1, now()->addMinutes(10))) {
+            Log::info('ivr.whatsapp_send_already_claimed', [
+                'call_id' => $this->voiceCampaignCallId,
+                'phone' => $normalizedPhone,
+            ]);
+
+            return;
+        }
+
         $whatsapp->sendTemplateViaInstance(
             $whatsappInstance,
             $normalizedPhone,
