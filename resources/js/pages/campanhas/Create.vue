@@ -13,7 +13,7 @@ type WhatsappInstance = {
     id: number;
     name: string;
     display_name: string | null;
-    provider: string;
+    provider: 'meta_cloud';
 };
 
 type ContactList = {
@@ -74,9 +74,7 @@ const templateKindForProvider = computed((): string | null => {
     if (selectedInstanceProvider.value === 'meta_cloud') {
         return 'meta_hsm';
     }
-    if (selectedInstanceProvider.value === 'evolution') {
-        return 'evolution_preset';
-    }
+
     return null;
 });
 
@@ -356,9 +354,6 @@ function previewBody(body: string): string {
 // ─── Template label ───────────────────────────────────────────────────────────
 
 function templateLabel(tmpl: WhatsappTemplate): string {
-    if (tmpl.kind === 'evolution_preset' && tmpl.element_name) {
-        return `${tmpl.name} (${tmpl.element_name})`;
-    }
     return tmpl.name;
 }
 
@@ -491,11 +486,7 @@ function submitForm(): void {
                                     :value="instance.id"
                                 >
                                     {{ instance.display_name ?? instance.name }}
-                                    ({{
-                                        instance.provider === 'meta_cloud'
-                                            ? 'Meta Cloud'
-                                            : 'Evolution'
-                                    }})
+                                    (Meta Cloud)
                                 </option>
                             </select>
                             <p
@@ -520,12 +511,7 @@ function submitForm(): void {
                                 v-if="templateKindForProvider"
                                 class="mt-1 text-xs text-muted-foreground"
                             >
-                                Templates disponíveis:
-                                {{
-                                    templateKindForProvider === 'meta_hsm'
-                                        ? 'Meta HSM'
-                                        : 'Evolution Preset'
-                                }}
+                                Templates disponíveis: Meta HSM
                             </p>
                         </div>
 
@@ -608,11 +594,7 @@ function submitForm(): void {
                             class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-900/50 dark:bg-blue-900/20 dark:text-blue-400"
                         >
                             Mostrando templates
-                            <strong>{{
-                                templateKindForProvider === 'meta_hsm'
-                                    ? 'Meta HSM'
-                                    : 'Evolution Preset'
-                            }}</strong>
+                            <strong>Meta HSM</strong>
                             compatíveis com a instância selecionada.
                         </div>
 

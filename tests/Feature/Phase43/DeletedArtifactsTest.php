@@ -94,3 +94,31 @@ it('test_no_gupshup_string_in_app_dir', function () {
 
     expect($found)->toBe([], 'Found Gupshup/Waha references in: '.implode(', ', $found));
 });
+
+it('keeps active whatsapp onboarding and ui free from removed provider references', function () {
+    $files = [
+        base_path('.env.example'),
+        base_path('config/agent_templates.php'),
+        base_path('database/factories/WhatsappTemplateFactory.php'),
+        base_path('database/seeders/ConversationSimulationSeeder.php'),
+        base_path('deploy.sh'),
+        base_path('docker-stack.yml'),
+        resource_path('js/pages/agentes/Create.vue'),
+        resource_path('js/pages/campanhas/Create.vue'),
+        resource_path('js/pages/whatsapp/Index.vue'),
+        resource_path('js/pages/whatsapp/InstanceCard.vue'),
+        resource_path('js/pages/whatsapp/InstanceDetailsDrawer.vue'),
+    ];
+
+    $found = [];
+
+    foreach ($files as $file) {
+        $content = file_get_contents($file);
+
+        if (preg_match('/evolution(?!_instance)|gupshup|waha/i', $content)) {
+            $found[] = str_replace(base_path('/'), '', $file);
+        }
+    }
+
+    expect($found)->toBe([], 'Found removed WhatsApp provider references in: '.implode(', ', $found));
+});

@@ -79,7 +79,7 @@ class WhatsAppInstanceController extends Controller
             // Stats
             'leads_count' => $i->agent_id ? (int) ($leadCounts[$i->agent_id] ?? 0) : 0,
 
-            // Proxy (Evolution)
+            // Legacy proxy metadata
             'has_proxy' => $i->hasProxy(),
             'proxy_host' => $i->proxy_host,
             'proxy_port' => $i->proxy_port,

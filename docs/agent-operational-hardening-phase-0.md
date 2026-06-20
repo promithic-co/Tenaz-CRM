@@ -13,7 +13,7 @@ A prioridade tecnica do Release 1 deve ser criar uma trilha unica para cada turn
 | Fluxo | Comeco | Processador/job | Onde salva mensagem/estado | Onde salva custo | Onde falha | Onde aparece hoje |
 | --- | --- | --- | --- | --- | --- | --- |
 | Lead entra pelo WhatsApp e recebe resposta IA | `WhatsAppWebhookController::handle` ou `MetaWebhookController::handle` | `ProcessIncomingWhatsAppMessageJob` na fila `messages` | `leads`, `agent_conversations`, `agent_conversation_messages`; broadcast `NewConversationMessage` | `AuditLogMiddleware` dispara `LogAiUsageJob` para `ai_usage_dailies` | logs `whatsapp.*`, `meta.*`, `aria.agent_error`, `failed_interactions` via `InteractionRecoveryService` | `/conversas`, dashboard e laboratorio de falhas/uso IA |
-| Lead vem de campanha de template e responde | Webhook Meta/Evolution recebe inbound do mesmo telefone | `ProcessIncomingWhatsAppMessageJob`; `CampaignReplyDetector::detect` vincula contexto | `leads.campaign_id` quando detectado; conversa IA em `agent_conversation_messages` | `ai_usage_dailies` se IA responder | detector pode nao vincular se nao encontrar campanha ativa; webhook/job seguem logs padrao | `/conversas`, campanhas e dashboard |
+| Lead vem de campanha de template e responde | Webhook Meta recebe inbound do mesmo telefone | `ProcessIncomingWhatsAppMessageJob`; `CampaignReplyDetector::detect` vincula contexto | `leads.campaign_id` quando detectado; conversa IA em `agent_conversation_messages` | `ai_usage_dailies` se IA responder | detector pode nao vincular se nao encontrar campanha ativa; webhook/job seguem logs padrao | `/conversas`, campanhas e dashboard |
 | Lead vem de follow-up automatico | Scheduler/comando de follow-up despacha lead ativo | `ProcessLeadFollowUpJob` na fila `followups` | `followup_messages`, `leads.followup_count`, `leads.followup_status`, conversa no provider de IA quando houver `conversation_id` | custo do LLM pelo middleware da chamada do agente | logs `ProcessLeadFollowUpJob:*`; falha permanente no `failed()` | historico de follow-up em `/conversas/{lead}` e laboratorio follow-up |
 | Lead vem da URA reversa e cai no WhatsApp | `UraInboundController::store` ou `UraInboundController::trigger` | `SendInboundLeadWhatsAppJob` ou `SendUraTemplateJob` na fila `messages` | `leads`; envio direto via `WhatsAppService`; URA trigger ativa `followup_status` | sem custo IA nesse envio inicial | logs `ura.*`; falhas de instancia/template apenas logam e retornam | modulo URA, lead em conversas quando criado |
 | Agente consulta CPF e gera proposta | Agent decide chamar tool `ConsultarCreditoInssTool`/`ConsultarCreditoSiapeTool` | Tool executada dentro do turno do agente | `leads.cpf`, `leads.credito_json`, `leads.status`, `followup_status` | custo IA em `ai_usage_dailies`; custo de API externa ainda nao contabilizado em creditos | circuit breaker por cache, logs `aria.tool.*`, retorno `ToolResult::error` | conversa e status do lead; laboratorio via logs/stress tests |
@@ -54,14 +54,9 @@ Fonte: `campaigns` e `campaign_messages`.
 | `campaigns` | `status` | `draft`, `scheduled`, `sending`, `paused`, `completed`, `failed` |
 | `campaign_messages` | `status` | `pending`, `queued`, `sent`, `delivered`, `read`, `failed` |
 
-### Campanha Evolution livre
+### Campanha livre antiga
 
-Fonte: `evolution_campaigns` e `evolution_campaign_messages`.
-
-| Entidade | Campo | Valores |
-| --- | --- | --- |
-| `evolution_campaigns` | `status` | `draft`, `sending`, `paused`, `completed`, `failed` |
-| `evolution_campaign_messages` | `status` | `pending`, `queued`, `sent`, `failed` |
+O fluxo antigo de campanha livre foi removido. A linha ativa para WhatsApp e campanhas usa Meta Cloud e templates HSM.
 
 ### Atendimento humano/ticket
 
@@ -77,7 +72,7 @@ Fonte: `service_tickets`.
 
 | Metrica | Definicao/formula | Origem dos dados | Frequencia minima |
 | --- | --- | --- | --- |
-| Taxa de resposta de campanha | leads que responderam / mensagens de campanha enviadas | `campaign_messages`, `evolution_campaign_messages`, `leads.campaign_id`, detector de resposta | diaria e por campanha |
+| Taxa de resposta de campanha | leads que responderam / mensagens de campanha enviadas | `campaign_messages`, `leads.campaign_id`, detector de resposta | diaria e por campanha |
 | Taxa de qualificacao | leads com `status = qualificado` / leads consultados ou criados no periodo | `leads.status`, `leads.created_at`, `leads.last_interaction_at` | diaria |
 | Taxa de escalonamento humano | leads/tickets escalados / conversas com IA no periodo | `service_tickets`, `leads.status`, futuro `agent_interaction_events` | diaria e por agente |
 | Taxa de respostas bloqueadas por fact-check | bloqueios de fact-check / respostas IA de alto risco | hoje logs `aria.fact_check_*`; futuro `agent_interaction_events` | horaria no laboratorio |
@@ -123,7 +118,6 @@ Fonte: `service_tickets`.
 - `app/Jobs/SendUraTemplateJob.php`
 - `app/Jobs/DispatchCampaignJob.php`
 - `app/Jobs/SendCampaignMessageJob.php`
-- `app/Jobs/SendEvolutionCampaignMessageJob.php`
 - `app/Jobs/ProcessCampaignDeliveryEventJob.php`
 - `app/Services/AgentService.php`
 - `app/Ai/Middleware/AuditLogMiddleware.php`
@@ -134,6 +128,4 @@ Fonte: `service_tickets`.
 - `app/Models/Lead.php`
 - `app/Models/Campaign.php`
 - `app/Models/CampaignMessage.php`
-- `app/Models/EvolutionCampaign.php`
-- `app/Models/EvolutionCampaignMessage.php`
 - `app/Models/AiUsageDaily.php`

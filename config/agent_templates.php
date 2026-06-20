@@ -40,7 +40,7 @@ return [
             'tagline' => 'Direta, objetiva, respeitosa.',
             'icon' => 'megaphone',
             'mode' => 'prospeccao',
-            'use_cases' => ['campanhas Evolution', 'URA', 'discadora'],
+            'use_cases' => ['campanhas Meta', 'URA', 'discadora'],
             'example_first_message' => 'Oi [nome], aqui é a Tenaz CRM, consultora de crédito consignado da [empresa]. Posso confirmar seu CPF para fazer uma análise rápida pra você?',
             'defaults' => [
                 'agent_name' => 'Tenaz CRM',

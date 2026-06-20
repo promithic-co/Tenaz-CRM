@@ -57,15 +57,4 @@ class WhatsappTemplateFactory extends Factory
             'meta_waba_id' => fake()->uuid(),
         ]);
     }
-
-    public function evolutionPreset(): static
-    {
-        return $this->state([
-            'kind' => TemplateKind::EvolutionPreset->value,
-            'element_name' => fake()->unique()->slug(3),
-            'meta_template_id' => null,
-            'meta_template_name' => null,
-            'meta_waba_id' => null,
-        ]);
-    }
 }

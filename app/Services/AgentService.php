@@ -466,7 +466,7 @@ class AgentService implements AgentServiceInterface
             str_contains($class, 'Anthropic') || str_contains($message, 'anthropic') => 'anthropic',
             str_contains($message, 'promosys') => 'promosys',
             str_contains($message, 'inss') => 'inss',
-            str_contains($message, 'whatsapp') || str_contains($message, 'evolution') => 'whatsapp',
+            str_contains($message, 'whatsapp') => 'whatsapp',
             default => 'unknown',
         };
     }

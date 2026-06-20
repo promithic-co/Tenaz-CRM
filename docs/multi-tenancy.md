@@ -49,7 +49,6 @@ $query->where('tenant_id', auth()->user()?->tenantId);
 - Lead, FollowupMessage
 - WhatsappInstance, WhatsappTemplate
 - Campaign, CampaignMessage, ContactList
-- EvolutionCampaign
 - VoiceInstance, VoiceCampaign
 - FailedInteraction, ServiceTicket
 - AiUsageDaily, PromptTemplate, ToolDefinition, CustomField, StatusMachine
@@ -63,7 +62,7 @@ Há dois padrões no schema:
 | Tipo | Tabelas | Valor |
 |------|---------|-------|
 | `string('tenant_id')` | leads, agents, whatsapp_instances, service_tickets, followup_messages, agent_configs, agent_operational_rules, contact_lists, whatsapp_templates, etc. | `(string) $tenant->id` |
-| `foreignId('tenant_id')` | campaigns, evolution_campaigns, voice_campaigns, voice_instances | `(int) $tenant->id` |
+| `foreignId('tenant_id')` | campaigns, voice_campaigns, voice_instances | `(int) $tenant->id` |
 
 O accessor `User::tenantId` retorna **string**. Comparações em policies fazem cast explícito: `(string) $model->tenant_id === (string) $user->tenantId`.
 

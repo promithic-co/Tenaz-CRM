@@ -10,12 +10,11 @@ O follow-up automatico esta implementado como um fluxo por lead e por agente:
 - `followup_messages` registra tentativa, texto, tom e status enviado.
 - respostas recebidas pelo cliente desativam o follow-up em `ProcessIncomingWhatsAppMessageJob`.
 
-O envio ja passa pela abstracao atual de WhatsApp. Quando a instancia existe em `whatsapp_instances`, `WhatsAppService` delega para o provider configurado:
+O envio ja passa pela abstracao atual de WhatsApp. Quando a instancia existe em `whatsapp_instances`, `WhatsAppService` delega para o provider Meta Cloud configurado:
 
-- `EvolutionProvider`, para Evolution API.
 - `MetaCloudProvider`, para WhatsApp Cloud API oficial.
 
-Se a instancia nao for encontrada no banco, ainda existe fallback legado para Evolution via `services.evolution.*`.
+Se a instancia nao for encontrada no banco, o envio deve falhar em vez de usar fallback de provider antigo.
 
 ## Configuracao disponivel
 
@@ -55,9 +54,8 @@ Para operar em producao, a stack precisa garantir estes pontos:
 
 5. Webhook inbound ativo para a mesma instancia. Isso e necessario para atualizar `last_inbound_at`, encerrar follow-ups quando o cliente responde e evitar envio logo apos uma mensagem recebida.
 
-6. Provider configurado por instancia:
-   - Evolution: `provider = evolution`, `api_url`, `api_key`, `name`.
-   - Meta Cloud: `provider = meta_cloud`, `meta_phone_number_id`, `meta_access_token`.
+6. Provider Meta Cloud configurado por instancia:
+   - `provider = meta_cloud`, `meta_phone_number_id`, `meta_access_token`.
 
 7. Leads qualificados precisam ter:
    - `agent_id`;

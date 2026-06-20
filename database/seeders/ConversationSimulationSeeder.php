@@ -61,8 +61,12 @@ class ConversationSimulationSeeder extends Seeder
             'user_id' => $user->id,
             'agent_id' => $agent->id,
             'display_name' => 'Tenaz CRM Demo',
-            'api_url' => 'https://evolution.local',
-            'api_key' => 'local-demo',
+            'api_url' => 'https://graph.facebook.com',
+            'api_key' => '',
+            'meta_phone_number_id' => 'demo-phone-number-id',
+            'meta_waba_id' => 'demo-waba-id',
+            'meta_access_token' => 'demo-meta-token',
+            'meta_token_permanent' => true,
         ];
 
         if (Schema::hasColumn('whatsapp_instances', 'default_ai_mode')) {

@@ -9,8 +9,8 @@ Ultima atualizacao: Fase 2 concluida.
 Entregas da Fase 1:
 - Criada base `agent_interaction_events`, model e `AgentInteractionEventService`.
 - Criado `AgentInteractionContext` scoped para compartilhar `interaction_id` entre `AgentService` e middlewares de IA.
-- Fluxo receptivo Meta/Evolution propaga `interaction_id` do webhook ao job, ao agente, ao fact-check, ao envio WhatsApp e ao broadcast frontend.
-- Campanhas Meta/template e Evolution registram despacho, fila, envio e falha.
+- Fluxo receptivo Meta propaga `interaction_id` do webhook ao job, ao agente, ao fact-check, ao envio WhatsApp e ao broadcast frontend.
+- Campanhas Meta/template registram despacho, fila, envio e falha.
 - Follow-up registra inicio, skip, no-reply e envio.
 - URA reversa e trigger de template registram entrada e envio.
 - Acao manual do operador registra envio humano.

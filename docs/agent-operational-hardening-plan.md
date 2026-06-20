@@ -634,7 +634,7 @@ Metricas:
 - Consultas por minuto.
 - Cache hit de consulta.
 - Custo por ferramenta.
-- Falhas da Meta/Evolution/Twilio/APIs de consulta.
+- Falhas da Meta/Twilio/APIs de consulta.
 
 Drilldown:
 
