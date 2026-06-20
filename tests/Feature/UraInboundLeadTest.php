@@ -1,6 +1,8 @@
 <?php
 
 use App\Jobs\SendInboundLeadWhatsAppJob;
+use App\Models\Agent;
+use App\Models\UraApiKey;
 use App\Models\VoiceInstance;
 use App\Models\WhatsappInstance;
 use Illuminate\Support\Facades\Queue;
@@ -129,6 +131,68 @@ test('invalid phone format returns 422', function () {
     $response->assertJsonValidationErrors(['phone']);
 
     Queue::assertNotPushed(SendInboundLeadWhatsAppJob::class);
+});
+
+test('per-tenant key cannot target another tenant voice instance (403)', function () {
+    $userA = userWithTenant();
+    $tenantA = (string) $userA->tenants()->first()->id;
+    $agentA = Agent::factory()->create(['tenant_id' => $tenantA]);
+    $generated = UraApiKey::generate();
+    UraApiKey::create([
+        'tenant_id' => $tenantA,
+        'agent_id' => $agentA->id,
+        'name' => 'Tenant A key',
+        'key_hash' => $generated['key_hash'],
+        'key_preview' => $generated['key_preview'],
+        'active' => true,
+    ]);
+
+    $userB = userWithTenant();
+    $tenantB = (string) $userB->tenants()->first()->id;
+    $instanceB = WhatsappInstance::factory()->create(['tenant_id' => $tenantB]);
+    $voiceInstanceB = VoiceInstance::factory()->create([
+        'tenant_id' => $tenantB,
+        'whatsapp_instance_id' => $instanceB->id,
+    ]);
+
+    $response = $this->postJson(
+        route('ura.inbound-lead'),
+        ['phone' => '+5511999998888', 'voice_instance_id' => $voiceInstanceB->id],
+        ['X-URA-API-Key' => $generated['key']]
+    );
+
+    $response->assertStatus(403);
+    Queue::assertNotPushed(SendInboundLeadWhatsAppJob::class);
+});
+
+test('per-tenant key can target its own voice instance (201)', function () {
+    $user = userWithTenant();
+    $tenantId = (string) $user->tenants()->first()->id;
+    $agent = Agent::factory()->create(['tenant_id' => $tenantId]);
+    $generated = UraApiKey::generate();
+    UraApiKey::create([
+        'tenant_id' => $tenantId,
+        'agent_id' => $agent->id,
+        'name' => 'Own key',
+        'key_hash' => $generated['key_hash'],
+        'key_preview' => $generated['key_preview'],
+        'active' => true,
+    ]);
+
+    $instance = WhatsappInstance::factory()->create(['tenant_id' => $tenantId]);
+    $voiceInstance = VoiceInstance::factory()->create([
+        'tenant_id' => $tenantId,
+        'whatsapp_instance_id' => $instance->id,
+    ]);
+
+    $response = $this->postJson(
+        route('ura.inbound-lead'),
+        ['phone' => '+5511999998888', 'voice_instance_id' => $voiceInstance->id],
+        ['X-URA-API-Key' => $generated['key']]
+    );
+
+    $response->assertStatus(201);
+    Queue::assertPushed(SendInboundLeadWhatsAppJob::class);
 });
 
 test('non-existent voice_instance_id returns 422', function () {
