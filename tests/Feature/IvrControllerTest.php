@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ValidateTwilioSignature;
 use App\Jobs\SendPostCallWhatsAppJob;
 use App\Models\VoiceCampaign;
 use App\Models\VoiceCampaignCall;
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\Queue;
 beforeEach(function () {
     Queue::fake();
     // Bypass Twilio signature verification in tests
-    $this->withoutMiddleware(\App\Http\Middleware\ValidateTwilioSignature::class);
+    $this->withoutMiddleware(ValidateTwilioSignature::class);
 });
 
 function makeIvrCall(array $callOverrides = []): VoiceCampaignCall
@@ -100,4 +101,27 @@ test('status callback no-answer sets call status and does not dispatch job', fun
 
     $call->voiceCampaign->refresh();
     expect($call->voiceCampaign->total_no_answer)->toBe(1);
+});
+
+test('replayed no-answer callback increments total_no_answer only once (REL-3)', function () {
+    $call = makeIvrCall(['status' => 'calling']);
+
+    $this->post(route('ivr.status', $call), ['CallStatus' => 'no-answer'])->assertStatus(204);
+    $this->post(route('ivr.status', $call), ['CallStatus' => 'no-answer'])->assertStatus(204);
+
+    $call->voiceCampaign->refresh();
+    expect($call->voiceCampaign->total_no_answer)->toBe(1);
+});
+
+test('replayed failed callback increments total_failed only once (REL-3)', function () {
+    $call = makeIvrCall(['status' => 'calling']);
+
+    $this->post(route('ivr.status', $call), ['CallStatus' => 'failed'])->assertStatus(204);
+    $this->post(route('ivr.status', $call), ['CallStatus' => 'busy'])->assertStatus(204);
+
+    $call->refresh();
+    expect($call->status)->toBe('failed');
+
+    $call->voiceCampaign->refresh();
+    expect($call->voiceCampaign->total_failed)->toBe(1);
 });

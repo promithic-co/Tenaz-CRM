@@ -100,13 +100,23 @@ class PlaceOutboundCallJob implements ShouldQueue
     {
         $call = $this->voiceCampaignCall;
 
-        $call->update(['status' => 'failed']);
-        $call->voiceCampaign()->increment('total_failed');
+        // Idempotency guard (REL-3): only finalize a still-in-flight call. If the Twilio
+        // status callback already moved this row to a terminal status, incrementing here
+        // would double-count total_failed. Count only when this handler performs the
+        // pending/calling -> failed transition (affected-rows == 1).
+        $affected = VoiceCampaignCall::whereKey($call->id)
+            ->whereIn('status', ['pending', 'calling'])
+            ->update(['status' => 'failed']);
+
+        if ($affected === 1) {
+            $call->voiceCampaign()->increment('total_failed');
+        }
 
         Log::error('PlaceOutboundCallJob.failed', [
             'call_id' => $call->id,
             'phone' => $call->phone,
             'error' => $e->getMessage(),
+            'counted' => $affected === 1,
         ]);
     }
 }

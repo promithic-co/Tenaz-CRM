@@ -103,6 +103,23 @@ test('job reads SID and token from config not from voiceInstance model', functio
     }
 });
 
+test('failed handler does not double-count when call already terminal (REL-3)', function () {
+    $call = makePendingCall('sending');
+    $campaign = $call->voiceCampaign;
+
+    // Twilio status callback already moved the call to a terminal status and counted it.
+    $call->update(['status' => 'no_answer']);
+    $campaign->increment('total_no_answer');
+
+    (new PlaceOutboundCallJob($call))->failed(new Exception('late job failure'));
+
+    $call->refresh();
+    $campaign->refresh();
+
+    expect($call->status)->toBe('no_answer');
+    expect($campaign->total_failed)->toBe(0);
+});
+
 test('failed handler logs error with call id phone and message', function () {
     Log::spy();
 

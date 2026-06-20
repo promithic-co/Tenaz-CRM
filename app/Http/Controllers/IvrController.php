@@ -7,6 +7,7 @@ use App\Models\VoiceCampaignCall;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Twilio\TwiML\VoiceResponse;
 
 class IvrController extends Controller
 {
@@ -30,7 +31,7 @@ class IvrController extends Controller
         // Build the digit list hint for the gather (e.g., "1 ou 2")
         $digits = array_keys($actions);
 
-        $twiml = new \Twilio\TwiML\VoiceResponse;
+        $twiml = new VoiceResponse;
         $gather = $twiml->gather([
             'numDigits' => '1',
             'action' => route('ivr.dtmf', $voiceCampaignCall),
@@ -78,7 +79,7 @@ class IvrController extends Controller
 
         Log::info('ivr.dtmf', ['call_id' => $voiceCampaignCall->id, 'digits' => $digits]);
 
-        $twiml = new \Twilio\TwiML\VoiceResponse;
+        $twiml = new VoiceResponse;
         $actionEntry = $actions[$digits] ?? null;
         $action = $actionEntry['action'] ?? null;
 
@@ -96,7 +97,7 @@ class IvrController extends Controller
             ->header('Content-Type', 'text/xml');
     }
 
-    private function handleInterested(VoiceCampaignCall $call, \Twilio\TwiML\VoiceResponse $twiml, string $voice): void
+    private function handleInterested(VoiceCampaignCall $call, VoiceResponse $twiml, string $voice): void
     {
         $call->update(['status' => 'interested']);
         $call->voiceCampaign()->increment('total_interested');
@@ -107,7 +108,7 @@ class IvrController extends Controller
         ]);
     }
 
-    private function handleOptout(VoiceCampaignCall $call, \Twilio\TwiML\VoiceResponse $twiml, string $voice): void
+    private function handleOptout(VoiceCampaignCall $call, VoiceResponse $twiml, string $voice): void
     {
         $call->update(['status' => 'optout']);
 
@@ -121,7 +122,7 @@ class IvrController extends Controller
         ]);
     }
 
-    private function handleCallback(VoiceCampaignCall $call, \Twilio\TwiML\VoiceResponse $twiml, string $voice): void
+    private function handleCallback(VoiceCampaignCall $call, VoiceResponse $twiml, string $voice): void
     {
         $call->update(['status' => 'callback']);
 
@@ -131,7 +132,7 @@ class IvrController extends Controller
         ]);
     }
 
-    private function handleHangup(VoiceCampaignCall $call, \Twilio\TwiML\VoiceResponse $twiml, string $voice): void
+    private function handleHangup(VoiceCampaignCall $call, VoiceResponse $twiml, string $voice): void
     {
         $call->update(['status' => 'no_interest']);
 
@@ -152,11 +153,13 @@ class IvrController extends Controller
         $voiceCampaignCall->update(['completed_at' => now()]);
 
         if ($callStatus === 'no-answer') {
-            $voiceCampaignCall->update(['status' => 'no_answer']);
-            $voiceCampaignCall->voiceCampaign()->increment('total_no_answer');
+            if ($this->transitionToTerminal($voiceCampaignCall, 'no_answer')) {
+                $voiceCampaignCall->voiceCampaign()->increment('total_no_answer');
+            }
         } elseif (in_array($callStatus, ['busy', 'failed', 'canceled'])) {
-            $voiceCampaignCall->update(['status' => $callStatus]);
-            $voiceCampaignCall->voiceCampaign()->increment('total_failed');
+            if ($this->transitionToTerminal($voiceCampaignCall, $callStatus)) {
+                $voiceCampaignCall->voiceCampaign()->increment('total_failed');
+            }
         } elseif ($callStatus === 'completed' && $voiceCampaignCall->status === 'interested') {
             SendPostCallWhatsAppJob::dispatch($voiceCampaignCall->id);
         }
@@ -166,7 +169,7 @@ class IvrController extends Controller
         $campaign = $voiceCampaignCall->voiceCampaign;
 
         if ($campaign && $campaign->isSending() && $campaign->total_calls > 0) {
-            $pending = \App\Models\VoiceCampaignCall::where('voice_campaign_id', $campaign->id)
+            $pending = VoiceCampaignCall::where('voice_campaign_id', $campaign->id)
                 ->whereIn('status', ['pending', 'calling'])
                 ->count();
 
@@ -182,5 +185,28 @@ class IvrController extends Controller
         ]);
 
         return response('', 204);
+    }
+
+    /**
+     * Idempotent terminal transition (REL-3): move the call to a terminal status only when
+     * it is not already terminal, via an affected-rows guard. A replayed Twilio status
+     * callback — or a race with PlaceOutboundCallJob::failed() — therefore cannot double-count
+     * total_failed / total_no_answer. Returns true only when THIS call performed the transition.
+     */
+    private function transitionToTerminal(VoiceCampaignCall $call, string $status): bool
+    {
+        $terminal = ['completed', 'failed', 'busy', 'canceled', 'no_answer', 'interested', 'optout', 'callback', 'no_interest'];
+
+        $affected = VoiceCampaignCall::whereKey($call->id)
+            ->whereNotIn('status', $terminal)
+            ->update(['status' => $status]);
+
+        if ($affected === 1) {
+            $call->status = $status;
+
+            return true;
+        }
+
+        return false;
     }
 }
