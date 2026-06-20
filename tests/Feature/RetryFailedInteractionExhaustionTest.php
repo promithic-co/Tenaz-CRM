@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\ServiceTicket;
 use App\Services\AgentService;
 use App\Services\AlertService;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Plan 0.3 (F14): exercise the real RetryFailedInteractionJob::handle() exhaustion branch
@@ -53,6 +54,35 @@ test('handle escalates and opens a ticket when retries are exhausted', function 
     expect($lead->fresh())
         ->status->toBe('escalado')
         ->followup_status->toBe('inactive');
+});
+
+test('handle skips the agent turn when the per-attempt claim is already held (REL-5)', function () {
+    $agent = Agent::factory()->create();
+    $lead = Lead::factory()->create(['agent_id' => $agent->id, 'status' => 'qualificado']);
+
+    $failure = FailedInteraction::create([
+        'lead_id' => $lead->id,
+        'agent_id' => $agent->id,
+        'error_tag' => 'timeout',
+        'error_source' => 'openai',
+        'error_message' => 'timed out',
+        'context' => ['original_message' => 'Oi'],
+        'status' => 'pending',
+        'retry_count' => 0,
+    ]);
+
+    // A concurrent execution of this same attempt already claimed it: the LLM must not re-run.
+    Cache::add("retry_failed_interaction:{$failure->id}:0", 1, now()->addMinutes(10));
+
+    $agentService = Mockery::mock(AgentService::class);
+    $agentService->shouldNotReceive('process');
+
+    $alertService = Mockery::mock(AlertService::class);
+    $alertService->shouldNotReceive('sendAlert');
+
+    (new RetryFailedInteractionJob($failure))->handle($agentService, $alertService);
+
+    expect($failure->fresh()->status)->toBe('pending');
 });
 
 test('handle reschedules instead of escalating while attempts remain', function () {

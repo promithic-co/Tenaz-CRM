@@ -9,6 +9,7 @@ use App\Services\AgentService;
 use App\Services\AlertService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -19,6 +20,12 @@ class RetryFailedInteractionJob implements ShouldQueue
     public int $timeout = 90;
 
     public int $tries = 2;
+
+    /** @return array<int, int> */
+    public function backoff(): array
+    {
+        return [30, 90];
+    }
 
     public function __construct(
         public FailedInteraction $failedInteraction,
@@ -31,6 +38,21 @@ class RetryFailedInteractionJob implements ShouldQueue
         $failure = $this->failedInteraction;
 
         if ($failure->status !== 'pending') {
+            return;
+        }
+
+        // Per-attempt claim (REL-5): bound the agent turn to once per (failure, retry_count).
+        // process() spends LLM tokens and may enqueue an outbound reply; without this a
+        // framework retry or duplicate dispatch of the SAME attempt re-runs it, double-billing
+        // and possibly double-replying. Mirrors ProcessLeadFollowUpJob's per-send claim.
+        $attemptKey = "retry_failed_interaction:{$failure->id}:{$failure->retry_count}";
+        if (! Cache::add($attemptKey, 1, now()->addMinutes(10))) {
+            Log::info('laboratory.retry_attempt_already_claimed', [
+                'interaction_id' => $interactionId,
+                'failure_id' => $failure->id,
+                'retry_count' => $failure->retry_count,
+            ]);
+
             return;
         }
 
@@ -146,5 +168,18 @@ class RetryFailedInteractionJob implements ShouldQueue
                 );
             }
         }
+    }
+
+    /**
+     * Terminal visibility (REL-5/REL-7): the in-handler catch owns the retry ladder, but a
+     * framework-level exhaustion (timeout, worker kill) would otherwise vanish silently.
+     */
+    public function failed(Throwable $e): void
+    {
+        Log::error('laboratory.retry_job_failed', [
+            'failure_id' => $this->failedInteraction->id,
+            'lead_id' => $this->failedInteraction->lead_id,
+            'error' => $e->getMessage(),
+        ]);
     }
 }
