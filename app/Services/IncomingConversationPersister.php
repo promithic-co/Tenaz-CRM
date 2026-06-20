@@ -45,6 +45,49 @@ class IncomingConversationPersister
         ?string $providerMessageId,
         ?array $referral = null,
     ): ?array {
+        // Serialize same-provider-id webhook redeliveries across workers so the
+        // existence-check + insert in persistGuarded() is atomic. Without this,
+        // two concurrent redeliveries of one inbound both pass the dup check at
+        // :50 and double-insert the timeline row AND double-fire campaign
+        // detection + automation (DB-3). The Redis-backed lock is distributed;
+        // an inbound with no provider id cannot be deduped and falls through.
+        if ($providerMessageId === null) {
+            return $this->persistGuarded($tenantId, $agentId, $phone, $name, $instanceName, $aggregatedMessage, $mediaContext, $interactionId, $providerMessageId, $referral);
+        }
+
+        $providerLockKey = "inbound_persist_{$tenantId}_{$providerMessageId}";
+
+        try {
+            return Cache::lock($providerLockKey, 15)->block(8, fn (): ?array => $this->persistGuarded($tenantId, $agentId, $phone, $name, $instanceName, $aggregatedMessage, $mediaContext, $interactionId, $providerMessageId, $referral));
+        } catch (LockTimeoutException) {
+            Log::warning('whatsapp_persister.provider_lock_timeout', [
+                'interaction_id' => $interactionId,
+                'provider_message_id' => $providerMessageId,
+                'tenant_id' => $tenantId,
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $mediaContext
+     * @param  array<string, mixed>|null  $referral
+     * @return array{lead: Lead, timelineMessage: ConversationTimelineMessage, mode: string, duplicate: bool}|null
+     *                                                                                                             null when lock contention forces the caller to release the job.
+     */
+    private function persistGuarded(
+        string $tenantId,
+        ?int $agentId,
+        string $phone,
+        string $name,
+        string $instanceName,
+        string $aggregatedMessage,
+        ?array $mediaContext,
+        string $interactionId,
+        ?string $providerMessageId,
+        ?array $referral = null,
+    ): ?array {
         // Fast-path idempotency: webhook retries with a known provider id must
         // never duplicate timeline rows or fire campaign / automation again.
         if ($providerMessageId !== null) {
