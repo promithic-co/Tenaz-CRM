@@ -14,6 +14,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class SendPostCallWhatsAppJob implements ShouldQueue
 {
@@ -103,5 +104,13 @@ class SendPostCallWhatsAppJob implements ShouldQueue
         ]);
 
         app(DashboardMetricsService::class)->dispatchUpdate((string) $lead->tenant_id);
+    }
+
+    public function failed(Throwable $e): void
+    {
+        Log::error('ivr.whatsapp_failed', [
+            'call_id' => $this->voiceCampaignCallId,
+            'error' => $e->getMessage(),
+        ]);
     }
 }

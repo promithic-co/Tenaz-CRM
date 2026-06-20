@@ -14,6 +14,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class SendInboundLeadWhatsAppJob implements ShouldQueue
 {
@@ -146,5 +147,14 @@ class SendInboundLeadWhatsAppJob implements ShouldQueue
                 'provider' => $whatsappInstance->provider->value,
             ],
         );
+    }
+
+    public function failed(Throwable $e): void
+    {
+        Log::error('ura.inbound_whatsapp_failed', [
+            'voice_instance_id' => $this->voiceInstanceId,
+            'phone' => $this->phone,
+            'error' => $e->getMessage(),
+        ]);
     }
 }

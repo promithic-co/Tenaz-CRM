@@ -8,6 +8,7 @@ use App\Models\VoiceCampaignCall;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 // Multi-tenant safety: all queries are scoped by voice_campaign_id FK (globally unique).
 // BelongsToTenant global scope is inactive in queue context, but no cross-tenant
@@ -117,6 +118,19 @@ class DispatchVoiceCampaignJob implements ShouldQueue
         Log::info('DispatchVoiceCampaignJob: dispatched calls', [
             'campaign_id' => $campaign->id,
             'count' => $index,
+        ]);
+    }
+
+    /**
+     * Terminal signal (REL-4): tries=1 means a mid-fan-out crash strands the voice
+     * campaign in `sending` with no retry. Log an actionable breadcrumb; re-dispatch is
+     * idempotent (whereNotIn + firstOrCreate) and resumes only the un-enqueued remainder.
+     */
+    public function failed(Throwable $e): void
+    {
+        Log::error('DispatchVoiceCampaignJob.failed', [
+            'campaign_id' => $this->voiceCampaign->id,
+            'error' => $e->getMessage(),
         ]);
     }
 

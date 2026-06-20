@@ -14,6 +14,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class SendUraTemplateJob implements ShouldQueue
 {
@@ -196,5 +197,14 @@ class SendUraTemplateJob implements ShouldQueue
         }
 
         return $body;
+    }
+
+    public function failed(Throwable $e): void
+    {
+        Log::error('ura.trigger.failed', [
+            'ura_api_key_id' => $this->uraApiKeyId,
+            'phone' => $this->phone,
+            'error' => $e->getMessage(),
+        ]);
     }
 }

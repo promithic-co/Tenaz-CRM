@@ -10,10 +10,18 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class LogAiUsageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    // tries=1 (REL-6): the upsert is ADDITIVE (total_requests + 1). A retry of a
+    // succeeded-but-unacked job would over-count usage/cost telemetry, so do not retry.
+    public int $tries = 1;
+
+    public int $timeout = 30;
 
     public function __construct(
         public int $tokensIn,
@@ -46,6 +54,15 @@ class LogAiUsageJob implements ShouldQueue
             'total_prompt_tokens' => DB::raw('ai_usage_dailies.total_prompt_tokens + '.(int) $this->tokensIn),
             'total_completion_tokens' => DB::raw('ai_usage_dailies.total_completion_tokens + '.(int) $this->tokensOut),
             'estimated_cost_usd' => DB::raw('ai_usage_dailies.estimated_cost_usd + '.(float) $cost),
+        ]);
+    }
+
+    public function failed(Throwable $e): void
+    {
+        Log::warning('LogAiUsageJob.failed', [
+            'tenant_id' => $this->tenantId,
+            'model' => $this->model,
+            'error' => $e->getMessage(),
         ]);
     }
 

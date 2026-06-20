@@ -11,6 +11,7 @@ use App\Services\SmartList\SmartListResolverService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 // Multi-tenant safety: all queries are scoped by campaign_id FK (globally unique).
 // BelongsToTenant global scope is inactive in queue context, but no cross-tenant
@@ -180,6 +181,30 @@ class DispatchCampaignJob implements ShouldQueue
                 'campaign_id' => $campaign->id,
                 'queued_count' => $index,
             ],
+        );
+    }
+
+    /**
+     * Terminal signal (REL-4): tries=1 means a mid-fan-out crash leaves the campaign in
+     * `sending` with only part of the list enqueued and no retry. Emit an actionable
+     * breadcrumb so the stall is observable; re-dispatch is idempotent (firstOrCreate)
+     * and can resume the remainder.
+     */
+    public function failed(Throwable $e): void
+    {
+        Log::error('DispatchCampaignJob.failed', [
+            'campaign_id' => $this->campaign->id,
+            'error' => $e->getMessage(),
+        ]);
+
+        $interactionEvents = app(AgentInteractionEventService::class);
+        $interactionEvents->record(
+            interactionId: $interactionEvents->newInteractionId(),
+            tenantId: $this->campaign->tenant_id,
+            eventType: 'campaign_dispatch_failed',
+            eventSource: 'dispatch_campaign_job',
+            payload: ['campaign_id' => $this->campaign->id, 'error' => $e->getMessage()],
+            severity: 'error',
         );
     }
 }
