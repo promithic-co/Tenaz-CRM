@@ -19,7 +19,7 @@ class MonitorCampaignsCommand extends Command
     public function handle(CampaignService $campaignService, AlertService $alertService): int
     {
         $this->checkWalletErrors($campaignService, $alertService);
-        $this->checkHighFailureRate($alertService);
+        $this->checkHighFailureRate($campaignService, $alertService);
         $this->checkStuckCampaigns($alertService);
         $this->maybeSendDailySummary($alertService);
 
@@ -76,9 +76,10 @@ class MonitorCampaignsCommand extends Command
     }
 
     /**
-     * Rule 2: High failure rate (> threshold + 5%) — alert only.
+     * Rule 2: High failure rate — backstop auto-pause at the campaign's own threshold,
+     * plus a louder alert past threshold + 5%.
      */
-    private function checkHighFailureRate(AlertService $alertService): void
+    private function checkHighFailureRate(CampaignService $campaignService, AlertService $alertService): void
     {
         $sendingCampaigns = Campaign::where('status', 'sending')->get();
 
@@ -88,9 +89,21 @@ class MonitorCampaignsCommand extends Command
             }
 
             $failureRate = $campaign->failureRate();
-            $threshold = $campaign->error_threshold_percent + 5;
 
-            if ($failureRate > $threshold) {
+            // Backstop auto-pause (SCALE-1): the hot send path debounces its auto-pause checks,
+            // so a failure that loses the debounce race may not trigger an immediate pause. This
+            // timer-based sweep guarantees any sending campaign over its own threshold is paused
+            // within one monitor cycle. checkAndAutoPause re-evaluates under a row lock.
+            if ($failureRate > $campaign->error_threshold_percent && $campaignService->checkAndAutoPause($campaign)) {
+                Log::warning('MonitorCampaigns: backstop auto-paused campaign over failure threshold', [
+                    'campaign_id' => $campaign->id,
+                    'failure_rate' => $failureRate,
+                ]);
+
+                continue;
+            }
+
+            if ($failureRate > $campaign->error_threshold_percent + 5) {
                 $alertService->sendAlert(
                     'high_failure_rate',
                     "Campanha '{$campaign->name}' com taxa de falha alta: {$failureRate}% (limiar: {$campaign->error_threshold_percent}%).",

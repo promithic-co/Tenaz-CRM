@@ -106,6 +106,11 @@ return [
         'rate_per_minute' => (int) env('TENAZ_CAMPAIGN_RATE_PER_MINUTE', env('CREDFLOW_CAMPAIGN_RATE_PER_MINUTE', 80)),
         // Backoff (seconds) when Meta returns a rate-limit error before retrying the message.
         'rate_limit_release_seconds' => (int) env('TENAZ_CAMPAIGN_RATE_LIMIT_RELEASE', env('CREDFLOW_CAMPAIGN_RATE_LIMIT_RELEASE', 60)),
+        // Debounce window (seconds) for the per-failure auto-pause check (SCALE-1). Under a
+        // failure storm every concurrent send worker used to take an exclusive row lock on the
+        // one campaign row; this gate lets only the first caller per window reach the locked
+        // evaluation, collapsing the convoy. MonitorCampaignsCommand is the backstop. 0 disables.
+        'autopause_debounce_seconds' => (int) env('TENAZ_CAMPAIGN_AUTOPAUSE_DEBOUNCE', env('CREDFLOW_CAMPAIGN_AUTOPAUSE_DEBOUNCE', 3)),
     ],
 
     'api' => [

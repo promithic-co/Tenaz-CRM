@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\DispatchCampaignJob;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -126,6 +127,27 @@ class CampaignService
      */
     public function checkAndAutoPause(Campaign $campaign): bool
     {
+        // Scale guard (SCALE-1): collapse the per-failure auto-pause convoy. This check is
+        // invoked from every failure branch of SendCampaignMessageJob, so a failure storm had
+        // up to one concurrent send worker per process all taking an exclusive lockForUpdate on
+        // the single campaign row. A cheap atomic debounce gate lets only the first caller per
+        // short window reach the locked evaluation below; the rest skip it. MonitorCampaignsCommand
+        // is the timer-based backstop for any failure that loses the gate race. Fail open on a
+        // cache outage so a degraded cache can never silently disable the safety control.
+        $debounceSeconds = (int) config('credflow.campaigns.autopause_debounce_seconds', 3);
+
+        if ($debounceSeconds > 0) {
+            try {
+                $wonGate = Cache::add("campaign:autopause-gate:{$campaign->getKey()}", 1, $debounceSeconds);
+            } catch (\Throwable $e) {
+                $wonGate = true;
+            }
+
+            if (! $wonGate) {
+                return false;
+            }
+        }
+
         // Concurrency guard (DB-5): evaluate + pause against a locked row so the auto-pause
         // safety control cannot be clobbered by a racing resume (which would let a campaign
         // keep sending past its failure threshold and keep burning Meta reputation).

@@ -132,6 +132,47 @@ test('checkAndAutoPause pauses campaign when failure rate exceeds threshold', fu
     expect($campaign->fresh()->status)->toBe('paused');
 });
 
+test('checkAndAutoPause debounces rapid checks within the window (SCALE-1)', function () {
+    config(['credflow.campaigns.autopause_debounce_seconds' => 3]);
+
+    $campaign = Campaign::factory()->sending()->create([
+        'total_sent' => 100,
+        'total_failed' => 5,
+        'error_threshold_percent' => 10,
+    ]);
+
+    $service = new CampaignService;
+
+    // First call wins the debounce gate, evaluates, and finds the rate below threshold.
+    expect($service->checkAndAutoPause($campaign))->toBeFalse();
+
+    // Failures now spike past the threshold, but a second call inside the window is gated
+    // out before it can take the row lock — so the campaign keeps sending this cycle.
+    $campaign->update(['total_failed' => 50]);
+    expect($service->checkAndAutoPause($campaign))->toBeFalse();
+    expect($campaign->fresh()->status)->toBe('sending');
+
+    // Once the window elapses the next check evaluates against the locked row and pauses.
+    $this->travel(4)->seconds();
+    expect($service->checkAndAutoPause($campaign->fresh()))->toBeTrue();
+    expect($campaign->fresh()->status)->toBe('paused');
+});
+
+test('checkAndAutoPause still evaluates immediately when debounce is disabled', function () {
+    config(['credflow.campaigns.autopause_debounce_seconds' => 0]);
+
+    $campaign = Campaign::factory()->sending()->create([
+        'total_sent' => 100,
+        'total_failed' => 15,
+        'error_threshold_percent' => 10,
+    ]);
+
+    $service = new CampaignService;
+
+    expect($service->checkAndAutoPause($campaign))->toBeTrue();
+    expect($campaign->fresh()->status)->toBe('paused');
+});
+
 test('checkDailyLimit returns true when under limit', function () {
     $campaign = Campaign::factory()->sending()->create(['daily_limit' => 1000]);
 
