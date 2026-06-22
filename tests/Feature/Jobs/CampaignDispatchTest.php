@@ -12,6 +12,8 @@ use App\Services\BroadcastDebouncer;
 use App\Services\CampaignService;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\Jobs\FakeJob;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -148,6 +150,8 @@ test('SendCampaignMessageJob marks failed on provider exception', function () {
         'status' => 'pending',
     ]);
 
+    $entry->update(['phone' => '5511999990002']);
+
     $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
     $providerMock->shouldReceive('sendTemplate')->andThrow(new RuntimeException('Provider error'));
 
@@ -215,6 +219,7 @@ test('SendCampaignMessageJob resolves template params from mapping', function ()
         'contact_list_id' => $campaign->contact_list_id,
         'opt_in_status' => 'opted_in',
         'name' => 'Maria',
+        'phone' => '5511999990003',
         'extra_data' => ['valor' => '5000'],
     ]);
 
@@ -274,6 +279,147 @@ test('SendCampaignMessageJob fails fast when template is not approved', function
 
     expect($message->fresh()->status)->toBe('failed');
     expect($message->fresh()->error_code)->toBe('TEMPLATE_NOT_APPROVED');
+});
+
+/**
+ * Build a fully sendable campaign message (sending campaign + instance + approved template + entry).
+ *
+ * @return array{0: Campaign, 1: CampaignMessage}
+ */
+function makeTenantSendable(string $phone = '5511999990123'): array
+{
+    $campaign = Campaign::factory()->sending()->create();
+    $instance = WhatsappInstance::factory()->create([
+        'user_id' => $campaign->tenant_id,
+        'tenant_id' => (string) $campaign->tenant_id,
+    ]);
+    $campaign->update(['whatsapp_instance_id' => $instance->id]);
+
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $campaign->tenant_id,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+    ]);
+    $campaign->update(['whatsapp_template_id' => $template->id]);
+
+    $entry = ContactListEntry::factory()->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+        'phone' => $phone,
+    ]);
+
+    $message = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entry->id,
+        'status' => 'pending',
+    ]);
+
+    return [$campaign, $message];
+}
+
+/** Bind a provider factory whose provider must never be asked to send. */
+function bindNonSendingProvider(): void
+{
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldNotReceive('sendTemplate');
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+    app()->instance(WhatsAppProviderFactory::class, $factoryMock);
+}
+
+test('SendCampaignMessageJob releases (not fails) an over-budget send for fairness (SCALE-2)', function () {
+    config(['credflow.campaigns.tenant_rate_per_minute' => 5]);
+    [$campaign, $message] = makeTenantSendable();
+
+    // This tenant has already used its full minute budget; the next send must release, not POST.
+    $bucket = (int) floor(now()->timestamp / 60);
+    Cache::add("campaign_tenant_throttle:{$campaign->tenant_id}:{$bucket}", 5, 120);
+
+    bindNonSendingProvider();
+
+    $fakeJob = new FakeJob;
+    $job = (new SendCampaignMessageJob($message))->setJob($fakeJob);
+    $job->handle(app(CampaignService::class), app(WhatsAppProviderFactory::class), app(BroadcastDebouncer::class));
+
+    // Queue semantics: the job released itself back onto the queue with a delay — not deleted, not failed.
+    expect($fakeJob->isReleased())->toBeTrue();
+    expect($fakeJob->releaseDelay)->toBeGreaterThan(0);
+    expect($fakeJob->hasFailed())->toBeFalse();
+    expect($message->fresh()->status)->toBe('pending');
+    expect($campaign->fresh()->total_sent)->toBe(0);
+    expect($campaign->fresh()->total_failed)->toBe(0);
+});
+
+test('SendCampaignMessageJob does not fail a throttled message however many times it is released (SCALE-2)', function () {
+    config(['credflow.campaigns.tenant_rate_per_minute' => 5]);
+    [$campaign, $message] = makeTenantSendable();
+
+    $bucket = (int) floor(now()->timestamp / 60);
+    Cache::add("campaign_tenant_throttle:{$campaign->tenant_id}:{$bucket}", 5, 120);
+
+    bindNonSendingProvider();
+
+    // Simulate a message already released far more than $tries (=3) times by the fairness gate.
+    $fakeJob = new FakeJob;
+    $fakeJob->attempts = 99;
+    $job = (new SendCampaignMessageJob($message))->setJob($fakeJob);
+    $job->handle(app(CampaignService::class), app(WhatsAppProviderFactory::class), app(BroadcastDebouncer::class));
+
+    // The job releases again and never marks itself failed; the worker-level guarantee that those 99
+    // attempts won't fail it is the time-based retry budget (retryUntil) + exception-only failure cap.
+    expect($fakeJob->isReleased())->toBeTrue();
+    expect($fakeJob->hasFailed())->toBeFalse();
+    expect($message->fresh()->status)->toBe('pending');
+    expect($campaign->fresh()->total_failed)->toBe(0);
+
+    expect($job->retryUntil())->toBeInstanceOf(DateTimeInterface::class);
+    expect($job->retryUntil()->getTimestamp())->toBeGreaterThan(now()->getTimestamp());
+    expect($job->maxExceptions)->toBe(3);
+});
+
+test('SendCampaignMessageJob retry window can be disabled, reverting to attempt-count tries (SCALE-2)', function () {
+    config(['credflow.campaigns.send_retry_window_seconds' => 0]);
+
+    $job = new SendCampaignMessageJob(new CampaignMessage);
+
+    // Window disabled → retryUntil() is null so the worker falls back to the plain $tries cap.
+    expect($job->retryUntil())->toBeNull();
+    expect($job->tries)->toBe(3);
+});
+
+test('SendCampaignMessageJob sends normally when under the per-tenant budget (SCALE-2)', function () {
+    config(['credflow.campaigns.tenant_rate_per_minute' => 100]);
+    [, $message] = makeTenantSendable();
+
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldReceive('sendTemplate')->once()->andReturn('wamid.tenant.ok');
+
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+    app()->instance(WhatsAppProviderFactory::class, $factoryMock);
+
+    $job = new SendCampaignMessageJob($message);
+    $job->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+
+    expect($message->fresh()->status)->toBe('sent');
+});
+
+test('SendCampaignMessageJob ignores the fairness gate when disabled by default (SCALE-2)', function () {
+    // tenant_rate_per_minute defaults to 0 — no gate, old behaviour: the send proceeds.
+    expect(config('credflow.campaigns.tenant_rate_per_minute'))->toBe(0);
+    [, $message] = makeTenantSendable();
+
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldReceive('sendTemplate')->once()->andReturn('wamid.tenant.default');
+
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+    app()->instance(WhatsAppProviderFactory::class, $factoryMock);
+
+    $job = new SendCampaignMessageJob($message);
+    $job->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+
+    expect($message->fresh()->status)->toBe('sent');
 });
 
 test('SendCampaignMessageJob builds Meta header body and button components from synced schema', function () {

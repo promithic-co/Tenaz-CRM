@@ -21,6 +21,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use Throwable;
@@ -30,6 +31,14 @@ class SendCampaignMessageJob implements ShouldQueue
     use Queueable;
 
     public int $tries = 3;
+
+    // Cap genuine failures, not waits. Every $this->release() (per-tenant fairness gate, per-instance
+    // throttle, Meta-429 backoff) re-pops the job and increments attempts(), which an attempt-count
+    // `tries` would treat as a failed try — failing a message for merely queueing behind a gate.
+    // maxExceptions only counts *thrown* exceptions (Worker::markJobAsFailedIfWillExceedMaxExceptions),
+    // so real provider errors still fail fast after 3 while throttle releases stay free. Paired with
+    // retryUntil() below, which makes the worker ignore attempts() entirely while inside the window.
+    public int $maxExceptions = 3;
 
     public int $timeout = 30;
 
@@ -41,6 +50,21 @@ class SendCampaignMessageJob implements ShouldQueue
         public readonly ?string $interactionId = null,
     ) {
         $this->onQueue('campaigns');
+    }
+
+    /**
+     * Time-based retry budget. When set and unexpired, the worker skips the attempts()>=tries check
+     * (Worker::markJobAsFailedIfAlreadyExceedsMaxAttempts), so a message released repeatedly by a
+     * fairness/throttle gate is never failed just for waiting; genuine errors are still bounded by
+     * $maxExceptions. The deadline is stamped once at first dispatch (Laravel serializes it into the
+     * payload), so it does not slide on each release. Returns null when the window is 0/disabled,
+     * which reverts to the plain attempt-count $tries behaviour.
+     */
+    public function retryUntil(): ?\DateTimeInterface
+    {
+        $windowSeconds = (int) config('credflow.campaigns.send_retry_window_seconds', 21600);
+
+        return $windowSeconds > 0 ? now()->addSeconds($windowSeconds) : null;
     }
 
     public function handle(CampaignService $service, WhatsAppProviderFactory $factory, BroadcastDebouncer $debouncer): void
@@ -126,6 +150,50 @@ class SendCampaignMessageJob implements ShouldQueue
             $service->checkAndAutoPause($campaign->fresh());
 
             return;
+        }
+
+        // Per-tenant fairness gate (SCALE-2): the `campaigns` queue is a single FIFO shared by
+        // every tenant, so one large tenant's fan-out can occupy all campaign workers and starve
+        // smaller tenants (and the latency-sensitive delivery webhooks on the same queue). Cap
+        // sends per tenant per minute using the same sliding-counter shape as the per-instance
+        // throttle below; an over-budget job releases back to the queue tail, freeing workers to
+        // pick up other tenants' jobs. Backed by the cache store (Redis in prod — atomic and shared
+        // across workers) for parity with the SCALE-1 gate and deterministic tests. Fails open on a
+        // cache outage so a degraded cache can never stall all sends. 0 disables (the per-instance
+        // rate_per_minute already bounds single-instance tenants).
+        $tenantRatePerMinute = (int) config('credflow.campaigns.tenant_rate_per_minute', 0);
+        if ($tenantRatePerMinute > 0) {
+            $tenantBucket = (int) floor(now()->timestamp / 60);
+            $tenantThrottleKey = "campaign_tenant_throttle:{$campaign->tenant_id}:{$tenantBucket}";
+
+            try {
+                Cache::add($tenantThrottleKey, 0, 120);
+                $tenantCount = (int) Cache::increment($tenantThrottleKey);
+            } catch (Throwable $e) {
+                Log::warning('SendCampaignMessageJob: tenant fairness throttle failed, proceeding', [
+                    'error' => $e->getMessage(),
+                    'tenant_id' => $campaign->tenant_id,
+                ]);
+                $tenantCount = 0;
+            }
+
+            if ($tenantCount > $tenantRatePerMinute) {
+                $tenantDelay = 60 - (now()->timestamp % 60) + random_int(0, 10);
+
+                Log::info('SendCampaignMessageJob: throttled per-tenant for fairness, releasing', [
+                    'interaction_id' => $interactionId,
+                    'message_id' => $message->id,
+                    'tenant_id' => $campaign->tenant_id,
+                    'current_minute_count' => $tenantCount,
+                    'limit_per_minute' => $tenantRatePerMinute,
+                    'release_after_seconds' => $tenantDelay,
+                ]);
+
+                $message->update(['status' => 'pending']);
+                $this->release($tenantDelay);
+
+                return;
+            }
         }
 
         // Per-instance throttle: protect Meta reputation by capping send rate. We use a

@@ -111,6 +111,20 @@ return [
         // one campaign row; this gate lets only the first caller per window reach the locked
         // evaluation, collapsing the convoy. MonitorCampaignsCommand is the backstop. 0 disables.
         'autopause_debounce_seconds' => (int) env('TENAZ_CAMPAIGN_AUTOPAUSE_DEBOUNCE', env('CREDFLOW_CAMPAIGN_AUTOPAUSE_DEBOUNCE', 3)),
+        // Maximum campaign sends per minute per TENANT (SCALE-2 fairness gate). The `campaigns`
+        // queue is a single FIFO shared by all tenants; without a per-tenant cap one large tenant's
+        // fan-out monopolizes the workers and starves smaller tenants. Over-budget sends release
+        // back to the queue tail (same mechanism as rate_per_minute above). 0 = disabled (default;
+        // the per-instance rate_per_minute already bounds single-instance tenants). Set to a small
+        // multiple of rate_per_minute to bound multi-instance mega-tenants while leaving headroom.
+        'tenant_rate_per_minute' => (int) env('TENAZ_CAMPAIGN_TENANT_RATE_PER_MINUTE', env('CREDFLOW_CAMPAIGN_TENANT_RATE_PER_MINUTE', 0)),
+        // Time-based retry budget (seconds) for SendCampaignMessageJob — see its retryUntil(). Each
+        // fairness/throttle release() re-pops the job and counts as an attempt, so a pure attempt-count
+        // `tries` would fail messages that merely waited behind the per-tenant fairness gate. This window
+        // makes the worker ignore the attempt count while inside it (genuine errors are still capped by
+        // the job's maxExceptions). Must outlast a large tenant's gated drain. Default 6h. 0 disables the
+        // time budget and reverts to the plain attempt-count tries behaviour.
+        'send_retry_window_seconds' => (int) env('TENAZ_CAMPAIGN_SEND_RETRY_WINDOW', env('CREDFLOW_CAMPAIGN_SEND_RETRY_WINDOW', 21600)),
     ],
 
     'api' => [
