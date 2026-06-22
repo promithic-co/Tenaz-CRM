@@ -14,6 +14,7 @@ use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Queue\Jobs\FakeJob;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -317,6 +318,58 @@ function makeTenantSendable(string $phone = '5511999990123'): array
     return [$campaign, $message];
 }
 
+/**
+ * Build a sending campaign (instance + approved template) with N pending messages
+ * on distinct valid phones, for fan-out / query-count assertions.
+ *
+ * @return array{0: Campaign, 1: list<CampaignMessage>}
+ */
+function makeSendableCampaignWithMessages(int $count): array
+{
+    $campaign = Campaign::factory()->sending()->create();
+    $instance = WhatsappInstance::factory()->create([
+        'user_id' => $campaign->tenant_id,
+        'tenant_id' => (string) $campaign->tenant_id,
+    ]);
+    $campaign->update(['whatsapp_instance_id' => $instance->id]);
+
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $campaign->tenant_id,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+    ]);
+    $campaign->update(['whatsapp_template_id' => $template->id]);
+
+    $messages = [];
+    for ($i = 0; $i < $count; $i++) {
+        $entry = ContactListEntry::factory()->create([
+            'contact_list_id' => $campaign->contact_list_id,
+            'opt_in_status' => 'opted_in',
+            'phone' => '551199999'.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
+        ]);
+        $messages[] = CampaignMessage::factory()->create([
+            'campaign_id' => $campaign->id,
+            'contact_list_entry_id' => $entry->id,
+            'status' => 'pending',
+        ]);
+    }
+
+    return [$campaign, $messages];
+}
+
+/**
+ * Count logged SELECT queries against a given table.
+ *
+ * @param  list<array{query: string}>  $log
+ */
+function countTableSelects(array $log, string $table): int
+{
+    return collect($log)
+        ->filter(fn (array $q): bool => str_starts_with(strtolower(trim($q['query'])), 'select')
+            && str_contains($q['query'], $table))
+        ->count();
+}
+
 /** Bind a provider factory whose provider must never be asked to send. */
 function bindNonSendingProvider(): void
 {
@@ -480,4 +533,83 @@ test('SendCampaignMessageJob builds Meta header body and button components from 
     $job->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
 
     expect($message->fresh()->provider_message_id)->toBe('wamid.schema');
+});
+
+test('SendCampaignMessageJob resolves the campaign instance + template once across the fan-out (SCALE-4)', function () {
+    Cache::flush();
+    // Suppress the async dashboard-metrics recompute so its snapshot aggregates don't pollute the log.
+    Queue::fake();
+
+    [, $messages] = makeSendableCampaignWithMessages(2);
+
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldReceive('sendTemplate')->twice()->andReturn('wamid.scale4');
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+    app()->instance(WhatsAppProviderFactory::class, $factoryMock);
+
+    DB::enableQueryLog();
+    foreach ($messages as $message) {
+        (new SendCampaignMessageJob($message))->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+    }
+    $log = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    // Immutable config resolved once for the whole fan-out, not re-read per message.
+    expect(countTableSelects($log, 'whatsapp_instances'))->toBe(1);
+    expect(countTableSelects($log, 'whatsapp_templates'))->toBe(1);
+
+    foreach ($messages as $message) {
+        expect($message->fresh()->status)->toBe('sent');
+    }
+});
+
+test('SendCampaignMessageJob re-resolves config per message when the cache is disabled (SCALE-4)', function () {
+    Cache::flush();
+    Queue::fake();
+    config(['credflow.campaigns.send_config_cache_seconds' => 0]);
+
+    [, $messages] = makeSendableCampaignWithMessages(2);
+
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldReceive('sendTemplate')->twice()->andReturn('wamid.scale4.off');
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+    app()->instance(WhatsAppProviderFactory::class, $factoryMock);
+
+    DB::enableQueryLog();
+    foreach ($messages as $message) {
+        (new SendCampaignMessageJob($message))->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+    }
+    $log = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    // Kill-switch (TTL 0): each message re-resolves the instance + template from the DB.
+    expect(countTableSelects($log, 'whatsapp_instances'))->toBe(2);
+    expect(countTableSelects($log, 'whatsapp_templates'))->toBe(2);
+});
+
+test('SendCampaignMessageJob reloads the campaign for progress only when the broadcast fires (SCALE-4)', function () {
+    Cache::flush();
+    Queue::fake();
+
+    [, $messages] = makeSendableCampaignWithMessages(2);
+
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldReceive('sendTemplate')->twice()->andReturn('wamid.progress');
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+    app()->instance(WhatsAppProviderFactory::class, $factoryMock);
+
+    DB::enableQueryLog();
+    foreach ($messages as $message) {
+        (new SendCampaignMessageJob($message))->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+    }
+    $log = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    // Each send does one live status-gate load (2 total); only the first send wins the 2s
+    // progress debounce and reloads the campaign for the broadcast (+1) = 3. The debounced
+    // second send no longer reloads the campaign just to throw the result away.
+    expect(countTableSelects($log, '"campaigns"'))->toBe(3);
 });

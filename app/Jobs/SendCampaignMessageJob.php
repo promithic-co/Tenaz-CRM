@@ -10,6 +10,7 @@ use App\Exceptions\MetaRateLimitException;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
 use App\Models\ContactListEntry;
+use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use App\Services\AgentInteractionEventService;
 use App\Services\BroadcastDebouncer;
@@ -77,7 +78,7 @@ class SendCampaignMessageJob implements ShouldQueue
             return;
         }
 
-        $campaign = $message->campaign()->with(['whatsappInstance', 'whatsappTemplate'])->first();
+        $campaign = $message->campaign()->first();
 
         if (! $campaign || ! $campaign->isSending()) {
             Log::info('SendCampaignMessageJob: campaign not sending, skipping', [
@@ -133,8 +134,7 @@ class SendCampaignMessageJob implements ShouldQueue
             ],
         );
 
-        $instance = $campaign->whatsappInstance;
-        $template = $campaign->whatsappTemplate;
+        [$instance, $template] = $this->resolveSendConfig($campaign);
 
         if (! $instance || ! $template) {
             $message->markFailed('NO_INSTANCE_OR_TEMPLATE', 'Campaign is missing a WhatsApp instance or template.');
@@ -286,7 +286,7 @@ class SendCampaignMessageJob implements ShouldQueue
             $message->markSent($providerMessageId);
             $campaign->incrementCounter('total_sent');
 
-            $this->dispatchProgressIfReady($debouncer, $campaign->fresh());
+            $this->dispatchProgressIfReady($debouncer, $campaign);
             app(DashboardMetricsService::class)->dispatchUpdate((string) $campaign->tenant_id);
 
             Log::info('SendCampaignMessageJob: sent', [
@@ -345,9 +345,8 @@ class SendCampaignMessageJob implements ShouldQueue
             $code = $e instanceof MetaInvalidNumberException ? 'INVALID_NUMBER' : 'NO_WHATSAPP';
             $message->markFailed($code, $e->getMessage());
             $campaign->incrementCounter('total_failed');
-            $freshCampaign = $campaign->fresh();
-            $service->checkAndAutoPause($freshCampaign);
-            $this->dispatchProgressIfReady($debouncer, $freshCampaign);
+            $service->checkAndAutoPause($campaign->fresh());
+            $this->dispatchProgressIfReady($debouncer, $campaign);
 
             $interactionEvents->record(
                 interactionId: $interactionId,
@@ -422,15 +421,51 @@ class SendCampaignMessageJob implements ShouldQueue
             return;
         }
 
-        if ($debouncer->shouldFire("campaign:{$campaign->id}:progress", 2)) {
-            CampaignProgressUpdated::dispatch($campaign->id, [
-                'sent' => (int) ($campaign->total_sent ?? 0),
-                'delivered' => (int) ($campaign->total_delivered ?? 0),
-                'failed' => (int) ($campaign->total_failed ?? 0),
-                'read' => (int) ($campaign->total_read ?? 0),
-                'pending' => (int) ($campaign->total_recipients ?? 0) - (int) ($campaign->total_sent ?? 0) - (int) ($campaign->total_failed ?? 0),
-            ]);
+        // Gate before reloading: the broadcast is debounced to 1/2s per campaign, so
+        // reloading the campaign row on every send (just to maybe-broadcast) is wasted DB
+        // load across the fan-out (SCALE-4). Only refresh the counters when we actually fire.
+        if (! $debouncer->shouldFire("campaign:{$campaign->id}:progress", 2)) {
+            return;
         }
+
+        $campaign = $campaign->fresh() ?? $campaign;
+
+        CampaignProgressUpdated::dispatch($campaign->id, [
+            'sent' => (int) ($campaign->total_sent ?? 0),
+            'delivered' => (int) ($campaign->total_delivered ?? 0),
+            'failed' => (int) ($campaign->total_failed ?? 0),
+            'read' => (int) ($campaign->total_read ?? 0),
+            'pending' => (int) ($campaign->total_recipients ?? 0) - (int) ($campaign->total_sent ?? 0) - (int) ($campaign->total_failed ?? 0),
+        ]);
+    }
+
+    /**
+     * Resolve the campaign's WhatsApp instance + template, cached per campaign_id.
+     *
+     * Both are effectively immutable for the campaign's lifetime, yet the fan-out
+     * previously loaded them on every message — two extra queries per send across a
+     * 100k-contact campaign. Cache them for a short window (matching the project's
+     * ~300s config-cache convention) so the hot path reads them from cache; the live
+     * campaign-status gate still hits the DB per message. A token refresh or a
+     * template-status change is picked up within the TTL. Set
+     * send_config_cache_seconds=0 to disable and always resolve fresh.
+     *
+     * @return array{0: ?WhatsappInstance, 1: ?WhatsappTemplate}
+     */
+    private function resolveSendConfig(Campaign $campaign): array
+    {
+        $ttl = (int) config('credflow.campaigns.send_config_cache_seconds', 300);
+
+        $resolve = fn (): array => [
+            $campaign->whatsappInstance()->first(),
+            $campaign->whatsappTemplate()->first(),
+        ];
+
+        if ($ttl <= 0) {
+            return $resolve();
+        }
+
+        return Cache::remember("campaign_send_config:{$campaign->id}", $ttl, $resolve);
     }
 
     public function failed(Throwable $e): void

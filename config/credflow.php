@@ -125,6 +125,12 @@ return [
         // the job's maxExceptions). Must outlast a large tenant's gated drain. Default 6h. 0 disables the
         // time budget and reverts to the plain attempt-count tries behaviour.
         'send_retry_window_seconds' => (int) env('TENAZ_CAMPAIGN_SEND_RETRY_WINDOW', env('CREDFLOW_CAMPAIGN_SEND_RETRY_WINDOW', 21600)),
+        // Cache TTL (seconds) for a campaign's immutable WhatsApp instance + template, resolved once
+        // per campaign_id instead of re-read on every fan-out message (SCALE-4). The live campaign
+        // status is still queried per message; only the immutable config is cached. A token refresh or
+        // a template-status change is picked up within this window. Default 300 (matches the project's
+        // config-cache convention). 0 disables the cache and resolves fresh on every message.
+        'send_config_cache_seconds' => (int) env('TENAZ_CAMPAIGN_SEND_CONFIG_CACHE', env('CREDFLOW_CAMPAIGN_SEND_CONFIG_CACHE', 300)),
     ],
 
     'api' => [
