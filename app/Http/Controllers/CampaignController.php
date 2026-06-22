@@ -24,6 +24,7 @@ class CampaignController extends Controller
         // BelongsToTenant global scope on Campaign handles tenant filtering automatically
         $campaigns = Campaign::query()
             ->with(['whatsappInstance', 'whatsappTemplate', 'contactList'])
+            ->withCounters()
             ->orderByDesc('created_at')
             ->paginate(20);
 

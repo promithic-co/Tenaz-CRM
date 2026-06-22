@@ -321,6 +321,50 @@ test('DispatchCampaignJob.failed does not auto-resume when disabled or no longer
     Queue::assertNotPushed(DispatchCampaignJob::class);
 });
 
+test('a successful send writes no counter UPDATE to the campaigns row and derives total_sent (SCALE-1b)', function () {
+    Queue::fake(); // suppress the downstream dashboard recompute job
+    [$campaign, $message] = makeTenantSendable();
+
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldReceive('sendTemplate')->once()->andReturn('wamid.scale1b.001');
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+    app()->instance(WhatsAppProviderFactory::class, $factoryMock);
+
+    DB::enableQueryLog();
+    (new SendCampaignMessageJob($message))->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+    $counterWrites = collect(DB::getQueryLog())->filter(
+        fn ($q): bool => str_contains(strtolower($q['query']), 'update "campaigns"') && str_contains($q['query'], 'total_')
+    );
+    DB::disableQueryLog();
+
+    // The hot path no longer hammers the single campaigns row; the count derives from the message.
+    expect($counterWrites)->toBeEmpty()
+        ->and($message->fresh()->status)->toBe('sent')
+        ->and($campaign->fresh()->total_sent)->toBe(1);
+});
+
+test('withCounters() hydrates derived counters in one query without an N+1 (SCALE-1b)', function () {
+    foreach (range(1, 3) as $i) {
+        $c = Campaign::factory()->sending()->create();
+        CampaignMessage::factory()->sent()->count(2)->create(['campaign_id' => $c->id]);
+        CampaignMessage::factory()->failed()->create(['campaign_id' => $c->id]);
+    }
+
+    DB::enableQueryLog();
+    $campaigns = Campaign::query()->withCounters()->get();
+    // Touching the accessors must not trigger further queries — values came from withCounters().
+    $campaigns->each(fn (Campaign $c) => $c->total_sent + $c->total_failed);
+    $messageReads = collect(DB::getQueryLog())->filter(
+        fn ($q): bool => str_contains($q['query'], 'campaign_messages')
+    );
+    DB::disableQueryLog();
+
+    // A single list query carries the correlated subqueries — no per-campaign aggregate.
+    expect($messageReads)->toHaveCount(1)
+        ->and($campaigns->every(fn (Campaign $c): bool => $c->total_sent === 2 && $c->total_failed === 1))->toBeTrue();
+});
+
 /**
  * Build a fully sendable campaign message (sending campaign + instance + approved template + entry).
  *

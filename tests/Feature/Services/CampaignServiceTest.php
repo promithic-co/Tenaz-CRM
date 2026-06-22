@@ -27,6 +27,24 @@ function makeSendableCampaign(): Campaign
     return $campaign;
 }
 
+/**
+ * Seed real campaign_messages so the derived counters (SCALE-1b) reflect a given
+ * sent/failed split. `sent` messages carry sent_at (count toward total_sent); `failed`
+ * are separate send-time failures (status=failed, no sent_at) — total_failed / total_sent.
+ */
+function seedCampaignCounters(Campaign $campaign, int $sent, int $failed): void
+{
+    if ($sent > 0) {
+        CampaignMessage::factory()->sent()->count($sent)->create([
+            'campaign_id' => $campaign->id,        ]);
+    }
+
+    if ($failed > 0) {
+        CampaignMessage::factory()->failed()->count($failed)->create([
+            'campaign_id' => $campaign->id,        ]);
+    }
+}
+
 test('start transitions campaign to sending and dispatches job', function () {
     Queue::fake();
     $campaign = makeSendableCampaign();
@@ -107,11 +125,8 @@ test('cancel sets status to failed with manual cancellation reason', function ()
 });
 
 test('checkAndAutoPause returns false when failure rate below threshold', function () {
-    $campaign = Campaign::factory()->sending()->create([
-        'total_sent' => 100,
-        'total_failed' => 5,
-        'error_threshold_percent' => 10,
-    ]);
+    $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
+    seedCampaignCounters($campaign, sent: 20, failed: 1); // 5% < 10%
 
     $service = new CampaignService;
 
@@ -120,11 +135,8 @@ test('checkAndAutoPause returns false when failure rate below threshold', functi
 });
 
 test('checkAndAutoPause pauses campaign when failure rate exceeds threshold', function () {
-    $campaign = Campaign::factory()->sending()->create([
-        'total_sent' => 100,
-        'total_failed' => 15,
-        'error_threshold_percent' => 10,
-    ]);
+    $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
+    seedCampaignCounters($campaign, sent: 20, failed: 3); // 15% > 10%
 
     $service = new CampaignService;
 
@@ -135,11 +147,8 @@ test('checkAndAutoPause pauses campaign when failure rate exceeds threshold', fu
 test('checkAndAutoPause debounces rapid checks within the window (SCALE-1)', function () {
     config(['credflow.campaigns.autopause_debounce_seconds' => 3]);
 
-    $campaign = Campaign::factory()->sending()->create([
-        'total_sent' => 100,
-        'total_failed' => 5,
-        'error_threshold_percent' => 10,
-    ]);
+    $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
+    seedCampaignCounters($campaign, sent: 20, failed: 1); // 5% < 10%
 
     $service = new CampaignService;
 
@@ -148,7 +157,7 @@ test('checkAndAutoPause debounces rapid checks within the window (SCALE-1)', fun
 
     // Failures now spike past the threshold, but a second call inside the window is gated
     // out before it can take the row lock — so the campaign keeps sending this cycle.
-    $campaign->update(['total_failed' => 50]);
+    seedCampaignCounters($campaign, sent: 0, failed: 9); // now 10/20 = 50%
     expect($service->checkAndAutoPause($campaign))->toBeFalse();
     expect($campaign->fresh()->status)->toBe('sending');
 
@@ -161,11 +170,8 @@ test('checkAndAutoPause debounces rapid checks within the window (SCALE-1)', fun
 test('checkAndAutoPause still evaluates immediately when debounce is disabled', function () {
     config(['credflow.campaigns.autopause_debounce_seconds' => 0]);
 
-    $campaign = Campaign::factory()->sending()->create([
-        'total_sent' => 100,
-        'total_failed' => 15,
-        'error_threshold_percent' => 10,
-    ]);
+    $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
+    seedCampaignCounters($campaign, sent: 20, failed: 3); // 15% > 10%
 
     $service = new CampaignService;
 

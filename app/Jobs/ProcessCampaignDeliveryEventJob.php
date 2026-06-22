@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Models\Campaign;
 use App\Models\CampaignMessage;
 use App\Models\WhatsappOutboxMessage;
 use App\Services\ConversationTimelineService;
@@ -65,7 +64,7 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
             // An in-doubt row resolves the moment Meta acknowledges it: any status proves
             // the send reached Meta. Adopt the wamid and count the (previously uncounted) send.
             if ($message->status === 'in_doubt') {
-                $this->resolveInDoubt($message, $campaign);
+                $this->resolveInDoubt($message);
                 $message->refresh();
             }
 
@@ -86,9 +85,9 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
             }
 
             match ($newStatus) {
-                'delivered' => $this->handleDelivered($message, $campaign),
-                'read' => $this->handleRead($message, $campaign),
-                'failed' => $this->handleFailed($message, $campaign),
+                'delivered' => $this->handleDelivered($message),
+                'read' => $this->handleRead($message),
+                'failed' => $this->handleFailed($message),
                 default => null,
             };
 
@@ -147,16 +146,12 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
 
     /**
      * Resolve an in-doubt message: Meta acknowledged it, so it WAS sent. Adopt the wamid
-     * and count the send that the ambiguous-send path intentionally did not count.
+     * and mark it sent — stamping sent_at, which is what now counts the send (SCALE-1b).
      */
-    private function resolveInDoubt(CampaignMessage $message, ?Campaign $campaign): void
+    private function resolveInDoubt(CampaignMessage $message): void
     {
         $message->update(['provider_message_id' => $this->providerMessageId]);
         $message->markSent($this->providerMessageId);
-
-        if ($campaign) {
-            $campaign->incrementCounter('total_sent');
-        }
 
         Log::info('ProcessCampaignDeliveryEventJob: resolved in_doubt to sent', [
             'message_id' => $message->id,
@@ -223,34 +218,22 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
         };
     }
 
-    private function handleDelivered(CampaignMessage $message, ?Campaign $campaign): void
+    private function handleDelivered(CampaignMessage $message): void
     {
         $message->markDelivered();
-
-        if ($campaign) {
-            $campaign->incrementCounter('total_delivered');
-        }
     }
 
-    private function handleRead(CampaignMessage $message, ?Campaign $campaign): void
+    private function handleRead(CampaignMessage $message): void
     {
         // Ensure delivered is set first
         if ($message->status !== 'read' && $message->status !== 'delivered') {
             $message->markDelivered();
-
-            if ($campaign) {
-                $campaign->incrementCounter('total_delivered');
-            }
         }
 
         $message->markRead();
-
-        if ($campaign) {
-            $campaign->incrementCounter('total_read');
-        }
     }
 
-    private function handleFailed(CampaignMessage $message, ?Campaign $campaign): void
+    private function handleFailed(CampaignMessage $message): void
     {
         if ($message->canTransitionTo('failed')) {
             $error = is_array($this->errors[0] ?? null) ? $this->errors[0] : [];
@@ -260,10 +243,6 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
 
             $message->markFailed($code, $messageText);
             $message->update(['error_subcode' => $subcode]);
-
-            if ($campaign) {
-                $campaign->incrementCounter('total_failed');
-            }
         }
     }
 }

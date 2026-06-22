@@ -56,8 +56,10 @@ test('delivery event job skips backwards status transitions', function () {
     $job = new ProcessCampaignDeliveryEventJob('provider-backwards-001', 'delivered');
     $job->handle();
 
+    // The derived counter reflects the one already-delivered message; the backwards/duplicate
+    // event neither changes the status nor inflates the count (SCALE-1b).
     expect($message->fresh()->status)->toBe('delivered');
-    expect($campaign->fresh()->total_delivered)->toBe(0);
+    expect($campaign->fresh()->total_delivered)->toBe(1);
 });
 
 test('delivery event job dispatched to queue', function () {

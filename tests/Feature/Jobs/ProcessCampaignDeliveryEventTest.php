@@ -51,9 +51,10 @@ test('ProcessCampaignDeliveryEventJob skips backwards transitions', function () 
     $job = new ProcessCampaignDeliveryEventJob('gs-test-003', 'delivered');
     $job->handle();
 
-    // Status stays as delivered (not re-processed)
+    // Status stays as delivered (not re-processed); the derived counter reflects the one
+    // already-delivered message and the duplicate event does not inflate it (SCALE-1b).
     expect($message->fresh()->status)->toBe('delivered');
-    expect($campaign->fresh()->total_delivered)->toBe(0);
+    expect($campaign->fresh()->total_delivered)->toBe(1);
 });
 
 test('ProcessCampaignDeliveryEventJob does nothing when message not found', function () {

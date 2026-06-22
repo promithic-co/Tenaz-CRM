@@ -81,7 +81,10 @@ class MonitorCampaignsCommand extends Command
      */
     private function checkHighFailureRate(CampaignService $campaignService, AlertService $alertService): void
     {
-        $sendingCampaigns = Campaign::where('status', 'sending')->get();
+        // withCounters() hydrates the message-derived total_* in one query of correlated
+        // subqueries (SCALE-1b) — without it, each campaign's accessor would fire its own
+        // aggregate, an N+1 over all sending campaigns every tick.
+        $sendingCampaigns = Campaign::where('status', 'sending')->withCounters()->get();
 
         foreach ($sendingCampaigns as $campaign) {
             if ($campaign->total_sent <= 0) {

@@ -43,6 +43,21 @@ class Campaign extends Model
         'risk_acknowledged_by',
     ];
 
+    /**
+     * Aggregate aliases injected by scopeWithCounters() to back the derived counter
+     * accessors without an N+1 — internal, never serialized to the client.
+     *
+     * @var list<string>
+     */
+    protected $hidden = ['agg_sent', 'agg_delivered', 'agg_read', 'agg_failed'];
+
+    /**
+     * Memoized message-derived counters for this instance.
+     *
+     * @var array{sent: int, delivered: int, read: int, failed: int}|null
+     */
+    private ?array $countersCache = null;
+
     protected function casts(): array
     {
         return [
@@ -53,10 +68,6 @@ class Campaign extends Model
             'paused_at' => 'datetime',
             'risk_acknowledged_at' => 'datetime',
             'total_recipients' => 'integer',
-            'total_sent' => 'integer',
-            'total_delivered' => 'integer',
-            'total_read' => 'integer',
-            'total_failed' => 'integer',
             'daily_limit' => 'integer',
             'delay_between_ms' => 'integer',
             'error_threshold_percent' => 'integer',
@@ -161,8 +172,82 @@ class Campaign extends Model
         return round(($this->total_failed / $this->total_sent) * 100, 2);
     }
 
-    public function incrementCounter(string $field): void
+    /**
+     * Derived counter accessors (SCALE-1b). The denormalized total_* columns are no
+     * longer written on the hot send/delivery path — that was ~3 single-row UPDATEs per
+     * message from concurrent send + delivery-webhook workers, the per-campaign throughput
+     * ceiling. The live message rows in campaign_messages (indexed) are the source of
+     * truth: count(sent_at) etc. A status='failed' send-time failure has no sent_at, so it
+     * counts toward failed but not sent — matching the old increment semantics exactly. Use
+     * scopeWithCounters() for list views to avoid an N+1; single reads derive in one query.
+     */
+    public function getTotalSentAttribute(): int
     {
-        $this->increment($field);
+        return $this->resolveCounter('sent');
+    }
+
+    public function getTotalDeliveredAttribute(): int
+    {
+        return $this->resolveCounter('delivered');
+    }
+
+    public function getTotalReadAttribute(): int
+    {
+        return $this->resolveCounter('read');
+    }
+
+    public function getTotalFailedAttribute(): int
+    {
+        return $this->resolveCounter('failed');
+    }
+
+    /**
+     * Eager-load the four message-derived counters as agg_* aliases in a single query of
+     * correlated subqueries, so listing campaigns does not fire a per-row aggregate.
+     */
+    public function scopeWithCounters(Builder $query): Builder
+    {
+        return $query->withCount([
+            'messages as agg_sent' => fn (Builder $q): Builder => $q->whereNotNull('sent_at'),
+            'messages as agg_delivered' => fn (Builder $q): Builder => $q->whereNotNull('delivered_at'),
+            'messages as agg_read' => fn (Builder $q): Builder => $q->whereNotNull('read_at'),
+            'messages as agg_failed' => fn (Builder $q): Builder => $q->where('status', 'failed'),
+        ]);
+    }
+
+    private function resolveCounter(string $key): int
+    {
+        $aggKey = 'agg_'.$key;
+
+        if (array_key_exists($aggKey, $this->attributes)) {
+            return (int) $this->attributes[$aggKey];
+        }
+
+        return $this->deriveCounters()[$key];
+    }
+
+    /**
+     * @return array{sent: int, delivered: int, read: int, failed: int}
+     */
+    private function deriveCounters(): array
+    {
+        if ($this->countersCache !== null) {
+            return $this->countersCache;
+        }
+
+        if (! $this->exists) {
+            return $this->countersCache = ['sent' => 0, 'delivered' => 0, 'read' => 0, 'failed' => 0];
+        }
+
+        $row = $this->messages()
+            ->selectRaw('count(sent_at) as sent_count, count(delivered_at) as delivered_count, count(read_at) as read_count, count(case when status = ? then 1 end) as failed_count', ['failed'])
+            ->first();
+
+        return $this->countersCache = [
+            'sent' => (int) ($row->sent_count ?? 0),
+            'delivered' => (int) ($row->delivered_count ?? 0),
+            'read' => (int) ($row->read_count ?? 0),
+            'failed' => (int) ($row->failed_count ?? 0),
+        ];
     }
 }

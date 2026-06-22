@@ -7,6 +7,7 @@ use App\Models\ContactListEntry;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\WhatsappTemplate;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -71,7 +72,7 @@ test('contact list entry unique constraint prevents duplicate phone per list', f
     ContactListEntry::factory()->create(['contact_list_id' => $list->id, 'phone' => '5511999990001']);
 
     expect(fn () => ContactListEntry::factory()->create(['contact_list_id' => $list->id, 'phone' => '5511999990001']))
-        ->toThrow(\Illuminate\Database\QueryException::class);
+        ->toThrow(QueryException::class);
 });
 
 test('contact list entry markOptedIn sets status and timestamp', function () {
@@ -134,24 +135,47 @@ test('campaign rate calculations guard division by zero', function () {
 });
 
 test('campaign rate calculations are correct', function () {
-    $campaign = Campaign::factory()->create([
-        'total_sent' => 100,
-        'total_delivered' => 80,
-        'total_read' => 40,
-        'total_failed' => 5,
+    // Counters derive from message state (SCALE-1b): sent=20, delivered=16, read=8, failed=1.
+    $campaign = Campaign::factory()->create();
+    CampaignMessage::factory()->count(8)->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'read', 'sent_at' => now(), 'delivered_at' => now(), 'read_at' => now(),
+    ]);
+    CampaignMessage::factory()->count(8)->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'delivered', 'sent_at' => now(), 'delivered_at' => now(),
+    ]);
+    CampaignMessage::factory()->count(4)->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'sent', 'sent_at' => now(),
+    ]);
+    CampaignMessage::factory()->failed()->count(1)->create([
+        'campaign_id' => $campaign->id,
     ]);
 
-    expect($campaign->deliveryRate())->toBe(80.0);
-    expect($campaign->readRate())->toBe(50.0);
-    expect($campaign->failureRate())->toBe(5.0);
+    expect($campaign->deliveryRate())->toBe(80.0); // 16/20
+    expect($campaign->readRate())->toBe(50.0);     // 8/16
+    expect($campaign->failureRate())->toBe(5.0);   // 1/20
 });
 
-test('campaign incrementCounter does atomic increment', function () {
-    $campaign = Campaign::factory()->create(['total_sent' => 10]);
+test('campaign counters derive live from message rows (SCALE-1b)', function () {
+    // The total_* columns are no longer written on the hot path; reads derive from
+    // campaign_messages. A status=sent message carries sent_at; a delivery-failed one
+    // carries both sent_at and status=failed.
+    $campaign = Campaign::factory()->create();
+    CampaignMessage::factory()->count(9)->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'sent', 'sent_at' => now(),
+    ]);
+    CampaignMessage::factory()->count(1)->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'failed', 'sent_at' => now(), 'failed_at' => now(),
+    ]);
 
-    $campaign->incrementCounter('total_sent');
-
-    expect($campaign->fresh()->total_sent)->toBe(11);
+    $fresh = $campaign->fresh();
+    expect($fresh->total_sent)->toBe(10)   // all 10 carry sent_at
+        ->and($fresh->total_failed)->toBe(1)
+        ->and($fresh->total_delivered)->toBe(0);
 });
 
 // CampaignMessage tests
@@ -161,7 +185,7 @@ test('campaign message unique constraint prevents duplicate entries per campaign
     CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'contact_list_entry_id' => $entry->id]);
 
     expect(fn () => CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'contact_list_entry_id' => $entry->id]))
-        ->toThrow(\Illuminate\Database\QueryException::class);
+        ->toThrow(QueryException::class);
 });
 
 test('campaign message markSent updates status and provider message id', function () {

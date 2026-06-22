@@ -106,7 +106,6 @@ class SendCampaignMessageJob implements ShouldQueue
 
         if (! $entry) {
             $message->markFailed('NO_ENTRY', 'Contact list entry not found');
-            $campaign->incrementCounter('total_failed');
             $service->checkAndAutoPause($campaign);
 
             return;
@@ -138,7 +137,6 @@ class SendCampaignMessageJob implements ShouldQueue
 
         if (! $instance || ! $template) {
             $message->markFailed('NO_INSTANCE_OR_TEMPLATE', 'Campaign is missing a WhatsApp instance or template.');
-            $campaign->incrementCounter('total_failed');
             $service->checkAndAutoPause($campaign->fresh());
 
             return;
@@ -146,7 +144,6 @@ class SendCampaignMessageJob implements ShouldQueue
 
         if ($template->status !== 'APPROVED') {
             $message->markFailed('TEMPLATE_NOT_APPROVED', "Template status: {$template->status}");
-            $campaign->incrementCounter('total_failed');
             $service->checkAndAutoPause($campaign->fresh());
 
             return;
@@ -244,7 +241,6 @@ class SendCampaignMessageJob implements ShouldQueue
         $destination = PhoneNumberValidator::normalize((string) $entry->phone);
         if ($destination === null) {
             $message->markFailed('INVALID_PHONE', "Invalid phone number: {$entry->phone}");
-            $campaign->incrementCounter('total_failed');
             $service->checkAndAutoPause($campaign->fresh());
 
             $interactionEvents->record(
@@ -284,7 +280,6 @@ class SendCampaignMessageJob implements ShouldQueue
             }
 
             $message->markSent($providerMessageId);
-            $campaign->incrementCounter('total_sent');
 
             $this->dispatchProgressIfReady($debouncer, $campaign);
             app(DashboardMetricsService::class)->dispatchUpdate((string) $campaign->tenant_id);
@@ -344,7 +339,6 @@ class SendCampaignMessageJob implements ShouldQueue
             // Permanent destination failures — no retry, no exception propagation.
             $code = $e instanceof MetaInvalidNumberException ? 'INVALID_NUMBER' : 'NO_WHATSAPP';
             $message->markFailed($code, $e->getMessage());
-            $campaign->incrementCounter('total_failed');
             $service->checkAndAutoPause($campaign->fresh());
             $this->dispatchProgressIfReady($debouncer, $campaign);
 
@@ -488,7 +482,6 @@ class SendCampaignMessageJob implements ShouldQueue
         $campaign = $message->campaign;
 
         if ($campaign) {
-            $campaign->incrementCounter('total_failed');
             app(CampaignService::class)->checkAndAutoPause($campaign->fresh());
         }
     }

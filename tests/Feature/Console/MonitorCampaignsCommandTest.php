@@ -79,13 +79,9 @@ test('monitor-campaigns pauses on a wallet error that failed long after the row 
 test('monitor-campaigns runs the failure-rate check on a sending campaign that has sent messages', function () {
     // Regression: the failure-rate query used whereColumn('total_sent', '>', 'total_recipients * 0'),
     // which Postgres treats as a (non-existent) column identifier and rejects, making the whole
-    // command exit 1 every run. A sending campaign with total_sent > 0 exercises that path.
-    Campaign::factory()->sending()->create([
-        'total_recipients' => 100,
-        'total_sent' => 50,
-        'total_failed' => 40,
-        'error_threshold_percent' => 10,
-    ]);
+    // command exit 1 every run. A sending campaign with derived total_sent > 0 exercises that path.
+    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 100, 'error_threshold_percent' => 10]);
+    CampaignMessage::factory()->sent()->count(20)->create(['campaign_id' => $campaign->id]);
 
     $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
 });
@@ -93,12 +89,10 @@ test('monitor-campaigns runs the failure-rate check on a sending campaign that h
 test('monitor-campaigns backstop auto-pauses a sending campaign over its failure threshold (SCALE-1)', function () {
     // No wallet error — the campaign is simply over its own failure threshold. The hot send
     // path debounces its auto-pause checks, so the monitor must catch this within one cycle.
-    $campaign = Campaign::factory()->sending()->create([
-        'total_recipients' => 100,
-        'total_sent' => 100,
-        'total_failed' => 40,
-        'error_threshold_percent' => 10,
-    ]);
+    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 100, 'error_threshold_percent' => 10]);
+    // 20 sent, 6 of them failed → 30% failure rate, over the 10% threshold.
+    CampaignMessage::factory()->sent()->count(14)->create(['campaign_id' => $campaign->id]);
+    CampaignMessage::factory()->sent()->count(6)->create(['campaign_id' => $campaign->id, 'status' => 'failed', 'failed_at' => now()]);
 
     $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
 
@@ -106,12 +100,10 @@ test('monitor-campaigns backstop auto-pauses a sending campaign over its failure
 });
 
 test('monitor-campaigns leaves a sending campaign under its failure threshold sending', function () {
-    $campaign = Campaign::factory()->sending()->create([
-        'total_recipients' => 100,
-        'total_sent' => 100,
-        'total_failed' => 5,
-        'error_threshold_percent' => 10,
-    ]);
+    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 100, 'error_threshold_percent' => 10]);
+    // 20 sent, 1 failed → 5% failure rate, under the 10% threshold.
+    CampaignMessage::factory()->sent()->count(19)->create(['campaign_id' => $campaign->id]);
+    CampaignMessage::factory()->sent()->count(1)->create(['campaign_id' => $campaign->id, 'status' => 'failed', 'failed_at' => now()]);
 
     $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
 
