@@ -190,9 +190,12 @@ class CampaignService
      */
     public function checkDailyLimit(Campaign $campaign): bool
     {
+        // Sargable range (SCALE-6): whereDate() wraps the column in a function and cannot use
+        // an index — a full scan on every 500-entry chunk of the dispatcher. The explicit
+        // [start-of-day, end-of-day] range is index-friendly against (campaign_id, sent_at)
+        // and implicitly excludes null sent_at.
         $sentToday = CampaignMessage::where('campaign_id', $campaign->id)
-            ->whereNotNull('sent_at')
-            ->whereDate('sent_at', today())
+            ->whereBetween('sent_at', [today()->startOfDay(), today()->endOfDay()])
             ->count();
 
         return $sentToday < $campaign->daily_limit;

@@ -195,3 +195,37 @@ test('checkDailyLimit returns false when at daily limit', function () {
 
     expect($service->checkDailyLimit($campaign))->toBeFalse();
 });
+
+test('checkDailyLimit counts only messages sent today (SCALE-6)', function () {
+    $campaign = Campaign::factory()->sending()->create(['daily_limit' => 2]);
+
+    // Yesterday and tomorrow must not count toward today's limit.
+    CampaignMessage::factory()->count(5)->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'sent',
+        'sent_at' => today()->subDay()->setTime(23, 59, 59),
+    ]);
+    CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'sent',
+        'sent_at' => today()->addDay()->startOfDay(),
+    ]);
+    // Boundary: start- and end-of-day today DO count.
+    CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'sent',
+        'sent_at' => today()->startOfDay(),
+    ]);
+
+    $service = new CampaignService;
+
+    expect($service->checkDailyLimit($campaign))->toBeTrue();
+
+    CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'sent',
+        'sent_at' => today()->endOfDay(),
+    ]);
+
+    expect($service->checkDailyLimit($campaign))->toBeFalse();
+});
