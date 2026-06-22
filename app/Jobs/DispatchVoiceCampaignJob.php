@@ -47,16 +47,77 @@ class DispatchVoiceCampaignJob implements ShouldQueue
             $campaign->total_calls = $eligibleTotal;
         }
 
-        $pendingEntries = $campaign->contactList->entries()
-            ->optedIn()
-            ->whereNotIn('id', VoiceCampaignCall::query()
-                ->select('contact_list_entry_id')
-                ->where('voice_campaign_id', $campaign->id)
-                ->whereNotNull('contact_list_entry_id')
-            )
-            ->select(['id', 'phone', 'name', 'extra_data']);
+        $index = 0;
+        $stopped = false;
 
-        if (! $pendingEntries->exists()) {
+        // Stream all opted-in entries and skip already-called ones per chunk via a
+        // bounded whereIn (mirrors DispatchCampaignJob). The previous whereNotIn anti-join
+        // re-scanned every prior call on each chunk → O(chunks × priorCalls) on a
+        // re-dispatched campaign. Bounded lookups hit the (voice_campaign_id,
+        // contact_list_entry_id) index instead.
+        $campaign->contactList->entries()
+            ->optedIn()
+            ->select(['id', 'phone', 'name', 'extra_data'])
+            ->orderBy('id')
+            ->chunkById(100, function ($entries) use ($campaign, &$index, &$stopped) {
+                $campaign->refresh();
+
+                if (! $campaign->isSending()) {
+                    Log::info('DispatchVoiceCampaignJob: campaign paused/cancelled mid-dispatch', ['campaign_id' => $campaign->id]);
+                    $stopped = true;
+
+                    return false;
+                }
+
+                $chunkIds = $entries->pluck('id')->all();
+
+                $existingSet = array_flip(
+                    VoiceCampaignCall::where('voice_campaign_id', $campaign->id)
+                        ->whereIn('contact_list_entry_id', $chunkIds)
+                        ->pluck('contact_list_entry_id')
+                        ->all()
+                );
+
+                foreach ($entries as $entry) {
+                    if (isset($existingSet[$entry->id])) {
+                        continue;
+                    }
+
+                    $phone = str_starts_with($entry->phone, '+') ? $entry->phone : '+'.$entry->phone;
+
+                    $template = $campaign->greeting_template
+                        ?? $campaign->voiceInstance->greeting_template
+                        ?? '';
+
+                    $interpolatedMessage = $this->interpolateTemplate($template, $entry);
+
+                    $voiceCampaignCall = VoiceCampaignCall::firstOrCreate(
+                        ['voice_campaign_id' => $campaign->id, 'contact_list_entry_id' => $entry->id],
+                        [
+                            'phone' => $phone,
+                            'contact_name' => $entry->name ?? '',
+                            'interpolated_message' => $interpolatedMessage,
+                            'status' => 'pending',
+                        ]
+                    );
+
+                    PlaceOutboundCallJob::dispatch($voiceCampaignCall)
+                        ->delay(now()->addMilliseconds($index * $campaign->delay_between_calls_ms));
+
+                    $index++;
+                }
+            });
+
+        if ($stopped) {
+            Log::info('DispatchVoiceCampaignJob: dispatched calls', [
+                'campaign_id' => $campaign->id,
+                'count' => $index,
+            ]);
+
+            return;
+        }
+
+        if ($index === 0) {
             Log::info('DispatchVoiceCampaignJob: no pending entries', ['campaign_id' => $campaign->id]);
 
             if ($campaign->total_calls === 0) {
@@ -65,55 +126,16 @@ class DispatchVoiceCampaignJob implements ShouldQueue
                 return;
             }
 
-            if ($campaign->total_calls > 0) {
-                $processed = VoiceCampaignCall::where('voice_campaign_id', $campaign->id)
-                    ->whereNotIn('status', ['pending', 'calling'])
-                    ->count();
+            $processed = VoiceCampaignCall::where('voice_campaign_id', $campaign->id)
+                ->whereNotIn('status', ['pending', 'calling'])
+                ->count();
 
-                if ($processed >= $campaign->total_calls) {
-                    $campaign->update(['status' => 'completed', 'completed_at' => now()]);
-                }
+            if ($processed >= $campaign->total_calls) {
+                $campaign->update(['status' => 'completed', 'completed_at' => now()]);
             }
 
             return;
         }
-
-        $index = 0;
-
-        $pendingEntries->chunkById(100, function ($entries) use ($campaign, &$index) {
-            $campaign->refresh();
-
-            if (! $campaign->isSending()) {
-                Log::info('DispatchVoiceCampaignJob: campaign paused/cancelled mid-dispatch', ['campaign_id' => $campaign->id]);
-
-                return false;
-            }
-
-            foreach ($entries as $entry) {
-                $phone = str_starts_with($entry->phone, '+') ? $entry->phone : '+'.$entry->phone;
-
-                $template = $campaign->greeting_template
-                    ?? $campaign->voiceInstance->greeting_template
-                    ?? '';
-
-                $interpolatedMessage = $this->interpolateTemplate($template, $entry);
-
-                $voiceCampaignCall = VoiceCampaignCall::firstOrCreate(
-                    ['voice_campaign_id' => $campaign->id, 'contact_list_entry_id' => $entry->id],
-                    [
-                        'phone' => $phone,
-                        'contact_name' => $entry->name ?? '',
-                        'interpolated_message' => $interpolatedMessage,
-                        'status' => 'pending',
-                    ]
-                );
-
-                PlaceOutboundCallJob::dispatch($voiceCampaignCall)
-                    ->delay(now()->addMilliseconds($index * $campaign->delay_between_calls_ms));
-
-                $index++;
-            }
-        });
 
         Log::info('DispatchVoiceCampaignJob: dispatched calls', [
             'campaign_id' => $campaign->id,

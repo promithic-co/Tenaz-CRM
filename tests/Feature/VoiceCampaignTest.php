@@ -99,6 +99,47 @@ test('dispatch completes a campaign with no opted-in entries', function () {
     Queue::assertNotPushed(PlaceOutboundCallJob::class);
 });
 
+test('re-dispatch only enqueues entries without a prior call (SCALE-5)', function () {
+    $campaign = makeVoiceCampaignWithEntries(3);
+    $entries = ContactListEntry::where('contact_list_id', $campaign->contact_list_id)->orderBy('id')->get();
+    $campaign->update(['status' => 'sending', 'total_calls' => 3]);
+
+    VoiceCampaignCall::factory()->create([
+        'voice_campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+        'status' => 'completed',
+    ]);
+
+    (new DispatchVoiceCampaignJob($campaign))->handle();
+
+    expect(VoiceCampaignCall::where('voice_campaign_id', $campaign->id)->count())->toBe(3)
+        ->and(VoiceCampaignCall::where('contact_list_entry_id', $entries[1]->id)->exists())->toBeTrue()
+        ->and(VoiceCampaignCall::where('contact_list_entry_id', $entries[2]->id)->exists())->toBeTrue();
+
+    Queue::assertPushed(PlaceOutboundCallJob::class, 2);
+});
+
+test('re-dispatch with all entries already called marks completed (SCALE-5)', function () {
+    $campaign = makeVoiceCampaignWithEntries(2);
+    $entries = ContactListEntry::where('contact_list_id', $campaign->contact_list_id)->orderBy('id')->get();
+    $campaign->update(['status' => 'sending', 'total_calls' => 2]);
+
+    foreach ($entries as $entry) {
+        VoiceCampaignCall::factory()->create([
+            'voice_campaign_id' => $campaign->id,
+            'contact_list_entry_id' => $entry->id,
+            'status' => 'completed',
+        ]);
+    }
+
+    (new DispatchVoiceCampaignJob($campaign))->handle();
+
+    expect($campaign->fresh()->status)->toBe('completed')
+        ->and($campaign->fresh()->completed_at)->not->toBeNull();
+
+    Queue::assertNotPushed(PlaceOutboundCallJob::class);
+});
+
 test('pause sets campaign to paused', function () {
     $campaign = makeVoiceCampaignWithEntries();
     $campaign->update(['status' => 'sending']);
