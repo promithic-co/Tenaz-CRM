@@ -120,9 +120,19 @@ class MonitorCampaignsCommand extends Command
     {
         $sendingCampaigns = Campaign::where('status', 'sending')->get();
 
+        if ($sendingCampaigns->isEmpty()) {
+            return;
+        }
+
+        // One grouped query for the latest message per campaign instead of a per-campaign
+        // max(created_at) in the loop (PERF-11 — N+1 over all sending campaigns each tick).
+        $lastMessageByCampaign = CampaignMessage::whereIn('campaign_id', $sendingCampaigns->modelKeys())
+            ->groupBy('campaign_id')
+            ->selectRaw('campaign_id, max(created_at) as last_created_at')
+            ->pluck('last_created_at', 'campaign_id');
+
         foreach ($sendingCampaigns as $campaign) {
-            $lastMessageAt = CampaignMessage::where('campaign_id', $campaign->id)
-                ->max('created_at');
+            $lastMessageAt = $lastMessageByCampaign[$campaign->id] ?? null;
 
             if ($lastMessageAt && Carbon::parse($lastMessageAt)->lt(now()->subHour())) {
                 $alertService->sendAlert(

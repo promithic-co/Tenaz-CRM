@@ -51,6 +51,15 @@ class DispatchVoiceCampaignJob implements ShouldQueue
         $index = 0;
         $stopped = false;
 
+        // Greeting template is immutable for the campaign's life; resolve it once here
+        // instead of touching the lazy voiceInstance relation on every entry inside the
+        // chunk loop (PERF-7). Unset the relation so the per-chunk $campaign->refresh()
+        // below does not reload it.
+        $greetingTemplate = $campaign->greeting_template
+            ?? $campaign->voiceInstance?->greeting_template
+            ?? '';
+        $campaign->unsetRelation('voiceInstance');
+
         // Stream all opted-in entries and skip already-called ones per chunk via a
         // bounded whereIn (mirrors DispatchCampaignJob). The previous whereNotIn anti-join
         // re-scanned every prior call on each chunk → O(chunks × priorCalls) on a
@@ -60,7 +69,7 @@ class DispatchVoiceCampaignJob implements ShouldQueue
             ->optedIn()
             ->select(['id', 'phone', 'name', 'extra_data'])
             ->orderBy('id')
-            ->chunkById(100, function ($entries) use ($campaign, &$index, &$stopped) {
+            ->chunkById(100, function ($entries) use ($campaign, $greetingTemplate, &$index, &$stopped) {
                 $campaign->refresh();
 
                 if (! $campaign->isSending()) {
@@ -86,11 +95,7 @@ class DispatchVoiceCampaignJob implements ShouldQueue
 
                     $phone = str_starts_with($entry->phone, '+') ? $entry->phone : '+'.$entry->phone;
 
-                    $template = $campaign->greeting_template
-                        ?? $campaign->voiceInstance->greeting_template
-                        ?? '';
-
-                    $interpolatedMessage = $this->interpolateTemplate($template, $entry);
+                    $interpolatedMessage = $this->interpolateTemplate($greetingTemplate, $entry);
 
                     $voiceCampaignCall = VoiceCampaignCall::firstOrCreate(
                         ['voice_campaign_id' => $campaign->id, 'contact_list_entry_id' => $entry->id],

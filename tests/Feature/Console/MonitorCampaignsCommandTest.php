@@ -2,9 +2,45 @@
 
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
+use App\Services\AlertService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
+
+test('monitor-campaigns finds stuck campaigns with a single grouped query (PERF-11 / SCALE-13)', function () {
+    Carbon::setTestNow(now()->setTime(10, 0, 0)); // away from the 20:00 daily summary
+
+    $stuck = Campaign::factory()->sending()->create(['total_sent' => 0]);
+    $healthy = Campaign::factory()->sending()->create(['total_sent' => 0]);
+    $alsoSending = Campaign::factory()->sending()->create(['total_sent' => 0]);
+
+    $old = CampaignMessage::factory()->create(['campaign_id' => $stuck->id, 'status' => 'queued']);
+    $old->forceFill(['created_at' => now()->subHours(2)])->saveQuietly();
+    CampaignMessage::factory()->create(['campaign_id' => $healthy->id, 'status' => 'queued']);
+    CampaignMessage::factory()->create(['campaign_id' => $alsoSending->id, 'status' => 'queued']);
+
+    $alerts = Mockery::spy(AlertService::class);
+    app()->instance(AlertService::class, $alerts);
+
+    DB::enableQueryLog();
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+    $stuckQueries = collect(DB::getQueryLog())->filter(
+        fn ($q): bool => str_contains($q['query'], 'campaign_messages')
+            && str_contains(strtolower($q['query']), 'group by')
+    );
+    DB::disableQueryLog();
+
+    // One grouped query for all three sending campaigns, not a max(created_at) per campaign.
+    expect($stuckQueries)->toHaveCount(1);
+
+    $alerts->shouldHaveReceived('sendAlert')
+        ->with('stuck_campaign', Mockery::any(), Mockery::on(fn ($ctx): bool => $ctx['campaign_id'] === $stuck->id))
+        ->once();
+
+    Carbon::setTestNow();
+});
 
 test('monitor-campaigns auto-pauses a sending campaign with a wallet error 1003', function () {
     $campaign = Campaign::factory()->sending()->create();

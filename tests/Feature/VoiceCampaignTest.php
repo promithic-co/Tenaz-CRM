@@ -10,6 +10,7 @@ use App\Models\VoiceInstance;
 use App\Models\WhatsappInstance;
 use App\Services\VoiceCampaignService;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -183,6 +184,26 @@ test('template interpolation replaces nome and extra_data variables', function (
     $result = preg_replace_callback('/\{(\w+)\}/', fn ($m) => $vars[$m[1]] ?? $m[0], $template);
 
     expect($result)->toBe('Olá Maria, você tem crédito de R$5000.');
+});
+
+test('dispatch resolves the greeting template once, not per entry (PERF-7 / SCALE-13)', function () {
+    $campaign = makeVoiceCampaignWithEntries(4);
+    $campaign->update(['status' => 'sending', 'total_calls' => 4]);
+
+    DB::enableQueryLog();
+    (new DispatchVoiceCampaignJob($campaign))->handle();
+    $voiceInstanceReads = collect(DB::getQueryLog())
+        ->filter(fn ($q): bool => str_contains($q['query'], 'voice_instances'));
+    DB::disableQueryLog();
+
+    // The voice instance (source of the greeting template) is read once before the loop,
+    // not once per entry.
+    expect($voiceInstanceReads)->toHaveCount(1)
+        ->and(VoiceCampaignCall::where('voice_campaign_id', $campaign->id)->count())->toBe(4);
+
+    // Template is still interpolated from the voice instance greeting for each call.
+    $call = VoiceCampaignCall::where('voice_campaign_id', $campaign->id)->first();
+    expect($call->interpolated_message)->toContain('pressione 1');
 });
 
 test('failed() auto-resumes the remainder of a still-sending campaign (SCALE-11)', function () {
