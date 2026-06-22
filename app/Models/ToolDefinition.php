@@ -2,12 +2,19 @@
 
 namespace App\Models;
 
+use App\Support\PromptLayerCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ToolDefinition extends Model
 {
+    protected static function booted(): void
+    {
+        static::saved(fn (self $tool) => PromptLayerCache::bump((string) $tool->tenant_id));
+        static::deleted(fn (self $tool) => PromptLayerCache::bump((string) $tool->tenant_id));
+    }
+
     protected $fillable = [
         'tenant_id',
         'agent_id',

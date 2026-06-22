@@ -15,6 +15,7 @@ use App\Models\PromptExperiment;
 use App\Models\PromptTemplate;
 use App\Models\ToolDefinition;
 use App\Services\AgentConfigResolver;
+use App\Support\PromptLayerCache;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Ai\Concerns\RemembersConversations;
@@ -166,11 +167,19 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
         $tenantId = $this->lead->tenant_id ?? 'default';
         $agentId = $this->lead->agent_id;
 
-        return ToolDefinition::forTenant($tenantId)
-            ->forAgent($agentId)
-            ->active()
-            ->where('type', 'webhook')
-            ->get()
+        // SCALE-8: tool definitions are immutable between operator edits; cache the rows
+        // (version-busted on any ToolDefinition write) and rebuild the wrappers per turn.
+        $definitions = PromptLayerCache::remember(
+            $tenantId,
+            'webhook_tools:'.($agentId ?? '_'),
+            fn () => ToolDefinition::forTenant($tenantId)
+                ->forAgent($agentId)
+                ->active()
+                ->where('type', 'webhook')
+                ->get()
+        );
+
+        return $definitions
             ->map(fn ($def) => new GenericWebhookTool($def))
             ->all();
     }
@@ -252,20 +261,25 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
         $tenantId = $this->lead->tenant_id ?? 'default';
         $agentId = $this->lead->agent_id;
 
-        $experiment = PromptExperiment::forTenant($tenantId)
-            ->active()
-            ->ofType($type)
-            ->first();
+        // SCALE-8: cache the experiment lookup and resolved templates per tenant version.
+        // The per-lead variant assignment (assignVariant writes a sticky variant to the lead)
+        // still runs live on the cached experiment row — only the DB reads are cached.
+        $experiment = PromptLayerCache::remember(
+            $tenantId,
+            "experiment:{$type}",
+            fn () => PromptExperiment::forTenant($tenantId)->active()->ofType($type)->first()
+        );
 
         if ($experiment) {
             $variantSlug = $experiment->assignVariant($this->lead);
             $templateSlug = $experiment->getTemplateSlug($variantSlug);
 
             if ($templateSlug) {
-                $template = PromptTemplate::forTenant($tenantId)
-                    ->active()
-                    ->where('slug', $templateSlug)
-                    ->first();
+                $template = PromptLayerCache::remember(
+                    $tenantId,
+                    "template_slug:{$templateSlug}",
+                    fn () => PromptTemplate::forTenant($tenantId)->active()->where('slug', $templateSlug)->first()
+                );
 
                 if ($template) {
                     return $template;
@@ -273,12 +287,16 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
             }
         }
 
-        return PromptTemplate::forTenant($tenantId)
-            ->forAgent($agentId)
-            ->active()
-            ->ofType($type)
-            ->orderByRaw('agent_id IS NULL ASC')
-            ->first();
+        return PromptLayerCache::remember(
+            $tenantId,
+            'template:'.($agentId ?? '_').":{$type}",
+            fn () => PromptTemplate::forTenant($tenantId)
+                ->forAgent($agentId)
+                ->active()
+                ->ofType($type)
+                ->orderByRaw('agent_id IS NULL ASC')
+                ->first()
+        );
     }
 
     /** Format a float as BRL currency string. */

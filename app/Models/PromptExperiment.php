@@ -2,12 +2,19 @@
 
 namespace App\Models;
 
+use App\Support\PromptLayerCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 class PromptExperiment extends Model
 {
+    protected static function booted(): void
+    {
+        static::saved(fn (self $experiment) => PromptLayerCache::bump((string) $experiment->tenant_id));
+        static::deleted(fn (self $experiment) => PromptLayerCache::bump((string) $experiment->tenant_id));
+    }
+
     protected $fillable = [
         'tenant_id',
         'slug',
