@@ -9,6 +9,7 @@ use App\Models\VoiceCampaignCall;
 use App\Models\VoiceInstance;
 use App\Models\WhatsappInstance;
 use App\Services\VoiceCampaignService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -182,4 +183,43 @@ test('template interpolation replaces nome and extra_data variables', function (
     $result = preg_replace_callback('/\{(\w+)\}/', fn ($m) => $vars[$m[1]] ?? $m[0], $template);
 
     expect($result)->toBe('Olá Maria, você tem crédito de R$5000.');
+});
+
+test('failed() auto-resumes the remainder of a still-sending campaign (SCALE-11)', function () {
+    config(['credflow.campaigns.dispatch_max_redispatch' => 2]);
+    $campaign = makeVoiceCampaignWithEntries(3);
+    $campaign->update(['status' => 'sending']);
+
+    (new DispatchVoiceCampaignJob($campaign))->failed(new RuntimeException('worker crash'));
+
+    Queue::assertPushed(DispatchVoiceCampaignJob::class, 1);
+    expect((int) Cache::get("voice_campaign_dispatch_resume:{$campaign->id}"))->toBe(1);
+});
+
+test('failed() stops auto-resume once the budget is exhausted (SCALE-11)', function () {
+    config(['credflow.campaigns.dispatch_max_redispatch' => 2]);
+    $campaign = makeVoiceCampaignWithEntries(3);
+    $campaign->update(['status' => 'sending']);
+    Cache::put("voice_campaign_dispatch_resume:{$campaign->id}", 2, now()->addHours(6));
+
+    (new DispatchVoiceCampaignJob($campaign))->failed(new RuntimeException('worker crash'));
+
+    Queue::assertNotPushed(DispatchVoiceCampaignJob::class);
+});
+
+test('failed() does not auto-resume when disabled or when no longer sending (SCALE-11)', function () {
+    config(['credflow.campaigns.dispatch_max_redispatch' => 0]);
+    $campaign = makeVoiceCampaignWithEntries(3);
+    $campaign->update(['status' => 'sending']);
+
+    (new DispatchVoiceCampaignJob($campaign))->failed(new RuntimeException('crash'));
+    Queue::assertNotPushed(DispatchVoiceCampaignJob::class);
+
+    // Enabled, but the campaign is already finished — nothing to resume.
+    config(['credflow.campaigns.dispatch_max_redispatch' => 2]);
+    $done = makeVoiceCampaignWithEntries(3);
+    $done->update(['status' => 'completed']);
+
+    (new DispatchVoiceCampaignJob($done))->failed(new RuntimeException('crash'));
+    Queue::assertNotPushed(DispatchVoiceCampaignJob::class);
 });

@@ -7,6 +7,7 @@ use App\Models\VoiceCampaign;
 use App\Models\VoiceCampaignCall;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -144,15 +145,59 @@ class DispatchVoiceCampaignJob implements ShouldQueue
     }
 
     /**
-     * Terminal signal (REL-4): tries=1 means a mid-fan-out crash strands the voice
-     * campaign in `sending` with no retry. Log an actionable breadcrumb; re-dispatch is
-     * idempotent (whereNotIn + firstOrCreate) and resumes only the un-enqueued remainder.
+     * Terminal signal (REL-4 / SCALE-11): tries=1 means a mid-fan-out crash strands the
+     * voice campaign in `sending` with no retry. Log an actionable breadcrumb, then
+     * auto-resume the remainder — re-dispatch is idempotent (per-chunk whereIn skip +
+     * firstOrCreate), bounded by a per-campaign budget so a deterministic crash cannot loop.
      */
     public function failed(Throwable $e): void
     {
         Log::error('DispatchVoiceCampaignJob.failed', [
             'campaign_id' => $this->voiceCampaign->id,
             'error' => $e->getMessage(),
+        ]);
+
+        $this->attemptResume();
+    }
+
+    /**
+     * Re-dispatch the idempotent remainder after a crash, bounded by a per-campaign budget.
+     */
+    private function attemptResume(): void
+    {
+        $max = (int) config('credflow.campaigns.dispatch_max_redispatch', 0);
+
+        if ($max <= 0) {
+            return;
+        }
+
+        $campaign = $this->voiceCampaign->fresh();
+
+        if (! $campaign || ! $campaign->isSending()) {
+            return;
+        }
+
+        $key = "voice_campaign_dispatch_resume:{$campaign->id}";
+        $used = (int) Cache::get($key, 0);
+
+        if ($used >= $max) {
+            Log::error('DispatchVoiceCampaignJob.failed: auto-resume budget exhausted, manual resume required', [
+                'campaign_id' => $campaign->id,
+                'attempts' => $used,
+            ]);
+
+            return;
+        }
+
+        Cache::put($key, $used + 1, now()->addHours(6));
+
+        $delay = (int) config('credflow.campaigns.dispatch_redispatch_delay_seconds', 10);
+        self::dispatch($campaign)->delay(now()->addSeconds($delay));
+
+        Log::warning('DispatchVoiceCampaignJob.failed: auto-resuming remainder', [
+            'campaign_id' => $campaign->id,
+            'attempt' => $used + 1,
+            'max' => $max,
         ]);
     }
 

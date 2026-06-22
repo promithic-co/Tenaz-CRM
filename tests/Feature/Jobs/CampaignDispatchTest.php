@@ -282,6 +282,45 @@ test('SendCampaignMessageJob fails fast when template is not approved', function
     expect($message->fresh()->error_code)->toBe('TEMPLATE_NOT_APPROVED');
 });
 
+test('DispatchCampaignJob.failed auto-resumes the remainder of a still-sending campaign (SCALE-11)', function () {
+    config(['credflow.campaigns.dispatch_max_redispatch' => 2]);
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create();
+
+    (new DispatchCampaignJob($campaign))->failed(new RuntimeException('worker crash'));
+
+    Queue::assertPushed(DispatchCampaignJob::class, 1);
+    expect((int) Cache::get("campaign_dispatch_resume:{$campaign->id}"))->toBe(1);
+});
+
+test('DispatchCampaignJob.failed stops auto-resume once the budget is exhausted (SCALE-11)', function () {
+    config(['credflow.campaigns.dispatch_max_redispatch' => 2]);
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create();
+    Cache::put("campaign_dispatch_resume:{$campaign->id}", 2, now()->addHours(6));
+
+    (new DispatchCampaignJob($campaign))->failed(new RuntimeException('worker crash'));
+
+    Queue::assertNotPushed(DispatchCampaignJob::class);
+});
+
+test('DispatchCampaignJob.failed does not auto-resume when disabled or no longer sending (SCALE-11)', function () {
+    config(['credflow.campaigns.dispatch_max_redispatch' => 0]);
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create();
+    (new DispatchCampaignJob($campaign))->failed(new RuntimeException('crash'));
+    Queue::assertNotPushed(DispatchCampaignJob::class);
+
+    // Enabled, but the campaign already finished — nothing to resume.
+    config(['credflow.campaigns.dispatch_max_redispatch' => 2]);
+    $done = Campaign::factory()->completed()->create();
+    (new DispatchCampaignJob($done))->failed(new RuntimeException('crash'));
+    Queue::assertNotPushed(DispatchCampaignJob::class);
+});
+
 /**
  * Build a fully sendable campaign message (sending campaign + instance + approved template + entry).
  *

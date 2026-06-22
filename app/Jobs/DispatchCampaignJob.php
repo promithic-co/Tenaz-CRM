@@ -10,6 +10,7 @@ use App\Services\CampaignService;
 use App\Services\SmartList\SmartListResolverService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -185,10 +186,11 @@ class DispatchCampaignJob implements ShouldQueue
     }
 
     /**
-     * Terminal signal (REL-4): tries=1 means a mid-fan-out crash leaves the campaign in
-     * `sending` with only part of the list enqueued and no retry. Emit an actionable
-     * breadcrumb so the stall is observable; re-dispatch is idempotent (firstOrCreate)
-     * and can resume the remainder.
+     * Terminal signal (REL-4 / SCALE-11): tries=1 means a mid-fan-out crash leaves the
+     * campaign in `sending` with only part of the list enqueued and no retry. Emit an
+     * actionable breadcrumb so the stall is observable, then auto-resume the remainder —
+     * re-dispatch is idempotent (firstOrCreate skips already-enqueued entries), bounded by
+     * a per-campaign budget so a deterministic crash cannot loop forever.
      */
     public function failed(Throwable $e): void
     {
@@ -206,5 +208,48 @@ class DispatchCampaignJob implements ShouldQueue
             payload: ['campaign_id' => $this->campaign->id, 'error' => $e->getMessage()],
             severity: 'error',
         );
+
+        $this->attemptResume();
+    }
+
+    /**
+     * Re-dispatch the idempotent remainder after a crash, bounded by a per-campaign budget.
+     */
+    private function attemptResume(): void
+    {
+        $max = (int) config('credflow.campaigns.dispatch_max_redispatch', 0);
+
+        if ($max <= 0) {
+            return;
+        }
+
+        $campaign = $this->campaign->fresh();
+
+        if (! $campaign || ! $campaign->isSending()) {
+            return;
+        }
+
+        $key = "campaign_dispatch_resume:{$campaign->id}";
+        $used = (int) Cache::get($key, 0);
+
+        if ($used >= $max) {
+            Log::error('DispatchCampaignJob.failed: auto-resume budget exhausted, manual resume required', [
+                'campaign_id' => $campaign->id,
+                'attempts' => $used,
+            ]);
+
+            return;
+        }
+
+        Cache::put($key, $used + 1, now()->addHours(6));
+
+        $delay = (int) config('credflow.campaigns.dispatch_redispatch_delay_seconds', 10);
+        self::dispatch($campaign)->delay(now()->addSeconds($delay));
+
+        Log::warning('DispatchCampaignJob.failed: auto-resuming remainder', [
+            'campaign_id' => $campaign->id,
+            'attempt' => $used + 1,
+            'max' => $max,
+        ]);
     }
 }

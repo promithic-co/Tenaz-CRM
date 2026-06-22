@@ -131,6 +131,18 @@ return [
         // a template-status change is picked up within this window. Default 300 (matches the project's
         // config-cache convention). 0 disables the cache and resolves fresh on every message.
         'send_config_cache_seconds' => (int) env('TENAZ_CAMPAIGN_SEND_CONFIG_CACHE', env('CREDFLOW_CAMPAIGN_SEND_CONFIG_CACHE', 300)),
+        // Auto-resume budget for a crashed bulk dispatch (SCALE-11). DispatchCampaignJob /
+        // DispatchVoiceCampaignJob run tries=1; a mid-fan-out crash (worker OOM/restart, deploy,
+        // transient DB blip) strands the campaign in `sending` with only part of the list enqueued,
+        // previously surfaced only via the stuck-campaign alert and resumed by hand. Re-dispatch is
+        // idempotent (firstOrCreate skips already-enqueued entries), so on failure the job
+        // re-dispatches itself to finish the remainder — bounded by this budget (consecutive
+        // resume attempts per campaign within a 6h window) to avoid a poison re-dispatch loop. The
+        // budget is exhausted-then-alert: once hit, failed() logs an error and stops. 0 disables
+        // auto-resume (failed() only logs the breadcrumb, manual resume as before).
+        'dispatch_max_redispatch' => (int) env('TENAZ_CAMPAIGN_DISPATCH_MAX_REDISPATCH', env('CREDFLOW_CAMPAIGN_DISPATCH_MAX_REDISPATCH', 2)),
+        // Delay (seconds) before an auto-resume re-dispatch fires, letting a transient fault clear.
+        'dispatch_redispatch_delay_seconds' => (int) env('TENAZ_CAMPAIGN_DISPATCH_REDISPATCH_DELAY', env('CREDFLOW_CAMPAIGN_DISPATCH_REDISPATCH_DELAY', 10)),
     ],
 
     'api' => [
