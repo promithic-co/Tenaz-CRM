@@ -32,6 +32,13 @@ class ProcessWhatsappOutboxMessageJob implements ShouldQueue
     public function __construct(public readonly int $outboxId)
     {
         $this->onQueue('outbox');
+
+        // Dispatch only after the surrounding DB transaction commits (SCALE-12). The outbox
+        // row is created by WhatsappOutboxService inside the caller's transaction (agent turn /
+        // inbound handling); without this, the worker could start before the commit, find no
+        // row (the find() null-guard in handle()), and burn a spurious retry. With no open
+        // transaction this is a no-op (dispatches immediately).
+        $this->afterCommit();
     }
 
     public function retryUntil(): ?\DateTimeInterface

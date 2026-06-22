@@ -294,6 +294,12 @@ test('outbox processing has a retry window for scheduled releases', function () 
     expect($job->maxExceptions)->toBe(3);
 });
 
+test('outbox processing dispatches only after the creating transaction commits (SCALE-12)', function () {
+    // The outbox row is written inside the caller's transaction; the worker must not start
+    // until that commit, or its find() null-guard burns a spurious retry on a not-yet-visible row.
+    expect((new ProcessWhatsappOutboxMessageJob(1))->afterCommit)->toBeTrue();
+});
+
 test('outbox processor marks timeline sent with provider id', function () {
     Event::fake();
     Http::fake([
