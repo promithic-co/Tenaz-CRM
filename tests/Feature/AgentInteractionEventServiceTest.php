@@ -56,6 +56,52 @@ test('agent interaction event service can record tenant events before lead exist
         ->and($event->severity)->toBe('debug');
 });
 
+test('buffered events are withheld until flush then bulk inserted in order (SCALE-7)', function () {
+    $lead = Lead::factory()->create(['tenant_id' => 'tenant-7', 'agent_id' => null]);
+
+    $service = app(AgentInteractionEventService::class);
+    $interactionId = $service->newInteractionId();
+
+    $service->bufferForLead($interactionId, $lead, 'agent_started', 'agent_service', ['n' => 1]);
+    $service->bufferForLead($interactionId, $lead, 'agent_response_ready', 'agent_service', ['n' => 2]);
+
+    // Nothing is written to the DB while events sit in the buffer.
+    expect(AgentInteractionEvent::where('interaction_id', $interactionId)->count())->toBe(0);
+
+    $written = $service->flush();
+
+    $events = AgentInteractionEvent::where('interaction_id', $interactionId)->orderBy('id')->get();
+
+    expect($written)->toBe(2)
+        ->and($events)->toHaveCount(2)
+        ->and($events[0]->event_type)->toBe('agent_started')
+        ->and($events[0]->payload_json)->toBe(['n' => 1])
+        ->and($events[0]->tenant_id)->toBe('tenant-7')
+        ->and($events[0]->lead_id)->toBe($lead->id)
+        ->and($events[0]->created_at)->not->toBeNull()
+        ->and($events[1]->event_type)->toBe('agent_response_ready')
+        ->and($events[1]->payload_json)->toBe(['n' => 2]);
+
+    // Buffer is emptied after flush; a second flush is a no-op.
+    expect($service->flush())->toBe(0)
+        ->and(AgentInteractionEvent::where('interaction_id', $interactionId)->count())->toBe(2);
+});
+
+test('buffered event with empty payload stores null payload_json (SCALE-7)', function () {
+    $lead = Lead::factory()->create(['tenant_id' => 'tenant-7b', 'agent_id' => null]);
+
+    $service = app(AgentInteractionEventService::class);
+    $interactionId = $service->newInteractionId();
+
+    $service->bufferForLead($interactionId, $lead, 'fact_check_passed', 'agent_service');
+    $service->flush();
+
+    $event = AgentInteractionEvent::where('interaction_id', $interactionId)->first();
+
+    expect($event->payload_json)->toBeNull()
+        ->and($event->severity)->toBe('info');
+});
+
 test('incoming whatsapp job records inbound event and passes interaction id to agent service', function () {
     Event::fake();
 

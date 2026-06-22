@@ -46,13 +46,14 @@ class AgentService implements AgentServiceInterface
         $interactionId ??= $this->interactionEvents->newInteractionId();
 
         if ($lead->status === 'optou_sair') {
-            $this->interactionEvents->recordForLead(
+            $this->interactionEvents->bufferForLead(
                 interactionId: $interactionId,
                 lead: $lead,
                 eventType: 'agent_skipped',
                 eventSource: 'agent_service',
                 payload: ['reason' => 'lead_opt_out'],
             );
+            $this->interactionEvents->flush();
 
             return null;
         }
@@ -78,7 +79,7 @@ class AgentService implements AgentServiceInterface
             'media_type' => $mediaContext?->type->value,
         ]);
 
-        $this->interactionEvents->recordForLead(
+        $this->interactionEvents->bufferForLead(
             interactionId: $interactionId,
             lead: $lead,
             eventType: 'agent_started',
@@ -121,7 +122,7 @@ class AgentService implements AgentServiceInterface
                 // BEFORE continuing the conversation. Source of truth = timeline.
                 $synced = $this->contextSync->syncPending($lead);
                 if ($synced > 0) {
-                    $this->interactionEvents->recordForLead(
+                    $this->interactionEvents->bufferForLead(
                         interactionId: $interactionId,
                         lead: $lead,
                         eventType: 'context_synced',
@@ -169,7 +170,7 @@ class AgentService implements AgentServiceInterface
                     'reason' => 'sentinel_or_empty',
                 ]);
 
-                $this->interactionEvents->recordForLead(
+                $this->interactionEvents->bufferForLead(
                     interactionId: $interactionId,
                     lead: $lead,
                     eventType: 'agent_no_reply',
@@ -187,7 +188,7 @@ class AgentService implements AgentServiceInterface
                 'response_len' => strlen($text),
             ]);
 
-            $this->interactionEvents->recordForLead(
+            $this->interactionEvents->bufferForLead(
                 interactionId: $interactionId,
                 lead: $lead,
                 eventType: 'agent_response_ready',
@@ -218,7 +219,7 @@ class AgentService implements AgentServiceInterface
                 'error' => $e->getMessage(),
             ]);
 
-            $this->interactionEvents->recordForLead(
+            $this->interactionEvents->bufferForLead(
                 interactionId: $interactionId,
                 lead: $lead,
                 eventType: 'tool_loop_blocked',
@@ -244,7 +245,7 @@ class AgentService implements AgentServiceInterface
                 'error' => $e->getMessage(),
             ]);
 
-            $this->interactionEvents->recordForLead(
+            $this->interactionEvents->bufferForLead(
                 interactionId: $interactionId,
                 lead: $lead,
                 eventType: 'agent_failed',
@@ -271,6 +272,10 @@ class AgentService implements AgentServiceInterface
 
             return 'Vou verificar isso e já retorno em breve. Aguarde um momento.';
         } finally {
+            // SCALE-7: single bulk insert of every event buffered this turn. Runs on all exit
+            // paths (success, no-reply, handled exceptions, rethrows) so observability rows are
+            // durable before the worker moves on; fail-open so a flush error can't mask the turn.
+            $this->interactionEvents->flush();
             $this->aiRuns->finish($interactionId, 'fallback', 'no_response');
             $this->interactionContext->clear();
         }
@@ -317,7 +322,7 @@ class AgentService implements AgentServiceInterface
     {
         $error = $this->factCheck->validateAgentResponse($lead, $text);
         if (! $error) {
-            $this->interactionEvents->recordForLead(
+            $this->interactionEvents->bufferForLead(
                 interactionId: $interactionId,
                 lead: $lead,
                 eventType: 'fact_check_passed',
@@ -333,7 +338,7 @@ class AgentService implements AgentServiceInterface
                 'lead_id' => $lead->id,
             ]);
 
-            $this->interactionEvents->recordForLead(
+            $this->interactionEvents->bufferForLead(
                 interactionId: $interactionId,
                 lead: $lead,
                 eventType: 'fact_check_failed',
@@ -352,7 +357,7 @@ class AgentService implements AgentServiceInterface
             'error' => $error,
         ]);
 
-        $this->interactionEvents->recordForLead(
+        $this->interactionEvents->bufferForLead(
             interactionId: $interactionId,
             lead: $lead,
             eventType: 'fact_check_failed',
@@ -371,7 +376,7 @@ class AgentService implements AgentServiceInterface
                 'lead_id' => $lead->id,
             ]);
 
-            $this->interactionEvents->recordForLead(
+            $this->interactionEvents->bufferForLead(
                 interactionId: $interactionId,
                 lead: $lead,
                 eventType: 'fact_check_failed',
@@ -384,7 +389,7 @@ class AgentService implements AgentServiceInterface
             return self::HUMAN_HANDOFF_MESSAGE;
         }
 
-        $this->interactionEvents->recordForLead(
+        $this->interactionEvents->bufferForLead(
             interactionId: $interactionId,
             lead: $lead,
             eventType: 'fact_check_passed',
