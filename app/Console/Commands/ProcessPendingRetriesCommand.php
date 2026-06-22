@@ -40,8 +40,11 @@ class ProcessPendingRetriesCommand extends Command
             return self::SUCCESS;
         }
 
+        $jitter = (int) config('credflow.jobs.cron_dispatch_jitter_seconds', 0);
+
         foreach ($pending as $failure) {
-            RetryFailedInteractionJob::dispatch($failure);
+            RetryFailedInteractionJob::dispatch($failure)
+                ->delay($jitter > 0 ? now()->addSeconds(random_int(0, $jitter)) : null);
         }
 
         $this->info("Dispatched {$pending->count()} retry jobs.");

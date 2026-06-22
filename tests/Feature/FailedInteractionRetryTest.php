@@ -1,12 +1,67 @@
 <?php
 
+use App\Jobs\RetryFailedInteractionJob;
 use App\Models\Agent;
 use App\Models\FailedInteraction;
 use App\Models\Lead;
 use App\Services\InteractionRecoveryService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
+
+it('jitters retry dispatch across the configured window (SCALE-10)', function () {
+    config(['credflow.jobs.cron_dispatch_jitter_seconds' => 120]);
+    Carbon::setTestNow(now()->next('Monday')->setTime(10, 0, 0));
+    Queue::fake();
+
+    $agent = Agent::factory()->create();
+    $lead = Lead::factory()->create(['agent_id' => $agent->id]);
+    FailedInteraction::create([
+        'lead_id' => $lead->id,
+        'agent_id' => $agent->id,
+        'error_tag' => 'timeout',
+        'error_source' => 'openai',
+        'error_message' => 'Timeout',
+        'status' => 'pending',
+        'next_retry_at' => now()->subMinute(),
+    ]);
+
+    $this->artisan('laboratory:process-retries')->assertExitCode(0);
+
+    Queue::assertPushed(RetryFailedInteractionJob::class, function ($job): bool {
+        return $job->delay instanceof DateTimeInterface
+            && $job->delay->getTimestamp() >= now()->getTimestamp()
+            && $job->delay->getTimestamp() <= now()->addSeconds(120)->getTimestamp();
+    });
+
+    Carbon::setTestNow();
+});
+
+it('does not delay retry dispatch when jitter is disabled (SCALE-10)', function () {
+    config(['credflow.jobs.cron_dispatch_jitter_seconds' => 0]);
+    Carbon::setTestNow(now()->next('Monday')->setTime(10, 0, 0));
+    Queue::fake();
+
+    $agent = Agent::factory()->create();
+    $lead = Lead::factory()->create(['agent_id' => $agent->id]);
+    FailedInteraction::create([
+        'lead_id' => $lead->id,
+        'agent_id' => $agent->id,
+        'error_tag' => 'timeout',
+        'error_source' => 'openai',
+        'error_message' => 'Timeout',
+        'status' => 'pending',
+        'next_retry_at' => now()->subMinute(),
+    ]);
+
+    $this->artisan('laboratory:process-retries')->assertExitCode(0);
+
+    Queue::assertPushed(RetryFailedInteractionJob::class, fn ($job): bool => $job->delay === null);
+
+    Carbon::setTestNow();
+});
 
 it('records a failure and schedules retry within business hours', function () {
     $agent = Agent::factory()->create();
@@ -17,7 +72,7 @@ it('records a failure and schedules retry within business hours', function () {
     // Freeze time at 10:00 (within business hours)
     $this->travel(0)->hours(0);
     $now = now()->setTime(10, 0, 0);
-    \Carbon\Carbon::setTestNow($now);
+    Carbon::setTestNow($now);
 
     $failure = $service->recordFailure(
         lead: $lead,
@@ -36,7 +91,7 @@ it('records a failure and schedules retry within business hours', function () {
         ->and($failure->status)->toBe('pending')
         ->and($failure->next_retry_at)->not->toBeNull();
 
-    \Carbon\Carbon::setTestNow();
+    Carbon::setTestNow();
 });
 
 it('does not process retries outside business hours', function () {
@@ -55,13 +110,13 @@ it('does not process retries outside business hours', function () {
     ]);
 
     // Freeze time at 02:00 (outside business hours)
-    \Carbon\Carbon::setTestNow(now()->setTime(2, 0, 0));
+    Carbon::setTestNow(now()->setTime(2, 0, 0));
 
     $pending = FailedInteraction::pending()->inBusinessHours()->get();
 
     expect($pending)->toHaveCount(0);
 
-    \Carbon\Carbon::setTestNow();
+    Carbon::setTestNow();
 });
 
 it('escalates after max retry attempts', function () {
@@ -135,7 +190,7 @@ it('skips weekends for retry scheduling', function () {
 
     // Freeze to Friday at 22:00 so next retry would land on Saturday
     $friday22h = now()->next('Friday')->setTime(22, 0, 0);
-    \Carbon\Carbon::setTestNow($friday22h);
+    Carbon::setTestNow($friday22h);
 
     $service = app(InteractionRecoveryService::class);
 
@@ -152,5 +207,5 @@ it('skips weekends for retry scheduling', function () {
     expect($failure->next_retry_at->dayOfWeek)->not->toBe(0) // not Sunday
         ->and($failure->next_retry_at->dayOfWeek)->not->toBe(6); // not Saturday
 
-    \Carbon\Carbon::setTestNow();
+    Carbon::setTestNow();
 });

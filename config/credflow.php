@@ -143,6 +143,14 @@ return [
     ],
 
     'jobs' => [
+        // Per-job dispatch jitter (seconds) for the every-5-minute cron fan-out commands
+        // (CheckFollowUpsCommand, ProcessPendingRetriesCommand). Both dispatch a whole batch in
+        // one tight loop, so without jitter every job lands on the queue at the same instant and
+        // the worker pool (and downstream provider) sees a herd at each minute boundary (SCALE-10).
+        // Each dispatched job is delayed a uniform random 0..N seconds to spread the batch across
+        // the window. Default 240 (kept under the 300s cron interval so a batch drains before the
+        // next run). 0 disables the jitter (dispatch immediately). The sync queue ignores delays.
+        'cron_dispatch_jitter_seconds' => (int) env('TENAZ_CRON_DISPATCH_JITTER_SECONDS', env('CREDFLOW_CRON_DISPATCH_JITTER_SECONDS', 240)),
         // Time-based retry budgets for jobs that intentionally release() under locks, schedules, or provider throttles.
         'auto_tag_retry_window_seconds' => (int) env('TENAZ_AUTO_TAG_RETRY_WINDOW_SECONDS', env('CREDFLOW_AUTO_TAG_RETRY_WINDOW_SECONDS', 1800)),
         'incoming_message_retry_window_seconds' => (int) env('TENAZ_INCOMING_MESSAGE_RETRY_WINDOW_SECONDS', env('CREDFLOW_INCOMING_MESSAGE_RETRY_WINDOW_SECONDS', 1800)),

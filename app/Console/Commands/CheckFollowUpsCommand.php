@@ -37,6 +37,7 @@ class CheckFollowUpsCommand extends Command
         $settingsResolver = app(FollowUpSettingsResolver::class);
         $window = app(FollowUpWindowService::class);
         $pause = app(PauseService::class);
+        $jitter = (int) config('credflow.jobs.cron_dispatch_jitter_seconds', 0);
 
         $windowHours = FollowUpWindowService::CUSTOMER_SERVICE_WINDOW_HOURS;
 
@@ -87,7 +88,7 @@ class CheckFollowUpsCommand extends Command
                 $query->whereHas('agent', fn ($q) => $q->where('is_active', true))
                     ->orWhereNull('agent_id');
             })
-            ->chunk(200, function ($leads) use ($now, &$dispatchedCount, $settingsResolver, $window, $pause): void {
+            ->chunk(200, function ($leads) use ($now, &$dispatchedCount, $settingsResolver, $window, $pause, $jitter): void {
                 foreach ($leads as $lead) {
                     $settings = $settingsResolver->forLead($lead);
                     $evaluation = $window->evaluate($lead, $settings, $now, $pause);
@@ -102,7 +103,8 @@ class CheckFollowUpsCommand extends Command
                             'last_inbound_at' => $lead->last_inbound_at?->toIso8601String(),
                         ]);
 
-                        ProcessLeadFollowUpJob::dispatch($lead);
+                        ProcessLeadFollowUpJob::dispatch($lead)
+                            ->delay($jitter > 0 ? now()->addSeconds(random_int(0, $jitter)) : null);
                         $dispatchedCount++;
 
                         continue;

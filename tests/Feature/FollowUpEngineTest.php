@@ -61,6 +61,48 @@ describe('CheckFollowUpsCommand', function () {
         Queue::assertPushed(ProcessLeadFollowUpJob::class);
     });
 
+    test('jitters follow-up dispatch across the configured window (SCALE-10)', function () {
+        config(['credflow.jobs.cron_dispatch_jitter_seconds' => 180]);
+        Queue::fake();
+
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+
+        Lead::factory()->create([
+            'is_sandbox' => false,
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subMinutes(15),
+            'last_inbound_at' => now()->subMinutes(15),
+        ]);
+
+        $this->artisan('credflow:check-followups');
+
+        Queue::assertPushed(ProcessLeadFollowUpJob::class, function ($job): bool {
+            return $job->delay instanceof DateTimeInterface
+                && $job->delay->getTimestamp() >= now()->getTimestamp()
+                && $job->delay->getTimestamp() <= now()->addSeconds(180)->getTimestamp();
+        });
+    });
+
+    test('does not delay follow-up dispatch when jitter is disabled (SCALE-10)', function () {
+        config(['credflow.jobs.cron_dispatch_jitter_seconds' => 0]);
+        Queue::fake();
+
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+
+        Lead::factory()->create([
+            'is_sandbox' => false,
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subMinutes(15),
+            'last_inbound_at' => now()->subMinutes(15),
+        ]);
+
+        $this->artisan('credflow:check-followups');
+
+        Queue::assertPushed(ProcessLeadFollowUpJob::class, fn ($job): bool => $job->delay === null);
+    });
+
     test('does not dispatch first follow-up before delay expires', function () {
         Queue::fake();
 
