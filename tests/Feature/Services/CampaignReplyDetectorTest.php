@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\ProcessLeadFollowUpJob;
 use App\Models\Campaign;
 use App\Models\ContactList;
 use App\Models\ContactListEntry;
@@ -7,8 +8,17 @@ use App\Models\Lead;
 use App\Models\User;
 use App\Services\CampaignReplyDetector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
+
+test('contact_list_entries has a standalone phone index for inbound reply lookup (SCALE-9)', function () {
+    $hasPhoneIndex = collect(Schema::getIndexes('contact_list_entries'))
+        ->contains(fn (array $index): bool => $index['columns'] === ['phone']);
+
+    expect($hasPhoneIndex)->toBeTrue();
+});
 
 test('detect links lead to active campaign when phone matches contact list entry', function () {
     $user = User::factory()->create();
@@ -116,9 +126,9 @@ test('CheckFollowUpsCommand skips leads with campaign_id', function () {
     ]);
 
     // No jobs should be dispatched
-    \Illuminate\Support\Facades\Queue::fake();
+    Queue::fake();
 
     $this->artisan('credflow:check-followups')->assertExitCode(0);
 
-    \Illuminate\Support\Facades\Queue::assertNotPushed(\App\Jobs\ProcessLeadFollowUpJob::class);
+    Queue::assertNotPushed(ProcessLeadFollowUpJob::class);
 });
