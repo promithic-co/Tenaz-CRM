@@ -149,6 +149,60 @@ test('trigger updates last_used_at on the api key', function () {
     expect($apiKey->fresh()->last_used_at)->not->toBeNull();
 });
 
+test('trigger debounces recent last_used_at writes on the api key', function () {
+    config(['credflow.api.ura_key_last_used_debounce_seconds' => 300]);
+
+    $tenant = userWithTenant();
+    $agent = Agent::factory()->create(['tenant_id' => $tenant->id]);
+    $recent = now()->subMinute()->startOfSecond();
+
+    $generated = UraApiKey::generate();
+    $apiKey = UraApiKey::create([
+        'tenant_id' => $tenant->id,
+        'agent_id' => $agent->id,
+        'name' => 'Test',
+        'key_hash' => $generated['key_hash'],
+        'key_preview' => $generated['key_preview'],
+        'active' => true,
+        'last_used_at' => $recent,
+    ]);
+
+    $this->postJson(
+        route('ura.trigger'),
+        ['phone' => '+5511999998888'],
+        ['X-URA-API-Key' => $generated['key']]
+    )->assertStatus(201);
+
+    expect($apiKey->fresh()->last_used_at->equalTo($recent))->toBeTrue();
+});
+
+test('trigger refreshes stale last_used_at on the api key', function () {
+    config(['credflow.api.ura_key_last_used_debounce_seconds' => 300]);
+
+    $tenant = userWithTenant();
+    $agent = Agent::factory()->create(['tenant_id' => $tenant->id]);
+    $stale = now()->subMinutes(10)->startOfSecond();
+
+    $generated = UraApiKey::generate();
+    $apiKey = UraApiKey::create([
+        'tenant_id' => $tenant->id,
+        'agent_id' => $agent->id,
+        'name' => 'Test',
+        'key_hash' => $generated['key_hash'],
+        'key_preview' => $generated['key_preview'],
+        'active' => true,
+        'last_used_at' => $stale,
+    ]);
+
+    $this->postJson(
+        route('ura.trigger'),
+        ['phone' => '+5511999998888'],
+        ['X-URA-API-Key' => $generated['key']]
+    )->assertStatus(201);
+
+    expect($apiKey->fresh()->last_used_at->greaterThan($stale))->toBeTrue();
+});
+
 test('trigger rejects invalid phone format', function () {
     $tenant = userWithTenant();
     $agent = Agent::factory()->create(['tenant_id' => $tenant->id]);

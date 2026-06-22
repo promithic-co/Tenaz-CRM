@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Ai\DTOs\MediaContext;
 use App\Events\ConversationUpdated;
 use App\Models\Agent;
+use App\Models\ConversationTimelineMessage;
 use App\Models\WhatsappInstance;
 use App\Services\AgentInteractionEventService;
 use App\Services\AgentService;
@@ -38,6 +39,13 @@ class ProcessIncomingWhatsAppMessageJob implements ShouldQueue
     public function backoff(): array
     {
         return [10, 30, 60];
+    }
+
+    public function retryUntil(): ?\DateTimeInterface
+    {
+        $windowSeconds = (int) config('credflow.jobs.incoming_message_retry_window_seconds', 1800);
+
+        return $windowSeconds > 0 ? now()->addSeconds($windowSeconds) : null;
     }
 
     public function __construct(
@@ -278,7 +286,7 @@ class ProcessIncomingWhatsAppMessageJob implements ShouldQueue
      */
     private function safeBroadcast(
         ConversationTimelineService $timeline,
-        \App\Models\ConversationTimelineMessage $message,
+        ConversationTimelineMessage $message,
         string $interactionId,
     ): void {
         try {

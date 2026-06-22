@@ -65,7 +65,7 @@ test('delivery event job dispatched to queue', function () {
 
     ProcessCampaignDeliveryEventJob::dispatch('provider-queued-001', 'delivered');
 
-    Queue::assertPushed(ProcessCampaignDeliveryEventJob::class, fn ($job) => $job->providerMessageId === 'provider-queued-001'
+    Queue::assertPushedOn('campaign-delivery-events', ProcessCampaignDeliveryEventJob::class, fn ($job) => $job->providerMessageId === 'provider-queued-001'
         && $job->eventType === 'delivered'
     );
 });

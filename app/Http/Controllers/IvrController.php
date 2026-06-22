@@ -17,12 +17,9 @@ class IvrController extends Controller
      */
     public function script(VoiceCampaignCall $voiceCampaignCall): Response
     {
-        $voiceCampaignCall->update([
-            'status' => 'answered',
-            'answered_at' => now(),
-        ]);
-
-        $voiceCampaignCall->voiceCampaign()->increment('total_answered');
+        if ($this->transitionToAnswered($voiceCampaignCall)) {
+            $voiceCampaignCall->voiceCampaign()->increment('total_answered');
+        }
 
         $campaign = $voiceCampaignCall->voiceCampaign;
         $voice = $campaign->tts_voice ?? 'Google.pt-BR-Standard-A';
@@ -99,8 +96,9 @@ class IvrController extends Controller
 
     private function handleInterested(VoiceCampaignCall $call, VoiceResponse $twiml, string $voice): void
     {
-        $call->update(['status' => 'interested']);
-        $call->voiceCampaign()->increment('total_interested');
+        if ($this->transitionToTerminal($call, 'interested')) {
+            $call->voiceCampaign()->increment('total_interested');
+        }
 
         $twiml->say('Perfeito! Em instantes você receberá uma mensagem no WhatsApp. Até logo!', [
             'language' => 'pt-BR',
@@ -195,10 +193,8 @@ class IvrController extends Controller
      */
     private function transitionToTerminal(VoiceCampaignCall $call, string $status): bool
     {
-        $terminal = ['completed', 'failed', 'busy', 'canceled', 'no_answer', 'interested', 'optout', 'callback', 'no_interest'];
-
         $affected = VoiceCampaignCall::whereKey($call->id)
-            ->whereNotIn('status', $terminal)
+            ->whereNotIn('status', $this->terminalCallStatuses())
             ->update(['status' => $status]);
 
         if ($affected === 1) {
@@ -208,5 +204,31 @@ class IvrController extends Controller
         }
 
         return false;
+    }
+
+    private function transitionToAnswered(VoiceCampaignCall $call): bool
+    {
+        $affected = VoiceCampaignCall::whereKey($call->id)
+            ->whereNotIn('status', [...$this->terminalCallStatuses(), 'answered'])
+            ->update([
+                'status' => 'answered',
+                'answered_at' => now(),
+            ]);
+
+        if ($affected === 1) {
+            $call->status = 'answered';
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function terminalCallStatuses(): array
+    {
+        return ['completed', 'failed', 'busy', 'canceled', 'no_answer', 'interested', 'optout', 'callback', 'no_interest'];
     }
 }

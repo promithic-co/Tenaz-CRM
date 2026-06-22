@@ -4,6 +4,7 @@ use App\Jobs\SyncMetaTemplatesJob;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\Jobs\FakeJob;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 
@@ -46,6 +47,31 @@ it('syncs Meta templates with encrypted token + 60s timeout', function () {
         return str_contains($request->url(), 'message_templates')
             && $request->hasHeader('Authorization', 'Bearer my-secret-token');
     });
+});
+
+it('has a retry window for provider throttle releases', function () {
+    $job = new SyncMetaTemplatesJob(1);
+
+    expect($job->retryUntil())->toBeInstanceOf(DateTimeInterface::class);
+    expect($job->retryUntil()->getTimestamp())->toBeGreaterThan(now()->getTimestamp());
+    expect($job->maxExceptions)->toBe(3);
+});
+
+it('honors Meta retry-after when template sync is rate limited', function () {
+    $user = userWithTenant();
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenant_id,
+    ]);
+
+    Http::fake(['*' => Http::response([], 429, ['Retry-After' => '123'])]);
+
+    $fakeJob = new FakeJob;
+    $job = (new SyncMetaTemplatesJob($instance->id))->setJob($fakeJob);
+    $job->handle();
+
+    expect($fakeJob->isReleased())->toBeTrue();
+    expect($fakeJob->releaseDelay)->toBe(123);
 });
 
 it('paginates Graph API results', function () {

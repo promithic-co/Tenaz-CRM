@@ -24,6 +24,8 @@ class TagLeadFromConversationJob implements ShouldQueue
 
     public int $tries = 2;
 
+    public int $maxExceptions = 2;
+
     public int $timeout = 60;
 
     public function __construct(
@@ -55,6 +57,13 @@ class TagLeadFromConversationJob implements ShouldQueue
     public function backoff(): array
     {
         return [30, 60];
+    }
+
+    public function retryUntil(): ?\DateTimeInterface
+    {
+        $windowSeconds = (int) config('credflow.jobs.auto_tag_retry_window_seconds', 1800);
+
+        return $windowSeconds > 0 ? now()->addSeconds($windowSeconds) : null;
     }
 
     public function handle(LeadAutoTaggingService $service): void

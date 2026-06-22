@@ -37,7 +37,7 @@ class HealthCheckCommand extends Command
         $rows = collect($checks)->map(fn ($check, $name) => [
             $name,
             $this->formatStatus($check['status']),
-            collect($check)->except('status')->map(fn ($v, $k) => "{$k}={$v}")->implode(' '),
+            collect($check)->except('status')->map(fn ($v, $k) => "{$k}=".$this->formatDetail($v))->implode(' '),
         ])->values()->all();
 
         $this->table(['Check', 'Status', 'Details'], $rows);
@@ -62,6 +62,11 @@ class HealthCheckCommand extends Command
             'warning' => '⚠ warning',
             default => '✗ error',
         };
+    }
+
+    private function formatDetail(mixed $value): string
+    {
+        return is_array($value) ? (string) json_encode($value) : (string) $value;
     }
 
     private function checkDatabase(): array
@@ -96,12 +101,26 @@ class HealthCheckCommand extends Command
     private function checkQueue(): array
     {
         try {
-            $size = Queue::size('default');
+            $queues = $this->queueDepths();
 
-            return ['status' => 'ok', 'default_depth' => $size];
+            return [
+                'status' => 'ok',
+                'queue_depth' => array_sum($queues),
+                'queues' => $queues,
+            ];
         } catch (Throwable $e) {
             return ['status' => 'error', 'message' => $e->getMessage()];
         }
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function queueDepths(): array
+    {
+        return collect(config('queue.health_queues', ['default']))
+            ->mapWithKeys(fn (string $queue): array => [$queue => Queue::size($queue)])
+            ->all();
     }
 
     private function checkDisk(): array

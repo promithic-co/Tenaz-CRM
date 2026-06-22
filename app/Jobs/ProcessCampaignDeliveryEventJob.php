@@ -31,7 +31,7 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
         public readonly ?int $whatsappInstanceId = null,
         public readonly ?string $tenantId = null,
     ) {
-        $this->onQueue('campaigns');
+        $this->onQueue('campaign-delivery-events');
     }
 
     public function handle(): void

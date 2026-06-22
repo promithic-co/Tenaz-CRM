@@ -132,6 +132,17 @@ return [
         'rate_limit_per_minute' => (int) env('TENAZ_API_RATE_LIMIT', env('CREDFLOW_API_RATE_LIMIT', env('ARIA_API_RATE_LIMIT', 120))),
         // Rate limit: mensagens por telefone por hora (webhook pre-dispatch)
         'rate_limit_per_phone' => (int) env('TENAZ_RATE_LIMIT_PER_PHONE', env('CREDFLOW_RATE_LIMIT_PER_PHONE', env('ARIA_RATE_LIMIT_PER_PHONE', 30))),
+        // Debounce last_used_at writes for DB-backed URA API keys. 0 disables the debounce.
+        'ura_key_last_used_debounce_seconds' => (int) env('TENAZ_URA_KEY_LAST_USED_DEBOUNCE_SECONDS', env('CREDFLOW_URA_KEY_LAST_USED_DEBOUNCE_SECONDS', 300)),
+    ],
+
+    'jobs' => [
+        // Time-based retry budgets for jobs that intentionally release() under locks, schedules, or provider throttles.
+        'auto_tag_retry_window_seconds' => (int) env('TENAZ_AUTO_TAG_RETRY_WINDOW_SECONDS', env('CREDFLOW_AUTO_TAG_RETRY_WINDOW_SECONDS', 1800)),
+        'incoming_message_retry_window_seconds' => (int) env('TENAZ_INCOMING_MESSAGE_RETRY_WINDOW_SECONDS', env('CREDFLOW_INCOMING_MESSAGE_RETRY_WINDOW_SECONDS', 1800)),
+        'outbox_retry_window_seconds' => (int) env('TENAZ_OUTBOX_RETRY_WINDOW_SECONDS', env('CREDFLOW_OUTBOX_RETRY_WINDOW_SECONDS', 21600)),
+        'template_sync_retry_window_seconds' => (int) env('TENAZ_TEMPLATE_SYNC_RETRY_WINDOW_SECONDS', env('CREDFLOW_TEMPLATE_SYNC_RETRY_WINDOW_SECONDS', 3600)),
+        'template_sync_max_retry_after_seconds' => (int) env('TENAZ_TEMPLATE_SYNC_MAX_RETRY_AFTER_SECONDS', env('CREDFLOW_TEMPLATE_SYNC_MAX_RETRY_AFTER_SECONDS', 3600)),
     ],
 
     /*

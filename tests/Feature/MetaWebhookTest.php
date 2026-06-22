@@ -297,7 +297,7 @@ it('POST dispatches delivery tracking job when payload has statuses', function (
 
     $response->assertNoContent();
     Queue::assertNotPushed(ProcessIncomingWhatsAppMessageJob::class);
-    Queue::assertPushed(ProcessCampaignDeliveryEventJob::class, fn ($job) => $job->providerMessageId === 'wamid.ABC'
+    Queue::assertPushedOn('campaign-delivery-events', ProcessCampaignDeliveryEventJob::class, fn ($job) => $job->providerMessageId === 'wamid.ABC'
         && $job->eventType === 'delivered');
 });
 
@@ -338,9 +338,9 @@ it('POST dispatches every status in a multi-status webhook payload', function ()
     )->assertNoContent();
 
     Queue::assertPushed(ProcessCampaignDeliveryEventJob::class, 2);
-    Queue::assertPushed(ProcessCampaignDeliveryEventJob::class, fn ($job) => $job->providerMessageId === 'wamid.ONE'
+    Queue::assertPushedOn('campaign-delivery-events', ProcessCampaignDeliveryEventJob::class, fn ($job) => $job->providerMessageId === 'wamid.ONE'
         && $job->eventType === 'delivered');
-    Queue::assertPushed(ProcessCampaignDeliveryEventJob::class, fn ($job) => $job->providerMessageId === 'wamid.TWO'
+    Queue::assertPushedOn('campaign-delivery-events', ProcessCampaignDeliveryEventJob::class, fn ($job) => $job->providerMessageId === 'wamid.TWO'
         && $job->eventType === 'read');
 });
 

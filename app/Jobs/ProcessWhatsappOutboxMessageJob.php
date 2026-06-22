@@ -27,9 +27,18 @@ class ProcessWhatsappOutboxMessageJob implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [10, 60, 180];
 
+    public int $maxExceptions = 3;
+
     public function __construct(public readonly int $outboxId)
     {
         $this->onQueue('outbox');
+    }
+
+    public function retryUntil(): ?\DateTimeInterface
+    {
+        $windowSeconds = (int) config('credflow.jobs.outbox_retry_window_seconds', 21600);
+
+        return $windowSeconds > 0 ? now()->addSeconds($windowSeconds) : null;
     }
 
     public function handle(WhatsAppService $whatsapp, ConversationTimelineService $timeline): void

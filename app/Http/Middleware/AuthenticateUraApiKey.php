@@ -21,7 +21,7 @@ class AuthenticateUraApiKey
         $apiKey = UraApiKey::findByPlainKey($token);
 
         if ($apiKey) {
-            $apiKey->update(['last_used_at' => now()]);
+            $this->touchApiKeyIfStale($apiKey);
             $request->attributes->set('ura_api_key', $apiKey);
 
             return $next($request);
@@ -34,5 +34,18 @@ class AuthenticateUraApiKey
         }
 
         return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    private function touchApiKeyIfStale(UraApiKey $apiKey): void
+    {
+        $debounceSeconds = (int) config('credflow.api.ura_key_last_used_debounce_seconds', 300);
+
+        if ($debounceSeconds > 0
+            && $apiKey->last_used_at !== null
+            && $apiKey->last_used_at->gt(now()->subSeconds($debounceSeconds))) {
+            return;
+        }
+
+        $apiKey->forceFill(['last_used_at' => now()])->save();
     }
 }

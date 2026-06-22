@@ -55,6 +55,19 @@ test('script returns TwiML with pt-BR Say and Gather', function () {
     expect($call->status)->toBe('answered');
 });
 
+test('replayed script callback increments total_answered only once', function () {
+    $call = makeIvrCall();
+
+    $this->post(route('ivr.script', $call))->assertSuccessful();
+    $this->post(route('ivr.script', $call))->assertSuccessful();
+
+    $call->refresh();
+    $call->voiceCampaign->refresh();
+
+    expect($call->status)->toBe('answered')
+        ->and($call->voiceCampaign->total_answered)->toBe(1);
+});
+
 test('dtmf digit 1 sets call status to interested', function () {
     $call = makeIvrCall(['status' => 'answered']);
 
@@ -65,6 +78,19 @@ test('dtmf digit 1 sets call status to interested', function () {
 
     $call->refresh();
     expect($call->status)->toBe('interested');
+});
+
+test('replayed interested dtmf increments total_interested only once', function () {
+    $call = makeIvrCall(['status' => 'answered']);
+
+    $this->post(route('ivr.dtmf', $call), ['Digits' => '1'])->assertSuccessful();
+    $this->post(route('ivr.dtmf', $call), ['Digits' => '1'])->assertSuccessful();
+
+    $call->refresh();
+    $call->voiceCampaign->refresh();
+
+    expect($call->status)->toBe('interested')
+        ->and($call->voiceCampaign->total_interested)->toBe(1);
 });
 
 test('dtmf digit 2 sets call status to optout', function () {

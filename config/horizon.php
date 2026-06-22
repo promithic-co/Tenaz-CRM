@@ -238,6 +238,17 @@ return [
                 'timeout' => 600,
                 'tries' => 3,
             ],
+            'supervisor-campaign-delivery-events' => [
+                'connection' => 'redis',
+                'queue' => ['campaign-delivery-events'],
+                'balance' => 'auto',
+                'autoScalingStrategy' => 'time',
+                'minProcesses' => 1,
+                'maxProcesses' => 6,
+                'memory' => 256,
+                'timeout' => 90,
+                'tries' => 3,
+            ],
             'supervisor-followups' => [
                 'connection' => 'redis',
                 'queue' => ['followups'],
@@ -275,7 +286,7 @@ return [
 
         'local' => [
             'supervisor-1' => [
-                'queue' => ['campaigns', 'default', 'messages', 'followups', 'outbox', 'media', 'auto-tags'],
+                'queue' => ['campaigns', 'campaign-delivery-events', 'default', 'messages', 'followups', 'outbox', 'media', 'auto-tags'],
                 'maxProcesses' => 3,
                 'memory' => 256,
                 'timeout' => 300,

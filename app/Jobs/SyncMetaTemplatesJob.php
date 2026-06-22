@@ -15,11 +15,20 @@ class SyncMetaTemplatesJob implements ShouldQueue
 
     public int $tries = 3;
 
+    public int $maxExceptions = 3;
+
     public int $timeout = 120;
 
     public function __construct(public readonly int $instanceId)
     {
         $this->onQueue('default');
+    }
+
+    public function retryUntil(): ?\DateTimeInterface
+    {
+        $windowSeconds = (int) config('credflow.jobs.template_sync_retry_window_seconds', 3600);
+
+        return $windowSeconds > 0 ? now()->addSeconds($windowSeconds) : null;
     }
 
     public function handle(): void
@@ -50,7 +59,7 @@ class SyncMetaTemplatesJob implements ShouldQueue
             }
 
             if ($response->status() === 429) {
-                $this->release(60);
+                $this->release($this->retryAfterSeconds($response->header('Retry-After')));
 
                 return;
             }
@@ -123,5 +132,28 @@ class SyncMetaTemplatesJob implements ShouldQueue
         }
 
         return implode(' ', $parts);
+    }
+
+    private function retryAfterSeconds(?string $header): int
+    {
+        $fallback = 60;
+        $max = max(1, (int) config('credflow.jobs.template_sync_max_retry_after_seconds', 3600));
+
+        if ($header === null || trim($header) === '') {
+            return min($fallback, $max);
+        }
+
+        $header = trim($header);
+
+        if (ctype_digit($header)) {
+            return min(max(1, (int) $header), $max);
+        }
+
+        $retryAt = \DateTimeImmutable::createFromFormat(DATE_RFC7231, $header);
+        if ($retryAt === false) {
+            return min($fallback, $max);
+        }
+
+        return min(max(1, $retryAt->getTimestamp() - now()->timestamp), $max);
     }
 }

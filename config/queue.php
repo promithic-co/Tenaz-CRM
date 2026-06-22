@@ -109,6 +109,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Runtime Queue Health
+    |--------------------------------------------------------------------------
+    |
+    | Queues that must be consumed by the production worker topology and exposed
+    | in health checks. Keep this list aligned with docker/supervisord.conf and
+    | config/horizon.php whenever queue names are added or moved.
+    |
+    */
+
+    'health_queues' => [
+        'campaigns',
+        'campaign-delivery-events',
+        'messages',
+        'followups',
+        'outbox',
+        'media',
+        'default',
+        'auto-tags',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Failed Queue Jobs
     |--------------------------------------------------------------------------
     |

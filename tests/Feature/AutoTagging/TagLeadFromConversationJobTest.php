@@ -48,4 +48,21 @@ describe('TagLeadFromConversationJob', function () {
         $job = new TagLeadFromConversationJob($lead->id, 'status_change');
         $job->handle(app(LeadAutoTaggingService::class));
     });
+
+    test('has a retry window for overlap and rate-limit releases', function () {
+        $job = new TagLeadFromConversationJob(1, 'status_change');
+
+        expect($job->retryUntil())->toBeInstanceOf(DateTimeInterface::class);
+        expect($job->retryUntil()->getTimestamp())->toBeGreaterThan(now()->getTimestamp());
+        expect($job->maxExceptions)->toBe(2);
+    });
+
+    test('retry window can be disabled for attempt-count behaviour', function () {
+        config(['credflow.jobs.auto_tag_retry_window_seconds' => 0]);
+
+        $job = new TagLeadFromConversationJob(1, 'status_change');
+
+        expect($job->retryUntil())->toBeNull();
+        expect($job->tries)->toBe(2);
+    });
 });

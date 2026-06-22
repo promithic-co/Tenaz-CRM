@@ -63,12 +63,26 @@ class HealthController extends Controller
     private function checkQueue(): array
     {
         try {
-            $size = Queue::size('default');
+            $queues = $this->queueDepths();
 
-            return ['status' => 'ok', 'queue_depth' => $size];
+            return [
+                'status' => 'ok',
+                'queue_depth' => array_sum($queues),
+                'queues' => $queues,
+            ];
         } catch (Throwable $e) {
             return ['status' => 'error', 'message' => $e->getMessage()];
         }
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function queueDepths(): array
+    {
+        return collect(config('queue.health_queues', ['default']))
+            ->mapWithKeys(fn (string $queue): array => [$queue => Queue::size($queue)])
+            ->all();
     }
 
     private function checkDisk(): array

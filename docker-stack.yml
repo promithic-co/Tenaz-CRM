@@ -59,6 +59,9 @@ services:
       SESSION_DRIVER: redis
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
+      # Must be greater than the largest queue worker timeout to prevent Redis
+      # from making still-running jobs visible a second time.
+      REDIS_QUEUE_RETRY_AFTER: ${REDIS_QUEUE_RETRY_AFTER:-3900}
       LOG_CHANNEL: stderr
       LOG_LEVEL: info
 
