@@ -53,7 +53,10 @@ it('test_sendCampaignMessageJob_dispatches_campaign_progress_on_success', functi
 
     ['campaign' => $campaign, 'contactList' => $contactList] = campaignWithTenant(['total_recipients' => 1]);
 
-    $entry = ContactListEntry::factory()->create(['contact_list_id' => $contactList->id]);
+    $entry = ContactListEntry::factory()->create([
+        'contact_list_id' => $contactList->id,
+        'phone' => '5511999990201',
+    ]);
     $message = CampaignMessage::factory()->create([
         'campaign_id' => $campaign->id,
         'contact_list_entry_id' => $entry->id,
@@ -90,8 +93,14 @@ it('test_campaign_broadcast_debounced', function () {
 
     ['campaign' => $campaign, 'contactList' => $contactList] = campaignWithTenant(['total_recipients' => 2]);
 
-    $entry1 = ContactListEntry::factory()->create(['contact_list_id' => $contactList->id]);
-    $entry2 = ContactListEntry::factory()->create(['contact_list_id' => $contactList->id]);
+    $entry1 = ContactListEntry::factory()->create([
+        'contact_list_id' => $contactList->id,
+        'phone' => '5511999990202',
+    ]);
+    $entry2 = ContactListEntry::factory()->create([
+        'contact_list_id' => $contactList->id,
+        'phone' => '5511999990203',
+    ]);
 
     $msg1 = CampaignMessage::factory()->create([
         'campaign_id' => $campaign->id,

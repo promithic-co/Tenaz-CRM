@@ -2,7 +2,7 @@
 
 namespace App\Services\Dashboard;
 
-use App\Events\DashboardMetricsUpdated;
+use App\Jobs\ComputeDashboardMetricsJob;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\VoiceCampaignCall;
@@ -105,12 +105,16 @@ class DashboardMetricsService
     }
 
     /**
-     * Debounce-dispatch DashboardMetricsUpdated (max once per 5s per tenant).
+     * Debounce-offload the KPI broadcast (max once per 5s per tenant).
+     *
+     * The debounce gate stays on the caller (a cheap atomic Cache::add) so the
+     * triggering send/inbound worker only enqueues a job; the ~10 tenant-wide
+     * aggregate COUNTs run on the `default` queue, not the hot path (SCALE-3).
      */
     public function dispatchUpdate(string $tenantId): void
     {
         if ($this->debouncer->shouldFire("dashboard:{$tenantId}:metrics", 5)) {
-            DashboardMetricsUpdated::dispatch($tenantId, $this->snapshot($tenantId));
+            ComputeDashboardMetricsJob::dispatch($tenantId);
         }
     }
 }
