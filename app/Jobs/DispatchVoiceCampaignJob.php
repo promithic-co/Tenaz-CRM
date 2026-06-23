@@ -53,12 +53,10 @@ class DispatchVoiceCampaignJob implements ShouldQueue
 
         // Greeting template is immutable for the campaign's life; resolve it once here
         // instead of touching the lazy voiceInstance relation on every entry inside the
-        // chunk loop (PERF-7). Unset the relation so the per-chunk $campaign->refresh()
-        // below does not reload it.
+        // chunk loop (PERF-7).
         $greetingTemplate = $campaign->greeting_template
             ?? $campaign->voiceInstance?->greeting_template
             ?? '';
-        $campaign->unsetRelation('voiceInstance');
 
         // Stream all opted-in entries and skip already-called ones per chunk via a
         // bounded whereIn (mirrors DispatchCampaignJob). The previous whereNotIn anti-join
@@ -70,9 +68,12 @@ class DispatchVoiceCampaignJob implements ShouldQueue
             ->select(['id', 'phone', 'name', 'extra_data'])
             ->orderBy('id')
             ->chunkById(100, function ($entries) use ($campaign, $greetingTemplate, &$index, &$stopped) {
-                $campaign->refresh();
+                // Re-check the live status each chunk so a mid-dispatch pause/cancel stops the
+                // fan-out — but read only the status column instead of $campaign->refresh(),
+                // which reloaded the loaded contactList relation on every chunk (SCALE-5).
+                $status = VoiceCampaign::withoutGlobalScopes()->whereKey($campaign->id)->value('status');
 
-                if (! $campaign->isSending()) {
+                if ($status !== 'sending') {
                     Log::info('DispatchVoiceCampaignJob: campaign paused/cancelled mid-dispatch', ['campaign_id' => $campaign->id]);
                     $stopped = true;
 
