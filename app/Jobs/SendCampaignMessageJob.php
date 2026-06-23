@@ -434,14 +434,15 @@ class SendCampaignMessageJob implements ShouldQueue
     }
 
     /**
-     * Resolve the campaign's WhatsApp instance + template, cached per campaign_id.
+     * Resolve the campaign's WhatsApp instance + template, cached by their own id.
      *
-     * Both are effectively immutable for the campaign's lifetime, yet the fan-out
-     * previously loaded them on every message — two extra queries per send across a
-     * 100k-contact campaign. Cache them for a short window (matching the project's
-     * ~300s config-cache convention) so the hot path reads them from cache; the live
-     * campaign-status gate still hits the DB per message. A token refresh or a
-     * template-status change is picked up within the TTL. Set
+     * The fan-out previously loaded both on every message — two extra queries per send
+     * across a 100k-contact campaign. They are cached keyed by entity id (shared across
+     * every campaign that uses the same instance/template, not per campaign) and busted
+     * the instant either row is saved or deleted via the model observers — so a rotated
+     * access token or a revoked/unapproved template takes effect immediately rather than
+     * lingering for a TTL window. The TTL is only a backstop for any non-Eloquent write
+     * path; the live campaign-status gate still hits the DB per message. Set
      * send_config_cache_seconds=0 to disable and always resolve fresh.
      *
      * @return array{0: ?WhatsappInstance, 1: ?WhatsappTemplate}
@@ -450,16 +451,30 @@ class SendCampaignMessageJob implements ShouldQueue
     {
         $ttl = (int) config('credflow.campaigns.send_config_cache_seconds', 300);
 
-        $resolve = fn (): array => [
-            $campaign->whatsappInstance()->first(),
-            $campaign->whatsappTemplate()->first(),
-        ];
-
         if ($ttl <= 0) {
-            return $resolve();
+            return [
+                $campaign->whatsappInstance()->first(),
+                $campaign->whatsappTemplate()->first(),
+            ];
         }
 
-        return Cache::remember("campaign_send_config:{$campaign->id}", $ttl, $resolve);
+        $instance = $campaign->whatsapp_instance_id
+            ? Cache::remember(
+                "whatsapp_send_instance:{$campaign->whatsapp_instance_id}",
+                $ttl,
+                fn (): ?WhatsappInstance => $campaign->whatsappInstance()->first()
+            )
+            : null;
+
+        $template = $campaign->whatsapp_template_id
+            ? Cache::remember(
+                "whatsapp_send_template:{$campaign->whatsapp_template_id}",
+                $ttl,
+                fn (): ?WhatsappTemplate => $campaign->whatsappTemplate()->first()
+            )
+            : null;
+
+        return [$instance, $template];
     }
 
     public function failed(Throwable $e): void

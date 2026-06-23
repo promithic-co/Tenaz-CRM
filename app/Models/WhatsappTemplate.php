@@ -10,11 +10,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class WhatsappTemplate extends Model
 {
     /** @use HasFactory<WhatsappTemplateFactory> */
     use BelongsToTenant, HasFactory, SoftDeletes;
+
+    protected static function booted(): void
+    {
+        // SCALE-4: a template status change (APPROVED → revoked/paused via the Meta sync) or
+        // soft-delete must invalidate the bulk send-config cache immediately, so a campaign
+        // can never keep sending against a now-unapproved template within a TTL window.
+        static::saved(fn (self $template) => Cache::forget("whatsapp_send_template:{$template->id}"));
+        static::deleted(fn (self $template) => Cache::forget("whatsapp_send_template:{$template->id}"));
+    }
 
     protected $fillable = [
         'tenant_id',

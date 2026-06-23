@@ -64,7 +64,14 @@ class WhatsappInstance extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn (self $instance) => Cache::forget("agent_context_instance_{$instance->name}"));
+        static::saved(function (self $instance): void {
+            Cache::forget("agent_context_instance_{$instance->name}");
+            // SCALE-4: bust the campaign send-config cache the instant a token rotates or
+            // any instance field changes, so the bulk send path never uses a stale instance.
+            Cache::forget("whatsapp_send_instance:{$instance->id}");
+        });
+
+        static::deleted(fn (self $instance) => Cache::forget("whatsapp_send_instance:{$instance->id}"));
 
         // Enforce 1 WABA = 1 agent: all whatsapp_instances rows sharing meta_waba_id
         // must share the same agent_id. Catches accidental cross-WABA reassignment.

@@ -672,6 +672,60 @@ test('SendCampaignMessageJob re-resolves config per message when the cache is di
     expect(countTableSelects($log, 'whatsapp_templates'))->toBe(2);
 });
 
+test('SendCampaignMessageJob re-resolves the template the instant it leaves APPROVED mid-campaign (SCALE-4 bust)', function () {
+    Cache::flush();
+    Queue::fake();
+
+    [$campaign, $messages] = makeSendableCampaignWithMessages(2);
+
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldReceive('sendTemplate')->andReturn('wamid.tmpl.bust');
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+    app()->instance(WhatsAppProviderFactory::class, $factoryMock);
+
+    // First send caches the APPROVED template under its entity-id key.
+    (new SendCampaignMessageJob($messages[0]))->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+    expect($messages[0]->fresh()->status)->toBe('sent');
+
+    // Meta sync / operator flips the template out of APPROVED. The saved observer busts the cache
+    // so the next send sees the new status immediately, not a stale cached APPROVED row within a TTL.
+    $campaign->whatsappTemplate->update(['status' => 'PAUSED']);
+
+    (new SendCampaignMessageJob($messages[1]))->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+
+    expect($messages[1]->fresh()->status)->toBe('failed')
+        ->and($messages[1]->fresh()->error_code)->toBe('TEMPLATE_NOT_APPROVED');
+});
+
+test('SendCampaignMessageJob re-reads the instance after it is updated mid-campaign (SCALE-4 bust)', function () {
+    Cache::flush();
+    Queue::fake();
+
+    [$campaign, $messages] = makeSendableCampaignWithMessages(2);
+
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldReceive('sendTemplate')->andReturn('wamid.inst.bust');
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+    app()->instance(WhatsAppProviderFactory::class, $factoryMock);
+
+    // First send caches the instance under its entity-id key.
+    (new SendCampaignMessageJob($messages[0]))->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+
+    // Any instance write (e.g. a rotated access token) busts the cache via the saved observer.
+    $campaign->whatsappInstance->update(['display_name' => 'rotated']);
+
+    DB::enableQueryLog();
+    (new SendCampaignMessageJob($messages[1]))->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+    $log = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    // The bust forces the second send to re-read the instance from the DB rather than serve a stale row.
+    expect(countTableSelects($log, 'whatsapp_instances'))->toBe(1)
+        ->and($messages[1]->fresh()->status)->toBe('sent');
+});
+
 test('SendCampaignMessageJob reloads the campaign for progress only when the broadcast fires (SCALE-4)', function () {
     Cache::flush();
     Queue::fake();
