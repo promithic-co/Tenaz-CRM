@@ -38,6 +38,17 @@ test('PromptLayerCache caches a null result so the no-match case does not re-que
         ->and($calls)->toBe(1);
 });
 
+test('two version bumps advance the version by exactly two (atomic increment, SCALE-8)', function () {
+    expect(PromptLayerCache::version('inc'))->toBe(0);
+
+    PromptLayerCache::bump('inc');
+    PromptLayerCache::bump('inc');
+
+    // bump() is an atomic add+increment, so concurrent operator edits can never collapse to a
+    // single lost bump that leaves a stale prompt layer cached.
+    expect(PromptLayerCache::version('inc'))->toBe(2);
+});
+
 test('a version bump is scoped to one tenant (SCALE-8)', function () {
     PromptLayerCache::remember('a', 'k', fn () => 'a1');
     PromptLayerCache::remember('b', 'k', fn () => 'b1');

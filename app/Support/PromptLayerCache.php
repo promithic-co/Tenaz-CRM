@@ -26,13 +26,17 @@ class PromptLayerCache
     }
 
     /**
-     * Invalidate the whole prompt layer for a tenant by advancing its version. Read-modify-write
-     * is not atomic, but a lost increment only risks a stale read bounded by the 300s TTL, and
-     * edits are low-frequency single-operator actions — so contention is negligible.
+     * Invalidate the whole prompt layer for a tenant by advancing its version. The increment is
+     * atomic (Redis INCR / array-store lock), so concurrent operator edits can never lose a bump
+     * and serve a stale prompt layer. Cache::add seeds the counter with the 30-day TTL on first
+     * use without clobbering an existing version; increment preserves that TTL.
      */
     public static function bump(string $tenantId): void
     {
-        Cache::put(self::versionKey($tenantId), self::version($tenantId) + 1, now()->addDays(30));
+        $key = self::versionKey($tenantId);
+
+        Cache::add($key, 0, now()->addDays(30));
+        Cache::increment($key);
     }
 
     /**
