@@ -16,7 +16,7 @@ class CampaignService
      */
     public function start(Campaign $campaign): void
     {
-        $totalRecipients = $campaign->contactList->entries()->count();
+        $totalRecipients = $campaign->contactList?->entries()->count() ?? 0;
 
         // Concurrency guard (DB-5): lock the row, re-evaluate the guard against the locked
         // state, then transition — so a control action racing the dispatcher or another
