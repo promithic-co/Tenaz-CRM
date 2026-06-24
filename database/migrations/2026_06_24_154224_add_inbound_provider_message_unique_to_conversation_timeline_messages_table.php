@@ -1,8 +1,7 @@
 <?php
 
+use App\Support\Database\BuildsIndexesConcurrently;
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 
 /**
  * ATOM-2: durable inbound dedup guarantee.
@@ -18,6 +17,8 @@ use Illuminate\Support\Facades\DB;
  */
 return new class extends Migration
 {
+    use BuildsIndexesConcurrently;
+
     public $withinTransaction = false;
 
     private string $table = 'conversation_timeline_messages';
@@ -26,34 +27,17 @@ return new class extends Migration
 
     public function up(): void
     {
-        if ($this->isPostgres()) {
-            // CONCURRENTLY cannot run inside a transaction (hence $withinTransaction = false);
-            // builds the index without locking out inbound writes on a large table.
-            DB::statement(
-                "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS {$this->indexName} ON {$this->table} (tenant_id, provider_message_id) WHERE direction = 'inbound' AND provider_message_id IS NOT NULL"
-            );
-
-            return;
-        }
-
-        // SQLite supports partial indexes natively; same predicate keeps the test
-        // suite enforcing the exact production constraint.
-        DB::statement(
-            "CREATE UNIQUE INDEX IF NOT EXISTS {$this->indexName} ON {$this->table} (tenant_id, provider_message_id) WHERE direction = 'inbound' AND provider_message_id IS NOT NULL"
+        $this->createIndexConcurrently(
+            $this->table,
+            $this->indexName,
+            ['tenant_id', 'provider_message_id'],
+            unique: true,
+            where: "direction = 'inbound' AND provider_message_id IS NOT NULL",
         );
     }
 
     public function down(): void
     {
-        try {
-            DB::statement("DROP INDEX IF EXISTS {$this->indexName}");
-        } catch (QueryException) {
-            // best-effort
-        }
-    }
-
-    private function isPostgres(): bool
-    {
-        return DB::connection()->getDriverName() === 'pgsql';
+        $this->dropIndexConcurrently($this->indexName);
     }
 };
