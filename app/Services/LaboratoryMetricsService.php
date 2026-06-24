@@ -163,12 +163,19 @@ class LaboratoryMetricsService
      */
     public function aiRunSummary(string $tenantId): array
     {
-        $runs = AiRun::query()
-            ->where('tenant_id', $tenantId)
-            ->where('started_at', '>=', now()->subDays(30))
-            ->get();
+        $aggregate = $this->aiRunWindow($tenantId)
+            ->selectRaw('COUNT(*) as runs')
+            ->selectRaw('AVG(estimated_cost_usd) as avg_cost_usd')
+            ->selectRaw('AVG(duration_ms) as avg_latency_ms')
+            ->selectRaw('AVG(llm_calls) as avg_llm_calls')
+            ->selectRaw('AVG(tool_calls) as avg_tool_calls')
+            ->selectRaw("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count")
+            ->selectRaw("SUM(CASE WHEN status = 'fallback' THEN 1 ELSE 0 END) as fallback_count")
+            ->selectRaw("SUM(CASE WHEN status IN ('error', 'timeout') THEN 1 ELSE 0 END) as error_count")
+            ->selectRaw("SUM(CASE WHEN status = 'human_handoff' THEN 1 ELSE 0 END) as human_handoff_count")
+            ->first();
 
-        $count = $runs->count();
+        $count = (int) ($aggregate->runs ?? 0);
         if ($count === 0) {
             return [
                 'runs' => 0,
@@ -186,15 +193,15 @@ class LaboratoryMetricsService
 
         return [
             'runs' => $count,
-            'avg_cost_usd' => round((float) $runs->avg('estimated_cost_usd'), 6),
-            'avg_latency_ms' => (int) round((float) $runs->avg('duration_ms')),
-            'p95_latency_ms' => $this->percentile($runs->pluck('duration_ms')->filter()->values()->all(), 95),
-            'avg_llm_calls' => round((float) $runs->avg('llm_calls'), 2),
-            'avg_tool_calls' => round((float) $runs->avg('tool_calls'), 2),
-            'success_rate' => $this->rate($runs->where('status', 'success')->count(), $count),
-            'fallback_rate' => $this->rate($runs->where('status', 'fallback')->count(), $count),
-            'error_rate' => $this->rate($runs->whereIn('status', ['error', 'timeout'])->count(), $count),
-            'human_handoff_rate' => $this->rate($runs->where('status', 'human_handoff')->count(), $count),
+            'avg_cost_usd' => round((float) $aggregate->avg_cost_usd, 6),
+            'avg_latency_ms' => (int) round((float) $aggregate->avg_latency_ms),
+            'p95_latency_ms' => $this->percentile($this->durationSamples($tenantId), 95),
+            'avg_llm_calls' => round((float) $aggregate->avg_llm_calls, 2),
+            'avg_tool_calls' => round((float) $aggregate->avg_tool_calls, 2),
+            'success_rate' => $this->rate((int) $aggregate->success_count, $count),
+            'fallback_rate' => $this->rate((int) $aggregate->fallback_count, $count),
+            'error_rate' => $this->rate((int) $aggregate->error_count, $count),
+            'human_handoff_rate' => $this->rate((int) $aggregate->human_handoff_count, $count),
         ];
     }
 
@@ -203,23 +210,34 @@ class LaboratoryMetricsService
      */
     public function architectureComparison(string $tenantId): array
     {
-        return AiRun::query()
-            ->where('tenant_id', $tenantId)
-            ->where('started_at', '>=', now()->subDays(30))
-            ->get()
+        $durationsByArchitecture = $this->aiRunWindow($tenantId)
+            ->get(['architecture_version', 'duration_ms'])
             ->groupBy('architecture_version')
-            ->map(function ($runs, string $architecture): array {
-                $count = $runs->count();
+            ->map(fn (Collection $rows): array => $rows->pluck('duration_ms')->all());
+
+        return $this->aiRunWindow($tenantId)
+            ->select('architecture_version')
+            ->selectRaw('COUNT(*) as runs')
+            ->selectRaw('AVG(estimated_cost_usd) as avg_cost_usd')
+            ->selectRaw('AVG(duration_ms) as avg_latency_ms')
+            ->selectRaw('AVG(llm_calls) as avg_llm_calls')
+            ->selectRaw('AVG(tool_calls) as avg_tool_calls')
+            ->selectRaw("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count")
+            ->groupBy('architecture_version')
+            ->get()
+            ->map(function (AiRun $row) use ($durationsByArchitecture): array {
+                $architecture = (string) $row->architecture_version;
+                $count = (int) $row->runs;
 
                 return [
                     'architecture_version' => $architecture,
                     'runs' => $count,
-                    'avg_cost_usd' => round((float) $runs->avg('estimated_cost_usd'), 6),
-                    'avg_latency_ms' => (int) round((float) $runs->avg('duration_ms')),
-                    'p95_latency_ms' => $this->percentile($runs->pluck('duration_ms')->filter()->values()->all(), 95),
-                    'avg_llm_calls' => round((float) $runs->avg('llm_calls'), 2),
-                    'avg_tool_calls' => round((float) $runs->avg('tool_calls'), 2),
-                    'success_rate' => $this->rate($runs->where('status', 'success')->count(), $count),
+                    'avg_cost_usd' => round((float) $row->avg_cost_usd, 6),
+                    'avg_latency_ms' => (int) round((float) $row->avg_latency_ms),
+                    'p95_latency_ms' => $this->percentile($durationsByArchitecture->get($architecture, []), 95),
+                    'avg_llm_calls' => round((float) $row->avg_llm_calls, 2),
+                    'avg_tool_calls' => round((float) $row->avg_tool_calls, 2),
+                    'success_rate' => $this->rate((int) $row->success_count, $count),
                 ];
             })
             ->values()
@@ -296,6 +314,26 @@ class LaboratoryMetricsService
                 ->count(),
             'estimated_cost_today_usd' => $sentToday > 0 ? round($sentToday * 0.05, 2) : 0,
         ];
+    }
+
+    /**
+     * Base 30-day AiRun window for the Laboratory metrics, scoped to the tenant string.
+     */
+    private function aiRunWindow(string $tenantId): Builder
+    {
+        return AiRun::query()
+            ->where('tenant_id', $tenantId)
+            ->where('started_at', '>=', now()->subDays(30));
+    }
+
+    /**
+     * Project only the duration column (no model or JSON hydration) for percentile math.
+     *
+     * @return array<int, int|null>
+     */
+    private function durationSamples(string $tenantId): array
+    {
+        return $this->aiRunWindow($tenantId)->pluck('duration_ms')->all();
     }
 
     /**
