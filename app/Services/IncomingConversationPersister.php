@@ -7,6 +7,7 @@ use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -233,17 +234,48 @@ class IncomingConversationPersister
         $mode = $this->automation->resolveMode($lead, $instanceName);
         $this->automation->markInbound($lead, $mode, $referral);
 
-        $timelineMessage = $this->timeline->record(
-            lead: $lead,
-            direction: 'inbound',
-            senderType: 'lead',
-            body: $aggregatedMessage,
-            media: $mediaContext,
-            status: 'received',
-            source: 'webhook',
-            interactionId: $interactionId,
-            providerMessageId: $providerMessageId,
-        );
+        try {
+            $timelineMessage = $this->timeline->record(
+                lead: $lead,
+                direction: 'inbound',
+                senderType: 'lead',
+                body: $aggregatedMessage,
+                media: $mediaContext,
+                status: 'received',
+                source: 'webhook',
+                interactionId: $interactionId,
+                providerMessageId: $providerMessageId,
+            );
+        } catch (QueryException $e) {
+            // A concurrent redelivery won the insert race because the Redis lock degraded;
+            // the ctm_tenant_provider_inbound_unique partial index rejected this duplicate.
+            // Resolve to the row the winner persisted and report a duplicate rather than
+            // failing the job or double-inserting (ATOM-2).
+            $existingMessage = $providerMessageId !== null && $this->isUniqueViolation($e)
+                ? ConversationTimelineMessage::query()
+                    ->where('tenant_id', (string) $tenantId)
+                    ->where('provider_message_id', $providerMessageId)
+                    ->where('direction', 'inbound')
+                    ->first()
+                : null;
+
+            if (! $existingMessage) {
+                throw $e;
+            }
+
+            Log::warning('whatsapp_persister.duplicate_insert_race', [
+                'interaction_id' => $interactionId,
+                'provider_message_id' => $providerMessageId,
+                'lead_id' => $lead->id,
+            ]);
+
+            return [
+                'lead' => $lead,
+                'timelineMessage' => $existingMessage,
+                'mode' => $mode,
+                'duplicate' => true,
+            ];
+        }
 
         $this->events->recordForLead(
             interactionId: $interactionId,
@@ -263,5 +295,15 @@ class IncomingConversationPersister
             'mode' => $mode,
             'duplicate' => false,
         ];
+    }
+
+    /**
+     * Unique-constraint violation across drivers: SQLSTATE 23505 (Postgres) or 23000
+     * (SQLite/MySQL integrity constraint). Used to distinguish the inbound dedup race
+     * from any other query failure, which must still propagate.
+     */
+    private function isUniqueViolation(QueryException $e): bool
+    {
+        return in_array((string) $e->getCode(), ['23505', '23000'], true);
     }
 }

@@ -1,8 +1,28 @@
 <?php
 
 use App\Models\ConversationTimelineMessage;
+use App\Models\Lead;
 use App\Services\CampaignReplyDetector;
+use App\Services\ConversationTimelineService;
 use App\Services\IncomingConversationPersister;
+use Illuminate\Database\QueryException;
+
+/**
+ * @param  array<string, mixed>  $overrides
+ */
+function inboundTimelineRow(int $leadId, string $tenantId, array $overrides = []): array
+{
+    return array_merge([
+        'tenant_id' => $tenantId,
+        'lead_id' => $leadId,
+        'direction' => 'inbound',
+        'sender_type' => 'lead',
+        'channel' => 'whatsapp',
+        'status' => 'received',
+        'source' => 'webhook',
+        'provider_message_id' => 'wamid.IDX1',
+    ], $overrides);
+}
 
 /**
  * @param  array<string, mixed>  $overrides
@@ -49,4 +69,54 @@ test('inbound without provider id still persists (no lock, no dedupe)', function
     expect($first['duplicate'])->toBeFalse();
     expect($second['duplicate'])->toBeFalse();
     expect(ConversationTimelineMessage::where('tenant_id', 'tenant-dup')->count())->toBe(2);
+});
+
+test('partial unique index rejects a second inbound row with the same provider id (ATOM-2)', function () {
+    $lead = Lead::factory()->create(['tenant_id' => 'tenant-idx', 'agent_id' => null]);
+
+    ConversationTimelineMessage::create(inboundTimelineRow($lead->id, 'tenant-idx'));
+
+    expect(fn () => ConversationTimelineMessage::create(inboundTimelineRow($lead->id, 'tenant-idx')))
+        ->toThrow(QueryException::class);
+
+    expect(ConversationTimelineMessage::where('provider_message_id', 'wamid.IDX1')->count())->toBe(1);
+});
+
+test('partial unique index ignores outbound rows and null provider ids (ATOM-2)', function () {
+    $lead = Lead::factory()->create(['tenant_id' => 'tenant-idx2', 'agent_id' => null]);
+
+    // Same provider id is allowed across directions — the index is scoped to inbound only.
+    ConversationTimelineMessage::create(inboundTimelineRow($lead->id, 'tenant-idx2', ['provider_message_id' => 'wamid.SHARED']));
+    ConversationTimelineMessage::create(inboundTimelineRow($lead->id, 'tenant-idx2', ['direction' => 'outbound', 'sender_type' => 'agent', 'provider_message_id' => 'wamid.SHARED']));
+
+    // Inbound rows with no provider id never collide — the predicate excludes NULLs.
+    ConversationTimelineMessage::create(inboundTimelineRow($lead->id, 'tenant-idx2', ['provider_message_id' => null]));
+    ConversationTimelineMessage::create(inboundTimelineRow($lead->id, 'tenant-idx2', ['provider_message_id' => null]));
+
+    expect(ConversationTimelineMessage::where('tenant_id', 'tenant-idx2')->count())->toBe(4);
+});
+
+test('insert race that trips the unique index resolves to the existing row as a duplicate (ATOM-2)', function () {
+    $this->mock(CampaignReplyDetector::class)->shouldReceive('detect')->once();
+
+    $seedLead = Lead::factory()->create(['tenant_id' => 'tenant-dup', 'agent_id' => null]);
+    $existingId = null;
+
+    // Simulate the lock degrading: our SELECT-before-insert misses, the concurrent winner
+    // inserts the row, then our own insert trips the partial unique index. The persister
+    // must catch the violation and resolve to the winner's row rather than failing.
+    $this->mock(ConversationTimelineService::class, function ($mock) use ($seedLead, &$existingId): void {
+        $mock->shouldReceive('record')->once()->andReturnUsing(function () use ($seedLead, &$existingId) {
+            $row = ConversationTimelineMessage::create(inboundTimelineRow($seedLead->id, 'tenant-dup', ['provider_message_id' => 'wamid.DUP123']));
+            $existingId = $row->id;
+
+            throw new QueryException('sqlite', 'insert', [], new RuntimeException('UNIQUE constraint failed', 23000));
+        });
+    });
+
+    $result = app(IncomingConversationPersister::class)->persist(...dedupePersistArgs());
+
+    expect($result['duplicate'])->toBeTrue()
+        ->and($result['timelineMessage']->id)->toBe($existingId);
+    expect(ConversationTimelineMessage::where('provider_message_id', 'wamid.DUP123')->count())->toBe(1);
 });
