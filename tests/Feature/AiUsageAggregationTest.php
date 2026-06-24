@@ -200,3 +200,47 @@ test('aggregate command updates existing records on re-run', function () {
 
     expect(AiUsageDaily::where('date', $yesterday)->count())->toBe(1);
 });
+
+test('aggregation counts only the target calendar day via a sargable range (GROW-3)', function () {
+    $conversationId = (string) Str::uuid();
+    $target = now()->subDay()->toDateString();
+
+    Lead::factory()->create([
+        'agent_id' => $this->agent->id,
+        'tenant_id' => $this->user->tenantId,
+        'conversation_id' => $conversationId,
+    ]);
+
+    $row = fn (string $createdAt, int $prompt): array => [
+        'id' => (string) Str::uuid(),
+        'conversation_id' => $conversationId,
+        'user_id' => null,
+        'agent' => 'AriaAgent',
+        'role' => 'assistant',
+        'content' => 'x',
+        'attachments' => '',
+        'tool_calls' => '',
+        'tool_results' => '',
+        'usage' => json_encode(['promptTokens' => $prompt, 'completionTokens' => 0]),
+        'meta' => '',
+        'created_at' => $createdAt,
+        'updated_at' => $createdAt,
+    ];
+
+    DB::table('agent_conversation_messages')->insert([
+        $row($target.' 00:00:00', 100),                                  // first instant — included
+        $row($target.' 23:59:59', 100),                                  // last instant — included
+        $row(now()->subDays(2)->toDateString().' 23:59:59', 999),        // day before — excluded
+        $row(now()->toDateString().' 00:00:00', 999),                    // next day boundary — excluded
+    ]);
+
+    $this->artisan('credflow:aggregate-usage', ['--date' => $target])->assertSuccessful();
+
+    $usage = AiUsageDaily::where('date', $target)
+        ->where('tenant_id', $this->user->tenantId)
+        ->first();
+
+    expect($usage)->not->toBeNull()
+        ->and($usage->total_requests)->toBe(2)
+        ->and($usage->total_prompt_tokens)->toBe(200);
+});

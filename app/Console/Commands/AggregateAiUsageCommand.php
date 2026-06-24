@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\AiUsageDaily;
 use App\Services\AlertService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -22,9 +23,13 @@ class AggregateAiUsageCommand extends Command
 
         $this->info("Aggregating AI usage for {$date}...");
 
+        $dayStart = Carbon::parse($date)->startOfDay();
+        $dayEnd = $dayStart->copy()->addDay();
+
         $messages = DB::table('agent_conversation_messages')
             ->join('leads', 'leads.conversation_id', '=', 'agent_conversation_messages.conversation_id')
-            ->whereDate('agent_conversation_messages.created_at', $date)
+            ->where('agent_conversation_messages.created_at', '>=', $dayStart)
+            ->where('agent_conversation_messages.created_at', '<', $dayEnd)
             ->where('agent_conversation_messages.role', 'assistant')
             ->where('agent_conversation_messages.usage', '!=', '')
             ->select([
