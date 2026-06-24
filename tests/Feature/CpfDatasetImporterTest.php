@@ -52,6 +52,62 @@ it('imports cpf dataset from json file', function () {
     expect(CpfDatasetEntry::where('cpf_dataset_id', $dataset->id)->count())->toBe(2);
 });
 
+it('streams a json array with nested values and structural chars inside strings (MEM-4)', function () {
+    $user = User::factory()->create();
+    $json = tempnam(sys_get_temp_dir(), 'cpf_test_').'.json';
+
+    file_put_contents($json, json_encode([
+        [
+            'cpf' => '01113404116',
+            'nome' => 'QUEVEDO, LUIZA {OK} [VIP]',
+            'status_expected' => 'QUALIFICADO',
+            'qualified_json' => ['banco' => 'Itau', 'parcelas' => [1, 2, 3], 'obs' => 'tem "aspas" e, virgula'],
+        ],
+        [
+            'cpf' => '03082303889',
+            'nome' => 'REINALDO JORGE',
+            'status_expected' => 'QUALIFICADO',
+            'qualified_json' => null,
+        ],
+        [
+            'cpf' => '12345678900',
+            'nome' => 'INVALID CPF SKIPPED',
+        ],
+    ], JSON_UNESCAPED_UNICODE));
+
+    $importer = app(CpfDatasetImporter::class);
+    $dataset = $importer->importFromJson($json, 'Stream Test', null, $user->id);
+
+    unlink($json);
+
+    expect($dataset->total_entries)->toBe(2);
+
+    $first = CpfDatasetEntry::where('cpf_dataset_id', $dataset->id)->where('cpf', '01113404116')->first();
+
+    expect($first)->not->toBeNull()
+        ->and($first->nome)->toBe('QUEVEDO, LUIZA {OK} [VIP]')
+        ->and($first->qualified_json)->toBe([
+            'banco' => 'Itau',
+            'parcelas' => [1, 2, 3],
+            'obs' => 'tem "aspas" e, virgula',
+        ]);
+
+    expect(CpfDatasetEntry::where('cpf_dataset_id', $dataset->id)->where('cpf', '12345678900')->exists())->toBeFalse();
+});
+
+it('returns an empty dataset when the json file is an empty array (MEM-4)', function () {
+    $user = User::factory()->create();
+    $json = tempnam(sys_get_temp_dir(), 'cpf_test_').'.json';
+    file_put_contents($json, '[]');
+
+    $dataset = app(CpfDatasetImporter::class)->importFromJson($json, 'Empty', null, $user->id);
+
+    unlink($json);
+
+    expect($dataset->total_entries)->toBe(0);
+    expect(CpfDatasetEntry::where('cpf_dataset_id', $dataset->id)->count())->toBe(0);
+});
+
 it('updates total_entries count after import', function () {
     $user = User::factory()->create();
     $csv = tempnam(sys_get_temp_dir(), 'cpf_test_').'.csv';

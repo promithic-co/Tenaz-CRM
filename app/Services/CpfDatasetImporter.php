@@ -93,10 +93,13 @@ class CpfDatasetImporter
             'total_entries' => 0,
         ]);
 
-        $entries = json_decode(file_get_contents($filePath), true);
         $count = 0;
 
-        foreach ($entries as $entry) {
+        foreach ($this->streamJsonArrayElements($filePath) as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
             $cpf = preg_replace('/\D/', '', $entry['cpf'] ?? '');
             $cpf = $this->normalizeCpfLength($cpf);
             if ($cpf === null || ! $this->isValidCpf($cpf)) {
@@ -118,6 +121,109 @@ class CpfDatasetImporter
         $dataset->update(['total_entries' => $count]);
 
         return $dataset->refresh();
+    }
+
+    /**
+     * Stream the top-level elements of a JSON array without loading the whole file at once.
+     *
+     * Reads the file in fixed chunks while tracking nesting depth, string state, and escapes,
+     * decoding each top-level element on its own. Peak memory stays bounded to a single element
+     * plus the read buffer, unlike json_decode(file_get_contents(...)) which holds the entire
+     * upload string and its decoded array simultaneously and OOMs on large datasets (MEM-4).
+     *
+     * @return \Generator<int, mixed>
+     */
+    private function streamJsonArrayElements(string $filePath): \Generator
+    {
+        $handle = fopen($filePath, 'r');
+        if ($handle === false) {
+            return;
+        }
+
+        $started = false;
+        $depth = 0;
+        $inString = false;
+        $escaped = false;
+        $buffer = '';
+
+        try {
+            while (! feof($handle)) {
+                $chunk = fread($handle, 8192);
+                if ($chunk === false || $chunk === '') {
+                    break;
+                }
+
+                $length = strlen($chunk);
+                for ($i = 0; $i < $length; $i++) {
+                    $char = $chunk[$i];
+
+                    if (! $started) {
+                        if ($char === '[') {
+                            $started = true;
+                        }
+
+                        continue;
+                    }
+
+                    if ($inString) {
+                        $buffer .= $char;
+                        if ($escaped) {
+                            $escaped = false;
+                        } elseif ($char === '\\') {
+                            $escaped = true;
+                        } elseif ($char === '"') {
+                            $inString = false;
+                        }
+
+                        continue;
+                    }
+
+                    if ($char === '"') {
+                        $inString = true;
+                        $buffer .= $char;
+
+                        continue;
+                    }
+
+                    if ($char === '{' || $char === '[') {
+                        $depth++;
+                        $buffer .= $char;
+
+                        continue;
+                    }
+
+                    if ($char === ']' && $depth === 0) {
+                        $element = trim($buffer);
+                        if ($element !== '') {
+                            yield json_decode($element, true);
+                        }
+
+                        return;
+                    }
+
+                    if ($char === '}' || $char === ']') {
+                        $depth--;
+                        $buffer .= $char;
+
+                        continue;
+                    }
+
+                    if ($char === ',' && $depth === 0) {
+                        $element = trim($buffer);
+                        if ($element !== '') {
+                            yield json_decode($element, true);
+                        }
+                        $buffer = '';
+
+                        continue;
+                    }
+
+                    $buffer .= $char;
+                }
+            }
+        } finally {
+            fclose($handle);
+        }
     }
 
     public function prefetchPromosysData(CpfDataset $dataset): int
