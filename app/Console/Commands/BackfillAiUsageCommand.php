@@ -4,7 +4,9 @@ namespace App\Console\Commands;
 
 use App\Jobs\LogAiUsageJob;
 use App\Models\Lead;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class BackfillAiUsageCommand extends Command
@@ -26,48 +28,52 @@ class BackfillAiUsageCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Starting AI usage backfill...');
 
-        $messages = DB::table('agent_conversation_messages')
+        $count = 0;
+
+        DB::table('agent_conversation_messages')
             ->whereNotNull('usage')
             ->where('role', 'assistant')
-            ->get();
+            ->orderBy('id')
+            ->chunkById(1000, function (Collection $messages) use (&$count): void {
+                $leads = Lead::query()
+                    ->whereIn('id', $messages->pluck('user_id')->filter()->unique()->all())
+                    ->get()
+                    ->keyBy('id');
 
-        $count = 0;
-        foreach ($messages as $msg) {
-            $usage = json_decode($msg->usage, true);
-            if (! $usage || empty($usage['promptTokens'])) {
-                continue;
-            }
+                foreach ($messages as $msg) {
+                    $usage = json_decode($msg->usage, true);
+                    if (! $usage || empty($usage['promptTokens'])) {
+                        continue;
+                    }
 
-            // user_id maps to lead_id by design in Aria's AgentFactory mapping
-            $lead = Lead::find($msg->user_id);
-            if (! $lead) {
-                continue;
-            }
+                    // user_id maps to lead_id by design in Aria's AgentFactory mapping
+                    $lead = $leads->get($msg->user_id);
+                    if (! $lead) {
+                        continue;
+                    }
 
-            $date = \Carbon\Carbon::parse($msg->created_at)->toDateString();
+                    $date = Carbon::parse($msg->created_at)->toDateString();
+                    $model = class_basename($msg->agent) ?? 'gpt-4o-mini';
 
-            // "agent" column usually contains names like "Aria::class", let's extract model dynamically
-            // AgentConversationMessages doesn't strictly store 'model' separate.
-            // Let's use a default or extract from meta if possible
-            $meta = json_decode($msg->meta ?? '{}', true);
-            $model = class_basename($msg->agent) ?? 'gpt-4o-mini';
+                    LogAiUsageJob::dispatchSync(
+                        $usage['promptTokens'] ?? 0,
+                        $usage['completionTokens'] ?? 0,
+                        $model,
+                        $lead->agent_id,
+                        $lead->tenant_id,
+                        $date
+                    );
 
-            LogAiUsageJob::dispatchSync(
-                $usage['promptTokens'] ?? 0,
-                $usage['completionTokens'] ?? 0,
-                $model,
-                $lead->agent_id,
-                $lead->tenant_id,
-                $date
-            );
-
-            $count++;
-        }
+                    $count++;
+                }
+            });
 
         $this->info("Backfill complete! Processed {$count} historical LLM responses.");
+
+        return self::SUCCESS;
     }
 }
