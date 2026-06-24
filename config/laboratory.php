@@ -30,4 +30,15 @@ return [
     ],
 
     'stress_test_timeout' => (int) env('STRESS_TEST_TIMEOUT', 3600),
+
+    /**
+     * Retention windows (in days) for append-only observability tables. These rows
+     * are pruned by the scheduled `model:prune` run; they are diagnostics, not CRM
+     * records, so older data is dropped once it is past its analysis window. A value
+     * of 0 disables pruning for that table. See GROW-4.
+     */
+    'retention' => [
+        'interaction_events_days' => (int) env('RETENTION_INTERACTION_EVENTS_DAYS', 90),
+        'ai_runs_days' => (int) env('RETENTION_AI_RUNS_DAYS', 90),
+    ],
 ];
