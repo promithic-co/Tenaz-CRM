@@ -16,6 +16,7 @@ use App\Services\LaboratoryMetricsService;
 use App\Services\SystemHealthService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,14 @@ use Inertia\Response;
 
 class LaboratoryController extends Controller
 {
+    /**
+     * Hard cap on events returned by {@see self::leadInteractionTimeline()}. The interaction
+     * events table is insert-amplified, so a long-lived chatty lead accumulates many thousands
+     * of rows; an unbounded ->get() hydrates and serializes every one of them. Callers receive
+     * the most recent slice in chronological order plus a truncation flag (MEM-2).
+     */
+    private const LEAD_TIMELINE_MAX_EVENTS = 500;
+
     public function index(LaboratoryMetricsService $metrics): Response
     {
         $tenantId = $this->laboratoryTenantId();
@@ -295,16 +304,25 @@ class LaboratoryController extends Controller
         ]);
     }
 
-    public function leadInteractionTimeline(Lead $lead): JsonResponse
+    public function leadInteractionTimeline(Request $request, Lead $lead): JsonResponse
     {
         $this->authorize('view', $lead);
 
-        $events = AgentInteractionEvent::query()
+        $limit = max(1, min($request->integer('limit', self::LEAD_TIMELINE_MAX_EVENTS), self::LEAD_TIMELINE_MAX_EVENTS));
+
+        $baseQuery = AgentInteractionEvent::query()
             ->where('tenant_id', (string) $lead->tenant_id)
-            ->where('lead_id', $lead->id)
-            ->orderBy('created_at')
-            ->orderBy('id')
+            ->where('lead_id', $lead->id);
+
+        $totalEvents = (clone $baseQuery)->count();
+
+        $events = $baseQuery
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit($limit)
             ->get()
+            ->reverse()
+            ->values()
             ->map(fn (AgentInteractionEvent $event): array => [
                 'id' => $event->id,
                 'interaction_id' => $event->interaction_id,
@@ -318,6 +336,9 @@ class LaboratoryController extends Controller
         return response()->json([
             'lead_id' => $lead->id,
             'events' => $events,
+            'returned_events' => $events->count(),
+            'total_events' => $totalEvents,
+            'truncated' => $totalEvents > $events->count(),
         ]);
     }
 

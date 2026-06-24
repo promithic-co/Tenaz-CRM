@@ -186,3 +186,77 @@ test('laboratory exposes interaction timeline scoped by tenant', function () {
         ->assertJsonPath('events.0.event_type', 'agent_started')
         ->assertJsonPath('events.0.payload.ok', true);
 });
+
+test('lead interaction timeline caps results at the most recent slice and flags truncation (MEM-2)', function () {
+    $user = userWithTenant();
+    $this->actingAs($user);
+
+    $lead = Lead::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'agent_id' => null,
+    ]);
+
+    $total = 503;
+    $base = now()->subMinutes($total);
+    $rows = [];
+    for ($seq = 0; $seq < $total; $seq++) {
+        $rows[] = [
+            'interaction_id' => 'int-'.$seq,
+            'tenant_id' => (string) $lead->tenant_id,
+            'lead_id' => $lead->id,
+            'agent_id' => null,
+            'event_type' => 'agent_step',
+            'event_source' => 'test',
+            'severity' => 'info',
+            'payload_json' => json_encode(['seq' => $seq]),
+            'created_at' => $base->copy()->addSeconds($seq)->format('Y-m-d H:i:s'),
+        ];
+    }
+    collect($rows)->chunk(100)->each(fn ($chunk) => AgentInteractionEvent::insert($chunk->all()));
+
+    $this->getJson(route('laboratory.leads.interactions', ['lead' => $lead->id]))
+        ->assertOk()
+        ->assertJsonPath('lead_id', $lead->id)
+        ->assertJsonPath('total_events', $total)
+        ->assertJsonPath('returned_events', 500)
+        ->assertJsonPath('truncated', true)
+        // Most recent 500 are returned oldest-first: seq 3 leads, seq 502 trails.
+        ->assertJsonPath('events.0.payload.seq', 3)
+        ->assertJsonPath('events.499.payload.seq', 502);
+});
+
+test('lead interaction timeline returns all events chronologically under the cap and honors limit (MEM-2)', function () {
+    $user = userWithTenant();
+    $this->actingAs($user);
+
+    $lead = Lead::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'agent_id' => null,
+    ]);
+
+    $service = app(AgentInteractionEventService::class);
+    foreach (['a', 'b', 'c'] as $i => $type) {
+        $service->recordForLead(
+            interactionId: 'int-'.$i,
+            lead: $lead,
+            eventType: $type,
+            eventSource: 'test',
+        );
+    }
+
+    $this->getJson(route('laboratory.leads.interactions', ['lead' => $lead->id]))
+        ->assertOk()
+        ->assertJsonPath('total_events', 3)
+        ->assertJsonPath('returned_events', 3)
+        ->assertJsonPath('truncated', false)
+        ->assertJsonPath('events.0.event_type', 'a')
+        ->assertJsonPath('events.2.event_type', 'c');
+
+    $this->getJson(route('laboratory.leads.interactions', ['lead' => $lead->id, 'limit' => 2]))
+        ->assertOk()
+        ->assertJsonPath('total_events', 3)
+        ->assertJsonPath('returned_events', 2)
+        ->assertJsonPath('truncated', true)
+        ->assertJsonPath('events.0.event_type', 'b')
+        ->assertJsonPath('events.1.event_type', 'c');
+});
