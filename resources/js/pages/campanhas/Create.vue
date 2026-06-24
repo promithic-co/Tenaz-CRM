@@ -16,6 +16,12 @@ type WhatsappInstance = {
     provider: 'meta_cloud';
 };
 
+type ContactListFilters = {
+    version: 1;
+    match: 'all' | 'any';
+    rules: any[];
+};
+
 type ContactList = {
     id: number;
     nome: string;
@@ -24,7 +30,6 @@ type ContactList = {
     entries_count: number;
     last_resolved_count: number | null;
     last_resolved_at: string | null;
-    filters_json: { version: 1; match: 'all' | 'any'; rules: any[] } | null;
 };
 
 type WhatsappTemplate = {
@@ -32,7 +37,6 @@ type WhatsappTemplate = {
     name: string;
     kind: string;
     element_name: string | null;
-    body: string | null;
     variables_count: number;
     whatsapp_instance_id: number;
     whatsapp_instance: WhatsappInstance | null;
@@ -47,6 +51,9 @@ type Props = {
     contactLists: ContactList[];
     templates: WhatsappTemplate[];
     instances: WhatsappInstance[];
+    // Deferred (FE-02): heavy per-row data fetched after the initial render.
+    contactListFilters?: Record<number, ContactListFilters>;
+    templateBodies?: Record<number, string>;
     defaults?: CampaignDefaults;
 };
 
@@ -182,7 +189,8 @@ type LiveCountState = {
 const livePreview = ref<Record<number, LiveCountState>>({});
 
 function fetchLive(list: ContactList): void {
-    if (!list.filters_json) {
+    const filters = props.contactListFilters?.[list.id];
+    if (!filters) {
         return;
     }
     const current = livePreview.value[list.id];
@@ -199,7 +207,7 @@ function fetchLive(list: ContactList): void {
     }
     router.post(
         previewAction.url(),
-        { filters_json: list.filters_json },
+        { filters_json: filters },
         {
             preserveScroll: true,
             preserveState: true,
@@ -247,6 +255,16 @@ const selectedTemplate = computed(() => {
             (t) => t.id === Number(form.whatsapp_template_id),
         ) ?? null
     );
+});
+
+// Deferred (FE-02): the selected template's body arrives in the templateBodies map
+// after the initial render; null until it loads.
+const selectedTemplateBody = computed<string | null>(() => {
+    const template = selectedTemplate.value;
+    if (!template) {
+        return null;
+    }
+    return props.templateBodies?.[template.id] ?? null;
 });
 
 const selectedList = computed(() => {
@@ -827,7 +845,7 @@ function submitForm(): void {
 
                         <!-- Template preview -->
                         <div
-                            v-if="selectedTemplate?.body"
+                            v-if="selectedTemplateBody"
                             class="rounded-lg border border-sidebar-border/70 bg-muted/20 p-4 dark:border-sidebar-border"
                         >
                             <p
@@ -838,13 +856,13 @@ function submitForm(): void {
                             <p
                                 class="text-sm whitespace-pre-wrap text-foreground"
                             >
-                                {{ selectedTemplate.body }}
+                                {{ selectedTemplateBody }}
                             </p>
                             <p
-                                v-if="selectedTemplate.variables_count > 0"
+                                v-if="variablesCount > 0"
                                 class="mt-2 text-xs text-muted-foreground"
                             >
-                                {{ selectedTemplate.variables_count }}
+                                {{ variablesCount }}
                                 variável(is) a mapear no próximo passo.
                             </p>
                         </div>
@@ -906,7 +924,7 @@ function submitForm(): void {
 
                         <!-- Preview with replacements -->
                         <div
-                            v-if="selectedTemplate?.body"
+                            v-if="selectedTemplateBody"
                             class="rounded-lg border border-sidebar-border/70 bg-muted/20 p-4 dark:border-sidebar-border"
                         >
                             <p
@@ -917,7 +935,7 @@ function submitForm(): void {
                             <p
                                 class="text-sm whitespace-pre-wrap text-foreground"
                             >
-                                {{ previewBody(selectedTemplate.body) }}
+                                {{ previewBody(selectedTemplateBody ?? '') }}
                             </p>
                         </div>
                     </div>

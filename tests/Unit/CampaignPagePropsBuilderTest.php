@@ -11,6 +11,7 @@ use App\Models\WhatsappTemplate;
 use App\Services\CampaignPagePropsBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Inertia\DeferProp;
 
 uses(RefreshDatabase::class);
 
@@ -53,6 +54,45 @@ test('create props preserve campaign creation page contract', function () {
         ->and($props['instances']->pluck('id'))->toContain($instance->id)
         ->and($props['templates']->pluck('id'))->toContain($approvedTemplate->id)
         ->and($props['templates']->pluck('name'))->not->toContain('Template rejeitado');
+});
+
+test('create props defer filters_json and template bodies out of the initial payload (FE-02)', function () {
+    $user = User::factory()->create();
+    $instance = WhatsappInstance::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'user_id' => $user->id,
+    ]);
+    $filters = ['version' => 1, 'match' => 'all', 'rules' => [['field' => 'status', 'op' => 'eq', 'value' => 'new']]];
+    $dynamicList = ContactList::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'is_dynamic' => true,
+        'filters_json' => $filters,
+    ]);
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+        'body' => 'Olá {{1}}, tudo bem?',
+    ]);
+
+    $props = app(CampaignPagePropsBuilder::class)->create(Request::create('/campanhas/create', 'GET'));
+
+    $listAttributes = $props['contactLists']->firstWhere('id', $dynamicList->id)->getAttributes();
+    $templateAttributes = $props['templates']->firstWhere('id', $template->id)->getAttributes();
+
+    // The heavy fields are no longer shipped on the eager option lists.
+    expect($listAttributes)->not->toHaveKey('filters_json')
+        ->and($templateAttributes)->not->toHaveKey('body');
+
+    // They are deferred and only materialise when the frontend resolves them.
+    expect($props['contactListFilters'])->toBeInstanceOf(DeferProp::class)
+        ->and($props['templateBodies'])->toBeInstanceOf(DeferProp::class);
+
+    $resolvedFilters = ($props['contactListFilters'])();
+    $resolvedBodies = ($props['templateBodies'])();
+
+    expect($resolvedFilters[$dynamicList->id])->toBe($filters)
+        ->and($resolvedBodies[$template->id])->toBe('Olá {{1}}, tudo bem?');
 });
 
 test('show props preserve campaign detail contract and status filter', function () {
