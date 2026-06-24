@@ -8,6 +8,7 @@ use App\Models\VoiceInstance;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use App\Services\WhatsAppService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 beforeEach(function () {
@@ -76,6 +77,27 @@ test('retry does not re-send the template (idempotency claim)', function () {
     $job = new SendPostCallWhatsAppJob($call->id);
     $job->handle($this->whatsappService);
     $job->handle($this->whatsappService);
+});
+
+test('send failure releases the idempotency claim so a retry re-attempts the send (ATOM-3)', function () {
+    [$call] = makeCallWithMetaTemplate();
+
+    $this->whatsappService->shouldReceive('sendTemplateViaInstance')
+        ->once()->ordered()->andThrow(new RuntimeException('transient meta error'));
+    $this->whatsappService->shouldReceive('sendTemplateViaInstance')
+        ->once()->ordered()->andReturn('wamid.ok');
+
+    $job = new SendPostCallWhatsAppJob($call->id);
+    $claimKey = "postcall_send:{$call->id}";
+
+    // First attempt fails mid-send and must propagate so the queue records/retries it.
+    expect(fn () => $job->handle($this->whatsappService))->toThrow(RuntimeException::class);
+    expect(Cache::has($claimKey))->toBeFalse();
+
+    // Claim was released, so the retry actually re-sends (the ->twice() expectation proves
+    // the second send fired rather than short-circuiting on a stale claim).
+    $job->handle($this->whatsappService);
+    expect(Cache::has($claimKey))->toBeTrue();
 });
 
 test('existing lead: reused, no duplicate, template sent', function () {

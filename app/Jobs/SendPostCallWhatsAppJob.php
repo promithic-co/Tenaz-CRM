@@ -90,12 +90,23 @@ class SendPostCallWhatsAppJob implements ShouldQueue
             return;
         }
 
-        $whatsapp->sendTemplateViaInstance(
-            $whatsappInstance,
-            $normalizedPhone,
-            (string) ($template->meta_template_name ?? $template->name),
-            (string) ($template->language ?? 'pt_BR'),
-        );
+        try {
+            $whatsapp->sendTemplateViaInstance(
+                $whatsappInstance,
+                $normalizedPhone,
+                (string) ($template->meta_template_name ?? $template->name),
+                (string) ($template->language ?? 'pt_BR'),
+            );
+        } catch (Throwable $e) {
+            // The send failed before delivery could be confirmed. The claim is held for
+            // 10 minutes — longer than every backoff window — so leaving it set would make
+            // all remaining retries short-circuit on the existing claim and silently drop
+            // the post-call nudge. Release it and re-throw so the job retries with the
+            // error tagged, per the project's retry-over-fire-and-forget rule (ATOM-3).
+            Cache::forget($sendClaimKey);
+
+            throw $e;
+        }
 
         Log::info('ivr.whatsapp_sent', [
             'phone' => $normalizedPhone,
