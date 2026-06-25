@@ -29,14 +29,14 @@ it('descreve imagem com sucesso via OpenAI', function () {
 
     Http::fake([
         'api.openai.com/v1/chat/completions' => Http::response([
-            'choices' => [['message' => ['content' => 'Documento de identidade (RG) legível, frente.']]]
+            'choices' => [['message' => ['content' => 'Documento de identidade (RG) legível, frente.']]],
         ], 200),
     ]);
 
     config(['ai.providers.openai.key' => 'test-key']);
 
-    $service = new ImageVisionService();
-    $result  = $service->describe($image);
+    $service = new ImageVisionService;
+    $result = $service->describe($image);
 
     expect($result)->toBe('Documento de identidade (RG) legível, frente.');
 
@@ -58,8 +58,8 @@ it('descreve imagem via Anthropic', function () {
 
     config(['ai.providers.anthropic.key' => 'anthropic-key']);
 
-    $service = new ImageVisionService();
-    $result  = $service->describe($image);
+    $service = new ImageVisionService;
+    $result = $service->describe($image);
 
     expect($result)->toBe('Imagem de RG brasileiro.');
 
@@ -75,14 +75,14 @@ it('descreve imagem via Gemini', function () {
 
     Http::fake([
         'generativelanguage.googleapis.com/*' => Http::response([
-            'candidates' => [['content' => ['parts' => [['text' => 'Foto de documento de identidade.']]]]]
+            'candidates' => [['content' => ['parts' => [['text' => 'Foto de documento de identidade.']]]]],
         ], 200),
     ]);
 
     config(['ai.providers.gemini.key' => 'gemini-key']);
 
-    $service = new ImageVisionService();
-    $result  = $service->describe($image);
+    $service = new ImageVisionService;
+    $result = $service->describe($image);
 
     expect($result)->toBe('Foto de documento de identidade.');
 
@@ -99,10 +99,27 @@ it('retorna null quando a API falha', function () {
 
     config(['ai.providers.openai.key' => 'test-key']);
 
-    $service = new ImageVisionService();
-    $result  = $service->describe($image);
+    $service = new ImageVisionService;
+    $result = $service->describe($image);
 
     expect($result)->toBeNull();
+
+    unlink($image->localPath);
+});
+
+it('pula mídia acima do teto de tamanho sem chamar o provider (MEM-8)', function () {
+    Http::fake();
+
+    $image = makeImageContext();
+    // One byte over the 20MB ceiling.
+    file_put_contents($image->localPath, str_repeat('x', 20 * 1024 * 1024 + 1));
+
+    config(['ai.providers.openai.key' => 'test-key']);
+
+    $result = (new ImageVisionService)->describe($image);
+
+    expect($result)->toBeNull();
+    Http::assertNothingSent();
 
     unlink($image->localPath);
 });
@@ -118,8 +135,8 @@ it('retorna null quando o arquivo não existe', function () {
 
     config(['ai.providers.openai.key' => 'test-key']);
 
-    $service = new ImageVisionService();
-    $result  = $service->describe($image);
+    $service = new ImageVisionService;
+    $result = $service->describe($image);
 
     expect($result)->toBeNull();
 });
