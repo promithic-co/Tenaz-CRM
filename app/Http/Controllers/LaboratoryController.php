@@ -122,9 +122,19 @@ class LaboratoryController extends Controller
             abort(403, 'Stress test run does not belong to you.');
         }
 
+        // FE-03: this page polls itself every 5s while a run is in progress, re-serializing
+        // the cycle array each tick. Hydrate only the most recent slice (not the whole run)
+        // and tell the UI when it was truncated, so a thousand-cycle run can't balloon the
+        // payload on every poll.
+        $maxCycles = (int) config('laboratory.stress_result_max_cycles', 200);
+        $totalCycles = $run->cycles()->count();
+
         $run->load([
             'cpfDataset:id,name',
-            'cycles.lead' => fn ($q) => $q->withoutGlobalScope('tenant')->select(['id', 'credito_json']),
+            'cycles' => fn ($q) => $q
+                ->orderByDesc('cycle_number')
+                ->limit($maxCycles)
+                ->with(['lead' => fn ($l) => $l->withoutGlobalScope('tenant')->select(['id', 'credito_json'])]),
         ]);
         $runData = [
             'id' => $run->id,
@@ -139,7 +149,8 @@ class LaboratoryController extends Controller
             'started_at' => $run->started_at?->toIso8601String(),
             'completed_at' => $run->completed_at?->toIso8601String(),
             'created_at' => $run->created_at->toIso8601String(),
-            'cycles' => $run->cycles->map(function ($c) {
+            'cycles_truncated' => $totalCycles > $run->cycles->count(),
+            'cycles' => $run->cycles->sortBy('cycle_number')->values()->map(function ($c) {
                 $creditoJson = $c->lead?->credito_json;
                 $payload = null;
                 $groundTruth = null;

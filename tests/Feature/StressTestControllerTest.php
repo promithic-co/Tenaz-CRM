@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\RunStressTestJob;
 use App\Models\CpfDataset;
 use App\Models\CpfDatasetEntry;
 use App\Models\StressTestRun;
@@ -65,7 +66,7 @@ it('starts a stress test run', function () {
 
     $run = StressTestRun::where('user_id', $this->user->id)->first();
     expect($run)->not->toBeNull();
-    Queue::assertPushed(\App\Jobs\RunStressTestJob::class, fn ($job) => $job->run->id === $run->id);
+    Queue::assertPushed(RunStressTestJob::class, fn ($job) => $job->run->id === $run->id);
 });
 
 it('shows stress test run with cycles', function () {
@@ -85,6 +86,32 @@ it('shows stress test run with cycles', function () {
     $response->assertOk();
     $response->assertJsonPath('data.label', 'Completed Run');
     $response->assertJsonPath('data.cycles.0.fidelity_score', 95.5);
+});
+
+it('caps the results page cycle list and flags truncation (FE-03)', function () {
+    config(['laboratory.stress_result_max_cycles' => 2]);
+
+    $run = StressTestRun::factory()->create([
+        'user_id' => $this->user->id,
+        'status' => 'running',
+        'total_cycles' => 3,
+    ]);
+    foreach ([1, 2, 3] as $n) {
+        $run->cycles()->create(['cycle_number' => $n, 'status' => 'completed']);
+    }
+
+    // Only the 2 most-recent cycles are hydrated (returned oldest-first: #2 then #3),
+    // and the page is told the array was truncated so the poll never re-ships all 3.
+    $this->actingAs($this->user)
+        ->get(route('laboratory.stress-test.results', $run))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('laboratory/StressTestResults')
+            ->where('run.cycles_truncated', true)
+            ->has('run.cycles', 2)
+            ->where('run.cycles.0.cycle_number', 2)
+            ->where('run.cycles.1.cycle_number', 3)
+        );
 });
 
 it('cancels a running stress test', function () {

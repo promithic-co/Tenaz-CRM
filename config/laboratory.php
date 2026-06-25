@@ -32,6 +32,14 @@ return [
     'stress_test_timeout' => (int) env('STRESS_TEST_TIMEOUT', 3600),
 
     /**
+     * Cap on stress-test cycles hydrated into the results page. That page re-fetches the
+     * run (cycles included) on a 5s poll while it runs, so an unbounded cycle array is
+     * re-serialized every tick; only the most recent cycles are kept, with a truncation
+     * flag for the UI. See FE-03.
+     */
+    'stress_result_max_cycles' => (int) env('STRESS_RESULT_MAX_CYCLES', 200),
+
+    /**
      * Retention windows (in days) for append-only observability tables. These rows
      * are pruned by the scheduled `model:prune` run; they are diagnostics, not CRM
      * records, so older data is dropped once it is past its analysis window. A value
