@@ -106,6 +106,35 @@ test('mirrors un-synced lead and operator rows into agent memory', function () {
     expect(ConversationTimelineMessage::whereNull('synced_to_agent_at')->where('lead_id', $lead->id)->count())->toBe(0);
 });
 
+test('mirrors all pending rows across chunk boundaries without dropping any (MEM-7)', function () {
+    $convId = (string) Str::uuid();
+    seedAgentConversation($convId);
+    $lead = makeSyncLead($convId);
+
+    config(['credflow.conversation_sync_chunk_size' => 2]);
+
+    for ($i = 0; $i < 5; $i++) {
+        ConversationTimelineMessage::create([
+            'tenant_id' => $lead->tenant_id,
+            'lead_id' => $lead->id,
+            'conversation_id' => $convId,
+            'direction' => 'inbound',
+            'sender_type' => 'lead',
+            'channel' => 'whatsapp',
+            'body' => "msg {$i}",
+            'status' => 'received',
+            'source' => 'webhook',
+            'synced_to_agent_at' => null,
+        ]);
+    }
+
+    // 5 rows over a chunk size of 2 → 3 chunks (2 + 2 + 1); none skipped at boundaries.
+    expect($this->sync->syncPending($lead))->toBe(5);
+
+    expect(DB::table('agent_conversation_messages')->where('conversation_id', $convId)->count())->toBe(5)
+        ->and(ConversationTimelineMessage::whereNull('synced_to_agent_at')->where('lead_id', $lead->id)->count())->toBe(0);
+});
+
 test('subsequent calls are no-ops', function () {
     $convId = (string) Str::uuid();
     seedAgentConversation($convId);

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\ProcessLeadFollowUpJob;
 use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
 use Illuminate\Support\Facades\DB;
@@ -17,8 +18,8 @@ use Throwable;
  *
  * Called immediately before any `$agent->continue($conversation_id)->prompt(...)` call.
  *
- * @see \App\Services\AgentService
- * @see \App\Jobs\ProcessLeadFollowUpJob
+ * @see AgentService
+ * @see ProcessLeadFollowUpJob
  */
 class ConversationContextSynchronizer
 {
@@ -36,66 +37,72 @@ class ConversationContextSynchronizer
             return 0;
         }
 
-        $pending = ConversationTimelineMessage::query()
+        // MEM-7: a fresh builder for each use (exists / chunkById) — chunkById mutates the
+        // query, so it must not be shared. Bounds memory to one chunk even if a lead has
+        // accumulated a long unsynced backlog (AI paused while many inbound messages land).
+        $pendingQuery = fn () => ConversationTimelineMessage::query()
             ->where('lead_id', $lead->id)
             ->whereNull('synced_to_agent_at')
-            ->whereIn('sender_type', ['lead', 'human'])
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->get();
+            ->whereIn('sender_type', ['lead', 'human']);
 
-        if ($pending->isEmpty()) {
+        if (! $pendingQuery()->exists()) {
             return 0;
         }
 
         $agentName = $this->resolveAgentName($lead);
         $userId = is_numeric($lead->tenant_id) ? (int) $lead->tenant_id : null;
+        $chunkSize = (int) config('credflow.conversation_sync_chunk_size', 500);
         $synced = 0;
-        $syncedIds = [];
 
         try {
-            DB::transaction(function () use ($pending, $lead, $agentName, $userId, &$synced, &$syncedIds) {
-                foreach ($pending as $row) {
-                    $role = $row->sender_type === 'lead' ? 'user' : 'assistant';
+            DB::transaction(function () use ($pendingQuery, $lead, $agentName, $userId, $chunkSize, &$synced): void {
+                $pendingQuery()
+                    ->select(['id', 'sender_type', 'body', 'media', 'source', 'created_at'])
+                    ->orderBy('id')
+                    ->chunkById($chunkSize, function ($rows) use ($lead, $agentName, $userId, &$synced): void {
+                        $syncedIds = [];
 
-                    $attachments = $this->buildAttachments($row);
+                        foreach ($rows as $row) {
+                            $role = $row->sender_type === 'lead' ? 'user' : 'assistant';
 
-                    DB::table('agent_conversation_messages')->insert([
-                        'id' => (string) Str::uuid(),
-                        'conversation_id' => $lead->conversation_id,
-                        'user_id' => $userId,
-                        'agent' => $agentName,
-                        'role' => $role,
-                        'content' => (string) ($row->body ?? ''),
-                        'attachments' => $attachments,
-                        'tool_calls' => '[]',
-                        'tool_results' => '[]',
-                        'usage' => '{}',
-                        'meta' => json_encode([
-                            '_aria_sync_origin' => 'timeline',
-                            '_aria_timeline_id' => $row->id,
-                            '_aria_sender_type' => $row->sender_type,
-                            '_aria_source' => $row->source,
-                        ]),
-                        'created_at' => $row->created_at,
-                        'updated_at' => $row->created_at,
-                    ]);
+                            DB::table('agent_conversation_messages')->insert([
+                                'id' => (string) Str::uuid(),
+                                'conversation_id' => $lead->conversation_id,
+                                'user_id' => $userId,
+                                'agent' => $agentName,
+                                'role' => $role,
+                                'content' => (string) ($row->body ?? ''),
+                                'attachments' => $this->buildAttachments($row),
+                                'tool_calls' => '[]',
+                                'tool_results' => '[]',
+                                'usage' => '{}',
+                                'meta' => json_encode([
+                                    '_aria_sync_origin' => 'timeline',
+                                    '_aria_timeline_id' => $row->id,
+                                    '_aria_sender_type' => $row->sender_type,
+                                    '_aria_source' => $row->source,
+                                ]),
+                                'created_at' => $row->created_at,
+                                'updated_at' => $row->created_at,
+                            ]);
 
-                    $syncedIds[] = $row->id;
-                    $synced++;
-                }
+                            $syncedIds[] = $row->id;
+                            $synced++;
+                        }
 
-                if ($syncedIds !== []) {
-                    ConversationTimelineMessage::query()
-                        ->whereIn('id', $syncedIds)
-                        ->update(['synced_to_agent_at' => now()]);
-                }
+                        // Mark this chunk synced before paging on; keyset advances by id so
+                        // already-flipped rows are never revisited, and the whole sync stays
+                        // atomic — a later-chunk failure rolls back every insert and flip.
+                        ConversationTimelineMessage::query()
+                            ->whereIn('id', $syncedIds)
+                            ->update(['synced_to_agent_at' => now()]);
+                    });
             });
         } catch (Throwable $e) {
             Log::error('conversation_sync.failed', [
                 'lead_id' => $lead->id,
                 'conversation_id' => $lead->conversation_id,
-                'pending_count' => $pending->count(),
+                'synced_before_failure' => $synced,
                 'error' => $e->getMessage(),
             ]);
 
