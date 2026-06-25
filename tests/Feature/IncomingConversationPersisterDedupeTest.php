@@ -3,6 +3,7 @@
 use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
 use App\Services\CampaignReplyDetector;
+use App\Services\ConversationAutomationService;
 use App\Services\ConversationTimelineService;
 use App\Services\IncomingConversationPersister;
 use Illuminate\Database\QueryException;
@@ -94,6 +95,37 @@ test('partial unique index ignores outbound rows and null provider ids (ATOM-2)'
     ConversationTimelineMessage::create(inboundTimelineRow($lead->id, 'tenant-idx2', ['provider_message_id' => null]));
 
     expect(ConversationTimelineMessage::where('tenant_id', 'tenant-idx2')->count())->toBe(4);
+});
+
+test('rolls back the followup flip when markInbound fails, persisting no partial inbound (ATOM-4)', function () {
+    $this->mock(CampaignReplyDetector::class)->shouldReceive('detect')->zeroOrMoreTimes();
+
+    $automation = $this->mock(ConversationAutomationService::class);
+    $automation->shouldReceive('resolveMode')->andReturn('manual');
+    $automation->shouldReceive('markInbound')->once()->andThrow(new RuntimeException('boom'));
+
+    $lead = Lead::factory()->create([
+        'tenant_id' => 'tenant-atom4',
+        'whatsapp' => '5511955554444',
+        'agent_id' => null,
+        'followup_status' => 'active',
+    ]);
+
+    $persister = app(IncomingConversationPersister::class);
+
+    expect(fn () => $persister->persist(...dedupePersistArgs([
+        'tenantId' => 'tenant-atom4',
+        'phone' => '5511955554444',
+        'providerMessageId' => 'wamid.ATOM4',
+        'interactionId' => 'int-atom4',
+    ])))->toThrow(RuntimeException::class);
+
+    // markInbound throwing rolls back the followup flip in the same transaction, and the
+    // exception aborts persistGuarded before timeline->record — so the lead keeps its active
+    // followups AND no message row is committed. No half-applied "dark" inbound survives.
+    $lead->refresh();
+    expect($lead->followup_status)->toBe('active')
+        ->and(ConversationTimelineMessage::where('provider_message_id', 'wamid.ATOM4')->count())->toBe(0);
 });
 
 test('insert race that trips the unique index resolves to the existing row as a duplicate (ATOM-2)', function () {

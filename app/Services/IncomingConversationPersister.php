@@ -226,13 +226,22 @@ class IncomingConversationPersister
             ]);
         }
 
-        if ($lead->followup_status === 'active') {
-            $lead->update(['followup_status' => 'inactive']);
-            $lead->refresh();
-        }
-
+        // ATOM-4: the followup deactivation and the inbound bookkeeping are one logical
+        // state change — apply them in a single transaction so a crash between the two
+        // writes can't leave the lead with followups disabled but never marked inbound
+        // (a "dark" lead: no follow-up fires and the AI never re-engages). resolveMode is
+        // a pure read (lead mode / instance default, not followup_status), so computing it
+        // up front is order-independent. timeline->record stays the final write below, so a
+        // failure before it triggers a clean full retry rather than committing a half-inbound.
         $mode = $this->automation->resolveMode($lead, $instanceName);
-        $this->automation->markInbound($lead, $mode, $referral);
+
+        DB::transaction(function () use ($lead, $mode, $referral): void {
+            if ($lead->followup_status === 'active') {
+                $lead->update(['followup_status' => 'inactive']);
+            }
+
+            $this->automation->markInbound($lead, $mode, $referral);
+        });
 
         try {
             $timelineMessage = $this->timeline->record(
