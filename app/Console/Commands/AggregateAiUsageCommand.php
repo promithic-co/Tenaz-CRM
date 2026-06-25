@@ -26,7 +26,14 @@ class AggregateAiUsageCommand extends Command
         $dayStart = Carbon::parse($date)->startOfDay();
         $dayEnd = $dayStart->copy()->addDay();
 
-        $messages = DB::table('agent_conversation_messages')
+        $chunkSize = (int) config('credflow.aggregate_chunk_size', 1000);
+
+        // MEM-6: aggregate in PHP (avoids DB-specific JSON functions) but stream the
+        // day's rows in bounded chunks instead of hydrating the whole window at once.
+        // Ordered by a stable key so offset paging is consistent across chunks.
+        $groups = [];
+
+        DB::table('agent_conversation_messages')
             ->join('leads', 'leads.conversation_id', '=', 'agent_conversation_messages.conversation_id')
             ->where('agent_conversation_messages.created_at', '>=', $dayStart)
             ->where('agent_conversation_messages.created_at', '<', $dayEnd)
@@ -39,39 +46,38 @@ class AggregateAiUsageCommand extends Command
                 'agent_conversation_messages.usage',
                 'agent_conversation_messages.meta',
             ])
-            ->get();
+            ->orderBy('agent_conversation_messages.id')
+            ->chunk($chunkSize, function ($messages) use (&$groups): void {
+                foreach ($messages as $msg) {
+                    $usage = json_decode($msg->usage, true) ?? [];
+                    $prompt = (int) ($usage['prompt_tokens'] ?? $usage['promptTokens'] ?? 0);
+                    $completion = (int) ($usage['completion_tokens'] ?? $usage['completionTokens'] ?? 0);
 
-        // Aggregate in PHP to avoid DB-specific JSON functions
-        $groups = [];
-        foreach ($messages as $msg) {
-            $usage = json_decode($msg->usage, true) ?? [];
-            $prompt = (int) ($usage['prompt_tokens'] ?? $usage['promptTokens'] ?? 0);
-            $completion = (int) ($usage['completion_tokens'] ?? $usage['completionTokens'] ?? 0);
+                    if ($prompt === 0 && $completion === 0) {
+                        continue;
+                    }
 
-            if ($prompt === 0 && $completion === 0) {
-                continue;
-            }
+                    // Read actual model from meta (stored by the framework), fall back to agent class
+                    $meta = json_decode($msg->meta ?? '{}', true) ?? [];
+                    $model = $meta['model'] ?? $msg->agent;
 
-            // Read actual model from meta (stored by the framework), fall back to agent class
-            $meta = json_decode($msg->meta ?? '{}', true) ?? [];
-            $model = $meta['model'] ?? $msg->agent;
+                    $key = "{$msg->tenant_id}|{$msg->agent_id}|{$model}";
+                    if (! isset($groups[$key])) {
+                        $groups[$key] = [
+                            'tenant_id' => $msg->tenant_id,
+                            'agent_id' => $msg->agent_id,
+                            'model' => $model,
+                            'requests' => 0,
+                            'prompt_tokens' => 0,
+                            'completion_tokens' => 0,
+                        ];
+                    }
 
-            $key = "{$msg->tenant_id}|{$msg->agent_id}|{$model}";
-            if (! isset($groups[$key])) {
-                $groups[$key] = [
-                    'tenant_id' => $msg->tenant_id,
-                    'agent_id' => $msg->agent_id,
-                    'model' => $model,
-                    'requests' => 0,
-                    'prompt_tokens' => 0,
-                    'completion_tokens' => 0,
-                ];
-            }
-
-            $groups[$key]['requests']++;
-            $groups[$key]['prompt_tokens'] += $prompt;
-            $groups[$key]['completion_tokens'] += $completion;
-        }
+                    $groups[$key]['requests']++;
+                    $groups[$key]['prompt_tokens'] += $prompt;
+                    $groups[$key]['completion_tokens'] += $completion;
+                }
+            });
 
         $modelCosts = config('credflow.model_costs', []);
         $totalCost = 0.0;

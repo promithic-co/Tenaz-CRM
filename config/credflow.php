@@ -10,6 +10,13 @@ return [
     // Janela de debounce em segundos (agrupa mensagens enviadas em sequência rápida)
     'debounce_seconds' => env('DEBOUNCE_SECONDS', 3),
 
+    // Row chunk size for the nightly AI-usage aggregation scan (MEM-6): bounds how many
+    // agent_conversation_messages rows are hydrated into PHP at once.
+    'aggregate_chunk_size' => (int) env('CREDFLOW_AGGREGATE_CHUNK_SIZE', 1000),
+
+    // Row chunk size for mirroring pending timeline messages into agent memory (MEM-7).
+    'conversation_sync_chunk_size' => (int) env('CREDFLOW_CONVERSATION_SYNC_CHUNK_SIZE', 500),
+
     'agent' => [
         // Last-resort fallback LLM provider/model when no template config or client config is set (LLM-04 / Pitfall C1)
         'fallback_provider' => env('TENAZ_AGENT_FALLBACK_PROVIDER', env('CREDFLOW_AGENT_FALLBACK_PROVIDER', 'openrouter')),

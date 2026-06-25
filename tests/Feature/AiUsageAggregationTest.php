@@ -201,6 +201,51 @@ test('aggregate command updates existing records on re-run', function () {
     expect(AiUsageDaily::where('date', $yesterday)->count())->toBe(1);
 });
 
+test('aggregation streams the window in chunks without dropping rows (MEM-6)', function () {
+    $conversationId = (string) Str::uuid();
+    $yesterday = now()->subDay()->toDateString();
+
+    config(['credflow.aggregate_chunk_size' => 2]);
+
+    Lead::factory()->create([
+        'agent_id' => $this->agent->id,
+        'tenant_id' => $this->user->tenantId,
+        'conversation_id' => $conversationId,
+    ]);
+
+    $rows = [];
+    for ($i = 0; $i < 5; $i++) {
+        $rows[] = [
+            'id' => (string) Str::uuid(),
+            'conversation_id' => $conversationId,
+            'user_id' => null,
+            'agent' => 'AriaAgent',
+            'role' => 'assistant',
+            'content' => "r{$i}",
+            'attachments' => '',
+            'tool_calls' => '',
+            'tool_results' => '',
+            'usage' => json_encode(['promptTokens' => 100, 'completionTokens' => 50]),
+            'meta' => '',
+            'created_at' => $yesterday." 10:0{$i}:00",
+            'updated_at' => $yesterday." 10:0{$i}:00",
+        ];
+    }
+    DB::table('agent_conversation_messages')->insert($rows);
+
+    $this->artisan('credflow:aggregate-usage', ['--date' => $yesterday])->assertSuccessful();
+
+    $usage = AiUsageDaily::where('date', $yesterday)
+        ->where('tenant_id', $this->user->tenantId)
+        ->first();
+
+    // All 5 rows aggregated across 3 chunks (2 + 2 + 1) — none skipped at the boundaries.
+    expect($usage)->not->toBeNull()
+        ->and($usage->total_requests)->toBe(5)
+        ->and($usage->total_prompt_tokens)->toBe(500)
+        ->and($usage->total_completion_tokens)->toBe(250);
+});
+
 test('aggregation counts only the target calendar day via a sargable range (GROW-3)', function () {
     $conversationId = (string) Str::uuid();
     $target = now()->subDay()->toDateString();
