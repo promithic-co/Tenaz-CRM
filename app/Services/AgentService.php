@@ -157,8 +157,9 @@ class AgentService implements AgentServiceInterface
 
             // The inbound timeline row for this turn is now mirrored inside laravel/ai
             // (prompt() wrote its own user row), so mark it synced to prevent the next
-            // syncPending() call from duplicating it.
-            $this->markInboundSynced($lead, $interactionId);
+            // syncPending() call from duplicating it. Owned by the synchronizer, which
+            // retries the hand-off and escalates on failure rather than swallowing it.
+            $this->contextSync->markTurnSynced($lead, $interactionId);
 
             $text = (string) $response;
             $text = $this->applyFactCheckGuardrail($agent, $lead, $text, $interactionId);
@@ -500,28 +501,6 @@ class AgentService implements AgentServiceInterface
                 ]);
         } catch (Throwable $e) {
             Log::warning('aria.media_persist_error', ['error' => $e->getMessage()]);
-        }
-    }
-
-    /**
-     * Mark the inbound timeline row for the current interaction as synced. Called after
-     * a successful $agent->prompt() so the synchronizer won't re-mirror this user turn.
-     */
-    private function markInboundSynced(Lead $lead, string $interactionId): void
-    {
-        try {
-            DB::table('conversation_timeline_messages')
-                ->where('lead_id', $lead->id)
-                ->where('interaction_id', $interactionId)
-                ->where('sender_type', 'lead')
-                ->whereNull('synced_to_agent_at')
-                ->update(['synced_to_agent_at' => now()]);
-        } catch (Throwable $e) {
-            Log::warning('aria.mark_inbound_synced_error', [
-                'lead_id' => $lead->id,
-                'interaction_id' => $interactionId,
-                'error' => $e->getMessage(),
-            ]);
         }
     }
 }

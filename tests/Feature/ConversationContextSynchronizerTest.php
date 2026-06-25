@@ -135,6 +135,73 @@ test('mirrors all pending rows across chunk boundaries without dropping any (MEM
         ->and(ConversationTimelineMessage::whereNull('synced_to_agent_at')->where('lead_id', $lead->id)->count())->toBe(0);
 });
 
+test('markTurnSynced flips the interaction inbound rows and reports success (ATOM-5)', function () {
+    $convId = (string) Str::uuid();
+    seedAgentConversation($convId);
+    $lead = makeSyncLead($convId);
+
+    $msg = ConversationTimelineMessage::create([
+        'tenant_id' => $lead->tenant_id,
+        'lead_id' => $lead->id,
+        'conversation_id' => $convId,
+        'direction' => 'inbound',
+        'sender_type' => 'lead',
+        'channel' => 'whatsapp',
+        'body' => 'Olá',
+        'status' => 'received',
+        'source' => 'webhook',
+        'interaction_id' => 'int-atom5',
+        'synced_to_agent_at' => null,
+    ]);
+
+    expect($this->sync->markTurnSynced($lead, 'int-atom5'))->toBeTrue()
+        ->and($msg->fresh()->synced_to_agent_at)->not->toBeNull();
+});
+
+test('a marked turn is not re-mirrored by syncPending, so the user turn is not duplicated (ATOM-5)', function () {
+    $convId = (string) Str::uuid();
+    seedAgentConversation($convId);
+    $lead = makeSyncLead($convId);
+
+    // The inbound timeline row laravel/ai already answered this turn (prompt wrote its own user row).
+    ConversationTimelineMessage::create([
+        'tenant_id' => $lead->tenant_id,
+        'lead_id' => $lead->id,
+        'conversation_id' => $convId,
+        'direction' => 'inbound',
+        'sender_type' => 'lead',
+        'channel' => 'whatsapp',
+        'body' => 'Quero o empréstimo',
+        'status' => 'received',
+        'source' => 'webhook',
+        'interaction_id' => 'int-dup',
+        'synced_to_agent_at' => null,
+    ]);
+
+    // Stand in for the user row prompt() persisted into agent memory for this turn.
+    DB::table('agent_conversation_messages')->insert([
+        'id' => (string) Str::uuid(),
+        'conversation_id' => $convId,
+        'user_id' => (int) $lead->tenant_id,
+        'agent' => 'test-agent',
+        'role' => 'user',
+        'content' => 'Quero o empréstimo',
+        'attachments' => '[]',
+        'tool_calls' => '[]',
+        'tool_results' => '[]',
+        'usage' => '{}',
+        'meta' => '{}',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // The hand-off succeeds, so syncPending finds nothing pending and never mirrors a
+    // second copy of the user turn — the duplicate ATOM-5 warns about does not appear.
+    expect($this->sync->markTurnSynced($lead, 'int-dup'))->toBeTrue()
+        ->and($this->sync->syncPending($lead))->toBe(0)
+        ->and(DB::table('agent_conversation_messages')->where('conversation_id', $convId)->where('role', 'user')->count())->toBe(1);
+});
+
 test('subsequent calls are no-ops', function () {
     $convId = (string) Str::uuid();
     seedAgentConversation($convId);

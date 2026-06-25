@@ -23,6 +23,9 @@ use Throwable;
  */
 class ConversationContextSynchronizer
 {
+    /** Retry budget for the per-turn sync-mark hand-off before it is escalated (ATOM-5). */
+    private const MARK_SYNCED_MAX_ATTEMPTS = 3;
+
     /**
      * Mirror every timeline row with `synced_to_agent_at = NULL` for this lead into the
      * agent's memory table, then mark them synced. Returns the count of rows mirrored.
@@ -118,6 +121,45 @@ class ConversationContextSynchronizer
         ]);
 
         return $synced;
+    }
+
+    /**
+     * Mark the inbound timeline row(s) for a completed agent turn as synced, so the next
+     * syncPending() won't re-mirror them — laravel/ai already wrote its own user row during
+     * prompt(). The mark is a single idempotent UPDATE, but if it fails silently the row
+     * stays unsynced and gets mirrored again next turn, duplicating the user message in
+     * agent memory (ATOM-5). So retry the hand-off a few times, and on exhaustion escalate
+     * to error rather than swallowing it. Returns true once marked (or there was nothing
+     * to mark); false if every attempt failed.
+     */
+    public function markTurnSynced(Lead $lead, string $interactionId): bool
+    {
+        for ($attempt = 1; $attempt <= self::MARK_SYNCED_MAX_ATTEMPTS; $attempt++) {
+            try {
+                ConversationTimelineMessage::query()
+                    ->where('lead_id', $lead->id)
+                    ->where('interaction_id', $interactionId)
+                    ->where('sender_type', 'lead')
+                    ->whereNull('synced_to_agent_at')
+                    ->update(['synced_to_agent_at' => now()]);
+
+                return true;
+            } catch (Throwable $e) {
+                Log::warning('conversation_sync.mark_turn_attempt_failed', [
+                    'lead_id' => $lead->id,
+                    'interaction_id' => $interactionId,
+                    'attempt' => $attempt,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        Log::error('conversation_sync.mark_turn_failed', [
+            'lead_id' => $lead->id,
+            'interaction_id' => $interactionId,
+        ]);
+
+        return false;
     }
 
     /**
