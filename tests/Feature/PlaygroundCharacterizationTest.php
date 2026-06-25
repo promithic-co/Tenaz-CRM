@@ -5,11 +5,12 @@ use App\Ai\Agents\EvaluatorAgent;
 use App\Ai\Agents\ScenarioGeneratorAgent;
 use App\Models\Lead;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Ai\Ai;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 /**
  * Characterization oracle for Phase D PlaygroundController refactor.
@@ -321,4 +322,22 @@ test('generateScenario returns the agent text as scenario', function () {
     ])
         ->assertOk()
         ->assertJsonPath('scenario', 'Persona agressiva que tenta burlar validações.');
+});
+
+// ─── index session cap ───────────────────────────────────────────────────────
+
+test('index bounds the sandbox session list with a SQL limit (FE-05)', function () {
+    $user = userWithTenant();
+    playgroundSandboxLead($user);
+    playgroundSandboxLead($user);
+
+    DB::enableQueryLog();
+    $this->actingAs($user)->get(route('playground.index'))->assertOk();
+    $sessionQuery = collect(DB::getQueryLog())
+        ->first(fn ($q) => str_contains($q['query'], 'from "leads"') && str_contains($q['query'], 'is_sandbox'));
+    DB::disableQueryLog();
+
+    // The sidebar never hydrates the whole sandbox history — the query is capped at the source.
+    expect($sessionQuery)->not->toBeNull()
+        ->and($sessionQuery['query'])->toContain('limit 100');
 });

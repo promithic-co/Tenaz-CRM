@@ -7,6 +7,7 @@ use App\Actions\RunPlaygroundChatAction;
 use App\Ai\Agents\BlindspotScannerAgent;
 use App\Ai\Agents\CredFlowAgent;
 use App\Ai\Agents\ScenarioGeneratorAgent;
+use App\Ai\Agents\TesterAgent;
 use App\Http\Requests\Playground\ChatSandboxRequest;
 use App\Http\Requests\Playground\DestroySandboxLeadRequest;
 use App\Http\Requests\Playground\EvaluateRequest;
@@ -28,6 +29,13 @@ use Inertia\Response;
 
 class PlaygroundController extends Controller
 {
+    /**
+     * Cap on sandbox sessions hydrated for the playground sidebar. Sandbox leads accumulate
+     * per tenant with no automatic cleanup, so an unbounded ->get() grows the page payload
+     * monotonically; the sidebar only needs the most recent sessions (FE-05).
+     */
+    private const MAX_SANDBOX_SESSIONS = 100;
+
     // ─── Pages ──────────────────────────────────────────────────────────────
 
     public function index(): Response
@@ -37,6 +45,7 @@ class PlaygroundController extends Controller
         $sessions = Lead::sandbox()
             ->forTenant($tenantId)
             ->latest()
+            ->limit(self::MAX_SANDBOX_SESSIONS)
             ->get(['id', 'sandbox_label', 'status', 'created_at'])
             ->map(fn ($l) => [
                 'id' => $l->id,
@@ -159,7 +168,7 @@ class PlaygroundController extends Controller
         $testerProvider = $testerModel && str_contains($testerModel, '/') ? 'openrouter' : null;
 
         try {
-            $agent = new \App\Ai\Agents\TesterAgent($personaPrompt, $transcript, $cpfToUse, $expectedValues, $testerModel, $testerProvider);
+            $agent = new TesterAgent($personaPrompt, $transcript, $cpfToUse, $expectedValues, $testerModel, $testerProvider);
             $response = $agent->prompt('Gere a SUA PRÓXIMA RESPOSTA com base no histórico acima. Lembre-se, use o MÍNIMO de tokens possível.');
             $text = trim((string) $response);
 
