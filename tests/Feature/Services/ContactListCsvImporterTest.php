@@ -130,6 +130,35 @@ it('returns an error when the phone column is missing', function () {
     expect($result['error'])->toContain('TELEFONE');
 });
 
+it('scopes the dedup preload to phones present in the file, not the whole list (MEM-5)', function () {
+    $list = makeImportList();
+
+    // One existing entry collides with the upload; three do NOT appear in the file.
+    ContactListEntry::factory()->create(['contact_list_id' => $list->id, 'phone' => '5511900000001']);
+    ContactListEntry::factory()->create(['contact_list_id' => $list->id, 'phone' => '5511900000002']);
+    ContactListEntry::factory()->create(['contact_list_id' => $list->id, 'phone' => '5511900000003']);
+    ContactListEntry::factory()->create(['contact_list_id' => $list->id, 'phone' => '5511900000004']);
+
+    DB::enableQueryLog();
+    $result = importContent($list, "telefone,nome\n5511900000001,Dup\n5511900000009,New\n");
+    $log = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    // Behavior preserved: existing collision skipped, the new phone imported.
+    expect($result)->toBe(['imported' => 1, 'skipped' => 1]);
+
+    // The preload SELECT only binds the two phones from the file — it never pulls the
+    // unrelated existing rows (…002/003/004) into memory.
+    $preload = collect($log)->first(fn ($q) => str_contains($q['query'], 'contact_list_entries')
+        && str_contains($q['query'], 'in (')
+        && str_contains($q['query'], 'phone'));
+
+    expect($preload)->not->toBeNull()
+        ->and($preload['bindings'])->toContain('5511900000001')
+        ->and($preload['bindings'])->toContain('5511900000009')
+        ->and($preload['bindings'])->not->toContain('5511900000002');
+});
+
 it('issues a constant number of dedup queries regardless of row count (no per-row exists)', function () {
     $list = makeImportList();
 

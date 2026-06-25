@@ -62,11 +62,34 @@ class ContactListCsvImporter
                 return ['error' => 'Coluna "TELEFONE" não encontrada. Verifique o padrão da planilha.'];
             }
 
-            // N+1 fix: preload existing phones once, dedup in-memory. The map also
-            // accumulates phones imported earlier in this file to guard intra-file dups.
-            $seenPhones = ContactListEntry::where('contact_list_id', $list->id)
-                ->pluck('phone')
-                ->flip();
+            // MEM-5: only preload the existing entries whose phone actually appears in
+            // this upload, instead of pluck()-ing the entire destination list into memory
+            // (which grows unbounded as a list matures). A first streaming pass collects
+            // the file's canonical phones; the dedup set is then scoped to just those.
+            $filePhones = [];
+
+            while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+                $row = array_map(fn ($v) => $v !== null ? $this->toUtf8($v) : null, $row);
+
+                foreach ($this->extractPhones($row, $phoneCol, $phone2Col) as $phone) {
+                    $filePhones[$phone] = true;
+                }
+            }
+
+            $seenPhones = $filePhones === []
+                ? collect()
+                : ContactListEntry::where('contact_list_id', $list->id)
+                    // strval: numeric-string array keys are silently cast to int by PHP;
+                    // bind them back as strings so the varchar `phone` predicate matches
+                    // on PostgreSQL (which won't coerce integer params to text).
+                    ->whereIn('phone', array_map('strval', array_keys($filePhones)))
+                    ->pluck('phone')
+                    ->flip();
+
+            // Rewind for the insert pass; the dedup set still accumulates phones imported
+            // earlier in this same file to guard intra-file duplicates.
+            rewind($handle);
+            fgetcsv($handle, 0, $delimiter);
 
             $imported = 0;
             $skipped = 0;
@@ -88,21 +111,7 @@ class ContactListCsvImporter
                     }
                 }
 
-                $rawPhones = [isset($row[$phoneCol]) ? $row[$phoneCol] : null];
-
-                if ($phone2Col !== false) {
-                    $rawPhones[] = isset($row[$phone2Col]) ? $row[$phone2Col] : null;
-                }
-
-                $phonesToImport = [];
-
-                foreach ($rawPhones as $raw) {
-                    $phone = $this->contactSync->normalizePhone($raw);
-
-                    if ($phone !== null) {
-                        $phonesToImport[] = $phone;
-                    }
-                }
+                $phonesToImport = $this->extractPhones($row, $phoneCol, $phone2Col);
 
                 if (empty($phonesToImport)) {
                     $skipped++;
@@ -138,6 +147,34 @@ class ContactListCsvImporter
         $list->refreshEntriesCount();
 
         return ['imported' => $imported, 'skipped' => $skipped];
+    }
+
+    /**
+     * Pull the canonical (normalized) phone numbers out of an already-UTF-8 CSV row.
+     * Shared by the dedup-scoping pass and the insert pass so both derive identical keys.
+     *
+     * @param  array<int, string|null>  $row
+     * @return list<string>
+     */
+    private function extractPhones(array $row, int $phoneCol, int|false $phone2Col): array
+    {
+        $raw = [$row[$phoneCol] ?? null];
+
+        if ($phone2Col !== false) {
+            $raw[] = $row[$phone2Col] ?? null;
+        }
+
+        $phones = [];
+
+        foreach ($raw as $value) {
+            $phone = $this->contactSync->normalizePhone($value);
+
+            if ($phone !== null) {
+                $phones[] = $phone;
+            }
+        }
+
+        return $phones;
     }
 
     /**
