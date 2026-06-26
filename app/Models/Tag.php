@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Exceptions\Tag\TagLimitReachedException;
 use App\Models\Concerns\BelongsToTenant;
+use Database\Factories\TagFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,7 +25,7 @@ use Illuminate\Support\Str;
  */
 class Tag extends Model
 {
-    /** @use HasFactory<\Database\Factories\TagFactory> */
+    /** @use HasFactory<TagFactory> */
     use BelongsToTenant, HasFactory, SoftDeletes;
 
     public const COLORS = [
@@ -87,11 +88,6 @@ class Tag extends Model
     public function scopeForTenant(Builder $query, string $tenantId): Builder
     {
         return $query->where('tenant_id', $tenantId);
-    }
-
-    public function scopePopular(Builder $query, int $limit = 20): Builder
-    {
-        return $query->orderByDesc('usage_count')->limit($limit);
     }
 
     public function scopeSearch(Builder $query, ?string $term): Builder

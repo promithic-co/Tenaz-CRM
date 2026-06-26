@@ -10,8 +10,6 @@ export const LEAD_STATUSES = {
 
 export type LeadStatus = keyof typeof LEAD_STATUSES;
 
-export const LEAD_STATUS_LIST = Object.keys(LEAD_STATUSES) as LeadStatus[];
-
 export function statusLabel(status: string): string {
     return LEAD_STATUSES[status as LeadStatus]?.label ?? status;
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\VoiceCampaignCallFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VoiceCampaignCall extends Model
 {
-    /** @use HasFactory<\Database\Factories\VoiceCampaignCallFactory> */
+    /** @use HasFactory<VoiceCampaignCallFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -47,15 +48,5 @@ class VoiceCampaignCall extends Model
     public function scopePending(Builder $query): Builder
     {
         return $query->where('status', 'pending');
-    }
-
-    public function scopeInterested(Builder $query): Builder
-    {
-        return $query->where('status', 'interested');
-    }
-
-    public function scopeAnswered(Builder $query): Builder
-    {
-        return $query->where('status', 'answered');
     }
 }

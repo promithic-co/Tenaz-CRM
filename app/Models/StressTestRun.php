@@ -51,11 +51,6 @@ class StressTestRun extends Model
         return $this->hasMany(StressTestCycle::class);
     }
 
-    public function scopeRunning(Builder $query): Builder
-    {
-        return $query->where('status', 'running');
-    }
-
     public function scopeCompleted(Builder $query): Builder
     {
         return $query->where('status', 'completed');

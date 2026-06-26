@@ -80,11 +80,6 @@ class WhatsappTemplate extends Model
         return $query->where('status', 'APPROVED');
     }
 
-    public function scopeForInstance(Builder $query, int $instanceId): Builder
-    {
-        return $query->where('whatsapp_instance_id', $instanceId);
-    }
-
     public function scopeOfKind(Builder $query, TemplateKind $kind): Builder
     {
         return $query->where('kind', $kind->value);
