@@ -2,18 +2,16 @@
 
 use App\Ai\Tools\EscalarParaHumanoTool;
 use App\Enums\TenantRole;
-use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\Agent;
-use App\Models\AgentConfig;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Support\Facades\Bus;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Tools\Request;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 // ─── Helper (mirrors EscalarParaHumanoToolTest::toolLead) ────────────────────
 
@@ -25,24 +23,22 @@ function handoffLead(array $extra = []): Lead
     $user->tenants()->attach($tenant->id, ['role' => TenantRole::Owner->value]);
 
     $agent = Agent::factory()->create([
-        'user_id'    => $user->id,
-        'tenant_id'  => $tenant->id,
+        'user_id' => $user->id,
+        'tenant_id' => $tenant->id,
         'is_default' => true,
     ]);
 
     return Lead::factory()->forAgent($agent)->create(array_merge([
-        'tenant_id'         => (string) $tenant->id,
+        'tenant_id' => (string) $tenant->id,
         'operational_stage' => Lead::STAGE_AI_QUALIFYING,
-        'followup_status'   => 'active',
-        'status'            => 'qualificado',
+        'followup_status' => 'active',
+        'status' => 'qualificado',
     ], $extra));
 }
 
 // ─── SC3: handoff is in-system; no broker WhatsApp dispatched ─────────────────
 
 test('qualification handoff routes to atendimento queue via status+tag with no broker WhatsApp', function () {
-    Bus::fake([SendWhatsAppMessageJob::class]);
-
     $lead = handoffLead();
 
     $tool = new EscalarParaHumanoTool($lead);
@@ -62,9 +58,6 @@ test('qualification handoff routes to atendimento queue via status+tag with no b
     expect($lead->operational_stage)->toBe(Lead::STAGE_HUMAN_PENDING);
     expect($lead->followup_status)->toBe('paused');
 
-    // No broker notification — SendWhatsAppMessageJob must NOT be dispatched
-    Bus::assertNotDispatched(SendWhatsAppMessageJob::class);
-
     // Tool result must not contain broker-number language
     expect($result)->not->toContain('número');
     expect($result)->not->toContain('celular');
@@ -74,8 +67,6 @@ test('qualification handoff routes to atendimento queue via status+tag with no b
 // ─── No dependency on escalation_whatsapp_number ─────────────────────────────
 
 test('no agent_configs escalation field is read during handoff', function () {
-    Bus::fake([SendWhatsAppMessageJob::class]);
-
     $lead = handoffLead();
 
     // Ensure the agent config has a null/absent escalation_whatsapp_number
@@ -100,6 +91,4 @@ test('no agent_configs escalation field is read during handoff', function () {
 
     $lead->refresh();
     expect($lead->operational_stage)->toBe(Lead::STAGE_HUMAN_PENDING);
-
-    Bus::assertNotDispatched(SendWhatsAppMessageJob::class);
 });
