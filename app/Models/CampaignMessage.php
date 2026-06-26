@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Database\Factories\CampaignMessageFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,21 +48,6 @@ class CampaignMessage extends Model
     public function contactListEntry(): BelongsTo
     {
         return $this->belongsTo(ContactListEntry::class);
-    }
-
-    public function scopeFailed(Builder $query): Builder
-    {
-        return $query->where('status', 'failed');
-    }
-
-    public function scopeDelivered(Builder $query): Builder
-    {
-        return $query->where('status', 'delivered');
-    }
-
-    public function scopePending(Builder $query): Builder
-    {
-        return $query->where('status', 'pending');
     }
 
     /**

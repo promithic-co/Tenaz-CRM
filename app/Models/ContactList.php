@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Database\Factories\ContactListFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ContactList extends Model
 {
-    /** @use HasFactory<\Database\Factories\ContactListFactory> */
+    /** @use HasFactory<ContactListFactory> */
     use BelongsToTenant, HasFactory, SoftDeletes;
 
     protected $fillable = [
@@ -56,16 +57,6 @@ class ContactList extends Model
     public function scopeForTenant(Builder $query, string $tenantId): Builder
     {
         return $query->where('tenant_id', $tenantId);
-    }
-
-    public function scopeDynamic(Builder $query): Builder
-    {
-        return $query->where('is_dynamic', true);
-    }
-
-    public function scopeStatic(Builder $query): Builder
-    {
-        return $query->where('is_dynamic', false);
     }
 
     public function refreshEntriesCount(): void

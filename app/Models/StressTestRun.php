@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,10 +48,5 @@ class StressTestRun extends Model
     public function cycles(): HasMany
     {
         return $this->hasMany(StressTestCycle::class);
-    }
-
-    public function scopeCompleted(Builder $query): Builder
-    {
-        return $query->where('status', 'completed');
     }
 }

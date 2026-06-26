@@ -6,6 +6,8 @@ use App\Events\LeadStatusChanged;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasTags;
 use App\Services\Dashboard\DashboardMetricsService;
+use App\Services\FollowUpWindowService;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -279,7 +281,7 @@ class Lead extends Model
 
     private function setFollowUpActive(array $extra = []): void
     {
-        if (! app(\App\Services\FollowUpWindowService::class)->canSendFreeFormMessage($this)) {
+        if (! app(FollowUpWindowService::class)->canSendFreeFormMessage($this)) {
             $this->update(['followup_status' => 'inactive']);
 
             return;
@@ -288,19 +290,19 @@ class Lead extends Model
         $this->update(array_merge(['followup_status' => 'active'], $extra));
     }
 
-    public function customerServiceWindowClosesAt(): ?\Carbon\CarbonInterface
+    public function customerServiceWindowClosesAt(): ?CarbonInterface
     {
-        return app(\App\Services\FollowUpWindowService::class)->windowClosesAt($this);
+        return app(FollowUpWindowService::class)->windowClosesAt($this);
     }
 
     public function isInsideCustomerServiceWindow(): bool
     {
-        return app(\App\Services\FollowUpWindowService::class)->isInsideCustomerServiceWindow($this);
+        return app(FollowUpWindowService::class)->isInsideCustomerServiceWindow($this);
     }
 
     public function customerServiceWindowRemainingMinutes(): int
     {
-        return app(\App\Services\FollowUpWindowService::class)->remainingMinutes($this);
+        return app(FollowUpWindowService::class)->remainingMinutes($this);
     }
 
     public function isQualificado(): bool
@@ -348,11 +350,6 @@ class Lead extends Model
     public function assignedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_user_id');
-    }
-
-    public function aiPausedByUser(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'ai_paused_by');
     }
 
     public function campaign(): BelongsTo
