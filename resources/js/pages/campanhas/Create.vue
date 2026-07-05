@@ -1,13 +1,13 @@
 <script setup lang="ts">
+import { Head, useForm } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/AppLayout.vue';
-import type { BreadcrumbItem } from '@/types';
 import CampaignController from '@/actions/App/Http/Controllers/CampaignController';
 import { preview as previewAction } from '@/actions/App/Http/Controllers/ContactListController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import AppLayout from '@/layouts/AppLayout.vue';
 import { formatRelative } from '@/lib/relative-time';
+import type { BreadcrumbItem } from '@/types';
 
 type WhatsappInstance = {
     id: number;
@@ -205,34 +205,50 @@ function fetchLive(list: ContactList): void {
     if (isOpen) {
         return;
     }
-    router.post(
-        previewAction.url(),
-        { filters_json: filters },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            only: ['preview'],
-            onSuccess: (page) => {
-                const p = (page.props as any).preview;
-                livePreview.value[list.id] = {
-                    loading: false,
-                    count: p?.count ?? 0,
-                    capped: Boolean(p?.capped),
-                    error: null,
-                    open: true,
-                };
-            },
-            onError: () => {
-                livePreview.value[list.id] = {
-                    loading: false,
-                    count: null,
-                    capped: false,
-                    error: 'Não foi possível consultar.',
-                    open: true,
-                };
-            },
+    // FEI-01: ContactListController::preview returns a JsonResponse, not an Inertia
+    // response, so an Inertia partial reload (`only:['preview']`) never yields a
+    // `preview` prop and the panel hangs. Fetch the JSON directly instead
+    // (mirrors listas-contato/Show.vue + ConversationThread.vue CSRF pattern).
+    fetch(previewAction.url(), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': getCsrfToken(),
         },
-    );
+        credentials: 'same-origin',
+        body: JSON.stringify({ filters_json: filters }),
+    })
+        .then((r) => {
+            if (!r.ok) {
+                throw new Error(`HTTP ${r.status}`);
+            }
+            return r.json();
+        })
+        .then((p: { count?: number; capped?: boolean }) => {
+            livePreview.value[list.id] = {
+                loading: false,
+                count: p?.count ?? 0,
+                capped: Boolean(p?.capped),
+                error: null,
+                open: true,
+            };
+        })
+        .catch(() => {
+            livePreview.value[list.id] = {
+                loading: false,
+                count: null,
+                capped: false,
+                error: 'Não foi possível consultar.',
+                open: true,
+            };
+        });
+}
+
+function getCsrfToken(): string {
+    const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+
+    return match ? decodeURIComponent(match[1]) : '';
 }
 
 // ─── Derived data ─────────────────────────────────────────────────────────────
