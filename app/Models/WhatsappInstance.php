@@ -51,6 +51,24 @@ class WhatsappInstance extends Model
         'meta_coexistence',
     ];
 
+    /**
+     * FE-SEC-01: never serialize instance secrets into Inertia props / JSON.
+     * meta_access_token is cast `encrypted`, so array/JSON serialization would
+     * otherwise emit it DECRYPTED. Backend send paths read these as properties,
+     * which $hidden does not affect.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'api_key',
+        'meta_access_token',
+        'proxy_password',
+        'proxy_username',
+        'proxy_host',
+        'proxy_port',
+        'api_url',
+    ];
+
     protected function casts(): array
     {
         return [
