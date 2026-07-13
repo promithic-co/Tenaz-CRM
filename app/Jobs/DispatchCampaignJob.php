@@ -126,27 +126,43 @@ class DispatchCampaignJob implements ShouldQueue
                     $entries->where('opt_in_status', 'opted_out')->pluck('id')->all()
                 );
 
-                // Bulk-query already-processed entries in this chunk only.
-                $existing = CampaignMessage::where('campaign_id', $campaign->id)
+                // Bulk-load rows already created for this chunk. A 'pending' row with no
+                // provider attempt is an orphan: its queue job was consumed while the campaign
+                // was paused (SendCampaignMessageJob parks it there on the paused-skip path),
+                // so resume must re-enqueue it. Every other existing row — queued (live delayed
+                // job), sent, failed, in_doubt, or already provider-attempted — is skipped.
+                $existingByEntry = CampaignMessage::where('campaign_id', $campaign->id)
                     ->whereIn('contact_list_entry_id', $chunkIds)
-                    ->pluck('contact_list_entry_id')
-                    ->all();
-                $existingSet = array_flip($existing);
+                    ->get(['id', 'contact_list_entry_id', 'status', 'provider_attempted_at'])
+                    ->keyBy('contact_list_entry_id');
 
                 foreach ($chunkIds as $entryId) {
-                    if (isset($existingSet[$entryId]) || isset($optedOutSet[$entryId])) {
+                    if (isset($optedOutSet[$entryId])) {
                         continue;
                     }
 
-                    $message = CampaignMessage::firstOrCreate(
-                        ['campaign_id' => $campaign->id, 'contact_list_entry_id' => $entryId],
-                        ['status' => 'queued']
-                    );
+                    $message = $existingByEntry->get($entryId);
 
-                    $delayMs = $index * $campaign->delay_between_ms;
+                    if ($message !== null) {
+                        if ($message->status !== 'pending' || $message->provider_attempted_at !== null) {
+                            continue;
+                        }
 
-                    SendCampaignMessageJob::dispatch($message, $interactionEvents->newInteractionId())
-                        ->delay(now()->addMilliseconds($delayMs));
+                        $message->update(['status' => 'queued']);
+                    } else {
+                        $message = CampaignMessage::firstOrCreate(
+                            ['campaign_id' => $campaign->id, 'contact_list_entry_id' => $entryId],
+                            ['status' => 'queued']
+                        );
+                    }
+
+                    // The send slot doubles as the retry-window anchor (scheduledFor): a
+                    // deadline counted from dispatch would already be expired when a far-tail
+                    // staggered message first pops, failing it before it ever runs.
+                    $sendAt = now()->addMilliseconds($index * $campaign->delay_between_ms);
+
+                    SendCampaignMessageJob::dispatch($message, $interactionEvents->newInteractionId(), $sendAt)
+                        ->delay($sendAt);
 
                     $index++;
                 }

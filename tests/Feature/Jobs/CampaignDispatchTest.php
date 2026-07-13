@@ -13,6 +13,8 @@ use App\Services\CampaignService;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Queue\Jobs\FakeJob;
+use Illuminate\Queue\MaxAttemptsExceededException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -749,4 +751,126 @@ test('SendCampaignMessageJob reloads the campaign for progress only when the bro
     // progress debounce and reloads the campaign for the broadcast (+1) = 3. The debounced
     // second send no longer reloads the campaign just to throw the result away.
     expect(countTableSelects($log, '"campaigns"'))->toBe(3);
+});
+
+test('SendCampaignMessageJob anchors retryUntil to the scheduled send slot, not dispatch time (CAMP-01)', function () {
+    $window = (int) config('credflow.campaigns.send_retry_window_seconds');
+    $scheduledFor = now()->addHours(10);
+
+    $job = new SendCampaignMessageJob(new CampaignMessage, null, $scheduledFor->copy());
+
+    // A message slotted 10h out must get the full window past its slot — a deadline counted
+    // from dispatch would be expired when the job first pops, failing it before it runs.
+    expect($job->retryUntil()->getTimestamp())
+        ->toBe($scheduledFor->copy()->addSeconds($window)->getTimestamp());
+
+    // Without a slot the window still counts from now.
+    $bare = new SendCampaignMessageJob(new CampaignMessage);
+    expect($bare->retryUntil()->getTimestamp())
+        ->toBeGreaterThanOrEqual(now()->addSeconds($window)->getTimestamp() - 1);
+});
+
+test('DispatchCampaignJob gives each staggered message a retry window anchored to its own slot (CAMP-01)', function () {
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create(['delay_between_ms' => 60000]);
+    ContactListEntry::factory()->count(3)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    (new DispatchCampaignJob($campaign))->handle(app(CampaignService::class));
+
+    $jobs = Queue::pushed(SendCampaignMessageJob::class);
+    expect($jobs)->toHaveCount(3);
+
+    $window = (int) config('credflow.campaigns.send_retry_window_seconds');
+
+    foreach ($jobs as $job) {
+        expect($job->scheduledFor)->not->toBeNull()
+            ->and($job->delay->getTimestamp())->toBe($job->scheduledFor->getTimestamp())
+            ->and($job->retryUntil()->getTimestamp())
+            ->toBe(Carbon::instance($job->scheduledFor)->addSeconds($window)->getTimestamp());
+    }
+
+    // Slots staggered by delay_between_ms (60s): last slot ≥ ~120s after the first.
+    $slots = $jobs->map(fn (SendCampaignMessageJob $j): int => $j->scheduledFor->getTimestamp())->sort()->values();
+    expect($slots->last() - $slots->first())->toBeGreaterThanOrEqual(119);
+});
+
+test('SendCampaignMessageJob parks a paused campaign message back in pending instead of stranding it (CAMP-02)', function () {
+    [$campaign, $message] = makeTenantSendable();
+    $campaign->update(['status' => 'paused']);
+    $message->update(['status' => 'queued']);
+
+    bindNonSendingProvider();
+
+    (new SendCampaignMessageJob($message))->handle(app(CampaignService::class), app(WhatsAppProviderFactory::class), app(BroadcastDebouncer::class));
+
+    // 'pending' + no provider attempt = re-enqueueable by the resume dispatcher.
+    expect($message->fresh()->status)->toBe('pending')
+        ->and($message->fresh()->provider_attempted_at)->toBeNull();
+});
+
+test('DispatchCampaignJob re-enqueues orphaned pending messages on resume (CAMP-02)', function () {
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create();
+    $entries = ContactListEntry::factory()->count(3)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    // Orphaned by a pause: its queue job was consumed, no live job holds it.
+    $orphan = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+        'status' => 'pending',
+    ]);
+    // Already sent and already provider-attempted rows must NOT be re-enqueued.
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[1]->id,
+    ]);
+    CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[2]->id,
+        'status' => 'pending',
+        'provider_attempted_at' => now(),
+    ]);
+
+    (new DispatchCampaignJob($campaign))->handle(app(CampaignService::class));
+
+    Queue::assertPushed(SendCampaignMessageJob::class, 1);
+    expect($orphan->fresh()->status)->toBe('queued');
+});
+
+test('CampaignMessage::claimProviderAttempt lets exactly one caller win (CAMP-02)', function () {
+    [, $message] = makeTenantSendable();
+
+    expect($message->claimProviderAttempt())->toBeTrue()
+        ->and($message->fresh()->claimProviderAttempt())->toBeFalse()
+        ->and($message->fresh()->provider_attempted_at)->not->toBeNull();
+});
+
+test('SendCampaignMessageJob.failed parks an expired unattempted message of a paused campaign (CAMP-01/02)', function () {
+    [$campaign, $message] = makeTenantSendable();
+    $campaign->update(['status' => 'paused']);
+    $message->update(['status' => 'queued']);
+
+    // Worker fails a job whose retryUntil expired without ever running handle(); during a
+    // long pause that is not a send failure — the row must return to the re-enqueueable pool.
+    (new SendCampaignMessageJob($message))->failed(new MaxAttemptsExceededException('retry window expired'));
+
+    expect($message->fresh()->status)->toBe('pending')
+        ->and($campaign->fresh()->total_failed)->toBe(0);
+
+    // The same expiry on a still-sending campaign is a genuine failure.
+    $campaign->update(['status' => 'sending']);
+    $message->fresh()->update(['status' => 'queued']);
+
+    (new SendCampaignMessageJob($message->fresh()))->failed(new MaxAttemptsExceededException('retry window expired'));
+
+    expect($message->fresh()->status)->toBe('failed')
+        ->and($message->fresh()->error_code)->toBe('JOB_FAILED');
 });

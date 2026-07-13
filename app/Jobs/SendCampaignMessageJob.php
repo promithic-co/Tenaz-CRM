@@ -21,7 +21,9 @@ use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
@@ -49,6 +51,7 @@ class SendCampaignMessageJob implements ShouldQueue
     public function __construct(
         public readonly CampaignMessage $campaignMessage,
         public readonly ?string $interactionId = null,
+        public readonly ?\DateTimeInterface $scheduledFor = null,
     ) {
         $this->onQueue('campaigns');
     }
@@ -58,14 +61,26 @@ class SendCampaignMessageJob implements ShouldQueue
      * (Worker::markJobAsFailedIfAlreadyExceedsMaxAttempts), so a message released repeatedly by a
      * fairness/throttle gate is never failed just for waiting; genuine errors are still bounded by
      * $maxExceptions. The deadline is stamped once at first dispatch (Laravel serializes it into the
-     * payload), so it does not slide on each release. Returns null when the window is 0/disabled,
-     * which reverts to the plain attempt-count $tries behaviour.
+     * payload), so it does not slide on each release.
+     *
+     * Anchored to $scheduledFor, not dispatch time: the fan-out staggers each message by
+     * index * delay_between_ms, so a deadline counted from dispatch would already be expired when a
+     * far-tail message first pops — the worker fails such a job before ever running it. Counting the
+     * window from the message's own send slot gives every message the full budget once it becomes
+     * eligible. Returns null when the window is 0/disabled, which reverts to the plain
+     * attempt-count $tries behaviour.
      */
     public function retryUntil(): ?\DateTimeInterface
     {
         $windowSeconds = (int) config('credflow.campaigns.send_retry_window_seconds', 21600);
 
-        return $windowSeconds > 0 ? now()->addSeconds($windowSeconds) : null;
+        if ($windowSeconds <= 0) {
+            return null;
+        }
+
+        $base = $this->scheduledFor !== null ? Carbon::instance($this->scheduledFor) : now();
+
+        return $base->addSeconds($windowSeconds);
     }
 
     public function handle(CampaignService $service, WhatsAppProviderFactory $factory, BroadcastDebouncer $debouncer): void
@@ -81,6 +96,16 @@ class SendCampaignMessageJob implements ShouldQueue
         $campaign = $message->campaign()->first();
 
         if (! $campaign || ! $campaign->isSending()) {
+            // Park the row back in 'pending': returning consumes this queue job, so a message
+            // whose delayed job fires during a pause would otherwise be stranded 'queued' with
+            // no live job — and the resume dispatcher skips 'queued' rows. 'pending' with no
+            // provider attempt marks it re-enqueueable by the next DispatchCampaignJob run.
+            if ($campaign
+                && in_array($message->status, ['pending', 'queued'], true)
+                && $message->provider_attempted_at === null) {
+                $message->update(['status' => 'pending']);
+            }
+
             Log::info('SendCampaignMessageJob: campaign not sending, skipping', [
                 'interaction_id' => $interactionId,
                 'message_id' => $message->id,
@@ -263,8 +288,17 @@ class SendCampaignMessageJob implements ShouldQueue
         try {
             $provider = $factory->makeProvider($instance);
 
-            // Stamp immediately before the POST so an ambiguous failure is never retried.
-            $message->markProviderAttempted();
+            // Atomically claim immediately before the POST so an ambiguous failure is never
+            // retried. Losing the claim means a concurrent duplicate job (a resume re-enqueue
+            // racing a released original) owns this message — let the owner finish it.
+            if (! $message->claimProviderAttempt()) {
+                Log::info('SendCampaignMessageJob: lost provider claim to a concurrent job, skipping', [
+                    'interaction_id' => $interactionId,
+                    'message_id' => $message->id,
+                ]);
+
+                return;
+            }
 
             $providerMessageId = $provider->sendTemplate(
                 phone: $destination,
@@ -489,6 +523,17 @@ class SendCampaignMessageJob implements ShouldQueue
         // and incremented the campaign counter, the framework's failed() callback must not
         // double-count. We only finalize messages still in flight (pending/queued).
         if (! in_array($message->status, ['pending', 'queued'], true)) {
+            return;
+        }
+
+        // A retryUntil expiry while the campaign sits paused is not a send failure — the job
+        // never ran and nothing reached the provider. Park the row for the resume dispatcher
+        // to re-enqueue with a fresh window instead of failing it.
+        if ($e instanceof MaxAttemptsExceededException
+            && $message->provider_attempted_at === null
+            && $message->campaign?->isPaused()) {
+            $message->update(['status' => 'pending']);
+
             return;
         }
 

@@ -116,12 +116,29 @@ class CampaignMessage extends Model
     }
 
     /**
-     * Stamp the moment a provider POST is about to be attempted. Set only after
-     * pre-flight succeeds so a pre-send failure never leaves a false in-doubt marker.
+     * Atomically claim the provider POST for this message, stamped only after pre-flight
+     * succeeds so a pre-send failure never leaves a false in-doubt marker. The conditional
+     * UPDATE (NULL → timestamp) lets exactly one caller win when duplicate queue jobs race
+     * for the same row — a resume re-enqueue can legitimately coexist with a released
+     * original job. The loser must return without sending.
      */
-    public function markProviderAttempted(): void
+    public function claimProviderAttempt(): bool
     {
-        $this->update(['provider_attempted_at' => now()]);
+        $now = now();
+
+        $claimed = self::query()
+            ->whereKey($this->getKey())
+            ->whereNull('provider_attempted_at')
+            ->update(['provider_attempted_at' => $now]);
+
+        if ($claimed !== 1) {
+            return false;
+        }
+
+        $this->provider_attempted_at = $now;
+        $this->syncOriginalAttribute('provider_attempted_at');
+
+        return true;
     }
 
     /**
