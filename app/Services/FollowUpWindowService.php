@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\FollowupMessage;
 use App\Models\Lead;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -121,10 +122,14 @@ class FollowUpWindowService
     }
 
     /**
+     * `$effectiveAiMode` is the pre-resolved mode (raw ai_mode with the instance
+     * default_ai_mode fallback — see ConversationAutomationService::resolveInstanceDefaultedModes);
+     * when null, the raw `$lead->ai_mode` column is used, preserving legacy behavior.
+     *
      * @param  array<string, mixed>  $settings
      * @return array{eligible: bool, reason: string, due_at: ?string, window_expires_at: ?string, remaining_minutes: int}
      */
-    public function evaluate(Lead $lead, array $settings, ?CarbonInterface $now = null, ?PauseService $pause = null): array
+    public function evaluate(Lead $lead, array $settings, ?CarbonInterface $now = null, ?PauseService $pause = null, ?string $effectiveAiMode = null): array
     {
         $now ??= now();
         $windowClosesAt = $this->freeFormWindowClosesAt($lead, $now);
@@ -150,7 +155,9 @@ class FollowUpWindowService
             return [...$base, 'reason' => 'not_active'];
         }
 
-        if ($lead->ai_mode === Lead::AI_MODE_MANUAL || in_array($lead->operational_stage, Lead::HUMAN_HANDOFF_STAGES, true)) {
+        $aiMode = $effectiveAiMode ?? $lead->ai_mode;
+
+        if ($aiMode === Lead::AI_MODE_MANUAL || in_array($lead->operational_stage, Lead::HUMAN_HANDOFF_STAGES, true)) {
             return [...$base, 'reason' => 'human_paused'];
         }
 
@@ -207,7 +214,12 @@ class FollowUpWindowService
      */
     public function nextDueAt(Lead $lead, array $settings): ?CarbonInterface
     {
-        if ($lead->last_inbound_at === null) {
+        // Anchor on the last inbound message; a free-entry-point lead that never
+        // wrote (F7) anchors on the FEP opening so first_delay/min_interval still
+        // apply instead of firing immediately.
+        $anchor = $lead->last_inbound_at ?? $lead->free_entry_point_started_at;
+
+        if ($anchor === null) {
             return null;
         }
 
@@ -215,13 +227,13 @@ class FollowUpWindowService
 
         // Any prior followupMessages row (success or no_reply) sets a backoff floor —
         // prevents tight re-fire loop when the agent returns empty/sentinel replies.
-        $lastSentAt = \App\Models\FollowupMessage::withoutGlobalScopes()
+        $lastSentAt = FollowupMessage::withoutGlobalScopes()
             ->where('lead_id', $lead->id)
             ->latest('sent_at')
             ->value('sent_at');
 
         if ((int) $lead->followup_count === 0) {
-            $firstDue = $lead->last_inbound_at->copy()->addMinutes((int) ($settings['first_delay_minutes'] ?? 10));
+            $firstDue = $anchor->copy()->addMinutes((int) ($settings['first_delay_minutes'] ?? 10));
 
             if ($lastSentAt !== null) {
                 $backoffDue = Carbon::parse($lastSentAt)->addMinutes($minInterval);
@@ -233,7 +245,7 @@ class FollowUpWindowService
         }
 
         if ($lastSentAt === null) {
-            $lastSentAt = $lead->last_interaction_at ?? $lead->last_inbound_at;
+            $lastSentAt = $lead->last_interaction_at ?? $anchor;
         }
 
         return Carbon::parse($lastSentAt)->addMinutes($minInterval);

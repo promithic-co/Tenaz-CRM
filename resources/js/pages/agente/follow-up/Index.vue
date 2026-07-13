@@ -54,6 +54,7 @@ const abordagens = [
     { value: 'persuasivo', label: 'Persuasivo', desc: 'Destaca a oportunidade e cria urgência leve. Para leads com alto potencial.' },
 ];
 const tiposMensagem = [
+    { value: 'contextual', label: 'Contextual (padrão)' },
     { value: 'reengajamento', label: 'Reengajamento' },
     { value: 'urgencia', label: 'Urgencia' },
     { value: 'duvida', label: 'Tirar duvida' },

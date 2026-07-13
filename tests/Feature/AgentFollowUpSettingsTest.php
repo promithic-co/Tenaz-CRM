@@ -1,8 +1,8 @@
 <?php
 
 use App\Models\Agent;
+use App\Models\AgentConfig;
 use App\Models\AgentFollowUpSetting;
-use App\Models\FollowUpSetting;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use App\Services\FollowUpSettingsResolver;
@@ -33,21 +33,13 @@ describe('FollowUpSettingsResolver', function () {
             ->and($settings['tone'])->toBe('direto');
     });
 
-    it('falls back to tenant followup_settings row when agent row missing', function () {
+    it('falls back to the legacy agent_configs row when agent row missing', function () {
         $agent = Agent::factory()->create();
-        FollowUpSetting::create([
-            'tenant_id' => (string) $agent->tenant_id,
-            'enabled' => true,
-            'first_delay_minutes' => 33,
-            'min_interval_minutes' => 90,
-            'max_attempts_within_window' => 3,
-            'business_window_start' => '08:00',
-            'business_window_end' => '20:00',
-            'timezone' => 'America/Sao_Paulo',
-            'message_type' => 'contextual',
-            'tone' => 'acolhedor',
-            'persuasion_intensity' => 3,
-            'custom_instructions' => '',
+        AgentConfig::factory()->create([
+            'agent_id' => $agent->id,
+            'tenant_id' => $agent->tenant_id,
+            'followup_first_delay_minutes' => 33,
+            'followup_tone' => 'acolhedor',
         ]);
 
         $lead = Lead::factory()->create([
@@ -111,7 +103,7 @@ describe('WABA-agent uniqueness', function () {
             'tenant_id' => $agentB->tenant_id,
             'agent_id' => $agentB->id,
             'meta_waba_id' => 'WABA-123',
-        ]))->toThrow(\DomainException::class);
+        ]))->toThrow(DomainException::class);
     });
 
     it('allows multiple phone numbers under the same WABA to share an agent', function () {

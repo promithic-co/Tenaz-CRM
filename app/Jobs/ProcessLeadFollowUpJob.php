@@ -9,6 +9,7 @@ use App\Models\WhatsappInstance;
 use App\Services\AgentInteractionContext;
 use App\Services\AgentInteractionEventService;
 use App\Services\AgentService;
+use App\Services\ConversationAutomationService;
 use App\Services\ConversationContextSynchronizer;
 use App\Services\ConversationTimelineService;
 use App\Services\Dashboard\DashboardMetricsService;
@@ -90,7 +91,9 @@ class ProcessLeadFollowUpJob implements ShouldBeUniqueUntilProcessing, ShouldQue
         }
 
         $settings = $settingsResolver->forLead($this->lead);
-        $evaluation = $window->evaluate($this->lead, $settings, now(), $pause);
+        $effectiveAiMode = app(ConversationAutomationService::class)
+            ->resolveInstanceDefaultedModes(collect([$this->lead]))[$this->lead->id];
+        $evaluation = $window->evaluate($this->lead, $settings, now(), $pause, $effectiveAiMode);
 
         if (! $evaluation['eligible']) {
             Log::info('ProcessLeadFollowUpJob: skipped (not eligible)', [
@@ -147,6 +150,31 @@ class ProcessLeadFollowUpJob implements ShouldBeUniqueUntilProcessing, ShouldQue
                     'last_inbound_at' => $this->lead->last_inbound_at?->toIso8601String(),
                     'threshold_minutes' => $skipThresholdMinutes,
                 ],
+            );
+
+            return;
+        }
+
+        // Resolve the send instance before any LLM work — a lead without a usable
+        // instance can never be sent to, so deactivate instead of burning an agent
+        // call every dispatch until the window expires. Reversible via reactivate.
+        $instance = $this->resolveWhatsappInstance();
+
+        if ($instance === null) {
+            Log::warning('follow_up.no_instance_found', [
+                'interaction_id' => $interactionId,
+                'lead_id' => $this->lead->id,
+                'agent_id' => $this->lead->agent_id,
+            ]);
+
+            $this->lead->update(['followup_status' => 'inactive']);
+
+            $interactionEvents->recordForLead(
+                interactionId: $interactionId,
+                lead: $this->lead,
+                eventType: 'followup_skipped',
+                eventSource: 'process_lead_followup_job',
+                payload: ['reason' => 'no_instance', 'agent_id' => $this->lead->agent_id],
             );
 
             return;
@@ -238,36 +266,22 @@ class ProcessLeadFollowUpJob implements ShouldBeUniqueUntilProcessing, ShouldQue
             $text = (string) $reply;
 
             if (! empty($text) && ! str_contains($text, AgentService::NO_REPLY_SENTINEL)) {
-                $instance = $this->resolveWhatsappInstance();
+                // Single transaction covering the outbox rows AND the bookkeeping
+                // (followup_messages + counter): if any write fails, everything rolls
+                // back together — no message can go out without its attempt being
+                // recorded (which would re-send on the next tick). The outbox job
+                // dispatch is afterCommit-aware, so it only fires on commit.
+                $outboxMessages = DB::transaction(function () use ($outbox, $instance, $interactionId, $settings, $text): array {
+                    $outboxMessages = $outbox->queueSplitTextForLead(
+                        lead: $this->lead,
+                        instance: $instance,
+                        phone: $this->lead->whatsapp,
+                        text: $text,
+                        source: 'followup',
+                        senderType: 'agent',
+                        interactionId: $interactionId,
+                    );
 
-                if ($instance === null) {
-                    Log::warning('follow_up.no_instance_found', [
-                        'interaction_id' => $interactionId,
-                        'lead_id' => $this->lead->id,
-                        'agent_id' => $this->lead->agent_id,
-                    ]);
-
-                    return;
-                }
-
-                $outboxMessages = $outbox->queueSplitTextForLead(
-                    lead: $this->lead,
-                    instance: $instance,
-                    phone: $this->lead->whatsapp,
-                    text: $text,
-                    source: 'followup',
-                    senderType: 'agent',
-                    interactionId: $interactionId,
-                );
-
-                foreach ($outboxMessages as $outboxMessage) {
-                    if ($outboxMessage->timelineMessage) {
-                        $timeline->broadcast($outboxMessage->timelineMessage);
-                    }
-                }
-
-                // Wrap DB writes in a transaction so the record and counter are always consistent.
-                DB::transaction(function () use ($settings, $text): void {
                     FollowupMessage::create([
                         'lead_id' => $this->lead->id,
                         'tenant_id' => $this->lead->tenant_id,
@@ -280,9 +294,17 @@ class ProcessLeadFollowUpJob implements ShouldBeUniqueUntilProcessing, ShouldQue
 
                     $this->lead->increment('followup_count');
                     $this->lead->update(['last_interaction_at' => now()]);
+
+                    return $outboxMessages;
                 });
 
                 $this->lead->refresh();
+
+                foreach ($outboxMessages as $outboxMessage) {
+                    if ($outboxMessage->timelineMessage) {
+                        $timeline->broadcast($outboxMessage->timelineMessage);
+                    }
+                }
 
                 Log::info('ProcessLeadFollowUpJob: message sent', [
                     'interaction_id' => $interactionId,
@@ -373,5 +395,38 @@ class ProcessLeadFollowUpJob implements ShouldBeUniqueUntilProcessing, ShouldQue
             'error' => $exception->getMessage(),
             'trace' => mb_substr($exception->getTraceAsString(), 0, 500),
         ]);
+
+        try {
+            // Backoff floor: nextDueAt() reads the latest followup_messages row, so this
+            // 'failed' record defers the next attempt by min_interval_minutes instead of
+            // letting the cron re-dispatch (with 3 tries each) on every tick.
+            // followup_count is NOT incremented — the failure does not count toward max.
+            FollowupMessage::create([
+                'lead_id' => $this->lead->id,
+                'tenant_id' => $this->lead->tenant_id,
+                'attempt' => $this->lead->followup_count + 1,
+                'message_text' => '',
+                'tone' => null,
+                'sent_at' => now(),
+                'status' => 'failed',
+            ]);
+
+            $interactionEvents = app(AgentInteractionEventService::class);
+            $interactionEvents->recordForLead(
+                interactionId: $interactionEvents->newInteractionId(),
+                lead: $this->lead,
+                eventType: 'followup_failed',
+                eventSource: 'process_lead_followup_job',
+                payload: [
+                    'attempt' => $this->lead->followup_count + 1,
+                    'error' => mb_substr($exception->getMessage(), 0, 500),
+                ],
+            );
+        } catch (\Throwable $bookkeepingError) {
+            Log::error('ProcessLeadFollowUpJob: failed-handler bookkeeping error', [
+                'lead_id' => $this->lead->id,
+                'error' => $bookkeepingError->getMessage(),
+            ]);
+        }
     }
 }

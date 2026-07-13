@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\AgentConfig;
 use App\Models\AgentFollowUpSetting;
-use App\Models\FollowUpSetting;
 use App\Models\Lead;
 use Illuminate\Support\Facades\Cache;
 
@@ -13,9 +12,11 @@ class FollowUpSettingsResolver
     /**
      * Resolution chain (first hit wins):
      *   1. agent_followup_settings row (per agent / per WABA)
-     *   2. followup_settings row       (tenant defaults)
-     *   3. agent_configs legacy row    (pre-tenant table)
-     *   4. hardcoded defaults
+     *   2. agent_configs legacy row    (pre-tenant table)
+     *   3. hardcoded defaults
+     *
+     * The former tenant-level followup_settings layer was removed (F4): it never
+     * had a production writer, so it only added a dead lookup per resolution.
      */
 
     /**
@@ -57,20 +58,6 @@ class FollowUpSettingsResolver
      */
     public function forTenant(string $tenantId, ?int $agentId = null): array
     {
-        $tenantCacheKey = "followup_settings:tenant:{$tenantId}";
-
-        $settings = Cache::remember($tenantCacheKey, 300, function () use ($tenantId): array {
-            $settings = FollowUpSetting::withoutGlobalScope('tenant')
-                ->where('tenant_id', $tenantId)
-                ->first();
-
-            return $settings?->toArray() ?? [];
-        });
-
-        if ($settings !== []) {
-            return $this->normalize($settings);
-        }
-
         $legacyCacheKey = $agentId === null
             ? "followup_settings:tenant:{$tenantId}:legacy"
             : "followup_settings:tenant:{$tenantId}:agent:{$agentId}:legacy";
@@ -80,7 +67,6 @@ class FollowUpSettingsResolver
 
     public function forget(string $tenantId, ?int $agentId = null): void
     {
-        Cache::forget("followup_settings:tenant:{$tenantId}");
         Cache::forget("followup_settings:tenant:{$tenantId}:legacy");
 
         if ($agentId !== null) {

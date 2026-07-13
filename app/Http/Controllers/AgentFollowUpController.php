@@ -44,7 +44,7 @@ class AgentFollowUpController extends Controller
                 'followup_window_start' => substr((string) ($row?->business_window_start ?? '08:00'), 0, 5),
                 'followup_window_end' => substr((string) ($row?->business_window_end ?? '20:00'), 0, 5),
                 'followup_interval_days' => $intervalDays,
-                'message_type' => $row?->message_type ?? 'reengajamento',
+                'message_type' => $row?->message_type ?? 'contextual',
                 'tone' => $row?->tone ?? 'consultivo',
                 'persuasion_intensity' => (int) ($row?->persuasion_intensity ?? 2),
                 'custom_instructions' => $row?->custom_instructions ?? '',

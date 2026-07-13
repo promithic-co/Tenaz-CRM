@@ -8,23 +8,32 @@ use App\Ai\Tools\AtualizarStatusLeadTool;
 use App\Ai\Tools\ConsultarCreditoInssTool;
 use App\Ai\Tools\EscalarParaHumanoTool;
 use App\Services\AgentService;
+use App\Services\FollowUpSettingsResolver;
 use App\Services\FollowUpWindowService;
 use Carbon\Carbon;
 use Stringable;
 
 class CredFlowFollowUpAgent extends BaseCustomerServiceAgent
 {
+    /**
+     * Follow-up parameters come from FollowUpSettingsResolver — the same source the
+     * engine (CheckFollowUpsCommand / FollowUpWindowService) uses — so the prompt's
+     * attempt counter and is_last/farewell logic can never diverge from what the
+     * engine enforces. Legacy AgentConfig supplies only UI-era fields (agent_name,
+     * followup_approach) that have no resolver equivalent.
+     */
     public function instructions(): Stringable|string
     {
         $cfg = $this->config();
-        $maxCount = (int) ($cfg['followup_max_count'] ?? 4);
+        $settings = app(FollowUpSettingsResolver::class)->forLead($this->lead);
+        $maxCount = (int) ($settings['max_attempts_within_window'] ?? 2);
         $currentCount = (int) ($this->lead->followup_count ?? 0);
         $attemptNumber = $currentCount + 1;
         $isLast = $currentCount >= ($maxCount - 1);
-        $messageType = (string) ($cfg['followup_message_type'] ?? 'reengajamento');
-        $tone = (string) ($cfg['followup_tone'] ?? 'consultivo');
-        $persuasionIntensity = (int) ($cfg['followup_persuasion_intensity'] ?? 2);
-        $customInstructions = trim((string) ($cfg['followup_custom_instructions'] ?? ''));
+        $messageType = (string) ($settings['message_type'] ?? 'contextual');
+        $tone = (string) ($settings['tone'] ?? 'consultivo');
+        $persuasionIntensity = (int) ($settings['persuasion_intensity'] ?? 2);
+        $customInstructions = trim((string) ($settings['custom_instructions'] ?? ''));
         $toneByAttempt = $this->toneByAttempt($currentCount, $isLast, $tone, $persuasionIntensity);
         $windowHint = $this->buildCustomerServiceWindowHint();
 
@@ -136,8 +145,10 @@ class CredFlowFollowUpAgent extends BaseCustomerServiceAgent
     private function buildCustomerServiceWindowHint(): string
     {
         $window = app(FollowUpWindowService::class);
-        $closesAt = $window->windowClosesAt($this->lead);
-        $remainingMinutes = $window->remainingMinutes($this->lead);
+        // Free-form window = customer-service (24h) OR free entry point (72h, F7) —
+        // whichever closes later. Covers FEP-only leads that never wrote.
+        $closesAt = $window->freeFormWindowClosesAt($this->lead);
+        $remainingMinutes = $window->freeFormRemainingMinutes($this->lead);
 
         if (! $closesAt) {
             return "\n[Janela WhatsApp: nao ha ultima mensagem do cliente registrada. Nao tente reabrir conversa fora da janela.]";

@@ -66,6 +66,42 @@ class ConversationAutomationService
     }
 
     /**
+     * Batch-resolve the ai_mode with instance-default fallback only, for the
+     * follow-up engine: a falsy `ai_mode` inherits the instance `default_ai_mode`,
+     * but the agent-null → manual rule is NOT applied — CheckFollowUpsCommand
+     * admits agent-less leads by design, so forcing manual here would silently
+     * pause every one of them. A lead with no resolvable mode yields null so
+     * FollowUpWindowService keeps its legacy raw-column behavior.
+     *
+     * @param  Collection<int, Lead>  $leads
+     * @return array<int, ?string> [leadId => mode|null]
+     */
+    public function resolveInstanceDefaultedModes(Collection $leads): array
+    {
+        $instanceIds = $leads->pluck('whatsapp_instance_id')->filter()->unique()->values();
+
+        $defaultModesByInstance = $instanceIds->isEmpty()
+            ? collect()
+            : WhatsappInstance::withoutGlobalScope('tenant')
+                ->whereIn('id', $instanceIds)
+                ->pluck('default_ai_mode', 'id');
+
+        $resolved = [];
+
+        foreach ($leads as $lead) {
+            $mode = $lead->ai_mode;
+
+            if (! $mode && $lead->whatsapp_instance_id) {
+                $mode = $defaultModesByInstance->get($lead->whatsapp_instance_id);
+            }
+
+            $resolved[$lead->id] = $mode ?: null;
+        }
+
+        return $resolved;
+    }
+
+    /**
      * Instance-id keyed resolution. Fallback to the instance default is guarded on
      * instance presence and triggered for any falsy `ai_mode` (null OR empty string),
      * matching ConversasController::resolveModeWithCache.

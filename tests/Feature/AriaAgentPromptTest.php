@@ -2,10 +2,13 @@
 
 use App\Ai\Agents\CredFlowAgent;
 use App\Ai\Agents\CredFlowFollowUpAgent;
+use App\Models\Agent;
+use App\Models\AgentFollowUpSetting;
 use App\Models\AppSetting;
 use App\Models\Lead;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     AppSetting::flushCache();
@@ -276,27 +279,18 @@ test('prompt inclui instrução para menores de idade', function () {
 
 test('followup prompt varia conforme numero da tentativa', function () {
     // Ensure max_attempts_within_window is high enough that count=0..2 are not "last attempt".
-    \App\Models\FollowUpSetting::create([
-        'tenant_id' => (string) Lead::factory()->create()->tenant_id,
-        'enabled' => true,
-        'first_delay_minutes' => 10,
-        'min_interval_minutes' => 60,
+    $agent = Agent::factory()->create();
+    AgentFollowUpSetting::factory()->create([
+        'agent_id' => $agent->id,
+        'tenant_id' => $agent->tenant_id,
         'max_attempts_within_window' => 5,
-        'business_window_start' => '08:00',
-        'business_window_end' => '20:00',
-        'timezone' => 'America/Sao_Paulo',
-        'message_type' => 'contextual',
-        'tone' => 'consultivo',
-        'persuasion_intensity' => 2,
-        'custom_instructions' => '',
     ]);
 
-    $tenantId = \App\Models\FollowUpSetting::query()->value('tenant_id');
-    app(\App\Services\FollowUpSettingsResolver::class)->forget((string) $tenantId);
+    $tenantId = $agent->tenant_id;
 
-    $lead0 = Lead::factory()->create(['tenant_id' => $tenantId, 'status' => 'qualificado', 'followup_count' => 0]);
-    $lead1 = Lead::factory()->create(['tenant_id' => $tenantId, 'status' => 'qualificado', 'followup_count' => 1]);
-    $lead2 = Lead::factory()->create(['tenant_id' => $tenantId, 'status' => 'qualificado', 'followup_count' => 2]);
+    $lead0 = Lead::factory()->create(['tenant_id' => $tenantId, 'agent_id' => $agent->id, 'status' => 'qualificado', 'followup_count' => 0]);
+    $lead1 = Lead::factory()->create(['tenant_id' => $tenantId, 'agent_id' => $agent->id, 'status' => 'qualificado', 'followup_count' => 1]);
+    $lead2 = Lead::factory()->create(['tenant_id' => $tenantId, 'agent_id' => $agent->id, 'status' => 'qualificado', 'followup_count' => 2]);
 
     $prompt0 = (string) (new CredFlowFollowUpAgent($lead0))->instructions();
     $prompt1 = (string) (new CredFlowFollowUpAgent($lead1))->instructions();

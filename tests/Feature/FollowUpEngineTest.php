@@ -5,9 +5,11 @@ use App\Jobs\ProcessIncomingWhatsAppMessageJob;
 use App\Jobs\ProcessLeadFollowUpJob;
 use App\Models\Agent;
 use App\Models\AgentConfig;
+use App\Models\AgentFollowUpSetting;
 use App\Models\FollowupMessage;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
+use App\Models\WhatsappOutboxMessage;
 use App\Services\AgentService;
 use App\Services\FollowUpSettingsResolver;
 use App\Services\FollowUpWindowService;
@@ -164,6 +166,147 @@ describe('CheckFollowUpsCommand', function () {
         Carbon::setTestNow();
     });
 
+    test('does not skip later leads when earlier chunk entries are deactivated mid-scan', function () {
+        config(['credflow.followup.check_chunk_size' => 2]);
+        Queue::fake();
+
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+
+        // Lowest ids: deactivated in-loop (max reached), shrinking the filtered set.
+        Lead::factory()->count(2)->create([
+            'is_sandbox' => false,
+            'followup_status' => 'active',
+            'followup_count' => 99,
+            'last_interaction_at' => now()->subHours(2),
+            'last_inbound_at' => now()->subHours(2),
+        ]);
+
+        // Higher ids: eligible — an offset-based chunk() scan would skip these.
+        $eligible = Lead::factory()->count(2)->create([
+            'is_sandbox' => false,
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subMinutes(30),
+            'last_inbound_at' => now()->subMinutes(30),
+        ]);
+
+        $this->artisan('credflow:check-followups');
+
+        foreach ($eligible as $lead) {
+            Queue::assertPushed(ProcessLeadFollowUpJob::class, fn ($job): bool => $job->lead->id === $lead->id);
+        }
+    });
+
+    test('dispatches free-entry-point-only lead after first delay (F7)', function () {
+        Queue::fake();
+
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+
+        $lead = Lead::factory()->create([
+            'is_sandbox' => false,
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_inbound_at' => null,
+            'last_interaction_at' => null,
+            'free_entry_point_started_at' => now()->subMinutes(30),
+            'free_entry_point_expires_at' => now()->addHours(71),
+        ]);
+
+        $this->artisan('credflow:check-followups');
+
+        Queue::assertPushed(ProcessLeadFollowUpJob::class, fn ($job): bool => $job->lead->id === $lead->id);
+    });
+
+    test('does not dispatch free-entry-point-only lead before first delay elapses', function () {
+        Queue::fake();
+
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+
+        Lead::factory()->create([
+            'is_sandbox' => false,
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_inbound_at' => null,
+            'last_interaction_at' => null,
+            'free_entry_point_started_at' => now()->subMinutes(2),
+            'free_entry_point_expires_at' => now()->addHours(71),
+        ]);
+
+        $this->artisan('credflow:check-followups');
+
+        Queue::assertNotPushed(ProcessLeadFollowUpJob::class);
+    });
+
+    test('deactivates free-entry-point-only lead once the window expires', function () {
+        Queue::fake();
+
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+
+        $lead = Lead::factory()->create([
+            'is_sandbox' => false,
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_inbound_at' => null,
+            'last_interaction_at' => null,
+            'free_entry_point_started_at' => now()->subHours(80),
+            'free_entry_point_expires_at' => now()->subHours(8),
+        ]);
+
+        $this->artisan('credflow:check-followups');
+
+        Queue::assertNotPushed(ProcessLeadFollowUpJob::class);
+        expect($lead->fresh()->followup_status)->toBe('inactive');
+    });
+
+    test('does not dispatch when instance default mode is manual and lead ai_mode is unset', function () {
+        Queue::fake();
+
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+
+        $instance = WhatsappInstance::factory()->create([
+            'default_ai_mode' => Lead::AI_MODE_MANUAL,
+        ]);
+
+        $lead = Lead::factory()->create([
+            'is_sandbox' => false,
+            'ai_mode' => null,
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subMinutes(30),
+            'last_inbound_at' => now()->subMinutes(30),
+            'whatsapp_instance_id' => $instance->id,
+        ]);
+
+        $this->artisan('credflow:check-followups');
+
+        Queue::assertNotPushed(ProcessLeadFollowUpJob::class);
+        expect($lead->fresh()->followup_status)->toBe('paused');
+    });
+
+    test('still dispatches when instance default mode is automatic and lead ai_mode is unset', function () {
+        Queue::fake();
+
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+
+        $instance = WhatsappInstance::factory()->create([
+            'default_ai_mode' => Lead::AI_MODE_AUTOMATIC,
+        ]);
+
+        Lead::factory()->create([
+            'is_sandbox' => false,
+            'ai_mode' => null,
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subMinutes(30),
+            'last_inbound_at' => now()->subMinutes(30),
+            'whatsapp_instance_id' => $instance->id,
+        ]);
+
+        $this->artisan('credflow:check-followups');
+
+        Queue::assertPushed(ProcessLeadFollowUpJob::class);
+    });
+
     test('ignores inactive leads', function () {
         Queue::fake();
 
@@ -314,6 +457,129 @@ describe('ProcessLeadFollowUpJob', function () {
         expect($lead->followup_status)->toBe('inactive')
             ->and($lead->followup_count)->toBe(2)
             ->and($lead->last_interaction_at->greaterThan(now()->subMinute()))->toBeTrue();
+    });
+
+    test('deactivates lead without invoking the agent when no whatsapp instance is linked', function () {
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+        CredFlowFollowUpAgent::fake(['unused']);
+
+        $lead = Lead::factory()->create([
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subHours(2),
+            'last_inbound_at' => now()->subHours(2),
+            'whatsapp_instance_id' => null,
+        ]);
+
+        $job = new ProcessLeadFollowUpJob($lead);
+        $job->handle(
+            app(WhatsappOutboxService::class),
+            app(FollowUpSettingsResolver::class),
+            app(FollowUpWindowService::class),
+            app(PauseService::class),
+        );
+
+        CredFlowFollowUpAgent::assertNeverPrompted();
+        expect($lead->fresh()->followup_status)->toBe('inactive')
+            ->and(FollowupMessage::where('lead_id', $lead->id)->count())->toBe(0);
+    });
+
+    test('permanent failure records a failed attempt row that defers the next dispatch', function () {
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+
+        $lead = Lead::factory()->create([
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subHours(2),
+            'last_inbound_at' => now()->subHours(2),
+        ]);
+
+        (new ProcessLeadFollowUpJob($lead))->failed(new RuntimeException('provider down'));
+
+        $row = FollowupMessage::where('lead_id', $lead->id)->firstOrFail();
+        expect($row->status)->toBe('failed')
+            ->and($row->attempt)->toBe(1)
+            ->and($lead->fresh()->followup_count)->toBe(0);
+
+        // The failed row sets the backoff floor: not eligible again until min_interval passes.
+        $settings = app(FollowUpSettingsResolver::class)->forLead($lead);
+        $evaluation = app(FollowUpWindowService::class)->evaluate($lead->fresh(), $settings);
+        expect($evaluation['eligible'])->toBeFalse()
+            ->and($evaluation['reason'])->toBe('first_delay_not_reached');
+    });
+
+    test('prompt reads follow-up parameters from the settings resolver, not legacy AgentConfig', function () {
+        $agent = Agent::factory()->create();
+
+        AgentConfig::factory()->create([
+            'agent_id' => $agent->id,
+            'tenant_id' => $agent->tenant_id,
+            'followup_max_count' => 9,
+            'followup_message_type' => 'reengajamento',
+            'followup_tone' => 'premium',
+            'followup_persuasion_intensity' => 1,
+        ]);
+
+        AgentFollowUpSetting::factory()->create([
+            'agent_id' => $agent->id,
+            'tenant_id' => $agent->tenant_id,
+            'max_attempts_within_window' => 3,
+            'message_type' => 'urgencia',
+            'tone' => 'direto',
+            'persuasion_intensity' => 5,
+            'custom_instructions' => 'Sempre mencione o prazo de validade da proposta.',
+        ]);
+
+        $lead = Lead::factory()->create([
+            'agent_id' => $agent->id,
+            'tenant_id' => $agent->tenant_id,
+            'followup_count' => 0,
+        ]);
+
+        $prompt = (string) (new CredFlowFollowUpAgent($lead))->instructions();
+
+        expect($prompt)->toContain('Tentativa 1 de 3')
+            ->toContain('Tipo de mensagem: urgencia')
+            ->toContain('Tom de voz: direto')
+            ->toContain('Intensidade de persuasao: 5/5')
+            ->toContain('Sempre mencione o prazo de validade da proposta.')
+            ->not->toContain('Tentativa 1 de 9')
+            ->not->toContain('Tom de voz: premium');
+    });
+
+    test('rolls back outbox rows when follow-up bookkeeping fails in the same transaction', function () {
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+        CredFlowFollowUpAgent::fake(['Mensagem transacional de teste']);
+
+        $instance = WhatsappInstance::factory()->create([
+            'tenant_id' => 'default',
+            'name' => 'test-instance',
+        ]);
+
+        $lead = Lead::factory()->create([
+            'tenant_id' => 'default',
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subHours(2),
+            'last_inbound_at' => now()->subHours(2),
+            'whatsapp_instance_id' => $instance->id,
+        ]);
+
+        FollowupMessage::creating(function (): void {
+            throw new RuntimeException('bookkeeping failure');
+        });
+
+        $job = new ProcessLeadFollowUpJob($lead);
+
+        expect(fn () => $job->handle(
+            app(WhatsappOutboxService::class),
+            app(FollowUpSettingsResolver::class),
+            app(FollowUpWindowService::class),
+            app(PauseService::class),
+        ))->toThrow(RuntimeException::class, 'bookkeeping failure');
+
+        expect(WhatsappOutboxMessage::withoutGlobalScopes()->where('lead_id', $lead->id)->count())->toBe(0)
+            ->and($lead->fresh()->followup_count)->toBe(0);
     });
 
     test('has correct retry configuration', function () {

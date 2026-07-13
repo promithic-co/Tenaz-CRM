@@ -100,6 +100,8 @@ return [
         'max_count' => env('FOLLOWUP_MAX_COUNT', 4),
         // Não enviar follow-up se o cliente enviou mensagem nos últimos N minutos (usa last_inbound_at)
         'skip_if_recent_inbound_minutes' => (int) env('FOLLOWUP_SKIP_IF_RECENT_INBOUND_MINUTES', 30),
+        // Tamanho do chunk do credflow:check-followups (chunkById sobre leads ativos)
+        'check_chunk_size' => (int) env('FOLLOWUP_CHECK_CHUNK_SIZE', 200),
     ],
 
     'circuit_breaker' => [

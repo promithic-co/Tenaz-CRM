@@ -62,7 +62,11 @@ class WhatsappOutboxService
             }
 
             if (! app()->runningUnitTests()) {
-                $job = ProcessWhatsappOutboxMessageJob::dispatch($outbox->id);
+                // afterCommit: when queued inside a transaction (e.g. follow-up send +
+                // bookkeeping), the job only dispatches if the transaction commits — a
+                // rollback discards it instead of processing an outbox row that no
+                // longer exists. Outside a transaction it dispatches immediately.
+                $job = ProcessWhatsappOutboxMessageJob::dispatch($outbox->id)->afterCommit();
                 if ($delay) {
                     $job->delay(now()->addSeconds((int) $delay));
                 }

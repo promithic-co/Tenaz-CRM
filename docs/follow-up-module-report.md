@@ -1,86 +1,54 @@
 # Relatorio do modulo de follow-up
 
-## Estado atual
+Atualizado em 2026-07-13. Reflete o codigo atual; a versao anterior citava componentes que nao existem mais (`aria:check-followups`, `AriaFollowUpAgent`, `WhatsAppService` direto, `zombie_cutoff_days`, exclusao por `campaign_id`).
 
-O follow-up automatico esta implementado como um fluxo por lead e por agente:
+## Fluxo
 
-- `aria:check-followups` avalia leads com `followup_status = active`.
-- `ProcessLeadFollowUpJob` gera a mensagem com `AriaFollowUpAgent`.
-- `WhatsAppService` envia a mensagem pela instancia WhatsApp resolvida para o lead/agente.
-- `followup_messages` registra tentativa, texto, tom e status enviado.
-- respostas recebidas pelo cliente desativam o follow-up em `ProcessIncomingWhatsAppMessageJob`.
+1. Scheduler roda `credflow:check-followups` a cada 5 minutos (`routes/console.php`).
+2. `CheckFollowUpsCommand`:
+   - desativa em massa leads ativos fora da janela de atendimento (24h desde `last_inbound_at` / `service_window_expires_at`, considerando tambem `free_entry_point_expires_at`);
+   - alerta via `AlertService` se mais de 5 jobs da fila `followups` falharam na ultima hora;
+   - varre leads `followup_status = active` com `last_inbound_at` preenchido OU free entry point ainda aberto em `chunkById` (tamanho em `credflow.followup.check_chunk_size`, env `FOLLOWUP_CHECK_CHUNK_SIZE`), avalia cada um com `FollowUpWindowService::evaluate()` e despacha `ProcessLeadFollowUpJob` para os elegiveis (jitter opcional em `credflow.jobs.cron_dispatch_jitter_seconds`).
+3. `ProcessLeadFollowUpJob` (fila `followups`, unico por lead ate iniciar processamento, `tries=3`, `backoff=[60,300]`, `timeout=120`):
+   - re-checa status ativo, elegibilidade e inbound recente (`credflow.followup.skip_if_recent_inbound_minutes`, default 30);
+   - resolve a instancia WhatsApp ANTES de chamar o LLM — lead sem instancia utilizavel e desativado sem gastar chamada de agente;
+   - claim por tentativa no cache (`followup_send:{lead}:{attempt}`) impede envio duplicado em retry;
+   - gera a mensagem com `CredFlowFollowUpAgent` (retomando a conversa existente quando ha `conversation_id`);
+   - envia via `WhatsappOutboxService::queueSplitTextForLead` → outbox com chave de idempotencia → `ProcessWhatsappOutboxMessageJob` (dispatch `afterCommit`) → provider Meta Cloud;
+   - grava `followup_messages` (status `sent`), incrementa `followup_count` e atualiza `last_interaction_at` na MESMA transacao do enfileiramento do outbox;
+   - resposta vazia/sentinela grava linha `no_reply`; falha permanente do job grava linha `failed` — ambas servem de piso de backoff para `nextDueAt()` sem consumir tentativa;
+   - ao atingir o maximo de tentativas, desativa o follow-up.
+4. Resposta inbound do cliente desativa o follow-up (`IncomingConversationPersister`, transacao ATOM-4).
 
-O envio ja passa pela abstracao atual de WhatsApp. Quando a instancia existe em `whatsapp_instances`, `WhatsAppService` delega para o provider Meta Cloud configurado:
+## Resolucao de configuracao
 
-- `MetaCloudProvider`, para WhatsApp Cloud API oficial.
+`FollowUpSettingsResolver` (cache 300s por chave), primeira camada com linha vence:
 
-Se a instancia nao for encontrada no banco, o envio deve falhar em vez de usar fallback de provider antigo.
+1. `agent_followup_settings` (por agente) — escrita pela tela `/agentes/{agent}/follow-up`;
+2. `agent_configs` legado (espelhado pela mesma tela para compatibilidade);
+3. defaults: enabled, first_delay 10min, min_interval 60min, max 2 tentativas, janela 08:00–20:00 America/Sao_Paulo, message_type `contextual`, tone `consultivo`, persuasao 2.
 
-## Configuracao disponivel
+A antiga camada por tenant (`followup_settings`) foi removida em 2026-07-13 (auditoria F4): nunca teve writer em producao. Tabela dropada por migration.
 
-A tela de configuracao de follow-up fica em:
+O prompt do `CredFlowFollowUpAgent` le os mesmos valores do resolver (max de tentativas, tipo, tom, persuasao, instrucoes custom), garantindo que `is_last`/despedida coincidam com o que o engine aplica. `agent_name` e `followup_approach` continuam vindo do `AgentConfig` legado (campos sem equivalente no resolver).
 
-- `/agentes/{agent}/follow-up`, configuracao real por agente.
-- `/agente/follow-up`, rota legada que redireciona para o agente padrao/primeiro agente do usuario.
+## Elegibilidade (`FollowUpWindowService::evaluate`)
 
-Tambem foi adicionado um item `Follow-up` abaixo do menu `Agentes`.
+Razoes de recusa, em ordem: `disabled`, `sandbox`, `not_active`, `human_paused` (modo manual efetivo — `ai_mode` com fallback no `default_ai_mode` da instancia —, estagio de handoff humano, IA pausada ou numero pausado no `PauseService`), `terminal_status`, `no_inbound_window`, `window_expired_requires_hsm`, `outside_business_hours`, `max_reached`, `first_delay_not_reached` / `interval_not_reached`. Janela overnight (fim < inicio, ex. 22:00→06:00) e suportada.
 
-Campos configuraveis:
+## Configuracao pela UI
 
-- atraso da primeira tentativa em minutos;
-- horario diario de envio;
-- janela permitida de envio;
-- intervalo em dias entre tentativas;
-- quantidade maxima de tentativas;
-- abordagem geral;
-- tipo de mensagem;
-- tom de voz;
-- intensidade de persuasao;
-- instrucoes adicionais para o prompt.
+`/agentes/{agent}/follow-up` (`AgentFollowUpController` + `UpdateAgentFollowUpRequest`): atraso da primeira tentativa, horario diario (campo legado de UI), maximo de tentativas, abordagem, janela (aceita overnight), intervalo em dias (vira `min_interval_minutes`), tipo de mensagem (inclui `contextual`, o default do engine), tom, persuasao e instrucoes custom.
 
-## Integracao 100% com a stack
+## Requisitos de producao
 
-Para operar em producao, a stack precisa garantir estes pontos:
+1. `php artisan schedule:run` a cada minuto.
+2. Worker na fila: `php artisan queue:work --queue=followups,default` (Horizon cobre).
+3. Redis/cache funcional (unicidade de job, claim por tentativa, cache do resolver).
+4. Lead com `whatsapp_instance_id` valido apontando para `whatsapp_instances` com provider Meta Cloud configurado.
+5. Webhook inbound ativo para atualizar `last_inbound_at`/`service_window_expires_at` e encerrar follow-ups quando o cliente responde.
+6. Lead armado com `followup_status = active` e `followup_count = 0` (armado na qualificacao pelas tools, na UI ou em bulk).
 
-1. Scheduler do Laravel rodando a cada minuto:
-   `php artisan schedule:run`
+## Free entry point (F7)
 
-2. Queue worker ouvindo a fila de follow-up:
-   `php artisan queue:work --queue=followups,default`
-
-3. Redis/cache funcional para `Cache::lock`, evitando disparo duplicado.
-
-4. Instancia WhatsApp vinculada ao agente em `whatsapp_instances.agent_id`.
-
-5. Webhook inbound ativo para a mesma instancia. Isso e necessario para atualizar `last_inbound_at`, encerrar follow-ups quando o cliente responde e evitar envio logo apos uma mensagem recebida.
-
-6. Provider Meta Cloud configurado por instancia:
-   - `provider = meta_cloud`, `meta_phone_number_id`, `meta_access_token`.
-
-7. Leads qualificados precisam ter:
-   - `agent_id`;
-   - `tenant_id`;
-   - `whatsapp`;
-   - `followup_status = active`;
-   - `followup_count = 0`;
-   - `last_interaction_at`.
-
-## Pontos de atencao
-
-- O comando ignora leads com `campaign_id`, portanto campanhas em massa nao entram no follow-up organico.
-- O cutoff de seguranca desativa leads ativos sem interacao antiga conforme `aria.followup.zombie_cutoff_days`.
-- O prompt de follow-up usa historico da conversa quando `conversation_id` existe.
-- Templates de prompt do tipo `followup` agora recebem as variaveis `approach`, `tone_by_attempt`, `message_type`, `tone`, `persuasion_intensity` e `custom_instructions`.
-- A tabela `followup_messages.tone` grava o tom configurado no envio.
-
-## Checklist de validacao manual
-
-1. Criar ou abrir um agente em `/agentes`.
-2. Abrir `Follow-up`.
-3. Salvar tipo de mensagem, tom e persuasao.
-4. Criar lead qualificado com `followup_status = active`.
-5. Rodar `php artisan aria:check-followups`.
-6. Confirmar que um `ProcessLeadFollowUpJob` foi despachado.
-7. Confirmar envio pela instancia vinculada ao agente.
-8. Confirmar registro em `followup_messages`.
-9. Simular resposta inbound e confirmar que o lead volta para `followup_status = inactive`.
+Leads com free entry point aberto e sem `last_inbound_at` entram na varredura desde 2026-07-13. O `first_delay`/`min_interval` ancoram em `free_entry_point_started_at` quando nao ha inbound. Observacao: hoje o unico writer dos campos FEP e `markInbound` (que tambem preenche `last_inbound_at`), entao leads FEP-only so surgirao quando algum fluxo futuro (ex. campanha CTWA) armar o FEP sem inbound — o engine ja esta pronto para isso.

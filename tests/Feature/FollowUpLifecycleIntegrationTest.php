@@ -5,7 +5,7 @@ use App\Ai\Tools\AtualizarStatusLeadTool;
 use App\Ai\Tools\ConsultarCreditoInssTool;
 use App\Models\Agent;
 use App\Models\AgentConfig;
-use App\Models\FollowUpSetting;
+use App\Models\AgentFollowUpSetting;
 use App\Models\Lead;
 use App\Models\User;
 use App\Services\FollowUpSettingsResolver;
@@ -115,15 +115,14 @@ test('follow-up agent instructions use effective follow-up settings', function (
         'tenant_id' => $user->tenantId,
     ]);
 
-    FollowUpSetting::create([
+    AgentFollowUpSetting::factory()->create([
+        'agent_id' => $agent->id,
         'tenant_id' => $user->tenantId,
-        'enabled' => true,
         'first_delay_minutes' => 7,
         'min_interval_minutes' => 45,
         'max_attempts_within_window' => 2,
         'business_window_start' => '09:00',
         'business_window_end' => '18:00',
-        'timezone' => 'America/Sao_Paulo',
         'message_type' => 'proposta',
         'tone' => 'direto',
         'persuasion_intensity' => 4,

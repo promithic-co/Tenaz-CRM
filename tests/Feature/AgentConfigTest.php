@@ -3,11 +3,13 @@
 use App\Models\Agent;
 use App\Models\AgentConfig;
 use App\Models\AppSetting;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Services\AgentConfigResolver;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     AppSetting::flushCache();
@@ -277,6 +279,49 @@ describe('Phase 11: Follow-up schedule validation', function () {
             ->assertSessionHasErrors('followup_interval_days');
     });
 
+    test('window fields reject out-of-range times', function () {
+        $user = User::factory()->create();
+        $agent = createAgentWithConfig($user);
+
+        $payload = [
+            'first_delay_minutes' => 30,
+            'daily_time' => '10:00',
+            'max_count' => 3,
+            'approach' => 'amigavel',
+            'followup_window_start' => '25:99',
+            'followup_window_end' => '20:00',
+            'followup_interval_days' => 1,
+        ];
+
+        $this->actingAs($user)
+            ->post(route('agentes.followup.update', $agent), $payload)
+            ->assertSessionHasErrors('followup_window_start');
+    });
+
+    test('overnight window (end before start) is accepted', function () {
+        $user = User::factory()->create();
+        $agent = createAgentWithConfig($user);
+
+        $payload = [
+            'first_delay_minutes' => 30,
+            'daily_time' => '10:00',
+            'max_count' => 3,
+            'approach' => 'amigavel',
+            'followup_window_start' => '22:00',
+            'followup_window_end' => '06:00',
+            'followup_interval_days' => 1,
+        ];
+
+        $this->actingAs($user)
+            ->post(route('agentes.followup.update', $agent), $payload)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $config = $agent->fresh()->config;
+        expect($config->followup_window_start)->toBe('22:00');
+        expect($config->followup_window_end)->toBe('06:00');
+    });
+
     test('new fields are persisted', function () {
         $user = User::factory()->create();
         $agent = createAgentWithConfig($user);
@@ -319,7 +364,7 @@ function createAgentWithConfig(User $user, string $name = 'Agente Teste'): Agent
 {
     // Ensure the user has a tenant so BelongsToTenant scopes resolve correctly.
     if ($user->tenants()->doesntExist()) {
-        $tenant = \App\Models\Tenant::create(['name' => $user->name.' Tenant']);
+        $tenant = Tenant::create(['name' => $user->name.' Tenant']);
         $user->tenants()->attach($tenant->id, ['role' => 'owner']);
     }
 

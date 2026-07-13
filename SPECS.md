@@ -303,17 +303,17 @@ All campaigns target a `ContactList`:
 
 ### 6.2 Configuration
 
-Resolved per-lead by `FollowUpSettingsResolver`:
-1. Per-agent `AgentConfig` settings
-2. Per-tenant `AppSetting`
-3. `config/credflow.php` defaults:
+Resolved per-lead by `FollowUpSettingsResolver` (first layer with a row wins):
+1. Per-agent `agent_followup_settings` row
+2. Legacy `agent_configs` row
+3. Hardcoded defaults:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `followup.first_delay_hours` | Configurable | Hours after last inbound before first follow-up |
-| `followup.daily_send_time` | Configurable | Time of day for follow-up attempts |
-| `followup.max_attempts` | Configurable | Max follow-up messages before giving up |
-| `followup.zombie_cutoff_days` | 14 | Days of silence before zombie status |
+| `first_delay_minutes` | 10 | Minutes after last inbound (or free entry point opening) before first follow-up |
+| `min_interval_minutes` | 60 | Minimum minutes between attempts |
+| `max_attempts_within_window` | 2 | Max follow-up messages before deactivating |
+| `business_window_start` / `end` | 08:00–20:00 | Send window (America/Sao_Paulo); overnight windows supported |
 
 ### 6.3 24h Window
 
