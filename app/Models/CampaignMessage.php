@@ -63,6 +63,7 @@ class CampaignMessage extends Model
         'delivered' => 4,
         'read' => 5,
         'failed' => 6,
+        'skipped' => 7,
     ];
 
     public function statusOrder(): int
@@ -112,6 +113,20 @@ class CampaignMessage extends Model
             'error_code' => $errorCode,
             'error_message' => $errorMessage,
             'failed_at' => now(),
+        ]);
+    }
+
+    /**
+     * Consent suppression at send time (CAMP-05): terminal, but NOT a delivery failure.
+     * Skipped rows stay out of total_failed so a mass opt-out cannot trip the failure-rate
+     * auto-pause, and out of total_sent so they never dilute delivery/read rates.
+     */
+    public function markSkipped(string $errorCode, string $errorMessage): void
+    {
+        $this->update([
+            'status' => 'skipped',
+            'error_code' => $errorCode,
+            'error_message' => $errorMessage,
         ]);
     }
 

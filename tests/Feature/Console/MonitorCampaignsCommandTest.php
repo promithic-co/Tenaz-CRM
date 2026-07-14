@@ -224,6 +224,30 @@ test('monitor-campaigns completes when the only entries without rows are opted o
     expect($campaign->fresh()->status)->toBe('completed');
 });
 
+test('monitor-campaigns treats skipped rows as settled for completion (CAMP-03/05)', function () {
+    $campaign = Campaign::factory()->sending()->create();
+    $entries = ContactListEntry::factory()->count(2)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+    ]);
+    // Suppressed at send time by the consent gate — terminal, must not hold the campaign open.
+    CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[1]->id,
+        'status' => 'skipped',
+        'error_code' => 'OPTED_OUT',
+    ]);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    expect($campaign->fresh()->status)->toBe('completed');
+});
+
 test('monitor-campaigns treats in_doubt rows as settled for completion (CAMP-03)', function () {
     $campaign = Campaign::factory()->sending()->create();
     $entries = ContactListEntry::factory()->count(2)->create([

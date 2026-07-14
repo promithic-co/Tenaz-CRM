@@ -9,6 +9,7 @@ use App\Exceptions\MetaNoWhatsAppException;
 use App\Exceptions\MetaRateLimitException;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
+use App\Models\Contact;
 use App\Models\ContactListEntry;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
@@ -152,10 +153,44 @@ class SendCampaignMessageJob implements ShouldQueue
             return;
         }
 
+        $contact = $entry->contact_id ? $entry->contact()->withoutGlobalScopes()->first() : null;
+
+        // Consent gate at send time (CAMP-05 / LGPD): the fan-out suppression only covers
+        // opt-outs known at dispatch — a contact who opts out while their staggered/parked job
+        // waits (up to hours or days) would still receive the template. The entry snapshot OR
+        // the canonical contact opting out suppresses the send here, right before any side
+        // effect. Skipped is terminal and deliberately not 'failed', so a mass opt-out can
+        // never trip the failure-rate auto-pause.
+        if ($entry->opt_in_status === 'opted_out' || ($contact !== null && $contact->opt_in_status === Contact::OPT_OUT)) {
+            $message->markSkipped('OPTED_OUT', 'Recipient opted out before the send slot.');
+
+            Log::info('SendCampaignMessageJob: recipient opted out, skipping send', [
+                'interaction_id' => $interactionId,
+                'message_id' => $message->id,
+                'campaign_id' => $campaign->id,
+            ]);
+
+            $interactionEvents->record(
+                interactionId: $interactionId,
+                tenantId: $campaign->tenant_id,
+                eventType: 'outbound_skipped_optout',
+                eventSource: 'send_campaign_message_job',
+                payload: [
+                    'campaign_id' => $campaign->id,
+                    'campaign_message_id' => $message->id,
+                    'contact_list_entry_id' => $entry->id,
+                ],
+                severity: 'warning',
+            );
+
+            return;
+        }
+
         // Resolve template params from mapping
         $resolvedParams = $this->resolveTemplateParams(
             $campaign->template_params_mapping ?? [],
-            $entry
+            $entry,
+            $contact
         );
 
         $message->update(['status' => 'queued', 'template_params_resolved' => $resolvedParams]);
@@ -479,7 +514,8 @@ class SendCampaignMessageJob implements ShouldQueue
             'delivered' => (int) ($campaign->total_delivered ?? 0),
             'failed' => (int) ($campaign->total_failed ?? 0),
             'read' => (int) ($campaign->total_read ?? 0),
-            'pending' => (int) ($campaign->total_recipients ?? 0) - (int) ($campaign->total_sent ?? 0) - (int) ($campaign->total_failed ?? 0),
+            'skipped' => (int) ($campaign->total_skipped ?? 0),
+            'pending' => (int) ($campaign->total_recipients ?? 0) - (int) ($campaign->total_sent ?? 0) - (int) ($campaign->total_failed ?? 0) - (int) ($campaign->total_skipped ?? 0),
         ]);
     }
 
@@ -569,10 +605,9 @@ class SendCampaignMessageJob implements ShouldQueue
      * @param  array<string, string>  $mapping
      * @return array<string, string>
      */
-    private function resolveTemplateParams(array $mapping, ContactListEntry $entry): array
+    private function resolveTemplateParams(array $mapping, ContactListEntry $entry, ?Contact $contact): array
     {
         $resolved = [];
-        $contact = $entry->contact_id ? $entry->contact()->withoutGlobalScopes()->first() : null;
 
         foreach ($mapping as $paramIndex => $path) {
             // Canonical contact lookups: prefer contact fields when path starts with "contact.".

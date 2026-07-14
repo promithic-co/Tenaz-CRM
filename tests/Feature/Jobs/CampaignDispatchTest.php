@@ -5,6 +5,7 @@ use App\Jobs\DispatchCampaignJob;
 use App\Jobs\SendCampaignMessageJob;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
+use App\Models\Contact;
 use App\Models\ContactListEntry;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
@@ -960,6 +961,51 @@ test('SendCampaignMessageJob parks a message that pops past the daily limit (CAM
     expect($message->fresh()->status)->toBe('pending')
         ->and($message->fresh()->provider_attempted_at)->toBeNull()
         ->and($campaign->fresh()->total_failed)->toBe(0);
+});
+
+test('SendCampaignMessageJob skips a recipient who opted out after dispatch (CAMP-05)', function () {
+    [$campaign, $message] = makeTenantSendable();
+    // Opt-out landed while the staggered job waited for its send slot.
+    $message->contactListEntry->update(['opt_in_status' => 'opted_out']);
+
+    bindNonSendingProvider();
+
+    (new SendCampaignMessageJob($message))->handle(app(CampaignService::class), app(WhatsAppProviderFactory::class), app(BroadcastDebouncer::class));
+
+    expect($message->fresh()->status)->toBe('skipped')
+        ->and($message->fresh()->error_code)->toBe('OPTED_OUT')
+        ->and($message->fresh()->provider_attempted_at)->toBeNull();
+});
+
+test('SendCampaignMessageJob honors an opt-out on the canonical contact (CAMP-05)', function () {
+    [$campaign, $message] = makeTenantSendable();
+
+    // Entry snapshot still says opted_in, but the canonical contact opted out.
+    $contact = Contact::factory()->optedOut()->forTenant((string) $campaign->tenant_id)->create();
+    $message->contactListEntry->update(['contact_id' => $contact->id]);
+
+    bindNonSendingProvider();
+
+    (new SendCampaignMessageJob($message))->handle(app(CampaignService::class), app(WhatsAppProviderFactory::class), app(BroadcastDebouncer::class));
+
+    expect($message->fresh()->status)->toBe('skipped')
+        ->and($message->fresh()->error_code)->toBe('OPTED_OUT');
+});
+
+test('skipped messages never count as failures for the auto-pause or counters (CAMP-05)', function () {
+    $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
+    CampaignMessage::factory()->sent()->count(12)->create(['campaign_id' => $campaign->id]);
+    CampaignMessage::factory()->count(30)->create(['campaign_id' => $campaign->id, 'status' => 'skipped', 'error_code' => 'OPTED_OUT']);
+
+    // A mass opt-out must not read as a delivery-failure storm.
+    expect($campaign->fresh()->failureRate())->toBe(0.0)
+        ->and(app(CampaignService::class)->checkAndAutoPause($campaign))->toBeFalse()
+        ->and($campaign->fresh()->status)->toBe('sending');
+
+    $withCounters = Campaign::query()->withCounters()->find($campaign->id);
+    expect($withCounters->total_skipped)->toBe(30)
+        ->and($withCounters->total_failed)->toBe(0)
+        ->and($withCounters->total_sent)->toBe(12);
 });
 
 test('SendCampaignMessageJob.failed parks an expired unattempted message of a paused campaign (CAMP-01/02)', function () {

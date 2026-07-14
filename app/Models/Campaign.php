@@ -49,12 +49,12 @@ class Campaign extends Model
      *
      * @var list<string>
      */
-    protected $hidden = ['agg_sent', 'agg_delivered', 'agg_read', 'agg_failed'];
+    protected $hidden = ['agg_sent', 'agg_delivered', 'agg_read', 'agg_failed', 'agg_skipped'];
 
     /**
      * Memoized message-derived counters for this instance.
      *
-     * @var array{sent: int, delivered: int, read: int, failed: int}|null
+     * @var array{sent: int, delivered: int, read: int, failed: int, skipped: int}|null
      */
     private ?array $countersCache = null;
 
@@ -202,6 +202,15 @@ class Campaign extends Model
     }
 
     /**
+     * Consent-suppressed sends (CAMP-05). Deliberately outside total_failed (failureRate
+     * and the auto-pause must not react to opt-outs) and outside total_sent.
+     */
+    public function getTotalSkippedAttribute(): int
+    {
+        return $this->resolveCounter('skipped');
+    }
+
+    /**
      * Eager-load the four message-derived counters as agg_* aliases in a single query of
      * correlated subqueries, so listing campaigns does not fire a per-row aggregate.
      */
@@ -212,6 +221,7 @@ class Campaign extends Model
             'messages as agg_delivered' => fn (Builder $q): Builder => $q->whereNotNull('delivered_at'),
             'messages as agg_read' => fn (Builder $q): Builder => $q->whereNotNull('read_at'),
             'messages as agg_failed' => fn (Builder $q): Builder => $q->where('status', 'failed'),
+            'messages as agg_skipped' => fn (Builder $q): Builder => $q->where('status', 'skipped'),
         ]);
     }
 
@@ -236,11 +246,11 @@ class Campaign extends Model
         }
 
         if (! $this->exists) {
-            return $this->countersCache = ['sent' => 0, 'delivered' => 0, 'read' => 0, 'failed' => 0];
+            return $this->countersCache = ['sent' => 0, 'delivered' => 0, 'read' => 0, 'failed' => 0, 'skipped' => 0];
         }
 
         $row = $this->messages()
-            ->selectRaw('count(sent_at) as sent_count, count(delivered_at) as delivered_count, count(read_at) as read_count, count(case when status = ? then 1 end) as failed_count', ['failed'])
+            ->selectRaw('count(sent_at) as sent_count, count(delivered_at) as delivered_count, count(read_at) as read_count, count(case when status = ? then 1 end) as failed_count, count(case when status = ? then 1 end) as skipped_count', ['failed', 'skipped'])
             ->first();
 
         return $this->countersCache = [
@@ -248,6 +258,7 @@ class Campaign extends Model
             'delivered' => (int) ($row->delivered_count ?? 0),
             'read' => (int) ($row->read_count ?? 0),
             'failed' => (int) ($row->failed_count ?? 0),
+            'skipped' => (int) ($row->skipped_count ?? 0),
         ];
     }
 }

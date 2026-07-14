@@ -136,6 +136,7 @@ function msgStatusBadgeClass(status: string): string {
         delivered: 'rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400',
         read: 'rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
         failed: 'rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        skipped: 'rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
     };
     return map[status] ?? 'rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground';
 }
@@ -144,6 +145,7 @@ function msgStatusLabel(status: string): string {
     const map: Record<string, string> = {
         pending: 'Pendente', queued: 'Na fila', sent: 'Enviado',
         delivered: 'Entregue', read: 'Lido', failed: 'Falha',
+        skipped: 'Ignorado (opt-out)',
     };
     return map[status] ?? status;
 }
@@ -410,6 +412,7 @@ function applyFilter(): void {
                         <option value="delivered">Entregue</option>
                         <option value="read">Lido</option>
                         <option value="failed">Falha</option>
+                        <option value="skipped">Ignorado (opt-out)</option>
                     </select>
                 </div>
 
