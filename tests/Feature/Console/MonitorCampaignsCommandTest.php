@@ -2,6 +2,7 @@
 
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
+use App\Models\ContactListEntry;
 use App\Services\AlertService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,8 +33,8 @@ test('monitor-campaigns finds stuck campaigns with a single grouped query (PERF-
     );
     DB::disableQueryLog();
 
-    // One grouped query for all three sending campaigns, not a max(created_at) per campaign.
-    expect($stuckQueries)->toHaveCount(1);
+    // One grouped query per sweep (completion + stuck), not a per-campaign aggregate.
+    expect($stuckQueries)->toHaveCount(2);
 
     $alerts->shouldHaveReceived('sendAlert')
         ->with('stuck_campaign', Mockery::any(), Mockery::on(fn ($ctx): bool => $ctx['campaign_id'] === $stuck->id))
@@ -104,6 +105,8 @@ test('monitor-campaigns leaves a sending campaign under its failure threshold se
     // 20 sent, 1 failed → 5% failure rate, under the 10% threshold.
     CampaignMessage::factory()->sent()->count(19)->create(['campaign_id' => $campaign->id]);
     CampaignMessage::factory()->sent()->count(1)->create(['campaign_id' => $campaign->id, 'status' => 'failed', 'failed_at' => now()]);
+    // Still-in-flight work keeps the campaign out of the CAMP-03 completion sweep.
+    CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'status' => 'queued']);
 
     $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
 
@@ -119,6 +122,131 @@ test('monitor-campaigns leaves campaigns without a wallet error untouched', func
         'error_code' => 'EXCEPTION',
         'failed_at' => now(),
     ]);
+    // Still-in-flight work keeps the campaign out of the CAMP-03 completion sweep.
+    CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'status' => 'queued']);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    expect($campaign->fresh()->status)->toBe('sending');
+});
+
+test('monitor-campaigns completes a sending campaign whose work is exhausted (CAMP-03)', function () {
+    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 2]);
+    $entries = ContactListEntry::factory()->count(2)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    // Mixed terminal states: the old counter predicate (total_sent >= total_recipients)
+    // never closed this campaign because the failed row has no sent_at.
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+    ]);
+    CampaignMessage::factory()->failed()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[1]->id,
+    ]);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    expect($campaign->fresh()->status)->toBe('completed')
+        ->and($campaign->fresh()->completed_at)->not->toBeNull();
+});
+
+test('monitor-campaigns does not complete a campaign with an actionable message row (CAMP-03)', function () {
+    foreach (['pending', 'queued'] as $status) {
+        $campaign = Campaign::factory()->sending()->create();
+        $entries = ContactListEntry::factory()->count(2)->create([
+            'contact_list_id' => $campaign->contact_list_id,
+            'opt_in_status' => 'opted_in',
+        ]);
+
+        CampaignMessage::factory()->sent()->create([
+            'campaign_id' => $campaign->id,
+            'contact_list_entry_id' => $entries[0]->id,
+        ]);
+        CampaignMessage::factory()->create([
+            'campaign_id' => $campaign->id,
+            'contact_list_entry_id' => $entries[1]->id,
+            'status' => $status,
+        ]);
+
+        $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+        expect($campaign->fresh()->status)->toBe('sending');
+    }
+});
+
+test('monitor-campaigns does not complete a campaign with a dispatchable entry missing its row (CAMP-03)', function () {
+    $campaign = Campaign::factory()->sending()->create();
+    $entries = ContactListEntry::factory()->count(2)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    // Fan-out crashed mid-run: one entry never got a message row and must still be sent.
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+    ]);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    expect($campaign->fresh()->status)->toBe('sending');
+});
+
+test('monitor-campaigns completes when the only entries without rows are opted out (CAMP-03)', function () {
+    $campaign = Campaign::factory()->sending()->create();
+    $sent = ContactListEntry::factory()->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+    // Suppressed at fan-out: never gets a row, must not hold the campaign open forever.
+    ContactListEntry::factory()->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_out',
+    ]);
+
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $sent->id,
+    ]);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    expect($campaign->fresh()->status)->toBe('completed');
+});
+
+test('monitor-campaigns treats in_doubt rows as settled for completion (CAMP-03)', function () {
+    $campaign = Campaign::factory()->sending()->create();
+    $entries = ContactListEntry::factory()->count(2)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+    ]);
+    // in_doubt is terminal by design (never re-sent); a late webhook still upgrades it
+    // after completion because the counters are derived from the message rows.
+    CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[1]->id,
+        'status' => 'in_doubt',
+        'provider_attempted_at' => now(),
+    ]);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    expect($campaign->fresh()->status)->toBe('completed');
+});
+
+test('monitor-campaigns skips campaigns with zero message rows to not race the dispatcher (CAMP-03)', function () {
+    // Sending but the fan-out has not run yet (e.g. a smart list awaiting materialization):
+    // entries and rows are both empty, and completing here would cancel the whole send.
+    $campaign = Campaign::factory()->sending()->create();
 
     $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
 

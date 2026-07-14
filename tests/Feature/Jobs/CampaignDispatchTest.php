@@ -853,6 +853,33 @@ test('CampaignMessage::claimProviderAttempt lets exactly one caller win (CAMP-02
         ->and($message->fresh()->provider_attempted_at)->not->toBeNull();
 });
 
+test('DispatchCampaignJob completes an exhausted campaign even with failures in the mix (CAMP-03)', function () {
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 2]);
+    $entries = ContactListEntry::factory()->count(2)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    // A resume run over a finished list: one sent, one failed. The old counter predicate
+    // (total_sent >= total_recipients) left this campaign in `sending` forever.
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+    ]);
+    CampaignMessage::factory()->failed()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[1]->id,
+    ]);
+
+    (new DispatchCampaignJob($campaign))->handle(app(CampaignService::class));
+
+    Queue::assertNotPushed(SendCampaignMessageJob::class);
+    expect($campaign->fresh()->status)->toBe('completed')
+        ->and($campaign->fresh()->completed_at)->not->toBeNull();
+});
+
 test('SendCampaignMessageJob.failed parks an expired unattempted message of a paused campaign (CAMP-01/02)', function () {
     [$campaign, $message] = makeTenantSendable();
     $campaign->update(['status' => 'paused']);

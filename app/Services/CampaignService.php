@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\CampaignStatusChanged;
 use App\Jobs\DispatchCampaignJob;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
@@ -181,6 +182,58 @@ class CampaignService
             }
 
             return false;
+        });
+    }
+
+    /**
+     * Complete a campaign whose work is exhausted (CAMP-03). Complete = no message row is
+     * still actionable (pending/queued — in flight or re-enqueueable) AND every dispatchable
+     * entry already has a row (fan-out finished; opted-out entries never get a row by design).
+     * The old counter predicate (total_sent >= total_recipients) could never close a campaign
+     * with a single failure or opt-out skip. in_doubt rows do not block: they are terminal by
+     * design (never re-sent) and a late webhook still upgrades their counters after completion.
+     * Same locked-row shape as the other transitions (DB-5) so a racing pause/cancel wins.
+     * Returns true if the campaign was completed.
+     */
+    public function checkAndComplete(Campaign $campaign): bool
+    {
+        return DB::transaction(function () use ($campaign): bool {
+            $locked = Campaign::query()->whereKey($campaign->getKey())->lockForUpdate()->first();
+
+            if (! $locked || ! $locked->isSending()) {
+                return false;
+            }
+
+            $hasActionableMessages = CampaignMessage::where('campaign_id', $locked->id)
+                ->whereIn('status', ['pending', 'queued'])
+                ->exists();
+
+            if ($hasActionableMessages) {
+                return false;
+            }
+
+            $hasUndispatchedEntries = (bool) $locked->contactList
+                ?->entries()
+                ->where('opt_in_status', '!=', 'opted_out')
+                ->whereNotIn('id', CampaignMessage::where('campaign_id', $locked->id)->select('contact_list_entry_id'))
+                ->exists();
+
+            if ($hasUndispatchedEntries) {
+                return false;
+            }
+
+            $locked->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
+
+            $campaign->setRawAttributes($locked->getAttributes());
+
+            CampaignStatusChanged::dispatch($locked->id, 'completed');
+
+            Log::info('CampaignService.complete', ['campaign_id' => $locked->id]);
+
+            return true;
         });
     }
 

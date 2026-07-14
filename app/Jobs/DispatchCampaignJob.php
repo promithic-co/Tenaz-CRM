@@ -175,10 +175,10 @@ class DispatchCampaignJob implements ShouldQueue
         if ($index === 0) {
             Log::info('DispatchCampaignJob: no pending entries', ['campaign_id' => $campaign->id]);
 
-            if ($campaign->total_sent >= $campaign->total_recipients && $campaign->total_recipients > 0) {
-                $campaign->update(['status' => 'completed', 'completed_at' => now()]);
-                CampaignStatusChanged::dispatch($campaign->id, 'completed');
-            }
+            // Single source of truth for completion (CAMP-03): the old counter predicate
+            // (total_sent >= total_recipients) never closed a campaign with a failure or an
+            // opt-out skip. checkAndComplete re-evaluates work exhaustion under a row lock.
+            $service->checkAndComplete($campaign);
 
             return;
         }

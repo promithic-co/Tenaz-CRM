@@ -20,6 +20,7 @@ class MonitorCampaignsCommand extends Command
     {
         $this->checkWalletErrors($campaignService, $alertService);
         $this->checkHighFailureRate($campaignService, $alertService);
+        $this->completeFinishedCampaigns($campaignService);
         $this->checkStuckCampaigns($alertService);
         $this->maybeSendDailySummary($alertService);
 
@@ -117,7 +118,58 @@ class MonitorCampaignsCommand extends Command
     }
 
     /**
-     * Rule 3: Stuck campaign — sending but no messages created in the last hour.
+     * Rule 3 (CAMP-03): terminal-state sweep — the only in-band completion check runs inside
+     * DispatchCampaignJob at fan-out time, so a campaign whose LAST message settles via a send
+     * worker or a delivery webhook stayed `sending` forever. This sweep closes any sending
+     * campaign whose work is exhausted, within one monitor cycle.
+     *
+     * Runs AFTER the pause rules: a campaign over its failure threshold must park as `paused`
+     * for operator review, not silently complete. Campaigns with zero message rows are skipped —
+     * their fan-out has not run yet (e.g. a smart list awaiting materialization), and completing
+     * them here would race DispatchCampaignJob and cancel the whole send; the dispatcher owns
+     * the empty-list completion path.
+     */
+    private function completeFinishedCampaigns(CampaignService $campaignService): void
+    {
+        $sendingCampaigns = Campaign::where('status', 'sending')->get();
+
+        if ($sendingCampaigns->isEmpty()) {
+            return;
+        }
+
+        // One grouped query for all sending campaigns (PERF-11): total rows + still-actionable
+        // rows per campaign. Only exhausted candidates reach the per-campaign locked re-check.
+        $messageStats = CampaignMessage::whereIn('campaign_id', $sendingCampaigns->modelKeys())
+            ->groupBy('campaign_id')
+            ->selectRaw("campaign_id, count(*) as total_rows, count(case when status in ('pending', 'queued') then 1 end) as actionable_rows")
+            ->get()
+            ->keyBy('campaign_id');
+
+        foreach ($sendingCampaigns as $campaign) {
+            $stats = $messageStats[$campaign->id] ?? null;
+
+            if ($stats === null || (int) $stats->actionable_rows > 0) {
+                continue;
+            }
+
+            try {
+                if ($campaignService->checkAndComplete($campaign)) {
+                    Log::info('MonitorCampaigns: completed exhausted campaign', [
+                        'campaign_id' => $campaign->id,
+                        'campaign_name' => $campaign->name,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('MonitorCampaigns: failed to complete campaign', [
+                    'campaign_id' => $campaign->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Rule 4: Stuck campaign — sending but no messages created in the last hour.
      */
     private function checkStuckCampaigns(AlertService $alertService): void
     {
@@ -148,7 +200,7 @@ class MonitorCampaignsCommand extends Command
     }
 
     /**
-     * Rule 4: Daily summary at 20:00.
+     * Rule 5: Daily summary at 20:00.
      */
     private function maybeSendDailySummary(AlertService $alertService): void
     {
