@@ -12,6 +12,11 @@ class CampaignPolicy
         return $user->isOwnerOrAdmin();
     }
 
+    public function create(User $user): bool
+    {
+        return $user->isOwnerOrAdmin();
+    }
+
     public function view(User $user, Campaign $campaign): bool
     {
         return $this->authorizeFor($user, $campaign);

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TenantRole;
 use App\Models\Campaign;
 use App\Models\ContactList;
 use App\Models\User;
@@ -19,6 +20,37 @@ function makeCampaignForUser(User $user): Campaign
 {
     return Campaign::factory()->create(['tenant_id' => $user->tenantId]);
 }
+
+function makeRestrictedCampaignUser(): User
+{
+    $user = User::factory()->create();
+    $user->tenants()->updateExistingPivot($user->tenantId, ['role' => TenantRole::User->value]);
+
+    return $user->fresh();
+}
+
+test('store is forbidden for a restricted (non-owner/admin) user', function () {
+    $user = makeRestrictedCampaignUser();
+    $instance = WhatsappInstance::factory()->create(['tenant_id' => $user->tenantId, 'user_id' => $user->id]);
+    $list = ContactList::factory()->create(['tenant_id' => $user->tenantId]);
+    $template = WhatsappTemplate::factory()->create(['tenant_id' => $user->tenantId, 'status' => 'APPROVED']);
+
+    $this->actingAs($user)->post('/campanhas', [
+        'name' => 'Bloqueada',
+        'whatsapp_instance_id' => $instance->id,
+        'contact_list_id' => $list->id,
+        'whatsapp_template_id' => $template->id,
+    ])->assertForbidden();
+
+    expect(Campaign::withoutGlobalScope('tenant')->where('name', 'Bloqueada')->exists())->toBeFalse();
+});
+
+test('create and index pages are forbidden for a restricted user', function () {
+    $user = makeRestrictedCampaignUser();
+
+    $this->actingAs($user)->get('/campanhas/create')->assertForbidden();
+    $this->actingAs($user)->get('/campanhas')->assertForbidden();
+});
 
 test('store creates draft campaign and redirects to show', function () {
     $user = makeCampaignUser();

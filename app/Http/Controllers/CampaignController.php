@@ -21,6 +21,8 @@ class CampaignController extends Controller
 
     public function index(): Response
     {
+        $this->authorize('viewAny', Campaign::class);
+
         // BelongsToTenant global scope on Campaign handles tenant filtering automatically
         $campaigns = Campaign::query()
             ->with(['whatsappInstance', 'whatsappTemplate', 'contactList'])
@@ -35,11 +37,15 @@ class CampaignController extends Controller
 
     public function create(Request $request): Response
     {
+        $this->authorize('create', Campaign::class);
+
         return Inertia::render('campanhas/Create', $this->pageProps->create($request));
     }
 
     public function store(StoreCampaignRequest $request): RedirectResponse
     {
+        $this->authorize('create', Campaign::class);
+
         $validated = $request->validated();
 
         $campaign = Campaign::create([
