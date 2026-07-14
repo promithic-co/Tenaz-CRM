@@ -234,7 +234,19 @@ class MonitorCampaignsCommand extends Command
     }
 
     /**
-     * Rule 5: Stuck campaign — sending but no messages created in the last hour.
+     * Rule 5: Stuck campaign — has work in flight (queued rows) but nothing has progressed for
+     * over an hour.
+     *
+     * The old check used max(created_at) alone, which is set once at fan-out for the whole batch:
+     * a slow-staggered campaign that is sending normally would trip it (rows all created up front),
+     * while a genuinely stalled send that already fanned out would never re-trip. It also fired every
+     * tick against campaigns legitimately waiting on the next day's budget (CAMP-04) — an expected
+     * idle state owned by the revive rule, not a stall.
+     *
+     * Activity is now the latest of created_at and sent_at, and the alert only considers campaigns
+     * with at least one queued row (work that should be moving). Budget-parked campaigns have no
+     * queued rows and are silent here. A per-campaign hour-long cache gate caps the alert to once
+     * per hour so a persistent stall does not spam every tick.
      */
     private function checkStuckCampaigns(AlertService $alertService): void
     {
@@ -244,23 +256,38 @@ class MonitorCampaignsCommand extends Command
             return;
         }
 
-        // One grouped query for the latest message per campaign instead of a per-campaign
-        // max(created_at) in the loop (PERF-11 — N+1 over all sending campaigns each tick).
-        $lastMessageByCampaign = CampaignMessage::whereIn('campaign_id', $sendingCampaigns->modelKeys())
+        // One grouped query for last activity + in-flight count per campaign instead of a
+        // per-campaign aggregate in the loop (PERF-11 — N+1 over all sending campaigns each tick).
+        $statsByCampaign = CampaignMessage::whereIn('campaign_id', $sendingCampaigns->modelKeys())
             ->groupBy('campaign_id')
-            ->selectRaw('campaign_id, max(created_at) as last_created_at')
-            ->pluck('last_created_at', 'campaign_id');
+            ->selectRaw("campaign_id, max(created_at) as last_created_at, max(sent_at) as last_sent_at, count(case when status = 'queued' then 1 end) as queued_rows")
+            ->get()
+            ->keyBy('campaign_id');
 
         foreach ($sendingCampaigns as $campaign) {
-            $lastMessageAt = $lastMessageByCampaign[$campaign->id] ?? null;
+            $stats = $statsByCampaign[$campaign->id] ?? null;
 
-            if ($lastMessageAt && Carbon::parse($lastMessageAt)->lt(now()->subHour())) {
-                $alertService->sendAlert(
-                    'stuck_campaign',
-                    "Campanha '{$campaign->name}' parece travada — nenhuma mensagem enviada há mais de 1 hora.",
-                    ['campaign_id' => $campaign->id, 'last_message_at' => $lastMessageAt]
-                );
+            if ($stats === null || (int) $stats->queued_rows === 0) {
+                continue;
             }
+
+            // Both columns are stored 'Y-m-d H:i:s', so a lexicographic max is also the chronological
+            // one; array_filter drops a null last_sent_at (nothing sent yet — created_at carries).
+            $activity = array_filter([$stats->last_created_at, $stats->last_sent_at]);
+
+            if ($activity === [] || Carbon::parse(max($activity))->gte(now()->subHour())) {
+                continue;
+            }
+
+            if (! Cache::add("campaign:stuck-alert:{$campaign->id}", 1, 3600)) {
+                continue;
+            }
+
+            $alertService->sendAlert(
+                'stuck_campaign',
+                "Campanha '{$campaign->name}' parece travada — nenhuma mensagem enviada há mais de 1 hora.",
+                ['campaign_id' => $campaign->id, 'last_activity_at' => max($activity)]
+            );
         }
     }
 

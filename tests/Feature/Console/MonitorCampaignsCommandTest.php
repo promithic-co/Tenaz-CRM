@@ -45,6 +45,73 @@ test('monitor-campaigns finds stuck campaigns with a single grouped query (PERF-
     Carbon::setTestNow();
 });
 
+test('monitor-campaigns does not flag a slow-staggered campaign that is still sending (CAMP-07)', function () {
+    Carbon::setTestNow(now()->setTime(10, 0, 0));
+
+    $campaign = Campaign::factory()->sending()->create(['total_sent' => 0]);
+
+    // Whole batch fanned out 2h ago (old created_at) — the old max(created_at) check would
+    // have flagged this — but a message just sent, so the campaign is progressing normally.
+    $queued = CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'status' => 'queued']);
+    $queued->forceFill(['created_at' => now()->subHours(2)])->saveQuietly();
+
+    $sent = CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'status' => 'sent']);
+    $sent->forceFill(['created_at' => now()->subHours(2), 'sent_at' => now()->subMinutes(5)])->saveQuietly();
+
+    $alerts = Mockery::spy(AlertService::class);
+    app()->instance(AlertService::class, $alerts);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    $alerts->shouldNotHaveReceived('sendAlert', ['stuck_campaign', Mockery::any(), Mockery::any()]);
+
+    Carbon::setTestNow();
+});
+
+test('monitor-campaigns does not flag a budget-parked campaign with no queued rows (CAMP-07)', function () {
+    Carbon::setTestNow(now()->setTime(10, 0, 0));
+
+    $campaign = Campaign::factory()->sending()->create(['total_sent' => 0, 'daily_limit' => 1]);
+
+    // Parked 'pending' rows (provider not attempted) from a budget stop — no queued work in
+    // flight. This is an expected wait owned by the revive rule, not a stall.
+    $parked = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'pending',
+        'provider_attempted_at' => null,
+    ]);
+    $parked->forceFill(['created_at' => now()->subHours(2)])->saveQuietly();
+
+    $alerts = Mockery::spy(AlertService::class);
+    app()->instance(AlertService::class, $alerts);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    $alerts->shouldNotHaveReceived('sendAlert', ['stuck_campaign', Mockery::any(), Mockery::any()]);
+
+    Carbon::setTestNow();
+});
+
+test('monitor-campaigns caps the stuck alert to once per hour (CAMP-07 debounce)', function () {
+    Carbon::setTestNow(now()->setTime(10, 0, 0));
+
+    $campaign = Campaign::factory()->sending()->create(['total_sent' => 0]);
+    $old = CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'status' => 'queued']);
+    $old->forceFill(['created_at' => now()->subHours(2)])->saveQuietly();
+
+    $alerts = Mockery::spy(AlertService::class);
+    app()->instance(AlertService::class, $alerts);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    $alerts->shouldHaveReceived('sendAlert')
+        ->with('stuck_campaign', Mockery::any(), Mockery::on(fn ($ctx): bool => $ctx['campaign_id'] === $campaign->id))
+        ->once();
+
+    Carbon::setTestNow();
+});
+
 test('monitor-campaigns auto-pauses a sending campaign with a wallet error 1003', function () {
     $campaign = Campaign::factory()->sending()->create();
 
