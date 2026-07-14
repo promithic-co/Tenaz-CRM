@@ -59,10 +59,22 @@ class DispatchCampaignJob implements ShouldQueue
             ],
         );
 
-        // Phase 51 — Smart list materialization (D-07 snapshot-on-dispatch)
-        if ($campaign->contactList->is_dynamic) {
+        // Phase 51 — Smart list materialization (D-07 snapshot-on-dispatch). Materialize only on
+        // the first dispatch: a revive/resume run (CAMP-04) re-enters this job on a later day, and
+        // re-resolving a dynamic list would silently swap the frozen audience mid-campaign. Once
+        // any message row exists the fan-out has begun, so the materialized entries plus those rows
+        // are the snapshot and every later run reuses them.
+        $alreadyFannedOut = CampaignMessage::where('campaign_id', $campaign->id)->exists();
+
+        if ($campaign->contactList->is_dynamic && ! $alreadyFannedOut) {
             $resolver = app(SmartListResolverService::class);
             $count = $resolver->materialize($campaign->contactList);
+
+            // total_recipients was set in CampaignService::start() from the entries count BEFORE the
+            // dynamic list was resolved, so it was 0/stale for every smart-list campaign — corrupting
+            // sentPercent, the Show funnel, and the broadcast 'pending' math. Correct it to the
+            // materialized count now that the snapshot exists (CAMP-06).
+            $campaign->update(['total_recipients' => $count]);
 
             $interactionEvents->record(
                 interactionId: $interactionId,
