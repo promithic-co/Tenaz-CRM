@@ -158,6 +158,13 @@ return [
         // this gate keeps repeated sweeps from stacking duplicate dispatchers while parked rows
         // drain. 0 disables the debounce.
         'revive_debounce_seconds' => (int) env('TENAZ_CAMPAIGN_REVIVE_DEBOUNCE', env('CREDFLOW_CAMPAIGN_REVIVE_DEBOUNCE', 600)),
+        // Age (seconds) after which an unresolved 'in_doubt' message is reconciled to 'failed'
+        // (CAMP-08). An in_doubt row awaits a delivery webhook echoing its opaque key; the Meta
+        // Cloud API has no lookup-by-client-reference, so a lost webhook would strand the row
+        // forever. Webhooks normally arrive within seconds, so a generous default (24h) flips only
+        // genuinely abandoned rows. failed never re-sends, so this can never duplicate a send.
+        // 0 disables the reconciliation.
+        'in_doubt_timeout_seconds' => (int) env('TENAZ_CAMPAIGN_IN_DOUBT_TIMEOUT', env('CREDFLOW_CAMPAIGN_IN_DOUBT_TIMEOUT', 86400)),
     ],
 
     'api' => [

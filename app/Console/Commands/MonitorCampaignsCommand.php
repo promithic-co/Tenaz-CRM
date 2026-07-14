@@ -22,6 +22,7 @@ class MonitorCampaignsCommand extends Command
     {
         $this->checkWalletErrors($campaignService, $alertService);
         $this->checkHighFailureRate($campaignService, $alertService);
+        $this->reconcileInDoubtMessages();
         $this->completeFinishedCampaigns($campaignService);
         $this->reviveIdleCampaigns($campaignService);
         $this->checkStuckCampaigns($alertService);
@@ -121,7 +122,47 @@ class MonitorCampaignsCommand extends Command
     }
 
     /**
-     * Rule 3 (CAMP-03): terminal-state sweep — the only in-band completion check runs inside
+     * Rule 3 (CAMP-08): reconcile stranded in_doubt messages. An in_doubt row (the provider POST
+     * may or may not have reached Meta) is resolved passively when a delivery webhook echoes its
+     * opaque key. The Meta Cloud API offers no lookup-by-client-reference, so active reconciliation
+     * is impossible — a lost webhook would strand the row in in_doubt forever (recipient with no
+     * confirmed message, no retry, no terminal counter). After a generous timeout the row is flipped
+     * to failed: provider_attempted_at is preserved so the in-doubt guard still blocks any re-send,
+     * making this reconciliation duplicate-safe by construction. A late webhook arriving after the
+     * flip cannot downgrade failed (rank 6 > sent 3), an accepted loss over a 24h horizon.
+     *
+     * Runs across all campaigns (not just sending) since a stranded row on an otherwise-complete
+     * campaign still needs a terminal counter. Bulk update — no per-row model events matter here
+     * (counters are derived, SCALE-1b). Placed after the failure-rate sweep so a batch of timeouts
+     * only affects auto-pause on the next tick, never retroactively within this one.
+     */
+    private function reconcileInDoubtMessages(): void
+    {
+        $timeoutSeconds = (int) config('credflow.campaigns.in_doubt_timeout_seconds', 86400);
+
+        if ($timeoutSeconds <= 0) {
+            return;
+        }
+
+        $affected = CampaignMessage::where('status', 'in_doubt')
+            ->where('updated_at', '<', now()->subSeconds($timeoutSeconds))
+            ->update([
+                'status' => 'failed',
+                'error_code' => 'IN_DOUBT_TIMEOUT',
+                'error_message' => 'No delivery confirmation within the reconciliation window; provider send unconfirmed.',
+                'failed_at' => now(),
+            ]);
+
+        if ($affected > 0) {
+            Log::warning('MonitorCampaigns: reconciled stranded in_doubt messages to failed', [
+                'count' => $affected,
+                'timeout_seconds' => $timeoutSeconds,
+            ]);
+        }
+    }
+
+    /**
+     * Rule 4 (CAMP-03): terminal-state sweep — the only in-band completion check runs inside
      * DispatchCampaignJob at fan-out time, so a campaign whose LAST message settles via a send
      * worker or a delivery webhook stayed `sending` forever. This sweep closes any sending
      * campaign whose work is exhausted, within one monitor cycle.
@@ -172,7 +213,7 @@ class MonitorCampaignsCommand extends Command
     }
 
     /**
-     * Rule 4 (CAMP-04): revive idle work. A budget-stopped fan-out leaves undispatched entries
+     * Rule 5 (CAMP-04): revive idle work. A budget-stopped fan-out leaves undispatched entries
      * (or parked 'pending' rows) with no scheduled job to ever pick them up — the daily limit
      * used to be a one-way stop. A campaign is idle when it has rows but none queued (nothing
      * in flight); re-dispatch is idempotent (pending-only re-enqueue + atomic provider claim)
@@ -234,7 +275,7 @@ class MonitorCampaignsCommand extends Command
     }
 
     /**
-     * Rule 5: Stuck campaign — has work in flight (queued rows) but nothing has progressed for
+     * Rule 6: Stuck campaign — has work in flight (queued rows) but nothing has progressed for
      * over an hour.
      *
      * The old check used max(created_at) alone, which is set once at fan-out for the whole batch:
@@ -292,7 +333,7 @@ class MonitorCampaignsCommand extends Command
     }
 
     /**
-     * Rule 6: Daily summary at 20:00.
+     * Rule 7: Daily summary at 20:00.
      */
     private function maybeSendDailySummary(AlertService $alertService): void
     {

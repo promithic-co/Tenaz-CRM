@@ -112,6 +112,62 @@ test('monitor-campaigns caps the stuck alert to once per hour (CAMP-07 debounce)
     Carbon::setTestNow();
 });
 
+test('monitor-campaigns reconciles a stranded in_doubt message to failed after the timeout (CAMP-08)', function () {
+    $campaign = Campaign::factory()->sending()->create(['total_sent' => 0]);
+
+    $message = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'in_doubt',
+        'error_code' => 'IN_DOUBT',
+        'provider_attempted_at' => now()->subDays(2),
+    ]);
+    // Went in_doubt 2 days ago — past the 24h default window.
+    $message->forceFill(['updated_at' => now()->subDays(2)])->saveQuietly();
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    $fresh = $message->fresh();
+    expect($fresh->status)->toBe('failed')
+        ->and($fresh->error_code)->toBe('IN_DOUBT_TIMEOUT')
+        ->and($fresh->failed_at)->not->toBeNull()
+        // provider_attempted_at preserved so the in-doubt guard still blocks any re-send.
+        ->and($fresh->provider_attempted_at)->not->toBeNull();
+});
+
+test('monitor-campaigns leaves a recent in_doubt message untouched (CAMP-08)', function () {
+    $campaign = Campaign::factory()->sending()->create(['total_sent' => 0]);
+
+    $message = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'in_doubt',
+        'error_code' => 'IN_DOUBT',
+        'provider_attempted_at' => now()->subMinutes(10),
+    ]);
+    $message->forceFill(['updated_at' => now()->subHour()])->saveQuietly();
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    expect($message->fresh()->status)->toBe('in_doubt');
+});
+
+test('monitor-campaigns in_doubt reconciliation is disabled when the timeout is 0 (CAMP-08)', function () {
+    config(['credflow.campaigns.in_doubt_timeout_seconds' => 0]);
+
+    $campaign = Campaign::factory()->sending()->create(['total_sent' => 0]);
+
+    $message = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'in_doubt',
+        'error_code' => 'IN_DOUBT',
+        'provider_attempted_at' => now()->subDays(5),
+    ]);
+    $message->forceFill(['updated_at' => now()->subDays(5)])->saveQuietly();
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    expect($message->fresh()->status)->toBe('in_doubt');
+});
+
 test('monitor-campaigns auto-pauses a sending campaign with a wallet error 1003', function () {
     $campaign = Campaign::factory()->sending()->create();
 
