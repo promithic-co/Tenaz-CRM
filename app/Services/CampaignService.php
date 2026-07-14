@@ -253,4 +253,23 @@ class CampaignService
 
         return $sentToday < $campaign->daily_limit;
     }
+
+    /**
+     * Remaining sends allowed today (CAMP-04): daily_limit minus messages already sent today
+     * minus rows currently queued (live jobs that consume budget when they pop). Parked
+     * 'pending' rows do not count — they only send again once a revive re-enqueues them
+     * inside a future day's budget. The "day" is the application timezone.
+     */
+    public function remainingDailyBudget(Campaign $campaign): int
+    {
+        $sentToday = CampaignMessage::where('campaign_id', $campaign->id)
+            ->whereBetween('sent_at', [today()->startOfDay(), today()->endOfDay()])
+            ->count();
+
+        $inFlight = CampaignMessage::where('campaign_id', $campaign->id)
+            ->where('status', 'queued')
+            ->count();
+
+        return max(0, $campaign->daily_limit - $sentToday - $inFlight);
+    }
 }

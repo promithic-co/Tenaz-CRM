@@ -127,6 +127,22 @@ class SendCampaignMessageJob implements ShouldQueue
             return;
         }
 
+        // Daily-limit safety net (CAMP-04): the fan-out enqueues only within the day's budget,
+        // but day-boundary drift, resumes, and concurrent workers at the limit can still pop a
+        // job past it. Park the row 'pending' (CAMP-02 semantics: no live job, re-enqueueable)
+        // for the monitor revive to re-dispatch inside the next day's budget.
+        if (! $service->checkDailyLimit($campaign)) {
+            $message->update(['status' => 'pending']);
+
+            Log::info('SendCampaignMessageJob: daily limit reached, parking message for revive', [
+                'interaction_id' => $interactionId,
+                'message_id' => $message->id,
+                'campaign_id' => $campaign->id,
+            ]);
+
+            return;
+        }
+
         $entry = $message->contactListEntry;
 
         if (! $entry) {

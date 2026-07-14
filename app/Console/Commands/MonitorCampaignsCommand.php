@@ -2,12 +2,14 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\DispatchCampaignJob;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
 use App\Services\AlertService;
 use App\Services\CampaignService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class MonitorCampaignsCommand extends Command
@@ -21,6 +23,7 @@ class MonitorCampaignsCommand extends Command
         $this->checkWalletErrors($campaignService, $alertService);
         $this->checkHighFailureRate($campaignService, $alertService);
         $this->completeFinishedCampaigns($campaignService);
+        $this->reviveIdleCampaigns($campaignService);
         $this->checkStuckCampaigns($alertService);
         $this->maybeSendDailySummary($alertService);
 
@@ -169,7 +172,69 @@ class MonitorCampaignsCommand extends Command
     }
 
     /**
-     * Rule 4: Stuck campaign — sending but no messages created in the last hour.
+     * Rule 4 (CAMP-04): revive idle work. A budget-stopped fan-out leaves undispatched entries
+     * (or parked 'pending' rows) with no scheduled job to ever pick them up — the daily limit
+     * used to be a one-way stop. A campaign is idle when it has rows but none queued (nothing
+     * in flight); re-dispatch is idempotent (pending-only re-enqueue + atomic provider claim)
+     * and gated by remaining daily budget plus a per-campaign debounce so repeated sweeps do
+     * not stack dispatchers. Campaigns with zero rows are skipped for the same dispatcher-race
+     * reason as the completion sweep above.
+     */
+    private function reviveIdleCampaigns(CampaignService $campaignService): void
+    {
+        $sendingCampaigns = Campaign::where('status', 'sending')->get();
+
+        if ($sendingCampaigns->isEmpty()) {
+            return;
+        }
+
+        $messageStats = CampaignMessage::whereIn('campaign_id', $sendingCampaigns->modelKeys())
+            ->groupBy('campaign_id')
+            ->selectRaw("campaign_id, count(case when status = 'queued' then 1 end) as queued_rows, count(case when status = 'pending' and provider_attempted_at is null then 1 end) as parked_rows")
+            ->get()
+            ->keyBy('campaign_id');
+
+        foreach ($sendingCampaigns as $campaign) {
+            $stats = $messageStats[$campaign->id] ?? null;
+
+            if ($stats === null || (int) $stats->queued_rows > 0) {
+                continue;
+            }
+
+            if ((int) $stats->parked_rows === 0 && ! $this->hasUndispatchedEntries($campaign)) {
+                continue;
+            }
+
+            if ($campaignService->remainingDailyBudget($campaign) <= 0) {
+                continue;
+            }
+
+            $debounceSeconds = (int) config('credflow.campaigns.revive_debounce_seconds', 600);
+
+            if ($debounceSeconds > 0 && ! Cache::add("campaign:revive-gate:{$campaign->id}", 1, $debounceSeconds)) {
+                continue;
+            }
+
+            DispatchCampaignJob::dispatch($campaign);
+
+            Log::info('MonitorCampaigns: revived campaign with idle work', [
+                'campaign_id' => $campaign->id,
+                'parked_rows' => (int) $stats->parked_rows,
+            ]);
+        }
+    }
+
+    private function hasUndispatchedEntries(Campaign $campaign): bool
+    {
+        return (bool) $campaign->contactList
+            ?->entries()
+            ->where('opt_in_status', '!=', 'opted_out')
+            ->whereNotIn('id', CampaignMessage::where('campaign_id', $campaign->id)->select('contact_list_entry_id'))
+            ->exists();
+    }
+
+    /**
+     * Rule 5: Stuck campaign — sending but no messages created in the last hour.
      */
     private function checkStuckCampaigns(AlertService $alertService): void
     {
@@ -200,7 +265,7 @@ class MonitorCampaignsCommand extends Command
     }
 
     /**
-     * Rule 5: Daily summary at 20:00.
+     * Rule 6: Daily summary at 20:00.
      */
     private function maybeSendDailySummary(AlertService $alertService): void
     {

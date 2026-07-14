@@ -93,25 +93,35 @@ class DispatchCampaignJob implements ShouldQueue
             ]);
         }
 
+        // Daily budget (CAMP-04): enqueue at most today's remaining allowance instead of the
+        // whole list. The old per-chunk boolean gate compared sent-today (≈0 at fan-out time)
+        // against the limit, so the entire list passed in a single run and nothing ever
+        // re-dispatched the remainder. Enforcement now happens here (enqueue within budget)
+        // with a send-time safety net in SendCampaignMessageJob; the remainder stays
+        // undispatched for the monitor revive to pick up on the next day's budget.
+        $dailyBudget = $service->remainingDailyBudget($campaign);
+
+        if ($dailyBudget <= 0) {
+            Log::info('DispatchCampaignJob: no daily budget remaining, deferring to monitor revive', [
+                'campaign_id' => $campaign->id,
+            ]);
+
+            return;
+        }
+
         $index = 0;
         $stopped = false;
+        $budgetExhausted = false;
 
         // Stream entries with chunkById to avoid loading 100k+ IDs into memory at once.
         $campaign->contactList->entries()
             ->select(['id', 'opt_in_status'])
             ->orderBy('id')
-            ->chunkById(500, function ($entries) use ($campaign, $service, $interactionEvents, &$index, &$stopped) {
+            ->chunkById(500, function ($entries) use ($campaign, $interactionEvents, $dailyBudget, &$index, &$stopped, &$budgetExhausted) {
                 $campaign->refresh();
 
                 if (! $campaign->isSending()) {
                     Log::info('DispatchCampaignJob: campaign paused/cancelled mid-dispatch', ['campaign_id' => $campaign->id]);
-                    $stopped = true;
-
-                    return false;
-                }
-
-                if (! $service->checkDailyLimit($campaign)) {
-                    Log::info('DispatchCampaignJob: daily limit reached', ['campaign_id' => $campaign->id]);
                     $stopped = true;
 
                     return false;
@@ -137,6 +147,11 @@ class DispatchCampaignJob implements ShouldQueue
                     ->keyBy('contact_list_entry_id');
 
                 foreach ($chunkIds as $entryId) {
+                    if ($index >= $dailyBudget) {
+                        $budgetExhausted = true;
+                        break;
+                    }
+
                     if (isset($optedOutSet[$entryId])) {
                         continue;
                     }
@@ -166,9 +181,18 @@ class DispatchCampaignJob implements ShouldQueue
 
                     $index++;
                 }
+
+                if ($budgetExhausted) {
+                    Log::info('DispatchCampaignJob: daily budget exhausted, monitor revives on the next day', [
+                        'campaign_id' => $campaign->id,
+                        'enqueued' => $index,
+                    ]);
+
+                    return false;
+                }
             });
 
-        if ($stopped) {
+        if ($stopped || $budgetExhausted) {
             return;
         }
 

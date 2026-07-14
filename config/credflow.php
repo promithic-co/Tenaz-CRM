@@ -152,6 +152,12 @@ return [
         'dispatch_max_redispatch' => (int) env('TENAZ_CAMPAIGN_DISPATCH_MAX_REDISPATCH', env('CREDFLOW_CAMPAIGN_DISPATCH_MAX_REDISPATCH', 2)),
         // Delay (seconds) before an auto-resume re-dispatch fires, letting a transient fault clear.
         'dispatch_redispatch_delay_seconds' => (int) env('TENAZ_CAMPAIGN_DISPATCH_REDISPATCH_DELAY', env('CREDFLOW_CAMPAIGN_DISPATCH_REDISPATCH_DELAY', 10)),
+        // Debounce (seconds) between monitor revive re-dispatches per campaign (CAMP-04). The
+        // 5-minute monitor sweep re-dispatches DispatchCampaignJob for a sending campaign with
+        // idle work (parked pending rows or undispatched entries) and remaining daily budget;
+        // this gate keeps repeated sweeps from stacking duplicate dispatchers while parked rows
+        // drain. 0 disables the debounce.
+        'revive_debounce_seconds' => (int) env('TENAZ_CAMPAIGN_REVIVE_DEBOUNCE', env('CREDFLOW_CAMPAIGN_REVIVE_DEBOUNCE', 600)),
     ],
 
     'api' => [

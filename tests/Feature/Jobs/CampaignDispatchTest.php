@@ -880,6 +880,88 @@ test('DispatchCampaignJob completes an exhausted campaign even with failures in 
         ->and($campaign->fresh()->completed_at)->not->toBeNull();
 });
 
+test('DispatchCampaignJob enqueues only the remaining daily budget (CAMP-04)', function () {
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create(['daily_limit' => 5]);
+    ContactListEntry::factory()->count(8)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    (new DispatchCampaignJob($campaign))->handle(app(CampaignService::class));
+
+    // 5 of 8 fit today's budget; the remainder stays undispatched for the monitor revive.
+    Queue::assertPushed(SendCampaignMessageJob::class, 5);
+    expect(CampaignMessage::where('campaign_id', $campaign->id)->count())->toBe(5)
+        ->and($campaign->fresh()->status)->toBe('sending');
+});
+
+test('DispatchCampaignJob counts today\'s sends and in-flight rows against the budget (CAMP-04)', function () {
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create(['daily_limit' => 5]);
+    $entries = ContactListEntry::factory()->count(7)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    // 2 already sent today + 1 live queued job → only 2 of the 4 remaining entries fit.
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+    ]);
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[1]->id,
+    ]);
+    CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[2]->id,
+        'status' => 'queued',
+    ]);
+
+    (new DispatchCampaignJob($campaign))->handle(app(CampaignService::class));
+
+    Queue::assertPushed(SendCampaignMessageJob::class, 2);
+});
+
+test('DispatchCampaignJob defers entirely when no daily budget remains (CAMP-04)', function () {
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create(['daily_limit' => 1]);
+    $entries = ContactListEntry::factory()->count(3)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+    ]);
+
+    (new DispatchCampaignJob($campaign))->handle(app(CampaignService::class));
+
+    Queue::assertNotPushed(SendCampaignMessageJob::class);
+    // Budget-stopped is not completion: the campaign keeps sending on tomorrow's budget.
+    expect($campaign->fresh()->status)->toBe('sending');
+});
+
+test('SendCampaignMessageJob parks a message that pops past the daily limit (CAMP-04)', function () {
+    [$campaign, $message] = makeTenantSendable();
+    $campaign->update(['daily_limit' => 1]);
+    // Today's budget was consumed after this job was enqueued.
+    CampaignMessage::factory()->sent()->create(['campaign_id' => $campaign->id]);
+
+    bindNonSendingProvider();
+
+    (new SendCampaignMessageJob($message))->handle(app(CampaignService::class), app(WhatsAppProviderFactory::class), app(BroadcastDebouncer::class));
+
+    // Parked, not failed: the monitor revive re-enqueues it inside the next day's budget.
+    expect($message->fresh()->status)->toBe('pending')
+        ->and($message->fresh()->provider_attempted_at)->toBeNull()
+        ->and($campaign->fresh()->total_failed)->toBe(0);
+});
+
 test('SendCampaignMessageJob.failed parks an expired unattempted message of a paused campaign (CAMP-01/02)', function () {
     [$campaign, $message] = makeTenantSendable();
     $campaign->update(['status' => 'paused']);

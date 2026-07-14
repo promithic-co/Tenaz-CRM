@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\DispatchCampaignJob;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
 use App\Models\ContactListEntry;
@@ -7,6 +8,7 @@ use App\Services\AlertService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -33,8 +35,8 @@ test('monitor-campaigns finds stuck campaigns with a single grouped query (PERF-
     );
     DB::disableQueryLog();
 
-    // One grouped query per sweep (completion + stuck), not a per-campaign aggregate.
-    expect($stuckQueries)->toHaveCount(2);
+    // One grouped query per sweep (completion + revive + stuck), not a per-campaign aggregate.
+    expect($stuckQueries)->toHaveCount(3);
 
     $alerts->shouldHaveReceived('sendAlert')
         ->with('stuck_campaign', Mockery::any(), Mockery::on(fn ($ctx): bool => $ctx['campaign_id'] === $stuck->id))
@@ -155,6 +157,8 @@ test('monitor-campaigns completes a sending campaign whose work is exhausted (CA
 });
 
 test('monitor-campaigns does not complete a campaign with an actionable message row (CAMP-03)', function () {
+    Queue::fake();
+
     foreach (['pending', 'queued'] as $status) {
         $campaign = Campaign::factory()->sending()->create();
         $entries = ContactListEntry::factory()->count(2)->create([
@@ -179,6 +183,8 @@ test('monitor-campaigns does not complete a campaign with an actionable message 
 });
 
 test('monitor-campaigns does not complete a campaign with a dispatchable entry missing its row (CAMP-03)', function () {
+    Queue::fake();
+
     $campaign = Campaign::factory()->sending()->create();
     $entries = ContactListEntry::factory()->count(2)->create([
         'contact_list_id' => $campaign->contact_list_id,
@@ -244,6 +250,8 @@ test('monitor-campaigns treats in_doubt rows as settled for completion (CAMP-03)
 });
 
 test('monitor-campaigns skips campaigns with zero message rows to not race the dispatcher (CAMP-03)', function () {
+    Queue::fake();
+
     // Sending but the fan-out has not run yet (e.g. a smart list awaiting materialization):
     // entries and rows are both empty, and completing here would cancel the whole send.
     $campaign = Campaign::factory()->sending()->create();
@@ -251,4 +259,129 @@ test('monitor-campaigns skips campaigns with zero message rows to not race the d
     $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
 
     expect($campaign->fresh()->status)->toBe('sending');
+    // Zero rows also means no revive: the original dispatcher may still be in flight.
+    Queue::assertNotPushed(DispatchCampaignJob::class);
+});
+
+test('monitor-campaigns revives an idle campaign with parked rows and budget, debounced (CAMP-04)', function () {
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create(['daily_limit' => 10]);
+    $entries = ContactListEntry::factory()->count(2)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+    ]);
+    // Parked by a daily-limit stop or a pause: no live job holds this row.
+    CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[1]->id,
+        'status' => 'pending',
+    ]);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    Queue::assertPushed(DispatchCampaignJob::class, 1);
+
+    // Debounced: an immediately following sweep must not stack a duplicate dispatcher.
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    Queue::assertPushed(DispatchCampaignJob::class, 1);
+});
+
+test('monitor-campaigns revives a campaign whose budget-stopped fan-out left entries without rows (CAMP-04)', function () {
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create(['daily_limit' => 10]);
+    $entries = ContactListEntry::factory()->count(2)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    // Yesterday's budget stopped the fan-out before the second entry got a row.
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+    ]);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    Queue::assertPushed(DispatchCampaignJob::class, 1);
+});
+
+test('monitor-campaigns does not revive without budget or with jobs in flight (CAMP-04)', function () {
+    Queue::fake();
+
+    // Budget exhausted: today's sends already hit the daily limit.
+    $exhausted = Campaign::factory()->sending()->create(['daily_limit' => 1]);
+    $exhaustedEntries = ContactListEntry::factory()->count(2)->create([
+        'contact_list_id' => $exhausted->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $exhausted->id,
+        'contact_list_entry_id' => $exhaustedEntries[0]->id,
+    ]);
+    CampaignMessage::factory()->create([
+        'campaign_id' => $exhausted->id,
+        'contact_list_entry_id' => $exhaustedEntries[1]->id,
+        'status' => 'pending',
+    ]);
+
+    // In flight: a queued row means the dispatcher/send pipeline still owns this campaign.
+    $inFlight = Campaign::factory()->sending()->create(['daily_limit' => 10]);
+    $inFlightEntries = ContactListEntry::factory()->count(2)->create([
+        'contact_list_id' => $inFlight->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+    CampaignMessage::factory()->create([
+        'campaign_id' => $inFlight->id,
+        'contact_list_entry_id' => $inFlightEntries[0]->id,
+        'status' => 'queued',
+    ]);
+    CampaignMessage::factory()->create([
+        'campaign_id' => $inFlight->id,
+        'contact_list_entry_id' => $inFlightEntries[1]->id,
+        'status' => 'pending',
+    ]);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    Queue::assertNotPushed(DispatchCampaignJob::class);
+});
+
+test('monitor-campaigns revives on the next day once the budget resets (CAMP-04)', function () {
+    Carbon::setTestNow(now()->setTime(10, 0, 0));
+    Queue::fake();
+
+    $campaign = Campaign::factory()->sending()->create(['daily_limit' => 1]);
+    $entries = ContactListEntry::factory()->count(2)->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+    ]);
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[0]->id,
+    ]);
+    CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entries[1]->id,
+        'status' => 'pending',
+    ]);
+
+    // Today the budget is spent — nothing to revive.
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+    Queue::assertNotPushed(DispatchCampaignJob::class);
+
+    // Tomorrow the sent-today window rolls over and the parked row is picked back up.
+    Carbon::setTestNow(now()->addDay()->setTime(10, 0, 0));
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+    Queue::assertPushed(DispatchCampaignJob::class, 1);
+
+    Carbon::setTestNow();
 });
