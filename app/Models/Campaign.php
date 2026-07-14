@@ -130,6 +130,11 @@ class Campaign extends Model
         return $this->status === 'completed';
     }
 
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+
     public function canStart(): bool
     {
         return in_array($this->status, ['draft', 'scheduled']);

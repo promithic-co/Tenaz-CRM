@@ -109,7 +109,7 @@ class CampaignService
             }
 
             $locked->update([
-                'status' => 'failed',
+                'status' => 'cancelled',
                 'failure_reason' => 'Cancelada manualmente',
             ]);
 

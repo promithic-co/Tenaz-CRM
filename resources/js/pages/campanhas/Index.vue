@@ -84,6 +84,7 @@ function statusBadgeClass(status: string): string {
         paused: 'rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
         completed: 'rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400',
         failed: 'rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        cancelled: 'rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground',
     };
     return map[status] ?? 'rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground';
 }
@@ -96,6 +97,7 @@ function statusLabel(status: string): string {
         paused: 'Pausada',
         completed: 'Concluída',
         failed: 'Falha',
+        cancelled: 'Cancelada',
     };
     return map[status] ?? status;
 }

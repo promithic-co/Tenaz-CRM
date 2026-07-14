@@ -168,6 +168,24 @@ test('monitor-campaigns in_doubt reconciliation is disabled when the timeout is 
     expect($message->fresh()->status)->toBe('in_doubt');
 });
 
+test('daily summary counts cancelled campaigns separately from failures (cancel low)', function () {
+    Carbon::setTestNow(now()->setTime(20, 0, 0));
+
+    Campaign::factory()->create(['status' => 'failed', 'updated_at' => now()]);
+    Campaign::factory()->create(['status' => 'cancelled', 'updated_at' => now()]);
+
+    $alerts = Mockery::spy(AlertService::class);
+    app()->instance(AlertService::class, $alerts);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    $alerts->shouldHaveReceived('sendAlert')
+        ->with('daily_summary', Mockery::any(), Mockery::on(fn ($ctx): bool => $ctx['failed_today'] === 1))
+        ->once();
+
+    Carbon::setTestNow();
+});
+
 test('monitor-campaigns auto-pauses a sending campaign with a wallet error 1003', function () {
     $campaign = Campaign::factory()->sending()->create();
 

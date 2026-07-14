@@ -114,13 +114,13 @@ test('resume transitions paused campaign to sending and dispatches job', functio
     Queue::assertPushed(DispatchCampaignJob::class);
 });
 
-test('cancel sets status to failed with manual cancellation reason', function () {
+test('cancel sets status to cancelled with manual cancellation reason', function () {
     $campaign = Campaign::factory()->sending()->create();
 
     $service = new CampaignService;
     $service->cancel($campaign);
 
-    expect($campaign->fresh()->status)->toBe('failed');
+    expect($campaign->fresh()->status)->toBe('cancelled');
     expect($campaign->fresh()->failure_reason)->toContain('manualmente');
 });
 
