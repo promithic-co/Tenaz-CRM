@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Agent;
 use App\Models\UraApiKey;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,8 +16,10 @@ class UraApiKeyFactory extends Factory
         $generated = UraApiKey::generate();
 
         return [
-            'tenant_id' => User::factory(),
             'agent_id' => Agent::factory(),
+            'tenant_id' => fn (array $attributes) => Agent::withoutGlobalScopes()
+                ->findOrFail($attributes['agent_id'])
+                ->tenant_id,
             'whatsapp_template_id' => null,
             'name' => fake()->words(3, true),
             'key_hash' => $generated['key_hash'],

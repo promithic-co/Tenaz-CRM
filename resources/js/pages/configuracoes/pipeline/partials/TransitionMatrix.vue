@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Lock } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 type Status = {
     slug: string;
@@ -32,11 +32,15 @@ const emit = defineEmits<{
 }>();
 
 function hasTransition(from: string, to: string): boolean {
-    return props.transitions.some(t => t.from === from && t.to === to);
+    return props.transitions.some((t) => t.from === from && t.to === to);
 }
 
 function isProtected(from: string, to: string): boolean {
-    return props.canonicalSlugs.includes(from) && props.canonicalSlugs.includes(to) && hasTransition(from, to);
+    return (
+        props.canonicalSlugs.includes(from) &&
+        props.canonicalSlugs.includes(to) &&
+        hasTransition(from, to)
+    );
 }
 
 function toggle(from: string, to: string) {
@@ -56,17 +60,19 @@ const sortedStatuses = computed(() =>
 </script>
 
 <template>
-    <div class="overflow-x-auto">
-        <table class="min-w-full border-collapse text-xs">
+    <div class="overflow-x-auto overscroll-x-contain">
+        <table class="min-w-max border-collapse text-xs">
             <thead>
                 <tr>
-                    <th class="sticky left-0 z-10 bg-background px-2 py-1.5 text-left text-muted-foreground">
+                    <th
+                        class="sticky left-0 z-10 bg-background px-2 py-1.5 text-left text-muted-foreground"
+                    >
                         De \ Para
                     </th>
                     <th
                         v-for="to in sortedStatuses"
                         :key="to.slug"
-                        class="px-2 py-1.5 text-center text-muted-foreground font-normal max-w-[80px] truncate"
+                        class="max-w-[80px] truncate px-2 py-1.5 text-center font-normal text-muted-foreground"
                         :title="to.label"
                     >
                         {{ to.label }}
@@ -79,7 +85,10 @@ const sortedStatuses = computed(() =>
                     :key="from.slug"
                     class="border-t border-border/50"
                 >
-                    <td class="sticky left-0 z-10 bg-background px-2 py-1.5 font-medium text-foreground/80 max-w-[100px] truncate" :title="from.label">
+                    <td
+                        class="sticky left-0 z-10 max-w-[100px] truncate bg-background px-2 py-1.5 font-medium text-foreground/80"
+                        :title="from.label"
+                    >
                         {{ from.label }}
                     </td>
                     <td
@@ -107,19 +116,25 @@ const sortedStatuses = computed(() =>
                             v-else
                             type="button"
                             :class="[
-                                'size-5 rounded border transition-colors',
+                                'size-8 rounded border transition-colors sm:size-5',
                                 hasTransition(from.slug, to.slug)
                                     ? 'border-primary bg-primary/20 text-primary'
                                     : 'border-border bg-transparent text-transparent hover:border-primary/50',
                                 !editable ? 'cursor-default' : 'cursor-pointer',
                             ]"
-                            :title="hasTransition(from.slug, to.slug)
-                                ? `Remover transição: ${from.label} → ${to.label}`
-                                : `Adicionar transição: ${from.label} → ${to.label}`"
+                            :title="
+                                hasTransition(from.slug, to.slug)
+                                    ? `Remover transição: ${from.label} → ${to.label}`
+                                    : `Adicionar transição: ${from.label} → ${to.label}`
+                            "
                             :disabled="!editable"
                             @click="toggle(from.slug, to.slug)"
                         >
-                            <span v-if="hasTransition(from.slug, to.slug)" class="text-[10px] font-bold">✓</span>
+                            <span
+                                v-if="hasTransition(from.slug, to.slug)"
+                                class="text-[10px] font-bold"
+                                >✓</span
+                            >
                         </button>
                     </td>
                 </tr>

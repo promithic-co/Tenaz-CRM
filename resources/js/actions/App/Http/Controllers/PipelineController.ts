@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\PipelineController::index
- * @see app/Http/Controllers/PipelineController.php:34
+ * @see app/Http/Controllers/PipelineController.php:22
  * @route '/pipeline'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\PipelineController::index
- * @see app/Http/Controllers/PipelineController.php:34
+ * @see app/Http/Controllers/PipelineController.php:22
  * @route '/pipeline'
  */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\PipelineController::index
- * @see app/Http/Controllers/PipelineController.php:34
+ * @see app/Http/Controllers/PipelineController.php:22
  * @route '/pipeline'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\PipelineController::index
- * @see app/Http/Controllers/PipelineController.php:34
+ * @see app/Http/Controllers/PipelineController.php:22
  * @route '/pipeline'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\PipelineController::index
- * @see app/Http/Controllers/PipelineController.php:34
+ * @see app/Http/Controllers/PipelineController.php:22
  * @route '/pipeline'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\PipelineController::index
- * @see app/Http/Controllers/PipelineController.php:34
+ * @see app/Http/Controllers/PipelineController.php:22
  * @route '/pipeline'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\PipelineController::index
- * @see app/Http/Controllers/PipelineController.php:34
+ * @see app/Http/Controllers/PipelineController.php:22
  * @route '/pipeline'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -79,7 +79,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     index.form = indexForm
 /**
 * @see \App\Http\Controllers\PipelineController::column
- * @see app/Http/Controllers/PipelineController.php:103
+ * @see app/Http/Controllers/PipelineController.php:30
  * @route '/pipeline/columns/{slug}'
  */
 export const column = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -94,7 +94,7 @@ column.definition = {
 
 /**
 * @see \App\Http\Controllers\PipelineController::column
- * @see app/Http/Controllers/PipelineController.php:103
+ * @see app/Http/Controllers/PipelineController.php:30
  * @route '/pipeline/columns/{slug}'
  */
 column.url = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -122,7 +122,7 @@ column.url = (args: { slug: string | number } | [slug: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\PipelineController::column
- * @see app/Http/Controllers/PipelineController.php:103
+ * @see app/Http/Controllers/PipelineController.php:30
  * @route '/pipeline/columns/{slug}'
  */
 column.get = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -131,7 +131,7 @@ column.get = (args: { slug: string | number } | [slug: string | number ] | strin
 })
 /**
 * @see \App\Http\Controllers\PipelineController::column
- * @see app/Http/Controllers/PipelineController.php:103
+ * @see app/Http/Controllers/PipelineController.php:30
  * @route '/pipeline/columns/{slug}'
  */
 column.head = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -141,7 +141,7 @@ column.head = (args: { slug: string | number } | [slug: string | number ] | stri
 
     /**
 * @see \App\Http\Controllers\PipelineController::column
- * @see app/Http/Controllers/PipelineController.php:103
+ * @see app/Http/Controllers/PipelineController.php:30
  * @route '/pipeline/columns/{slug}'
  */
     const columnForm = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -151,7 +151,7 @@ column.head = (args: { slug: string | number } | [slug: string | number ] | stri
 
             /**
 * @see \App\Http\Controllers\PipelineController::column
- * @see app/Http/Controllers/PipelineController.php:103
+ * @see app/Http/Controllers/PipelineController.php:30
  * @route '/pipeline/columns/{slug}'
  */
         columnForm.get = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -160,7 +160,7 @@ column.head = (args: { slug: string | number } | [slug: string | number ] | stri
         })
             /**
 * @see \App\Http\Controllers\PipelineController::column
- * @see app/Http/Controllers/PipelineController.php:103
+ * @see app/Http/Controllers/PipelineController.php:30
  * @route '/pipeline/columns/{slug}'
  */
         columnForm.head = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -176,7 +176,7 @@ column.head = (args: { slug: string | number } | [slug: string | number ] | stri
     column.form = columnForm
 /**
 * @see \App\Http\Controllers\PipelineController::move
- * @see app/Http/Controllers/PipelineController.php:126
+ * @see app/Http/Controllers/PipelineController.php:37
  * @route '/pipeline/move'
  */
 export const move = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -191,7 +191,7 @@ move.definition = {
 
 /**
 * @see \App\Http\Controllers\PipelineController::move
- * @see app/Http/Controllers/PipelineController.php:126
+ * @see app/Http/Controllers/PipelineController.php:37
  * @route '/pipeline/move'
  */
 move.url = (options?: RouteQueryOptions) => {
@@ -200,7 +200,7 @@ move.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\PipelineController::move
- * @see app/Http/Controllers/PipelineController.php:126
+ * @see app/Http/Controllers/PipelineController.php:37
  * @route '/pipeline/move'
  */
 move.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -210,7 +210,7 @@ move.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\PipelineController::move
- * @see app/Http/Controllers/PipelineController.php:126
+ * @see app/Http/Controllers/PipelineController.php:37
  * @route '/pipeline/move'
  */
     const moveForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -220,7 +220,7 @@ move.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\PipelineController::move
- * @see app/Http/Controllers/PipelineController.php:126
+ * @see app/Http/Controllers/PipelineController.php:37
  * @route '/pipeline/move'
  */
         moveForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

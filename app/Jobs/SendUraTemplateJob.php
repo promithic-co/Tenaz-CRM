@@ -56,7 +56,39 @@ class SendUraTemplateJob implements ShouldQueue
             return;
         }
 
-        $whatsappInstance = $apiKey->agent?->whatsappInstance;
+        $agent = $apiKey->agent;
+        $template = $apiKey->whatsappTemplate;
+        $whatsappInstance = $agent?->whatsappInstance;
+        $tenantId = (string) $apiKey->tenant_id;
+
+        if (! $agent || (string) $agent->tenant_id !== $tenantId) {
+            Log::warning('ura.trigger.agent_tenant_mismatch', [
+                'interaction_id' => $interactionId,
+                'ura_api_key_id' => $this->uraApiKeyId,
+            ]);
+
+            return;
+        }
+
+        if ($template && (string) $template->tenant_id !== $tenantId) {
+            Log::warning('ura.trigger.template_tenant_mismatch', [
+                'interaction_id' => $interactionId,
+                'ura_api_key_id' => $this->uraApiKeyId,
+                'template_id' => $template->id,
+            ]);
+
+            return;
+        }
+
+        if ($whatsappInstance && (string) $whatsappInstance->tenant_id !== $tenantId) {
+            Log::warning('ura.trigger.whatsapp_instance_tenant_mismatch', [
+                'interaction_id' => $interactionId,
+                'ura_api_key_id' => $this->uraApiKeyId,
+                'whatsapp_instance_id' => $whatsappInstance->id,
+            ]);
+
+            return;
+        }
 
         if (! $whatsappInstance) {
             Log::warning('ura.trigger.no_whatsapp_instance', [
@@ -99,8 +131,6 @@ class SendUraTemplateJob implements ShouldQueue
                 'phone' => $normalizedPhone,
             ],
         );
-
-        $template = $apiKey->whatsappTemplate;
 
         if (! $template || ! $template->isApproved()) {
             Log::warning('ura.trigger.meta_template_unavailable', [

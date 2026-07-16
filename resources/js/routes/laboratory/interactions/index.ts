@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LaboratoryController::show
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
 export const show = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::show
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
 show.url = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -44,7 +44,7 @@ show.url = (args: { interactionId: string | number } | [interactionId: string | 
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::show
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
 show.get = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -53,7 +53,7 @@ show.get = (args: { interactionId: string | number } | [interactionId: string | 
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::show
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
 show.head = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -63,7 +63,7 @@ show.head = (args: { interactionId: string | number } | [interactionId: string |
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::show
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
     const showForm = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -73,7 +73,7 @@ show.head = (args: { interactionId: string | number } | [interactionId: string |
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::show
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
         showForm.get = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -82,7 +82,7 @@ show.head = (args: { interactionId: string | number } | [interactionId: string |
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::show
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
         showForm.head = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

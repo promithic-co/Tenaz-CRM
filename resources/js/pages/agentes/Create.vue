@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { Check, ChevronDown, HeartHandshake, Megaphone } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 
@@ -130,9 +130,9 @@ function selectSpecialization(specialization: AgentSpecialization): void {
     <Head title="Novo agente" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="mx-auto max-w-2xl space-y-5 p-4 lg:p-8">
+        <div class="mx-auto max-w-2xl space-y-5 p-3 sm:p-4 lg:p-8">
             <div
-                class="rounded-xl border border-sidebar-border/70 bg-card p-6 dark:border-sidebar-border"
+                class="rounded-xl border border-sidebar-border/70 bg-card p-4 sm:p-6 dark:border-sidebar-border"
             >
                 <h1 class="text-base font-semibold text-foreground">
                     Criar agente

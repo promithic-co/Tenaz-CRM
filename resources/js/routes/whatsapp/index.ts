@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 import meta from './meta'
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::index
- * @see app/Http/Controllers/WhatsAppInstanceController.php:25
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:28
  * @route '/whatsapp'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -17,7 +17,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::index
- * @see app/Http/Controllers/WhatsAppInstanceController.php:25
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:28
  * @route '/whatsapp'
  */
 index.url = (options?: RouteQueryOptions) => {
@@ -26,7 +26,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::index
- * @see app/Http/Controllers/WhatsAppInstanceController.php:25
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:28
  * @route '/whatsapp'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::index
- * @see app/Http/Controllers/WhatsAppInstanceController.php:25
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:28
  * @route '/whatsapp'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::index
- * @see app/Http/Controllers/WhatsAppInstanceController.php:25
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:28
  * @route '/whatsapp'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -55,7 +55,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::index
- * @see app/Http/Controllers/WhatsAppInstanceController.php:25
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:28
  * @route '/whatsapp'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -64,7 +64,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::index
- * @see app/Http/Controllers/WhatsAppInstanceController.php:25
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:28
  * @route '/whatsapp'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -80,7 +80,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     index.form = indexForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::store
- * @see app/Http/Controllers/WhatsAppInstanceController.php:100
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:103
  * @route '/whatsapp'
  */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -95,7 +95,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::store
- * @see app/Http/Controllers/WhatsAppInstanceController.php:100
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:103
  * @route '/whatsapp'
  */
 store.url = (options?: RouteQueryOptions) => {
@@ -104,7 +104,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::store
- * @see app/Http/Controllers/WhatsAppInstanceController.php:100
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:103
  * @route '/whatsapp'
  */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -114,7 +114,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::store
- * @see app/Http/Controllers/WhatsAppInstanceController.php:100
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:103
  * @route '/whatsapp'
  */
     const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -124,7 +124,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::store
- * @see app/Http/Controllers/WhatsAppInstanceController.php:100
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:103
  * @route '/whatsapp'
  */
         storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -135,7 +135,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     store.form = storeForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::destroy
- * @see app/Http/Controllers/WhatsAppInstanceController.php:163
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:182
  * @route '/whatsapp/{instance}'
  */
 export const destroy = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -150,7 +150,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::destroy
- * @see app/Http/Controllers/WhatsAppInstanceController.php:163
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:182
  * @route '/whatsapp/{instance}'
  */
 destroy.url = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -183,7 +183,7 @@ destroy.url = (args: { instance: number | { id: number } } | [instance: number |
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::destroy
- * @see app/Http/Controllers/WhatsAppInstanceController.php:163
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:182
  * @route '/whatsapp/{instance}'
  */
 destroy.delete = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -193,7 +193,7 @@ destroy.delete = (args: { instance: number | { id: number } } | [instance: numbe
 
     /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::destroy
- * @see app/Http/Controllers/WhatsAppInstanceController.php:163
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:182
  * @route '/whatsapp/{instance}'
  */
     const destroyForm = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -208,7 +208,7 @@ destroy.delete = (args: { instance: number | { id: number } } | [instance: numbe
 
             /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::destroy
- * @see app/Http/Controllers/WhatsAppInstanceController.php:163
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:182
  * @route '/whatsapp/{instance}'
  */
         destroyForm.delete = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -224,7 +224,7 @@ destroy.delete = (args: { instance: number | { id: number } } | [instance: numbe
     destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::status
- * @see app/Http/Controllers/WhatsAppInstanceController.php:172
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:191
  * @route '/whatsapp/{instance}/status'
  */
 export const status = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -239,7 +239,7 @@ status.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::status
- * @see app/Http/Controllers/WhatsAppInstanceController.php:172
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:191
  * @route '/whatsapp/{instance}/status'
  */
 status.url = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -272,7 +272,7 @@ status.url = (args: { instance: number | { id: number } } | [instance: number | 
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::status
- * @see app/Http/Controllers/WhatsAppInstanceController.php:172
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:191
  * @route '/whatsapp/{instance}/status'
  */
 status.get = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -281,7 +281,7 @@ status.get = (args: { instance: number | { id: number } } | [instance: number | 
 })
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::status
- * @see app/Http/Controllers/WhatsAppInstanceController.php:172
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:191
  * @route '/whatsapp/{instance}/status'
  */
 status.head = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -291,7 +291,7 @@ status.head = (args: { instance: number | { id: number } } | [instance: number |
 
     /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::status
- * @see app/Http/Controllers/WhatsAppInstanceController.php:172
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:191
  * @route '/whatsapp/{instance}/status'
  */
     const statusForm = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -301,7 +301,7 @@ status.head = (args: { instance: number | { id: number } } | [instance: number |
 
             /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::status
- * @see app/Http/Controllers/WhatsAppInstanceController.php:172
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:191
  * @route '/whatsapp/{instance}/status'
  */
         statusForm.get = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -310,7 +310,7 @@ status.head = (args: { instance: number | { id: number } } | [instance: number |
         })
             /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::status
- * @see app/Http/Controllers/WhatsAppInstanceController.php:172
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:191
  * @route '/whatsapp/{instance}/status'
  */
         statusForm.head = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -326,7 +326,7 @@ status.head = (args: { instance: number | { id: number } } | [instance: number |
     status.form = statusForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::connect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:182
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:204
  * @route '/whatsapp/{instance}/connect'
  */
 export const connect = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -341,7 +341,7 @@ connect.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::connect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:182
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:204
  * @route '/whatsapp/{instance}/connect'
  */
 connect.url = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -374,7 +374,7 @@ connect.url = (args: { instance: number | { id: number } } | [instance: number |
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::connect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:182
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:204
  * @route '/whatsapp/{instance}/connect'
  */
 connect.post = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -384,7 +384,7 @@ connect.post = (args: { instance: number | { id: number } } | [instance: number 
 
     /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::connect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:182
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:204
  * @route '/whatsapp/{instance}/connect'
  */
     const connectForm = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -394,7 +394,7 @@ connect.post = (args: { instance: number | { id: number } } | [instance: number 
 
             /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::connect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:182
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:204
  * @route '/whatsapp/{instance}/connect'
  */
         connectForm.post = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -405,7 +405,7 @@ connect.post = (args: { instance: number | { id: number } } | [instance: number 
     connect.form = connectForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::disconnect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:191
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:213
  * @route '/whatsapp/{instance}/disconnect'
  */
 export const disconnect = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -420,7 +420,7 @@ disconnect.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::disconnect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:191
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:213
  * @route '/whatsapp/{instance}/disconnect'
  */
 disconnect.url = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -453,7 +453,7 @@ disconnect.url = (args: { instance: number | { id: number } } | [instance: numbe
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::disconnect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:191
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:213
  * @route '/whatsapp/{instance}/disconnect'
  */
 disconnect.post = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -463,7 +463,7 @@ disconnect.post = (args: { instance: number | { id: number } } | [instance: numb
 
     /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::disconnect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:191
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:213
  * @route '/whatsapp/{instance}/disconnect'
  */
     const disconnectForm = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -473,7 +473,7 @@ disconnect.post = (args: { instance: number | { id: number } } | [instance: numb
 
             /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::disconnect
- * @see app/Http/Controllers/WhatsAppInstanceController.php:191
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:213
  * @route '/whatsapp/{instance}/disconnect'
  */
         disconnectForm.post = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -484,7 +484,7 @@ disconnect.post = (args: { instance: number | { id: number } } | [instance: numb
     disconnect.form = disconnectForm
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::assign
- * @see app/Http/Controllers/WhatsAppInstanceController.php:204
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:226
  * @route '/whatsapp/{instance}/assign'
  */
 export const assign = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -499,7 +499,7 @@ assign.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::assign
- * @see app/Http/Controllers/WhatsAppInstanceController.php:204
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:226
  * @route '/whatsapp/{instance}/assign'
  */
 assign.url = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -532,7 +532,7 @@ assign.url = (args: { instance: number | { id: number } } | [instance: number | 
 
 /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::assign
- * @see app/Http/Controllers/WhatsAppInstanceController.php:204
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:226
  * @route '/whatsapp/{instance}/assign'
  */
 assign.patch = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -542,7 +542,7 @@ assign.patch = (args: { instance: number | { id: number } } | [instance: number 
 
     /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::assign
- * @see app/Http/Controllers/WhatsAppInstanceController.php:204
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:226
  * @route '/whatsapp/{instance}/assign'
  */
     const assignForm = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -557,7 +557,7 @@ assign.patch = (args: { instance: number | { id: number } } | [instance: number 
 
             /**
 * @see \App\Http\Controllers\WhatsAppInstanceController::assign
- * @see app/Http/Controllers/WhatsAppInstanceController.php:204
+ * @see app/Http/Controllers/WhatsAppInstanceController.php:226
  * @route '/whatsapp/{instance}/assign'
  */
         assignForm.patch = (args: { instance: number | { id: number } } | [instance: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

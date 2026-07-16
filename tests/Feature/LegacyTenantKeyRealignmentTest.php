@@ -7,8 +7,10 @@ use App\Models\Lead;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\LegacyTenantKeyRealignmentService;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 it('rewrites legacy tenant_id from user id string to owner tenant id', function () {
     // Offset tenant auto-increment so user_id != tenant_id
@@ -38,28 +40,38 @@ it('rewrites legacy tenant_id from user id string to owner tenant id', function 
 });
 
 it('rewrites legacy tenant_id on campaign-family tables (contact_lists, campaigns, etc.)', function () {
-    Tenant::create(['name' => 'offset']);
+    $campaignTenantIntegrityMigration = legacyRealignmentCampaignTenantIntegrityMigration();
+    $campaignTenantIntegrityMigration->down();
 
-    $user = User::factory()->create();
-    $tenant = $user->tenants()->first();
+    try {
+        Tenant::create(['name' => 'offset']);
 
-    $contactList = ContactList::factory()->create(['tenant_id' => (string) $user->id]);
+        $user = User::factory()->create();
+        $tenant = $user->tenants()->first();
 
-    $campaign = Campaign::factory()->create([
-        'tenant_id' => (string) $user->id,
-        'contact_list_id' => $contactList->id,
-    ]);
+        $contactList = ContactList::factory()->create(['tenant_id' => (string) $user->id]);
 
-    expect((string) $contactList->tenant_id)->toBe((string) $user->id);
-    expect((string) $campaign->tenant_id)->toBe((string) $user->id);
+        $campaign = Campaign::factory()->create([
+            'tenant_id' => (string) $user->id,
+            'contact_list_id' => $contactList->id,
+        ]);
 
-    app(LegacyTenantKeyRealignmentService::class)->realign(onlyUserId: $user->id);
+        expect((string) $contactList->tenant_id)->toBe((string) $user->id);
+        expect((string) $campaign->tenant_id)->toBe((string) $user->id);
 
-    $contactList->refresh();
-    $campaign->refresh();
+        app(LegacyTenantKeyRealignmentService::class)->realign(onlyUserId: $user->id);
 
-    expect((string) $contactList->tenant_id)->toBe((string) $tenant->id);
-    expect((string) $campaign->tenant_id)->toBe((string) $tenant->id);
+        $contactList->refresh();
+        $campaign->refresh();
+
+        expect((string) $contactList->tenant_id)->toBe((string) $tenant->id);
+        expect((string) $campaign->tenant_id)->toBe((string) $tenant->id);
+    } finally {
+        $campaignTenantIntegrityMigration->up();
+    }
+
+    expect((string) $contactList->refresh()->tenant_id)->toBe((string) $tenant->id);
+    expect((string) $campaign->refresh()->tenant_id)->toBe((string) $tenant->id);
 });
 
 it('is idempotent when data is already aligned', function () {
@@ -79,3 +91,8 @@ it('is idempotent when data is already aligned', function () {
     expect($first['rows_updated'])->toBe(0);
     expect($second['rows_updated'])->toBe(0);
 });
+
+function legacyRealignmentCampaignTenantIntegrityMigration(): Migration
+{
+    return require database_path('migrations/2026_07_15_010008_enforce_campaign_tenant_reference_integrity.php');
+}

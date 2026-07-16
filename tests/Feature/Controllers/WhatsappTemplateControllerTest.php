@@ -354,6 +354,28 @@ test('update rejects instance reassignment', function () {
     expect($template->fresh()->whatsapp_instance_id)->toBe($instance->id);
 });
 
+test('update cannot access a template from another tenant', function () {
+    [$user] = makeAuthUserWithMetaCloud();
+    [$otherUser] = makeAuthUserWithMetaCloud();
+
+    $otherTemplate = WhatsappTemplate::factory()->create([
+        'tenant_id' => $otherUser->tenantId,
+        'kind' => 'meta_hsm',
+        'name' => 'Template estrangeiro',
+    ]);
+
+    $response = $this->actingAs($user)->put("/templates/{$otherTemplate->id}", [
+        'name' => 'Tentativa de alteracao',
+    ]);
+
+    $response->assertNotFound();
+    $this->assertDatabaseHas('whatsapp_templates', [
+        'id' => $otherTemplate->id,
+        'name' => 'Template estrangeiro',
+        'deleted_at' => null,
+    ]);
+});
+
 test('destroy removes template without active campaigns', function () {
     [$user] = makeAuthUserWithMetaCloud();
 
@@ -366,4 +388,22 @@ test('destroy removes template without active campaigns', function () {
 
     $response->assertRedirect();
     expect(WhatsappTemplate::find($template->id))->toBeNull();
+});
+
+test('destroy cannot access a template from another tenant', function () {
+    [$user] = makeAuthUserWithMetaCloud();
+    [$otherUser] = makeAuthUserWithMetaCloud();
+
+    $otherTemplate = WhatsappTemplate::factory()->create([
+        'tenant_id' => $otherUser->tenantId,
+        'kind' => 'meta_hsm',
+    ]);
+
+    $response = $this->actingAs($user)->delete("/templates/{$otherTemplate->id}");
+
+    $response->assertNotFound();
+    $this->assertDatabaseHas('whatsapp_templates', [
+        'id' => $otherTemplate->id,
+        'deleted_at' => null,
+    ]);
 });

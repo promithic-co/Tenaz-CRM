@@ -743,6 +743,10 @@ class SendCampaignMessageJob implements ShouldQueue
         preg_match_all('/\{\{(\d+)\}\}/', $text, $matches);
 
         $indexes = array_values(array_unique($matches[1] ?? []));
+        // Meta reads parameters positionally: parameters[0] fills {{1}}, [1] fills {{2}}.
+        // Order by the placeholder number, not by appearance in the text, so a body like
+        // "{{2}} ... {{1}}" still maps each value to the correct slot.
+        sort($indexes, SORT_NUMERIC);
         if ($indexes === []) {
             return [];
         }

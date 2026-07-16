@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { Head } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head } from '@inertiajs/vue3';
 import type { BreadcrumbItem } from '@/types';
 
 type Tenant = {
@@ -30,37 +30,37 @@ function formatDate(iso: string): string {
     <AppLayout :breadcrumbs="breadcrumbItems">
         <Head title="Tenants" />
 
-        <div class="px-4 py-6">
-            <div class="flex flex-col space-y-12 max-w-5xl">
+        <div class="px-3 py-4 sm:px-4 sm:py-6">
+            <div class="flex max-w-5xl flex-col space-y-12">
                 <Heading
                     title="Tenants"
                     description="Lista de organizações cadastradas na plataforma."
                 />
 
-                <div class="rounded-md border overflow-hidden">
-                    <table class="w-full text-sm">
+                <div class="overflow-x-auto rounded-md border">
+                    <table class="w-full min-w-[36rem] text-sm">
                         <thead>
                             <tr>
                                 <th
-                                    class="text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3 text-left"
+                                    class="px-4 py-3 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     scope="col"
                                 >
                                     Nome
                                 </th>
                                 <th
-                                    class="text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3 text-right"
+                                    class="px-4 py-3 text-right text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     scope="col"
                                 >
                                     Usuários
                                 </th>
                                 <th
-                                    class="text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3 text-right"
+                                    class="px-4 py-3 text-right text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     scope="col"
                                 >
                                     Agentes
                                 </th>
                                 <th
-                                    class="text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3 text-left"
+                                    class="px-4 py-3 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     scope="col"
                                 >
                                     Criado em
@@ -73,17 +73,37 @@ function formatDate(iso: string): string {
                                 :key="tenant.id"
                                 class="border-t"
                             >
-                                <td class="px-4 py-3 font-medium">{{ tenant.name }}</td>
-                                <td class="px-4 py-3 text-right text-muted-foreground">{{ tenant.users_count }}</td>
-                                <td class="px-4 py-3 text-right text-muted-foreground">{{ tenant.agents_count }}</td>
-                                <td class="px-4 py-3 text-muted-foreground">{{ formatDate(tenant.created_at) }}</td>
+                                <td class="px-4 py-3 font-medium">
+                                    {{ tenant.name }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-right text-muted-foreground"
+                                >
+                                    {{ tenant.users_count }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-right text-muted-foreground"
+                                >
+                                    {{ tenant.agents_count }}
+                                </td>
+                                <td class="px-4 py-3 text-muted-foreground">
+                                    {{ formatDate(tenant.created_at) }}
+                                </td>
                             </tr>
                         </tbody>
                         <tbody v-else>
                             <tr>
-                                <td colspan="4" class="py-12 text-center text-muted-foreground">
-                                    <p class="font-medium text-sm">Nenhum tenant encontrado</p>
-                                    <p class="text-sm mt-1">Não há organizações cadastradas na plataforma.</p>
+                                <td
+                                    colspan="4"
+                                    class="py-12 text-center text-muted-foreground"
+                                >
+                                    <p class="text-sm font-medium">
+                                        Nenhum tenant encontrado
+                                    </p>
+                                    <p class="mt-1 text-sm">
+                                        Não há organizações cadastradas na
+                                        plataforma.
+                                    </p>
                                 </td>
                             </tr>
                         </tbody>

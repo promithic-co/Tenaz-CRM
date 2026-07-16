@@ -313,3 +313,63 @@ it('parseWebhook ignores status-only payloads', function (): void {
 
     expect(makeProvider()->parseWebhook($request))->toBeNull();
 });
+
+// ─── parseMessage: drop non-actionable inbound (no text, no media) ──────────────
+
+it('parseMessage drops a reaction (no text, no media)', function (): void {
+    $dto = makeProvider()->parseMessage([
+        'from' => '5511999999999',
+        'id' => 'wamid.RX',
+        'type' => 'reaction',
+        'reaction' => ['message_id' => 'wamid.orig', 'emoji' => '👍'],
+    ]);
+
+    expect($dto)->toBeNull();
+});
+
+it('parseMessage drops a location (no text, no media)', function (): void {
+    $dto = makeProvider()->parseMessage([
+        'from' => '5511999999999',
+        'id' => 'wamid.LOC',
+        'type' => 'location',
+        'location' => ['latitude' => -23.5, 'longitude' => -46.6],
+    ]);
+
+    expect($dto)->toBeNull();
+});
+
+it('parseMessage drops an unsupported message type', function (): void {
+    $dto = makeProvider()->parseMessage([
+        'from' => '5511999999999',
+        'id' => 'wamid.UNSUP',
+        'type' => 'unsupported',
+    ]);
+
+    expect($dto)->toBeNull();
+});
+
+it('parseMessage keeps a media message with no caption', function (): void {
+    $dto = makeProvider()->parseMessage([
+        'from' => '5511999999999',
+        'id' => 'wamid.IMG',
+        'type' => 'image',
+        'image' => ['id' => 'media123', 'mime_type' => 'image/jpeg'],
+    ]);
+
+    expect($dto)->not->toBeNull()
+        ->and($dto->hasMedia)->toBeTrue()
+        ->and($dto->text)->toBeNull();
+});
+
+it('parseMessage keeps a plain text message', function (): void {
+    $dto = makeProvider()->parseMessage([
+        'from' => '5511999999999',
+        'id' => 'wamid.TXT',
+        'type' => 'text',
+        'text' => ['body' => 'Olá'],
+    ]);
+
+    expect($dto)->not->toBeNull()
+        ->and($dto->text)->toBe('Olá')
+        ->and($dto->hasMedia)->toBeFalse();
+});

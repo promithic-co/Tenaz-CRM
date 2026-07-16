@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import { Head, Link } from '@inertiajs/vue3';
 import { edit } from '@/actions/App/Http/Controllers/Backoffice/BackofficeTemplateController';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
 import type { BreadcrumbItem } from '@/types';
 
 type Template = {
@@ -34,49 +34,49 @@ const breadcrumbItems: BreadcrumbItem[] = [
     <AppLayout :breadcrumbs="breadcrumbItems">
         <Head title="Templates LLM" />
 
-        <div class="px-4 py-6">
-            <div class="flex flex-col space-y-12 max-w-5xl">
+        <div class="px-3 py-4 sm:px-4 sm:py-6">
+            <div class="flex max-w-5xl flex-col space-y-12">
                 <Heading
                     title="Templates LLM"
                     description="Configuração de provedor e modelo por template de agente."
                 />
 
-                <div class="rounded-md border overflow-hidden">
-                    <table class="w-full text-sm">
+                <div class="overflow-x-auto rounded-md border">
+                    <table class="w-full min-w-[52rem] text-sm">
                         <thead>
                             <tr>
                                 <th
-                                    class="text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3 text-left"
+                                    class="px-4 py-3 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     scope="col"
                                 >
                                     Template
                                 </th>
                                 <th
-                                    class="text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3 text-left"
+                                    class="px-4 py-3 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     scope="col"
                                 >
                                     Provedor (chat)
                                 </th>
                                 <th
-                                    class="text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3 text-left"
+                                    class="px-4 py-3 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     scope="col"
                                 >
                                     Modelo (chat)
                                 </th>
                                 <th
-                                    class="text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3 text-left"
+                                    class="px-4 py-3 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     scope="col"
                                 >
                                     Temp.
                                 </th>
                                 <th
-                                    class="text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3 text-left"
+                                    class="px-4 py-3 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     scope="col"
                                 >
                                     Tokens
                                 </th>
                                 <th
-                                    class="text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3 text-left"
+                                    class="px-4 py-3 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     scope="col"
                                 >
                                     Ações
@@ -87,25 +87,51 @@ const breadcrumbItems: BreadcrumbItem[] = [
                             <tr
                                 v-for="t in templates"
                                 :key="t.id"
-                                class="hover:bg-muted/50 transition-colors border-t"
+                                class="border-t transition-colors hover:bg-muted/50"
                             >
-                                <td class="px-4 py-3 font-medium">{{ t.template_slug }}</td>
-                                <td class="px-4 py-3 text-muted-foreground">{{ t.agent_provider }}</td>
-                                <td class="px-4 py-3 font-mono text-xs">{{ t.agent_model }}</td>
-                                <td class="px-4 py-3 text-muted-foreground">{{ t.temperature }}</td>
-                                <td class="px-4 py-3 text-muted-foreground">{{ t.max_tokens }}</td>
+                                <td class="px-4 py-3 font-medium">
+                                    {{ t.template_slug }}
+                                </td>
+                                <td class="px-4 py-3 text-muted-foreground">
+                                    {{ t.agent_provider }}
+                                </td>
+                                <td class="px-4 py-3 font-mono text-xs">
+                                    {{ t.agent_model }}
+                                </td>
+                                <td class="px-4 py-3 text-muted-foreground">
+                                    {{ t.temperature }}
+                                </td>
+                                <td class="px-4 py-3 text-muted-foreground">
+                                    {{ t.max_tokens }}
+                                </td>
                                 <td class="px-4 py-3">
                                     <Button variant="ghost" size="sm" as-child>
-                                        <Link :href="edit({ template_slug: t.template_slug }).url">Editar</Link>
+                                        <Link
+                                            :href="
+                                                edit({
+                                                    template_slug:
+                                                        t.template_slug,
+                                                }).url
+                                            "
+                                            >Editar</Link
+                                        >
                                     </Button>
                                 </td>
                             </tr>
                         </tbody>
                         <tbody v-else>
                             <tr>
-                                <td colspan="6" class="py-12 text-center text-muted-foreground">
-                                    <p class="font-medium text-sm">Nenhum template configurado</p>
-                                    <p class="text-sm mt-1">Execute o seeder de templates para criar as configurações padrão.</p>
+                                <td
+                                    colspan="6"
+                                    class="py-12 text-center text-muted-foreground"
+                                >
+                                    <p class="text-sm font-medium">
+                                        Nenhum template configurado
+                                    </p>
+                                    <p class="mt-1 text-sm">
+                                        Execute o seeder de templates para criar
+                                        as configurações padrão.
+                                    </p>
                                 </td>
                             </tr>
                         </tbody>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/AppLayout.vue';
+import { Phone } from 'lucide-vue-next';
+import { ref } from 'vue';
+import VoiceInstanceController from '@/actions/App/Http/Controllers/VoiceInstanceController';
 import EmptyState from '@/components/EmptyState.vue';
 import {
     Dialog,
@@ -10,11 +11,14 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
-import { Phone } from 'lucide-vue-next';
+import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
-import VoiceInstanceController from '@/actions/App/Http/Controllers/VoiceInstanceController';
 
-type WhatsappInstance = { id: number; name: string; display_name: string | null };
+type WhatsappInstance = {
+    id: number;
+    name: string;
+    display_name: string | null;
+};
 
 type VoiceInstance = {
     id: number;
@@ -84,7 +88,9 @@ function openEdit(instance: VoiceInstance): void {
 }
 
 function submitEdit(): void {
-    if (!editingInstance.value) { return; }
+    if (!editingInstance.value) {
+        return;
+    }
     editForm.put(VoiceInstanceController.update(editingInstance.value.id).url, {
         onSuccess: () => {
             editingInstance.value = null;
@@ -97,10 +103,17 @@ const deleteConfirmId = ref<number | null>(null);
 const deleteForm = useForm({});
 
 function deleteInstance(): void {
-    if (deleteConfirmId.value === null) { return; }
-    deleteForm.delete(VoiceInstanceController.destroy(deleteConfirmId.value).url, {
-        onSuccess: () => { deleteConfirmId.value = null; },
-    });
+    if (deleteConfirmId.value === null) {
+        return;
+    }
+    deleteForm.delete(
+        VoiceInstanceController.destroy(deleteConfirmId.value).url,
+        {
+            onSuccess: () => {
+                deleteConfirmId.value = null;
+            },
+        },
+    );
 }
 </script>
 
@@ -108,23 +121,39 @@ function deleteInstance(): void {
     <Head title="Instâncias de Voz" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="p-4">
-            <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border">
+        <div class="p-3 sm:p-4">
+            <div
+                class="overflow-x-auto rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border"
+            >
                 <!-- Header -->
-                <div class="flex items-center justify-between border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
-                    <div class="flex items-center gap-3">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Instâncias de Voz</span>
-                        <span class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{{ instances.length }}</span>
+                <div
+                    class="flex min-w-full flex-col gap-3 border-b border-sidebar-border/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-sidebar-border"
+                >
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span
+                            class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                            >Instâncias de Voz</span
+                        >
+                        <span
+                            class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                            >{{ instances.length }}</span
+                        >
                         <div
                             v-if="props.twilioPhoneNumber"
                             class="flex items-center gap-2 rounded-md bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground"
                         >
                             <Phone class="h-3.5 w-3.5" />
-                            <span>Número de saída: <span class="font-mono font-medium text-foreground">{{ props.twilioPhoneNumber }}</span></span>
+                            <span
+                                >Número de saída:
+                                <span
+                                    class="font-mono font-medium text-foreground"
+                                    >{{ props.twilioPhoneNumber }}</span
+                                ></span
+                            >
                         </div>
                     </div>
                     <button
-                        class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                        class="flex min-h-10 items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:min-h-0"
                         @click="showCreateDialog = true"
                     >
                         + Nova Instância
@@ -132,27 +161,51 @@ function deleteInstance(): void {
                 </div>
 
                 <!-- Table -->
-                <table class="w-full text-sm">
-                    <thead class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border">
+                <table class="w-full min-w-[38rem] text-sm">
+                    <thead
+                        class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border"
+                    >
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Nome</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">WhatsApp Vinculado</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Status</th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Nome
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                WhatsApp Vinculado
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Status
+                            </th>
                             <th class="px-4 py-3" />
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border">
+                    <tbody
+                        class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border"
+                    >
                         <tr
                             v-for="instance in instances"
                             :key="instance.id"
                             class="transition-colors hover:bg-muted/40"
                         >
                             <td class="px-4 py-3">
-                                <p class="font-medium text-foreground">{{ instance.display_name ?? instance.name }}</p>
-                                <p class="text-xs text-muted-foreground">{{ instance.name }}</p>
+                                <p class="font-medium text-foreground">
+                                    {{ instance.display_name ?? instance.name }}
+                                </p>
+                                <p class="text-xs text-muted-foreground">
+                                    {{ instance.name }}
+                                </p>
                             </td>
                             <td class="px-4 py-3 text-xs text-muted-foreground">
-                                {{ instance.whatsapp_instance?.display_name ?? instance.whatsapp_instance?.name ?? '—' }}
+                                {{
+                                    instance.whatsapp_instance?.display_name ??
+                                    instance.whatsapp_instance?.name ??
+                                    '—'
+                                }}
                             </td>
                             <td class="px-4 py-3">
                                 <span
@@ -167,7 +220,9 @@ function deleteInstance(): void {
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex items-center justify-end gap-2">
+                                <div
+                                    class="flex items-center justify-end gap-2"
+                                >
                                     <button
                                         class="rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                                         @click="openEdit(instance)"
@@ -204,66 +259,103 @@ function deleteInstance(): void {
     </AppLayout>
 
     <!-- Create Dialog -->
-    <Dialog :open="showCreateDialog" @update:open="(v) => { if (!v) showCreateDialog = false; }">
+    <Dialog
+        :open="showCreateDialog"
+        @update:open="
+            (v) => {
+                if (!v) showCreateDialog = false;
+            }
+        "
+    >
         <DialogContent class="sm:max-w-lg">
             <DialogHeader>
                 <DialogTitle>Nova Instância de Voz</DialogTitle>
             </DialogHeader>
 
             <form class="flex flex-col gap-4" @submit.prevent="submitCreate">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-foreground">Nome (identificador) <span class="text-red-500">*</span></label>
+                        <label
+                            class="mb-1 block text-sm font-medium text-foreground"
+                            >Nome (identificador)
+                            <span class="text-red-500">*</span></label
+                        >
                         <input
                             v-model="createForm.name"
                             type="text"
                             placeholder="Ex: twilio-principal"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                         />
-                        <p v-if="createForm.errors.name" class="mt-1 text-xs text-red-500">{{ createForm.errors.name }}</p>
+                        <p
+                            v-if="createForm.errors.name"
+                            class="mt-1 text-xs text-red-500"
+                        >
+                            {{ createForm.errors.name }}
+                        </p>
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-foreground">Nome exibido</label>
+                        <label
+                            class="mb-1 block text-sm font-medium text-foreground"
+                            >Nome exibido</label
+                        >
                         <input
                             v-model="createForm.display_name"
                             type="text"
                             placeholder="Ex: Twilio Principal"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                         />
                     </div>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Instância WhatsApp vinculada</label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Instância WhatsApp vinculada</label
+                    >
                     <select
                         v-model="createForm.whatsapp_instance_id"
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     >
                         <option value="">Nenhuma</option>
-                        <option v-for="wa in whatsappInstances" :key="wa.id" :value="wa.id">
+                        <option
+                            v-for="wa in whatsappInstances"
+                            :key="wa.id"
+                            :value="wa.id"
+                        >
                             {{ wa.display_name ?? wa.name }}
                         </option>
                     </select>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Template de saudação</label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Template de saudação</label
+                    >
                     <textarea
                         v-model="createForm.greeting_template"
                         rows="2"
                         placeholder="Olá {nome}, aqui é a Tenaz CRM..."
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     />
-                    <p v-if="createForm.errors.greeting_template" class="mt-1 text-xs text-red-500">{{ createForm.errors.greeting_template }}</p>
+                    <p
+                        v-if="createForm.errors.greeting_template"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ createForm.errors.greeting_template }}
+                    </p>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Mensagem pós-ligação (WhatsApp)</label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Mensagem pós-ligação (WhatsApp)</label
+                    >
                     <textarea
                         v-model="createForm.post_call_message"
                         rows="2"
                         placeholder="Olá {nome}, conforme falamos no telefone..."
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     />
                 </div>
 
@@ -274,7 +366,9 @@ function deleteInstance(): void {
                         id="create-active"
                         class="rounded border-input text-primary focus:ring-primary"
                     />
-                    <label for="create-active" class="text-sm text-foreground">Instância ativa</label>
+                    <label for="create-active" class="text-sm text-foreground"
+                        >Instância ativa</label
+                    >
                 </div>
             </form>
 
@@ -292,68 +386,102 @@ function deleteInstance(): void {
                     class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                     @click="submitCreate"
                 >
-                    {{ createForm.processing ? 'Criando...' : 'Criar Instância' }}
+                    {{
+                        createForm.processing ? 'Criando...' : 'Criar Instância'
+                    }}
                 </button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
 
     <!-- Edit Dialog -->
-    <Dialog :open="editingInstance !== null" @update:open="(v) => { if (!v) editingInstance = null; }">
+    <Dialog
+        :open="editingInstance !== null"
+        @update:open="
+            (v) => {
+                if (!v) editingInstance = null;
+            }
+        "
+    >
         <DialogContent class="sm:max-w-lg">
             <DialogHeader>
                 <DialogTitle>Editar Instância de Voz</DialogTitle>
             </DialogHeader>
 
             <form class="flex flex-col gap-4" @submit.prevent="submitEdit">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-foreground">Nome (identificador) <span class="text-red-500">*</span></label>
+                        <label
+                            class="mb-1 block text-sm font-medium text-foreground"
+                            >Nome (identificador)
+                            <span class="text-red-500">*</span></label
+                        >
                         <input
                             v-model="editForm.name"
                             type="text"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                         />
-                        <p v-if="editForm.errors.name" class="mt-1 text-xs text-red-500">{{ editForm.errors.name }}</p>
+                        <p
+                            v-if="editForm.errors.name"
+                            class="mt-1 text-xs text-red-500"
+                        >
+                            {{ editForm.errors.name }}
+                        </p>
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-foreground">Nome exibido</label>
+                        <label
+                            class="mb-1 block text-sm font-medium text-foreground"
+                            >Nome exibido</label
+                        >
                         <input
                             v-model="editForm.display_name"
                             type="text"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                         />
                     </div>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Instância WhatsApp vinculada</label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Instância WhatsApp vinculada</label
+                    >
                     <select
                         v-model="editForm.whatsapp_instance_id"
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     >
                         <option value="">Nenhuma</option>
-                        <option v-for="wa in whatsappInstances" :key="wa.id" :value="wa.id">
+                        <option
+                            v-for="wa in whatsappInstances"
+                            :key="wa.id"
+                            :value="wa.id"
+                        >
                             {{ wa.display_name ?? wa.name }}
                         </option>
                     </select>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Template de saudação</label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Template de saudação</label
+                    >
                     <textarea
                         v-model="editForm.greeting_template"
                         rows="2"
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     />
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Mensagem pós-ligação (WhatsApp)</label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Mensagem pós-ligação (WhatsApp)</label
+                    >
                     <textarea
                         v-model="editForm.post_call_message"
                         rows="2"
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     />
                 </div>
 
@@ -364,7 +492,9 @@ function deleteInstance(): void {
                         id="edit-active"
                         class="rounded border-input text-primary focus:ring-primary"
                     />
-                    <label for="edit-active" class="text-sm text-foreground">Instância ativa</label>
+                    <label for="edit-active" class="text-sm text-foreground"
+                        >Instância ativa</label
+                    >
                 </div>
             </form>
 
@@ -382,19 +512,33 @@ function deleteInstance(): void {
                     class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                     @click="submitEdit"
                 >
-                    {{ editForm.processing ? 'Salvando...' : 'Salvar Alterações' }}
+                    {{
+                        editForm.processing
+                            ? 'Salvando...'
+                            : 'Salvar Alterações'
+                    }}
                 </button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
 
     <!-- Delete Confirm Dialog -->
-    <Dialog :open="deleteConfirmId !== null" @update:open="(v) => { if (!v) deleteConfirmId = null; }">
+    <Dialog
+        :open="deleteConfirmId !== null"
+        @update:open="
+            (v) => {
+                if (!v) deleteConfirmId = null;
+            }
+        "
+    >
         <DialogContent class="sm:max-w-sm">
             <DialogHeader>
                 <DialogTitle>Excluir Instância</DialogTitle>
             </DialogHeader>
-            <p class="text-sm text-muted-foreground">Tem certeza que deseja excluir esta instância de voz? Esta ação não pode ser desfeita.</p>
+            <p class="text-sm text-muted-foreground">
+                Tem certeza que deseja excluir esta instância de voz? Esta ação
+                não pode ser desfeita.
+            </p>
             <DialogFooter>
                 <button
                     type="button"

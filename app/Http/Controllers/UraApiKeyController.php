@@ -16,19 +16,19 @@ class UraApiKeyController extends Controller
 {
     public function index(Request $request): Response
     {
-        $tenant = $request->user();
+        $tenantId = (string) $request->user()->tenantId;
 
         $apiKeys = UraApiKey::with(['agent', 'whatsappTemplate'])
-            ->where('tenant_id', $tenant->id)
+            ->where('tenant_id', $tenantId)
             ->latest()
             ->get();
 
-        $agents = Agent::where('tenant_id', $tenant->id)
+        $agents = Agent::where('tenant_id', $tenantId)
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $templates = WhatsappTemplate::where('tenant_id', $tenant->id)
+        $templates = WhatsappTemplate::where('tenant_id', $tenantId)
             ->approved()
             ->orderBy('name')
             ->get(['id', 'name', 'meta_template_name', 'language', 'variables_count', 'body', 'status']);
@@ -44,12 +44,12 @@ class UraApiKeyController extends Controller
 
     public function store(StoreUraApiKeyRequest $request): RedirectResponse
     {
-        $tenant = $request->user();
+        $tenantId = (string) $request->user()->tenantId;
 
         $generated = UraApiKey::generate();
 
         $apiKey = UraApiKey::create([
-            'tenant_id' => $tenant->id,
+            'tenant_id' => $tenantId,
             'agent_id' => $request->validated('agent_id'),
             'whatsapp_template_id' => $request->validated('whatsapp_template_id'),
             'name' => $request->validated('name'),
@@ -68,7 +68,7 @@ class UraApiKeyController extends Controller
     public function update(Request $request, UraApiKey $uraApiKey): RedirectResponse
     {
         $this->authorizeKey($request, $uraApiKey);
-        $tenantId = $request->user()->id;
+        $tenantId = (string) $request->user()->tenantId;
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
@@ -101,6 +101,6 @@ class UraApiKeyController extends Controller
 
     private function authorizeKey(Request $request, UraApiKey $uraApiKey): void
     {
-        abort_unless($uraApiKey->tenant_id === $request->user()->id, 403);
+        abort_unless((string) $uraApiKey->tenant_id === (string) $request->user()->tenantId, 403);
     }
 }

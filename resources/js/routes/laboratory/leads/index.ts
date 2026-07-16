@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LaboratoryController::interactions
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
 export const interactions = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ interactions.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::interactions
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
 interactions.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ interactions.url = (args: { lead: number | { id: number } } | [lead: number | { 
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::interactions
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
 interactions.get = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -58,7 +58,7 @@ interactions.get = (args: { lead: number | { id: number } } | [lead: number | { 
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::interactions
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
 interactions.head = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -68,7 +68,7 @@ interactions.head = (args: { lead: number | { id: number } } | [lead: number | {
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::interactions
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
     const interactionsForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -78,7 +78,7 @@ interactions.head = (args: { lead: number | { id: number } } | [lead: number | {
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::interactions
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
         interactionsForm.get = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -87,7 +87,7 @@ interactions.head = (args: { lead: number | { id: number } } | [lead: number | {
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::interactions
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
         interactionsForm.head = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

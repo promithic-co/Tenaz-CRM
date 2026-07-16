@@ -189,6 +189,13 @@ return [
         'auto_tag_retry_window_seconds' => (int) env('TENAZ_AUTO_TAG_RETRY_WINDOW_SECONDS', env('CREDFLOW_AUTO_TAG_RETRY_WINDOW_SECONDS', 1800)),
         'incoming_message_retry_window_seconds' => (int) env('TENAZ_INCOMING_MESSAGE_RETRY_WINDOW_SECONDS', env('CREDFLOW_INCOMING_MESSAGE_RETRY_WINDOW_SECONDS', 1800)),
         'outbox_retry_window_seconds' => (int) env('TENAZ_OUTBOX_RETRY_WINDOW_SECONDS', env('CREDFLOW_OUTBOX_RETRY_WINDOW_SECONDS', 21600)),
+        // Age (seconds) after which an unresolved conversation-outbox 'in_doubt' row is reconciled
+        // to 'failed' (mirrors campaigns.in_doubt_timeout_seconds for the 1:1 conversation path). An
+        // in_doubt outbox awaits a delivery webhook echoing its opaque key; a lost webhook would
+        // strand the row forever and pin its timeline bubble in 'sending'. provider_attempted_at is
+        // preserved on the flip so the in-doubt guard still blocks any re-send — reconciliation is
+        // duplicate-safe by construction. Default 24h. 0 disables the reconciliation.
+        'outbox_in_doubt_timeout_seconds' => (int) env('TENAZ_OUTBOX_IN_DOUBT_TIMEOUT', env('CREDFLOW_OUTBOX_IN_DOUBT_TIMEOUT', 86400)),
         'template_sync_retry_window_seconds' => (int) env('TENAZ_TEMPLATE_SYNC_RETRY_WINDOW_SECONDS', env('CREDFLOW_TEMPLATE_SYNC_RETRY_WINDOW_SECONDS', 3600)),
         'template_sync_max_retry_after_seconds' => (int) env('TENAZ_TEMPLATE_SYNC_MAX_RETRY_AFTER_SECONDS', env('CREDFLOW_TEMPLATE_SYNC_MAX_RETRY_AFTER_SECONDS', 3600)),
     ],

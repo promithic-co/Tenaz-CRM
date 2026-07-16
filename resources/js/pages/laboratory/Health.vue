@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/AppLayout.vue';
-import { CheckCircle, XCircle, AlertTriangle, RefreshCw, Database, Cpu, HardDrive, Layers } from 'lucide-vue-next';
-import type { BreadcrumbItem } from '@/types';
+import {
+    CheckCircle,
+    XCircle,
+    AlertTriangle,
+    RefreshCw,
+    Database,
+    Cpu,
+    HardDrive,
+    Layers,
+} from 'lucide-vue-next';
 import { ref } from 'vue';
+import AppLayout from '@/layouts/AppLayout.vue';
+import type { BreadcrumbItem } from '@/types';
 
 type CheckResult = {
     status: 'ok' | 'warning' | 'error';
@@ -57,27 +66,38 @@ function formatDetails(check: CheckResult) {
         .join(' · ');
 }
 
-const overallOk = Object.values(props.checks).every((c) => c.status === 'ok') && props.horizon.status === 'ok';
+const overallOk =
+    Object.values(props.checks).every((c) => c.status === 'ok') &&
+    props.horizon.status === 'ok';
 </script>
 
 <template>
     <Head title="Health — Laboratory" />
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="p-6 space-y-6">
+        <div class="space-y-6 p-3 sm:p-6">
             <!-- Header -->
-            <div class="flex items-center justify-between">
+            <div
+                class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
                 <div>
                     <h1 class="text-xl font-semibold">System Health</h1>
-                    <p class="text-sm text-muted-foreground mt-0.5">
-                        Checked at {{ new Date(checkedAt).toLocaleString('pt-BR') }}
+                    <p class="mt-0.5 text-sm text-muted-foreground">
+                        Checked at
+                        {{ new Date(checkedAt).toLocaleString('pt-BR') }}
                     </p>
                 </div>
                 <div class="flex items-center gap-3">
                     <span
-                        :class="overallOk ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                        :class="
+                            overallOk
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                        "
                         class="rounded-full px-3 py-1 text-xs font-semibold"
                         role="status"
-                        :aria-label="overallOk ? 'System healthy' : 'System degraded'"
+                        :aria-label="
+                            overallOk ? 'System healthy' : 'System degraded'
+                        "
                     >
                         {{ overallOk ? 'Healthy' : 'Degraded' }}
                     </span>
@@ -87,7 +107,12 @@ const overallOk = Object.values(props.checks).every((c) => c.status === 'ok') &&
                         aria-label="Refresh health checks"
                         @click="refresh"
                     >
-                        <RefreshCw :class="['size-3.5', { 'animate-spin': refreshing }]" />
+                        <RefreshCw
+                            :class="[
+                                'size-3.5',
+                                { 'animate-spin': refreshing },
+                            ]"
+                        />
                         Refresh
                     </button>
                 </div>
@@ -98,18 +123,30 @@ const overallOk = Object.values(props.checks).every((c) => c.status === 'ok') &&
                 <div
                     v-for="(meta, key) in allChecks"
                     :key="key"
-                    :class="['rounded-lg border p-4', statusBg(checks[key]?.status ?? 'error')]"
+                    :class="[
+                        'rounded-lg border p-4',
+                        statusBg(checks[key]?.status ?? 'error'),
+                    ]"
                     role="region"
                     :aria-label="`${meta.label} health check`"
                 >
                     <div class="flex items-start justify-between gap-2">
                         <div>
                             <p class="text-sm font-medium">{{ meta.label }}</p>
-                            <p :class="['mt-1 text-xs font-semibold uppercase', statusColor(checks[key]?.status ?? 'error')]">
+                            <p
+                                :class="[
+                                    'mt-1 text-xs font-semibold uppercase',
+                                    statusColor(checks[key]?.status ?? 'error'),
+                                ]"
+                            >
                                 {{ checks[key]?.status ?? 'unknown' }}
                             </p>
                         </div>
-                        <component :is="meta.icon" class="size-4 shrink-0 opacity-60" aria-hidden="true" />
+                        <component
+                            :is="meta.icon"
+                            class="size-4 shrink-0 opacity-60"
+                            aria-hidden="true"
+                        />
                     </div>
                     <p class="mt-2 text-xs text-muted-foreground">
                         {{ formatDetails(checks[key] ?? { status: 'error' }) }}
@@ -119,9 +156,18 @@ const overallOk = Object.values(props.checks).every((c) => c.status === 'ok') &&
 
             <!-- Horizon + Failed Jobs -->
             <div class="grid gap-4 sm:grid-cols-2">
-                <div :class="['rounded-lg border p-4', statusBg(horizon.status)]" role="region" aria-label="Horizon queue worker status">
+                <div
+                    :class="['rounded-lg border p-4', statusBg(horizon.status)]"
+                    role="region"
+                    aria-label="Horizon queue worker status"
+                >
                     <p class="text-sm font-medium">Horizon</p>
-                    <p :class="['mt-1 text-xs font-semibold uppercase', statusColor(horizon.status)]">
+                    <p
+                        :class="[
+                            'mt-1 text-xs font-semibold uppercase',
+                            statusColor(horizon.status),
+                        ]"
+                    >
                         {{ horizon.horizon_status ?? horizon.status }}
                     </p>
                     <p class="mt-2 text-xs text-muted-foreground">
@@ -130,26 +176,44 @@ const overallOk = Object.values(props.checks).every((c) => c.status === 'ok') &&
                 </div>
 
                 <div
-                    :class="['rounded-lg border p-4', failedJobs > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200']"
+                    :class="[
+                        'rounded-lg border p-4',
+                        failedJobs > 0
+                            ? 'border-red-200 bg-red-50'
+                            : 'border-green-200 bg-green-50',
+                    ]"
                     role="region"
                     aria-label="Failed jobs count"
                 >
                     <p class="text-sm font-medium">Failed Jobs</p>
-                    <p :class="['mt-1 text-2xl font-bold', failedJobs > 0 ? 'text-red-700' : 'text-green-700']">
+                    <p
+                        :class="[
+                            'mt-1 text-2xl font-bold',
+                            failedJobs > 0 ? 'text-red-700' : 'text-green-700',
+                        ]"
+                    >
                         {{ failedJobs }}
                     </p>
-                    <p class="mt-1 text-xs text-muted-foreground">Total in failed_jobs table</p>
+                    <p class="mt-1 text-xs text-muted-foreground">
+                        Total in failed_jobs table
+                    </p>
                 </div>
             </div>
 
             <!-- Status Legend -->
             <div class="flex items-center gap-4 text-xs text-muted-foreground">
                 <span class="flex items-center gap-1">
-                    <CheckCircle class="size-3.5 text-green-600" aria-hidden="true" />
+                    <CheckCircle
+                        class="size-3.5 text-green-600"
+                        aria-hidden="true"
+                    />
                     OK
                 </span>
                 <span class="flex items-center gap-1">
-                    <AlertTriangle class="size-3.5 text-yellow-600" aria-hidden="true" />
+                    <AlertTriangle
+                        class="size-3.5 text-yellow-600"
+                        aria-hidden="true"
+                    />
                     Warning
                 </span>
                 <span class="flex items-center gap-1">

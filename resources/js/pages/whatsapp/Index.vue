@@ -72,37 +72,33 @@ const addForm = useForm({
 
 // ─── Meta Embedded Signup ─────────────────────────────────────────────────────
 //
-// Stage flow:
-//   'select'     → user picks connection mode + clicks Continue (launches FB.login)
-//   'processing' → FB popup is open or backend is exchanging the code for a token
-//   'confirm'    → token cached, ready to create the instance (optional PIN)
-//
-// Note about modes: 'new' and 'migrate' use the SAME Meta Login Configuration
-// (META_APP_CONFIG_ID, no featureType). Facebook decides between activating a
-// new number vs. migrating an existing WABA inside the popup itself. Only
-// 'coexistence' needs a separate config_id (META_APP_CONFIG_ID_COEXISTENCE
-// with featureType=coexist), which is why we still ask the user up front.
+// The Meta popup owns the connection choice. The OAuth callback and the
+// Embedded Signup session event are coordinated before the backend exchange.
 
-type MetaMode = 'new' | 'migrate' | 'coexistence';
-type MetaStage = 'select' | 'processing' | 'confirm';
+type MetaMode = 'standard' | 'coexistence';
+type MetaFinishEvent = 'FINISH' | 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
+type MetaStage = 'intro' | 'processing' | 'confirm';
 
-const metaStage = ref<MetaStage>('select');
+const metaStage = ref<MetaStage>('intro');
 const metaProcessing = ref(false);
 const metaError = ref('');
 const metaPhoneNumberId = ref('');
 const metaWabaId = ref('');
-const metaMode = ref<MetaMode>('new');
+const metaBusinessId = ref('');
+const metaAuthorizationCode = ref('');
+const metaFinishEvent = ref<MetaFinishEvent | null>(null);
+const metaExchangeStarted = ref(false);
+const metaMode = ref<MetaMode>('standard');
 
 const metaModeLabel: Record<MetaMode, string> = {
-    new: 'Número novo (OTP)',
-    migrate: 'Migrar número existente (OTP)',
-    coexistence: 'Coexistência (QR code)',
+    standard: 'Cloud API',
+    coexistence: 'Coexistência com o WhatsApp Business',
 };
 
 const metaConfigId = () =>
-    metaMode.value === 'coexistence'
-        ? ((window as any).__META_CONFIG_ID_COEXISTENCE__ ?? '')
-        : ((window as any).__META_CONFIG_ID__ ?? '');
+    (window as any).__META_CONFIG_ID_COEXISTENCE__ ||
+    (window as any).__META_CONFIG_ID__ ||
+    '';
 
 const needsPin = () => metaMode.value !== 'coexistence';
 
@@ -138,6 +134,12 @@ function loadFbSdk(): Promise<void> {
 
 function launchEmbeddedSignup(): void {
     metaError.value = '';
+    metaAuthorizationCode.value = '';
+    metaFinishEvent.value = null;
+    metaExchangeStarted.value = false;
+    metaPhoneNumberId.value = '';
+    metaWabaId.value = '';
+    metaBusinessId.value = '';
 
     if (!metaConfigId()) {
         metaError.value =
@@ -161,7 +163,7 @@ function launchEmbeddedSignup(): void {
                 err?.message ??
                 'Não foi possível carregar o SDK do Facebook. Verifique sua conexão.';
             metaProcessing.value = false;
-            metaStage.value = 'select';
+            metaStage.value = 'intro';
         });
 }
 
@@ -171,11 +173,13 @@ function openFbLogin(): void {
     (window as any).FB.login(
         (response: any) => {
             if (response.authResponse?.code) {
-                handleSignupCode(response.authResponse.code);
+                metaAuthorizationCode.value = response.authResponse.code;
+                completeEmbeddedSignup();
             } else {
-                metaError.value = 'Signup cancelado ou sem autorização.';
+                metaError.value =
+                    'A conexão não foi concluída. Você pode tentar novamente.';
                 metaProcessing.value = false;
-                metaStage.value = 'select';
+                metaStage.value = 'intro';
             }
         },
         {
@@ -184,7 +188,7 @@ function openFbLogin(): void {
             override_default_response_type: true,
             extras: {
                 setup: {},
-                featureType: metaMode.value === 'coexistence' ? 'coexist' : '',
+                featureType: 'whatsapp_business_app_onboarding',
                 sessionInfoVersion: '3',
             },
         },
@@ -196,7 +200,19 @@ onMounted(() => {
     loadFbSdk().catch(() => {});
 });
 
-async function handleSignupCode(code: string): Promise<void> {
+async function completeEmbeddedSignup(): Promise<void> {
+    if (
+        !metaAuthorizationCode.value ||
+        !metaFinishEvent.value ||
+        !metaWabaId.value ||
+        !metaProcessing.value ||
+        metaExchangeStarted.value
+    ) {
+        return;
+    }
+
+    metaExchangeStarted.value = true;
+
     try {
         const csrfToken = csrf();
         const res = await fetch('/whatsapp/meta/embedded-signup', {
@@ -207,10 +223,11 @@ async function handleSignupCode(code: string): Promise<void> {
                 'X-XSRF-TOKEN': csrfToken,
             },
             body: JSON.stringify({
-                code,
+                code: metaAuthorizationCode.value,
                 waba_id: metaWabaId.value || '',
                 phone_number_id: metaPhoneNumberId.value || '',
-                mode: metaMode.value,
+                business_id: metaBusinessId.value || '',
+                finish_type: metaFinishEvent.value,
             }),
         });
 
@@ -218,41 +235,74 @@ async function handleSignupCode(code: string): Promise<void> {
 
         if (!res.ok) {
             metaError.value = data.message || 'Falha ao processar o signup.';
-            metaStage.value = 'select';
+            metaStage.value = 'intro';
             return;
         }
 
         addForm.meta_signup_token = data.signup_token;
         metaPhoneNumberId.value = data.phone_number_id || '';
         metaWabaId.value = data.waba_id || '';
+        metaBusinessId.value = data.business_id || '';
+        metaMode.value = data.coexistence ? 'coexistence' : 'standard';
         metaStage.value = 'confirm';
     } catch {
         metaError.value = 'Erro de rede ao processar o signup.';
-        metaStage.value = 'select';
+        metaStage.value = 'intro';
     } finally {
+        metaExchangeStarted.value = false;
         metaProcessing.value = false;
     }
 }
 
-// Listen for the WABA/phone IDs from the JS SDK FINISH event
+// OAuth code and session event can arrive in either order.
+function isFacebookOrigin(origin: string): boolean {
+    try {
+        const url = new URL(origin);
+
+        return (
+            url.protocol === 'https:' &&
+            (url.hostname === 'facebook.com' ||
+                url.hostname.endsWith('.facebook.com'))
+        );
+    } catch {
+        return false;
+    }
+}
+
 if (typeof window !== 'undefined') {
     window.addEventListener('message', (event) => {
-        if (
-            event.origin !== 'https://www.facebook.com' &&
-            event.origin !== 'https://web.facebook.com'
-        )
-            return;
+        if (!isFacebookOrigin(event.origin)) return;
         try {
             const data =
                 typeof event.data === 'string'
                     ? JSON.parse(event.data)
                     : event.data;
+            if (data?.type !== 'WA_EMBEDDED_SIGNUP') return;
+
             if (
-                data?.type === 'WA_EMBEDDED_SIGNUP' &&
-                data?.event === 'FINISH'
+                data?.event === 'FINISH' ||
+                data?.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING'
             ) {
                 metaPhoneNumberId.value = data?.data?.phone_number_id ?? '';
                 metaWabaId.value = data?.data?.waba_id ?? '';
+                metaBusinessId.value = data?.data?.business_id ?? '';
+                metaFinishEvent.value = data.event;
+                completeEmbeddedSignup();
+                return;
+            }
+
+            if (data?.event === 'CANCEL') {
+                metaError.value = 'A conexão foi cancelada antes da conclusão.';
+                metaProcessing.value = false;
+                metaStage.value = 'intro';
+            }
+
+            if (data?.event === 'ERROR') {
+                metaError.value =
+                    data?.data?.error_message ||
+                    'A Meta não conseguiu concluir a conexão.';
+                metaProcessing.value = false;
+                metaStage.value = 'intro';
             }
         } catch {
             /* ignore */
@@ -261,12 +311,16 @@ if (typeof window !== 'undefined') {
 }
 
 function resetMetaState(): void {
-    metaStage.value = 'select';
+    metaStage.value = 'intro';
     metaProcessing.value = false;
     metaError.value = '';
     metaPhoneNumberId.value = '';
     metaWabaId.value = '';
-    metaMode.value = 'new';
+    metaBusinessId.value = '';
+    metaAuthorizationCode.value = '';
+    metaFinishEvent.value = null;
+    metaExchangeStarted.value = false;
+    metaMode.value = 'standard';
     addForm.meta_signup_token = '';
     addForm.meta_pin = '';
 }
@@ -309,7 +363,7 @@ function csrf(): string {
     <Head title="WhatsApp" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="space-y-6 p-4 lg:p-8">
+        <div class="space-y-6 p-3 sm:p-4 lg:p-8">
             <!-- Flash -->
             <div
                 v-if="flash"
@@ -336,7 +390,9 @@ function csrf(): string {
             </div>
 
             <!-- Header -->
-            <div class="flex items-center justify-between gap-4">
+            <div
+                class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+            >
                 <div class="flex items-center gap-2.5">
                     <div>
                         <div class="flex items-center gap-2">
@@ -424,7 +480,7 @@ function csrf(): string {
             }
         "
     >
-        <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent class="max-h-[90svh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
                 <DialogTitle>Nova instância</DialogTitle>
                 <DialogDescription
@@ -460,8 +516,11 @@ function csrf(): string {
                     </div>
                 </div>
 
-                <!-- Campos comuns: nome -->
-                <div class="grid gap-4 sm:grid-cols-2">
+                <!-- Campos internos, preenchidos somente após a Meta confirmar os ativos. -->
+                <div
+                    v-if="metaStage === 'confirm'"
+                    class="grid gap-4 sm:grid-cols-2"
+                >
                     <div class="space-y-1.5">
                         <Label
                             >Apelido
@@ -496,47 +555,25 @@ function csrf(): string {
 
                 <!-- ── Embedded Signup ───────────────────────────────────────── -->
 
-                <!-- Stage: select mode + launch FB.login() -->
-                <template v-if="metaStage === 'select'">
-                    <div class="space-y-2">
-                        <Label>Como conectar este número?</Label>
-                        <div class="space-y-2">
-                            <button
-                                v-for="opt in [
-                                    {
-                                        value: 'new',
-                                        label: 'Número novo',
-                                        desc: 'Ative um número que ainda não usa o WhatsApp Business API. Você receberá um código OTP por chamada ou SMS.',
-                                    },
-                                    {
-                                        value: 'migrate',
-                                        label: 'Migrar número existente',
-                                        desc: 'Transfira um número que usa o app WhatsApp Business para a Cloud API. O app original será desativado.',
-                                    },
-                                    {
-                                        value: 'coexistence',
-                                        label: 'Coexistência (manter app)',
-                                        desc: 'Use a Cloud API e o app WhatsApp Business ao mesmo tempo via QR code. Disponível para BR/MX/IN. Limite: 20 msg/seg.',
-                                    },
-                                ] as const"
-                                :key="opt.value"
-                                type="button"
-                                :class="[
-                                    'w-full rounded-lg border px-3 py-2.5 text-left text-xs transition-colors',
-                                    metaMode === opt.value
-                                        ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                                        : 'border-border bg-card hover:border-muted-foreground/40',
-                                ]"
-                                @click="metaMode = opt.value"
-                            >
-                                <span class="font-semibold text-foreground">{{
-                                    opt.label
-                                }}</span>
-                                <p class="mt-0.5 text-muted-foreground">
-                                    {{ opt.desc }}
-                                </p>
-                            </button>
-                        </div>
+                <!-- Stage: explain and launch the Meta-owned selection flow. -->
+                <template v-if="metaStage === 'intro'">
+                    <div
+                        class="space-y-2 rounded-lg border border-border bg-card px-3 py-3 text-sm"
+                    >
+                        <p class="font-semibold text-foreground">
+                            Escolha a conta e o número na Meta
+                        </p>
+                        <p class="text-xs text-muted-foreground">
+                            Na próxima janela, a Meta mostrará as opções
+                            disponíveis para sua empresa: cadastrar um número na
+                            Cloud API ou conectar um WhatsApp Business existente
+                            com coexistência, quando a conta for elegível.
+                        </p>
+                        <p class="text-xs text-muted-foreground">
+                            Na coexistência, conclua a confirmação pelo celular
+                            e mantenha o WhatsApp Business aberto durante a
+                            sincronização inicial.
+                        </p>
                     </div>
 
                     <div
@@ -600,6 +637,12 @@ function csrf(): string {
                                 metaWabaId || '—'
                             }}</span>
                             <span class="text-green-600 dark:text-green-500"
+                                >Business ID:</span
+                            >
+                            <span class="font-mono font-medium">{{
+                                metaBusinessId || '—'
+                            }}</span>
+                            <span class="text-green-600 dark:text-green-500"
                                 >Phone Number ID:</span
                             >
                             <span class="font-mono font-medium">{{
@@ -608,7 +651,7 @@ function csrf(): string {
                         </div>
                     </div>
 
-                    <!-- PIN only for new / migrate modes -->
+                    <!-- PIN only for the standard Cloud API path. -->
                     <div v-if="needsPin()" class="space-y-1.5">
                         <Label
                             >PIN de registro
@@ -650,12 +693,11 @@ function csrf(): string {
                         >Cancelar</Button
                     >
 
-                    <!-- Stage 'select': single FB CTA. Must call FB.login synchronously to avoid popup blockers. -->
+                    <!-- Stage 'intro': launch Meta while preserving the user gesture. -->
                     <Button
-                        v-if="metaStage === 'select'"
+                        v-if="metaStage === 'intro'"
                         type="button"
                         class="bg-[#1877F2] text-white hover:bg-[#1877F2]/90"
-                        :disabled="!addForm.name"
                         @click="launchEmbeddedSignup()"
                     >
                         <svg

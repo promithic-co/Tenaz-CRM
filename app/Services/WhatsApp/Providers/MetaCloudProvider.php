@@ -118,12 +118,21 @@ class MetaCloudProvider implements WhatsAppProviderInterface
         };
 
         $hasMedia = in_array($msgType, ['image', 'audio', 'video', 'document', 'sticker'], true);
+        $normalizedText = ($text !== null && $text !== '') ? $text : null;
+
+        // Nothing actionable: types like reaction, location, contacts, order, system, or an
+        // unsupported message carry no text and no media. Dropping them here prevents a hollow
+        // inbound from creating a Lead, opening the 24h window, and burning LLM tokens on nothing.
+        if (! $hasMedia && $normalizedText === null) {
+            return null;
+        }
+
         $pushName = $this->resolvePushName($contacts, $phone);
 
         return new IncomingMessageDTO(
             phone: $phone,
             instanceName: $this->phoneNumberId,
-            text: ($text !== null && $text !== '') ? $text : null,
+            text: $normalizedText,
             fromMe: false,
             pushName: $pushName,
             hasMedia: $hasMedia,

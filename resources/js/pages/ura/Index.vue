@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { Link2, Copy, Check, Plug, Trash2, Pencil } from 'lucide-vue-next';
-import AppLayout from '@/layouts/AppLayout.vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import UraApiKeyController from '@/actions/App/Http/Controllers/UraApiKeyController';
 import EmptyState from '@/components/EmptyState.vue';
 import {
     Dialog,
@@ -11,8 +11,8 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
+import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
-import UraApiKeyController from '@/actions/App/Http/Controllers/UraApiKeyController';
 
 type Agent = { id: number; name: string };
 
@@ -85,19 +85,26 @@ onMounted(() => {
     }
 });
 
-watch(() => props.createdKey, (val) => {
-    if (val) {
-        revealKey.value = val;
-        revealOpen.value = true;
-        copied.value = false;
-    }
-});
+watch(
+    () => props.createdKey,
+    (val) => {
+        if (val) {
+            revealKey.value = val;
+            revealOpen.value = true;
+            copied.value = false;
+        }
+    },
+);
 
 function copyKey(): void {
-    if (!revealKey.value) { return; }
+    if (!revealKey.value) {
+        return;
+    }
     navigator.clipboard.writeText(revealKey.value.plain);
     copied.value = true;
-    setTimeout(() => { copied.value = false; }, 2500);
+    setTimeout(() => {
+        copied.value = false;
+    }, 2500);
 }
 
 // ─── Edit dialog ──────────────────────────────────────────────────────────────
@@ -122,7 +129,9 @@ function openEdit(key: UraApiKey): void {
 }
 
 function submitEdit(): void {
-    if (!editingKey.value) { return; }
+    if (!editingKey.value) {
+        return;
+    }
     editForm.patch(UraApiKeyController.update(editingKey.value.id).url, {
         onSuccess: () => {
             editOpen.value = false;
@@ -137,29 +146,38 @@ const deleteId = ref<number | null>(null);
 const deleteForm = useForm({});
 
 function submitDelete(): void {
-    if (deleteId.value === null) { return; }
+    if (deleteId.value === null) {
+        return;
+    }
     deleteForm.delete(UraApiKeyController.destroy(deleteId.value).url, {
-        onSuccess: () => { deleteId.value = null; },
+        onSuccess: () => {
+            deleteId.value = null;
+        },
     });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatLastUsed(dt: string | null): string {
-    if (!dt) { return 'Nunca utilizada'; }
-    return new Date(dt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    if (!dt) {
+        return 'Nunca utilizada';
+    }
+    return new Date(dt).toLocaleString('pt-BR', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+    });
 }
 
 const apiEndpoint = computed(() => `${window.location.origin}/api/ura/trigger`);
 
 const selectedTemplate = computed(() => {
     const id = Number(createForm.whatsapp_template_id);
-    return id ? props.templates.find((t) => t.id === id) ?? null : null;
+    return id ? (props.templates.find((t) => t.id === id) ?? null) : null;
 });
 
 const editSelectedTemplate = computed(() => {
     const id = Number(editForm.whatsapp_template_id);
-    return id ? props.templates.find((t) => t.id === id) ?? null : null;
+    return id ? (props.templates.find((t) => t.id === id) ?? null) : null;
 });
 </script>
 
@@ -167,32 +185,77 @@ const editSelectedTemplate = computed(() => {
     <Head title="URA Externa" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="p-4">
-            <div v-if="flash" class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400">
+        <div class="p-3 sm:p-4">
+            <div
+                v-if="flash"
+                class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400"
+            >
                 {{ flash }}
             </div>
 
             <!-- API info card -->
-            <div class="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900/50 dark:bg-blue-900/20">
-                <p class="text-xs font-semibold text-blue-800 dark:text-blue-300">Endpoint de integração</p>
-                <p class="mt-0.5 font-mono text-sm text-blue-900 dark:text-blue-200">POST {{ apiEndpoint }}</p>
+            <div
+                class="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900/50 dark:bg-blue-900/20"
+            >
+                <p
+                    class="text-xs font-semibold text-blue-800 dark:text-blue-300"
+                >
+                    Endpoint de integração
+                </p>
+                <p
+                    class="mt-0.5 font-mono text-sm text-blue-900 dark:text-blue-200"
+                >
+                    POST {{ apiEndpoint }}
+                </p>
                 <p class="mt-1.5 text-xs text-blue-700 dark:text-blue-400">
-                    Envie <code class="rounded bg-blue-100 px-1 dark:bg-blue-900/60">X-URA-API-Key: &lt;chave&gt;</code> no header.
-                    Body: <code class="rounded bg-blue-100 px-1 dark:bg-blue-900/60">phone</code> (E.164, obrigatório),
-                    <code class="rounded bg-blue-100 px-1 dark:bg-blue-900/60">name</code>,
-                    <code class="rounded bg-blue-100 px-1 dark:bg-blue-900/60">variables</code> (array de strings, mapeados em <code v-pre class="rounded bg-blue-100 px-1 dark:bg-blue-900/60">{{1}}</code>, <code v-pre class="rounded bg-blue-100 px-1 dark:bg-blue-900/60">{{2}}</code>, …).
+                    Envie
+                    <code class="rounded bg-blue-100 px-1 dark:bg-blue-900/60"
+                        >X-URA-API-Key: &lt;chave&gt;</code
+                    >
+                    no header. Body:
+                    <code class="rounded bg-blue-100 px-1 dark:bg-blue-900/60"
+                        >phone</code
+                    >
+                    (E.164, obrigatório),
+                    <code class="rounded bg-blue-100 px-1 dark:bg-blue-900/60"
+                        >name</code
+                    >,
+                    <code class="rounded bg-blue-100 px-1 dark:bg-blue-900/60"
+                        >variables</code
+                    >
+                    (array de strings, mapeados em
+                    <code
+                        v-pre
+                        class="rounded bg-blue-100 px-1 dark:bg-blue-900/60"
+                        >{{ 1 }}</code
+                    >,
+                    <code
+                        v-pre
+                        class="rounded bg-blue-100 px-1 dark:bg-blue-900/60"
+                        >{{ 2 }}</code
+                    >, …).
                 </p>
             </div>
 
-            <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border">
+            <div
+                class="overflow-x-auto rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border"
+            >
                 <!-- Header -->
-                <div class="flex items-center justify-between border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
+                <div
+                    class="flex min-w-full flex-col gap-3 border-b border-sidebar-border/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-sidebar-border"
+                >
                     <div class="flex items-center gap-3">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Integrações URA</span>
-                        <span class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{{ apiKeys.length }}</span>
+                        <span
+                            class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                            >Integrações URA</span
+                        >
+                        <span
+                            class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                            >{{ apiKeys.length }}</span
+                        >
                     </div>
                     <button
-                        class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                        class="flex min-h-10 items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:min-h-0"
                         @click="createOpen = true"
                     >
                         + Nova integração
@@ -200,37 +263,85 @@ const editSelectedTemplate = computed(() => {
                 </div>
 
                 <!-- Table -->
-                <table class="w-full text-sm">
-                    <thead class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border">
+                <table class="w-full min-w-[52rem] text-sm">
+                    <thead
+                        class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border"
+                    >
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Nome</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Agente</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Template</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Chave (preview)</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Último uso</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Status</th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Nome
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Agente
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Template
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Chave (preview)
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Último uso
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Status
+                            </th>
                             <th class="px-4 py-3" />
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border">
+                    <tbody
+                        class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border"
+                    >
                         <tr
                             v-for="key in apiKeys"
                             :key="key.id"
                             class="transition-colors hover:bg-muted/40"
                         >
-                            <td class="px-4 py-3 font-medium text-foreground">{{ key.name }}</td>
-                            <td class="px-4 py-3 text-xs text-muted-foreground">{{ key.agent?.name ?? '—' }}</td>
+                            <td class="px-4 py-3 font-medium text-foreground">
+                                {{ key.name }}
+                            </td>
+                            <td class="px-4 py-3 text-xs text-muted-foreground">
+                                {{ key.agent?.name ?? '—' }}
+                            </td>
                             <td class="px-4 py-3 text-xs text-muted-foreground">
                                 <span v-if="key.whatsapp_template">
                                     {{ key.whatsapp_template.name }}
-                                    <span v-if="key.whatsapp_template.variables_count > 0" class="ml-1 text-muted-foreground/60">({{ key.whatsapp_template.variables_count }} var.)</span>
+                                    <span
+                                        v-if="
+                                            key.whatsapp_template
+                                                .variables_count > 0
+                                        "
+                                        class="ml-1 text-muted-foreground/60"
+                                        >({{
+                                            key.whatsapp_template
+                                                .variables_count
+                                        }}
+                                        var.)</span
+                                    >
                                 </span>
                                 <span v-else class="italic">Sem template</span>
                             </td>
                             <td class="px-4 py-3">
-                                <span class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">…{{ key.key_preview }}</span>
+                                <span
+                                    class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground"
+                                    >…{{ key.key_preview }}</span
+                                >
                             </td>
-                            <td class="px-4 py-3 text-xs text-muted-foreground">{{ formatLastUsed(key.last_used_at) }}</td>
+                            <td class="px-4 py-3 text-xs text-muted-foreground">
+                                {{ formatLastUsed(key.last_used_at) }}
+                            </td>
                             <td class="px-4 py-3">
                                 <span
                                     :class="[
@@ -244,7 +355,9 @@ const editSelectedTemplate = computed(() => {
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex items-center justify-end gap-1">
+                                <div
+                                    class="flex items-center justify-end gap-1"
+                                >
                                     <button
                                         class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                                         title="Editar"
@@ -291,57 +404,128 @@ const editSelectedTemplate = computed(() => {
 
             <form class="flex flex-col gap-4" @submit.prevent="submitCreate">
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Nome da integração <span class="text-red-500">*</span></label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Nome da integração
+                        <span class="text-red-500">*</span></label
+                    >
                     <input
                         v-model="createForm.name"
                         type="text"
                         placeholder="Ex: Discador Zenvia – INSS"
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     />
-                    <p v-if="createForm.errors.name" class="mt-1 text-xs text-red-500">{{ createForm.errors.name }}</p>
+                    <p
+                        v-if="createForm.errors.name"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ createForm.errors.name }}
+                    </p>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Agente responsável <span class="text-red-500">*</span></label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Agente responsável
+                        <span class="text-red-500">*</span></label
+                    >
                     <select
                         v-model="createForm.agent_id"
                         required
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     >
                         <option value="">Selecione um agente...</option>
-                        <option v-for="agent in agents" :key="agent.id" :value="agent.id">
+                        <option
+                            v-for="agent in agents"
+                            :key="agent.id"
+                            :value="agent.id"
+                        >
                             {{ agent.name }}
                         </option>
                     </select>
-                    <p v-if="createForm.errors.agent_id" class="mt-1 text-xs text-red-500">{{ createForm.errors.agent_id }}</p>
+                    <p
+                        v-if="createForm.errors.agent_id"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ createForm.errors.agent_id }}
+                    </p>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Template de abertura</label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Template de abertura</label
+                    >
                     <select
                         v-model="createForm.whatsapp_template_id"
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     >
                         <option value="">Sem template (texto livre)</option>
-                        <option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">
+                        <option
+                            v-for="tpl in templates"
+                            :key="tpl.id"
+                            :value="tpl.id"
+                        >
                             {{ tpl.name }}
-                            <template v-if="tpl.meta_template_name"> · {{ tpl.meta_template_name }}</template>
-                            <template v-if="tpl.variables_count > 0"> · {{ tpl.variables_count }} var.</template>
+                            <template v-if="tpl.meta_template_name">
+                                · {{ tpl.meta_template_name }}</template
+                            >
+                            <template v-if="tpl.variables_count > 0">
+                                · {{ tpl.variables_count }} var.</template
+                            >
                         </option>
                     </select>
-                    <p v-if="createForm.errors.whatsapp_template_id" class="mt-1 text-xs text-red-500">{{ createForm.errors.whatsapp_template_id }}</p>
-                    <p v-if="templates.length === 0" class="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
-                        Nenhum template APPROVED. <a href="/templates" class="underline">Cadastrar template</a>.
+                    <p
+                        v-if="createForm.errors.whatsapp_template_id"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ createForm.errors.whatsapp_template_id }}
+                    </p>
+                    <p
+                        v-if="templates.length === 0"
+                        class="mt-1 text-xs text-yellow-600 dark:text-yellow-400"
+                    >
+                        Nenhum template APPROVED.
+                        <a href="/templates" class="underline"
+                            >Cadastrar template</a
+                        >.
                     </p>
                 </div>
 
                 <!-- Template preview -->
-                <div v-if="selectedTemplate?.body" class="rounded-lg border border-sidebar-border/70 bg-muted/30 px-3 py-2.5 dark:border-sidebar-border">
-                    <p class="mb-1 text-xs font-semibold uppercase text-muted-foreground">Preview do template</p>
-                    <p class="whitespace-pre-wrap text-xs text-foreground leading-relaxed">{{ selectedTemplate.body }}</p>
-                    <p v-if="selectedTemplate.variables_count > 0" class="mt-1.5 text-xs text-muted-foreground">
-                        Envie <code class="rounded bg-muted px-1">variables: ["val1", "val2", …]</code> no body da requisição para substituir
-                        <code v-pre class="rounded bg-muted px-0.5 font-mono text-xs">{{1}}</code>–<code class="rounded bg-muted px-0.5 font-mono text-xs">&#123;&#123;{{ selectedTemplate.variables_count }}&#125;&#125;</code>.
+                <div
+                    v-if="selectedTemplate?.body"
+                    class="rounded-lg border border-sidebar-border/70 bg-muted/30 px-3 py-2.5 dark:border-sidebar-border"
+                >
+                    <p
+                        class="mb-1 text-xs font-semibold text-muted-foreground uppercase"
+                    >
+                        Preview do template
+                    </p>
+                    <p
+                        class="text-xs leading-relaxed whitespace-pre-wrap text-foreground"
+                    >
+                        {{ selectedTemplate.body }}
+                    </p>
+                    <p
+                        v-if="selectedTemplate.variables_count > 0"
+                        class="mt-1.5 text-xs text-muted-foreground"
+                    >
+                        Envie
+                        <code class="rounded bg-muted px-1"
+                            >variables: ["val1", "val2", …]</code
+                        >
+                        no body da requisição para substituir
+                        <code
+                            v-pre
+                            class="rounded bg-muted px-0.5 font-mono text-xs"
+                            >{{ 1 }}</code
+                        >–<code
+                            class="rounded bg-muted px-0.5 font-mono text-xs"
+                            >&#123;&#123;{{
+                                selectedTemplate.variables_count
+                            }}&#125;&#125;</code
+                        >.
                     </p>
                 </div>
 
@@ -358,7 +542,11 @@ const editSelectedTemplate = computed(() => {
                         :disabled="createForm.processing"
                         class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                     >
-                        {{ createForm.processing ? 'Criando...' : 'Criar integração' }}
+                        {{
+                            createForm.processing
+                                ? 'Criando...'
+                                : 'Criar integração'
+                        }}
                     </button>
                 </DialogFooter>
             </form>
@@ -373,39 +561,66 @@ const editSelectedTemplate = computed(() => {
             </DialogHeader>
 
             <div class="flex flex-col gap-3">
-                <div class="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2.5 text-xs text-yellow-800 dark:border-yellow-900/50 dark:bg-yellow-900/20 dark:text-yellow-300">
-                    Esta chave é exibida <strong>uma única vez</strong>. Guarde-a em local seguro antes de fechar.
+                <div
+                    class="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2.5 text-xs text-yellow-800 dark:border-yellow-900/50 dark:bg-yellow-900/20 dark:text-yellow-300"
+                >
+                    Esta chave é exibida <strong>uma única vez</strong>.
+                    Guarde-a em local seguro antes de fechar.
                 </div>
 
                 <div>
-                    <p class="mb-1 text-xs font-semibold text-muted-foreground uppercase">Integração</p>
-                    <p class="text-sm font-medium text-foreground">{{ revealKey?.name }}</p>
+                    <p
+                        class="mb-1 text-xs font-semibold text-muted-foreground uppercase"
+                    >
+                        Integração
+                    </p>
+                    <p class="text-sm font-medium text-foreground">
+                        {{ revealKey?.name }}
+                    </p>
                 </div>
 
                 <div>
-                    <p class="mb-1 text-xs font-semibold text-muted-foreground uppercase">Chave de API</p>
-                    <div class="flex items-center gap-2 rounded-lg border border-sidebar-border/70 bg-muted/30 px-3 py-2 dark:border-sidebar-border">
-                        <code class="flex-1 break-all font-mono text-xs text-foreground">{{ revealKey?.plain }}</code>
+                    <p
+                        class="mb-1 text-xs font-semibold text-muted-foreground uppercase"
+                    >
+                        Chave de API
+                    </p>
+                    <div
+                        class="flex items-center gap-2 rounded-lg border border-sidebar-border/70 bg-muted/30 px-3 py-2 dark:border-sidebar-border"
+                    >
+                        <code
+                            class="flex-1 font-mono text-xs break-all text-foreground"
+                            >{{ revealKey?.plain }}</code
+                        >
                         <button
                             class="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             title="Copiar"
                             @click="copyKey"
                         >
-                            <Check v-if="copied" class="h-4 w-4 text-green-500" />
+                            <Check
+                                v-if="copied"
+                                class="h-4 w-4 text-green-500"
+                            />
                             <Copy v-else class="h-4 w-4" />
                         </button>
                     </div>
                 </div>
 
                 <div>
-                    <p class="mb-1 text-xs font-semibold text-muted-foreground uppercase">Como usar</p>
-                    <code class="block rounded-lg bg-muted px-3 py-2 font-mono text-xs text-foreground leading-relaxed">
-                        POST /api/ura/trigger<br>
-                        X-URA-API-Key: {{ revealKey?.plain }}<br><br>
-                        {<br>
-                        &nbsp;&nbsp;"phone": "+5511999999999",<br>
-                        &nbsp;&nbsp;"name": "João",<br>
-                        &nbsp;&nbsp;"variables": ["João", "INSS"]<br>
+                    <p
+                        class="mb-1 text-xs font-semibold text-muted-foreground uppercase"
+                    >
+                        Como usar
+                    </p>
+                    <code
+                        class="block rounded-lg bg-muted px-3 py-2 font-mono text-xs leading-relaxed text-foreground"
+                    >
+                        POST /api/ura/trigger<br />
+                        X-URA-API-Key: {{ revealKey?.plain }}<br /><br />
+                        {<br />
+                        &nbsp;&nbsp;"phone": "+5511999999999",<br />
+                        &nbsp;&nbsp;"name": "João",<br />
+                        &nbsp;&nbsp;"variables": ["João", "INSS"]<br />
                         }
                     </code>
                 </div>
@@ -431,49 +646,92 @@ const editSelectedTemplate = computed(() => {
 
             <form class="flex flex-col gap-4" @submit.prevent="submitEdit">
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Nome</label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Nome</label
+                    >
                     <input
                         v-model="editForm.name"
                         type="text"
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     />
-                    <p v-if="editForm.errors.name" class="mt-1 text-xs text-red-500">{{ editForm.errors.name }}</p>
+                    <p
+                        v-if="editForm.errors.name"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ editForm.errors.name }}
+                    </p>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Agente responsável</label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Agente responsável</label
+                    >
                     <select
                         v-model="editForm.agent_id"
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     >
                         <option value="">Selecione um agente...</option>
-                        <option v-for="agent in agents" :key="agent.id" :value="agent.id">
+                        <option
+                            v-for="agent in agents"
+                            :key="agent.id"
+                            :value="agent.id"
+                        >
                             {{ agent.name }}
                         </option>
                     </select>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-foreground">Template de abertura</label>
+                    <label
+                        class="mb-1 block text-sm font-medium text-foreground"
+                        >Template de abertura</label
+                    >
                     <select
                         v-model="editForm.whatsapp_template_id"
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                     >
                         <option value="">Sem template (texto livre)</option>
-                        <option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">
+                        <option
+                            v-for="tpl in templates"
+                            :key="tpl.id"
+                            :value="tpl.id"
+                        >
                             {{ tpl.name }}
-                            <template v-if="tpl.meta_template_name"> · {{ tpl.meta_template_name }}</template>
-                            <template v-if="tpl.variables_count > 0"> · {{ tpl.variables_count }} var.</template>
+                            <template v-if="tpl.meta_template_name">
+                                · {{ tpl.meta_template_name }}</template
+                            >
+                            <template v-if="tpl.variables_count > 0">
+                                · {{ tpl.variables_count }} var.</template
+                            >
                         </option>
                     </select>
                 </div>
 
                 <!-- Template preview -->
-                <div v-if="editSelectedTemplate?.body" class="rounded-lg border border-sidebar-border/70 bg-muted/30 px-3 py-2.5 dark:border-sidebar-border">
-                    <p class="mb-1 text-xs font-semibold uppercase text-muted-foreground">Preview</p>
-                    <p class="whitespace-pre-wrap text-xs text-foreground leading-relaxed">{{ editSelectedTemplate.body }}</p>
-                    <p v-if="editSelectedTemplate.variables_count > 0" class="mt-1.5 text-xs text-muted-foreground">
-                        {{ editSelectedTemplate.variables_count }} variável(is): envie <code class="rounded bg-muted px-1">variables</code> no body.
+                <div
+                    v-if="editSelectedTemplate?.body"
+                    class="rounded-lg border border-sidebar-border/70 bg-muted/30 px-3 py-2.5 dark:border-sidebar-border"
+                >
+                    <p
+                        class="mb-1 text-xs font-semibold text-muted-foreground uppercase"
+                    >
+                        Preview
+                    </p>
+                    <p
+                        class="text-xs leading-relaxed whitespace-pre-wrap text-foreground"
+                    >
+                        {{ editSelectedTemplate.body }}
+                    </p>
+                    <p
+                        v-if="editSelectedTemplate.variables_count > 0"
+                        class="mt-1.5 text-xs text-muted-foreground"
+                    >
+                        {{ editSelectedTemplate.variables_count }} variável(is):
+                        envie
+                        <code class="rounded bg-muted px-1">variables</code> no
+                        body.
                     </p>
                 </div>
 
@@ -484,7 +742,9 @@ const editSelectedTemplate = computed(() => {
                         id="edit-active"
                         class="rounded border-input text-primary focus:ring-primary"
                     />
-                    <label for="edit-active" class="text-sm text-foreground">Chave ativa</label>
+                    <label for="edit-active" class="text-sm text-foreground"
+                        >Chave ativa</label
+                    >
                 </div>
 
                 <DialogFooter>
@@ -508,12 +768,22 @@ const editSelectedTemplate = computed(() => {
     </Dialog>
 
     <!-- Delete confirm dialog -->
-    <Dialog :open="deleteId !== null" @update:open="(v) => { if (!v) deleteId = null; }">
+    <Dialog
+        :open="deleteId !== null"
+        @update:open="
+            (v) => {
+                if (!v) deleteId = null;
+            }
+        "
+    >
         <DialogContent class="sm:max-w-sm">
             <DialogHeader>
                 <DialogTitle>Excluir integração</DialogTitle>
             </DialogHeader>
-            <p class="text-sm text-muted-foreground">A chave será revogada imediatamente e o sistema externo não conseguirá mais autenticar. Esta ação não pode ser desfeita.</p>
+            <p class="text-sm text-muted-foreground">
+                A chave será revogada imediatamente e o sistema externo não
+                conseguirá mais autenticar. Esta ação não pode ser desfeita.
+            </p>
             <DialogFooter>
                 <button
                     type="button"
@@ -528,7 +798,11 @@ const editSelectedTemplate = computed(() => {
                     class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
                     @click="submitDelete"
                 >
-                    {{ deleteForm.processing ? 'Excluindo...' : 'Revogar e excluir' }}
+                    {{
+                        deleteForm.processing
+                            ? 'Excluindo...'
+                            : 'Revogar e excluir'
+                    }}
                 </button>
             </DialogFooter>
         </DialogContent>

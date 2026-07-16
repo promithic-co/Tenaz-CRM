@@ -1,17 +1,25 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/AppLayout.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import CsvImportDialog from '@/components/CsvImportDialog.vue';
 import { Users } from 'lucide-vue-next';
-import type { BreadcrumbItem } from '@/types';
-import { store as storeEntry, destroy as destroyEntry } from '@/actions/App/Http/Controllers/ContactListEntryController';
-import FilterChipsDisplay from './partials/FilterChipsDisplay.vue';
-import EditFiltersDialog from './partials/EditFiltersDialog.vue';
-import FreezeListDialog from './partials/FreezeListDialog.vue';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { computed, ref, watch } from 'vue';
+import {
+    store as storeEntry,
+    destroy as destroyEntry,
+} from '@/actions/App/Http/Controllers/ContactListEntryController';
+import CsvImportDialog from '@/components/CsvImportDialog.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import { Button } from '@/components/ui/button';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import AppLayout from '@/layouts/AppLayout.vue';
+import type { BreadcrumbItem } from '@/types';
+import EditFiltersDialog from './partials/EditFiltersDialog.vue';
+import FilterChipsDisplay from './partials/FilterChipsDisplay.vue';
+import FreezeListDialog from './partials/FreezeListDialog.vue';
 
 type Lead = {
     id: number;
@@ -77,7 +85,14 @@ const breadcrumbs: BreadcrumbItem[] = [
 const csvOpen = ref(false);
 
 // Contact picker dialog
-type PickerContact = { id: number; name: string | null; phone: string; email: string | null; cpf: string | null; opt_in_status: string };
+type PickerContact = {
+    id: number;
+    name: string | null;
+    phone: string;
+    email: string | null;
+    cpf: string | null;
+    opt_in_status: string;
+};
 const pickerOpen = ref(false);
 const pickerQuery = ref('');
 const pickerResults = ref<PickerContact[]>([]);
@@ -88,20 +103,32 @@ let pickerDebounce: number | null = null;
 
 function runPickerSearch(): void {
     pickerLoading.value = true;
-    fetch(`/contatos/search?q=${encodeURIComponent(pickerQuery.value)}&list_id=${props.list.id}`, {
-        headers: { Accept: 'application/json' },
-        credentials: 'same-origin',
-    })
+    fetch(
+        `/contatos/search?q=${encodeURIComponent(pickerQuery.value)}&list_id=${props.list.id}`,
+        {
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
+        },
+    )
         .then((r) => r.json())
-        .then((data: { contacts: PickerContact[]; already_in_list: number[] }) => {
-            pickerResults.value = data.contacts;
-            pickerAlready.value = data.already_in_list;
-        })
-        .finally(() => { pickerLoading.value = false; });
+        .then(
+            (data: {
+                contacts: PickerContact[];
+                already_in_list: number[];
+            }) => {
+                pickerResults.value = data.contacts;
+                pickerAlready.value = data.already_in_list;
+            },
+        )
+        .finally(() => {
+            pickerLoading.value = false;
+        });
 }
 
 watch(pickerQuery, () => {
-    if (pickerDebounce) { clearTimeout(pickerDebounce); }
+    if (pickerDebounce) {
+        clearTimeout(pickerDebounce);
+    }
     pickerDebounce = window.setTimeout(runPickerSearch, 200);
 });
 
@@ -122,13 +149,21 @@ function togglePicker(id: number): void {
 }
 
 function submitPicker(): void {
-    if (pickerSelected.value.size === 0) { return; }
-    router.post(`/listas-contato/${props.list.id}/contatos`, {
-        contact_ids: Array.from(pickerSelected.value),
-    }, {
-        preserveScroll: true,
-        onSuccess: () => { pickerOpen.value = false; },
-    });
+    if (pickerSelected.value.size === 0) {
+        return;
+    }
+    router.post(
+        `/listas-contato/${props.list.id}/contatos`,
+        {
+            contact_ids: Array.from(pickerSelected.value),
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                pickerOpen.value = false;
+            },
+        },
+    );
 }
 
 // Manual add form toggle
@@ -178,13 +213,21 @@ function optInBadgeClass(status: string): string {
 }
 
 function optInBadgeLabel(status: string): string {
-    if (status === 'opted_in') { return 'Ativo'; }
-    if (status === 'opted_out') { return 'Removido'; }
+    if (status === 'opted_in') {
+        return 'Ativo';
+    }
+    if (status === 'opted_out') {
+        return 'Removido';
+    }
     return 'Pendente';
 }
 
 // Flash banner — existing pattern (line 164)
-const flashSuccess = computed(() => (page.props.flash as Record<string, string | null> | undefined)?.success ?? null);
+const flashSuccess = computed(
+    () =>
+        (page.props.flash as Record<string, string | null> | undefined)
+            ?.success ?? null,
+);
 
 // D-14: block edit/freeze when a linked campaign is sending
 const editBlocked = computed(() => Boolean(props.list.has_campaign_in_sending));
@@ -198,7 +241,7 @@ const freezeOpen = ref(false);
     <Head :title="list.name" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-4 p-4">
+        <div class="flex flex-col gap-4 p-3 sm:p-4">
             <!-- Flash message -->
             <div
                 v-if="flashSuccess"
@@ -208,12 +251,21 @@ const freezeOpen = ref(false);
             </div>
 
             <!-- Header -->
-            <div class="flex items-start justify-between">
+            <div
+                class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+            >
                 <div>
-                    <h1 class="text-xl font-semibold text-foreground">{{ list.name }}</h1>
-                    <p v-if="list.description" class="mt-0.5 text-sm text-muted-foreground">{{ list.description }}</p>
+                    <h1 class="text-xl font-semibold text-foreground">
+                        {{ list.name }}
+                    </h1>
+                    <p
+                        v-if="list.description"
+                        class="mt-0.5 text-sm text-muted-foreground"
+                    >
+                        {{ list.description }}
+                    </p>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <button
                         class="rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted"
                         @click="openPicker"
@@ -245,7 +297,11 @@ const freezeOpen = ref(false);
                         <Tooltip>
                             <TooltipTrigger as-child>
                                 <span>
-                                    <Button variant="outline" :disabled="editBlocked" @click="editOpen = true">
+                                    <Button
+                                        variant="outline"
+                                        :disabled="editBlocked"
+                                        @click="editOpen = true"
+                                    >
                                         Editar filtros
                                     </Button>
                                 </span>
@@ -258,7 +314,11 @@ const freezeOpen = ref(false);
                         <Tooltip>
                             <TooltipTrigger as-child>
                                 <span>
-                                    <Button variant="outline" :disabled="editBlocked" @click="freezeOpen = true">
+                                    <Button
+                                        variant="outline"
+                                        :disabled="editBlocked"
+                                        @click="freezeOpen = true"
+                                    >
                                         Congelar lista
                                     </Button>
                                 </span>
@@ -275,27 +335,50 @@ const freezeOpen = ref(false);
                     v-if="editBlocked"
                     class="rounded bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
                 >
-                    Edição bloqueada: a campanha vinculada está enviando. Aguarde o fim do envio.
+                    Edição bloqueada: a campanha vinculada está enviando.
+                    Aguarde o fim do envio.
                 </p>
             </section>
 
             <!-- Stats cards -->
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
+                <div
+                    class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border"
+                >
                     <p class="text-xs text-muted-foreground">Total Contatos</p>
-                    <p class="mt-1 text-2xl font-semibold text-foreground">{{ list.entries_count }}</p>
+                    <p class="mt-1 text-2xl font-semibold text-foreground">
+                        {{ list.entries_count }}
+                    </p>
                 </div>
-                <div class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
+                <div
+                    class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border"
+                >
                     <p class="text-xs text-muted-foreground">Opt-in Ativo</p>
-                    <p class="mt-1 text-2xl font-semibold text-green-600 dark:text-green-400">{{ optInStats.opted_in }}</p>
+                    <p
+                        class="mt-1 text-2xl font-semibold text-green-600 dark:text-green-400"
+                    >
+                        {{ optInStats.opted_in }}
+                    </p>
                 </div>
-                <div class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
+                <div
+                    class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border"
+                >
                     <p class="text-xs text-muted-foreground">Pendente</p>
-                    <p class="mt-1 text-2xl font-semibold text-yellow-600 dark:text-yellow-400">{{ optInStats.pending }}</p>
+                    <p
+                        class="mt-1 text-2xl font-semibold text-yellow-600 dark:text-yellow-400"
+                    >
+                        {{ optInStats.pending }}
+                    </p>
                 </div>
-                <div class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border">
+                <div
+                    class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border"
+                >
                     <p class="text-xs text-muted-foreground">Removido</p>
-                    <p class="mt-1 text-2xl font-semibold text-red-600 dark:text-red-400">{{ optInStats.opted_out }}</p>
+                    <p
+                        class="mt-1 text-2xl font-semibold text-red-600 dark:text-red-400"
+                    >
+                        {{ optInStats.opted_out }}
+                    </p>
                 </div>
             </div>
 
@@ -304,26 +387,42 @@ const freezeOpen = ref(false);
                 v-if="showAddForm"
                 class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border"
             >
-                <p class="mb-3 text-sm font-medium text-foreground">Adicionar contato manualmente</p>
-                <form class="flex flex-wrap items-end gap-3" @submit.prevent="submitAdd">
-                    <div class="flex-1 min-w-48">
-                        <label class="mb-1 block text-xs font-medium text-muted-foreground">Telefone <span class="text-red-500">*</span></label>
+                <p class="mb-3 text-sm font-medium text-foreground">
+                    Adicionar contato manualmente
+                </p>
+                <form
+                    class="flex flex-wrap items-end gap-3"
+                    @submit.prevent="submitAdd"
+                >
+                    <div class="min-w-48 flex-1">
+                        <label
+                            class="mb-1 block text-xs font-medium text-muted-foreground"
+                            >Telefone <span class="text-red-500">*</span></label
+                        >
                         <input
                             v-model="addForm.phone"
                             type="text"
                             placeholder="5511999999999"
                             required
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                         />
-                        <p v-if="addForm.errors.phone" class="mt-1 text-xs text-red-500">{{ addForm.errors.phone }}</p>
+                        <p
+                            v-if="addForm.errors.phone"
+                            class="mt-1 text-xs text-red-500"
+                        >
+                            {{ addForm.errors.phone }}
+                        </p>
                     </div>
-                    <div class="flex-1 min-w-48">
-                        <label class="mb-1 block text-xs font-medium text-muted-foreground">Nome</label>
+                    <div class="min-w-48 flex-1">
+                        <label
+                            class="mb-1 block text-xs font-medium text-muted-foreground"
+                            >Nome</label
+                        >
                         <input
                             v-model="addForm.name"
                             type="text"
                             placeholder="Opcional"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                         />
                     </div>
                     <button
@@ -331,39 +430,88 @@ const freezeOpen = ref(false);
                         :disabled="addForm.processing"
                         class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                     >
-                        {{ addForm.processing ? 'Adicionando...' : 'Adicionar' }}
+                        {{
+                            addForm.processing ? 'Adicionando...' : 'Adicionar'
+                        }}
                     </button>
                 </form>
             </div>
 
             <!-- Entries table -->
-            <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border">
-                <div class="flex items-center gap-3 border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
-                    <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contatos</span>
-                    <span class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{{ entries.total }} entradas</span>
+            <div
+                class="overflow-x-auto rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border"
+            >
+                <div
+                    class="flex items-center gap-3 border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border"
+                >
+                    <span
+                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                        >Contatos</span
+                    >
+                    <span
+                        class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                        >{{ entries.total }} entradas</span
+                    >
                 </div>
 
-                <table class="w-full text-sm">
-                    <thead class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border">
+                <table class="w-full min-w-[48rem] text-sm">
+                    <thead
+                        class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border"
+                    >
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Nome</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Telefone</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Status Opt-in</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Lead</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Adicionado em</th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Nome
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Telefone
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Status Opt-in
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Lead
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Adicionado em
+                            </th>
                             <th class="px-4 py-3" />
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border">
+                    <tbody
+                        class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border"
+                    >
                         <tr
                             v-for="entry in entries.data"
                             :key="entry.id"
                             class="transition-colors hover:bg-muted/40"
                         >
-                            <td class="px-4 py-3 text-sm text-foreground">{{ entry.name ?? '—' }}</td>
-                            <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{{ entry.phone }}</td>
+                            <td class="px-4 py-3 text-sm text-foreground">
+                                {{ entry.name ?? '—' }}
+                            </td>
+                            <td
+                                class="px-4 py-3 font-mono text-xs text-muted-foreground"
+                            >
+                                {{ entry.phone }}
+                            </td>
                             <td class="px-4 py-3">
-                                <span :class="optInBadgeClass(entry.opt_in_status)">{{ optInBadgeLabel(entry.opt_in_status) }}</span>
+                                <span
+                                    :class="
+                                        optInBadgeClass(entry.opt_in_status)
+                                    "
+                                    >{{
+                                        optInBadgeLabel(entry.opt_in_status)
+                                    }}</span
+                                >
                             </td>
                             <td class="px-4 py-3">
                                 <Link
@@ -373,9 +521,15 @@ const freezeOpen = ref(false);
                                 >
                                     {{ entry.lead.nome }}
                                 </Link>
-                                <span v-else class="text-xs text-muted-foreground">—</span>
+                                <span
+                                    v-else
+                                    class="text-xs text-muted-foreground"
+                                    >—</span
+                                >
                             </td>
-                            <td class="px-4 py-3 text-xs text-muted-foreground">{{ formatDate(entry.created_at) }}</td>
+                            <td class="px-4 py-3 text-xs text-muted-foreground">
+                                {{ formatDate(entry.created_at) }}
+                            </td>
                             <td class="px-4 py-3 text-right">
                                 <button
                                     class="rounded px-2 py-1 text-xs text-red-500 transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
@@ -397,7 +551,10 @@ const freezeOpen = ref(false);
                 />
 
                 <!-- Pagination -->
-                <div v-if="entries.links?.length > 3" class="flex items-center gap-1 border-t border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
+                <div
+                    v-if="entries.links?.length > 3"
+                    class="flex min-w-max items-center gap-1 border-t border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border"
+                >
                     <template v-for="link in entries.links" :key="link.label">
                         <Link
                             v-if="link.url"
@@ -410,7 +567,11 @@ const freezeOpen = ref(false);
                                     : 'text-muted-foreground hover:bg-muted',
                             ]"
                         />
-                        <span v-else v-html="link.label" class="px-3 py-1 text-sm text-muted-foreground/40" />
+                        <span
+                            v-else
+                            v-html="link.label"
+                            class="px-3 py-1 text-sm text-muted-foreground/40"
+                        />
                     </template>
                 </div>
             </div>
@@ -425,7 +586,13 @@ const freezeOpen = ref(false);
         v-if="list.is_dynamic"
         v-model:open="editOpen"
         :list-id="list.id"
-        :initial-filters="(list.filters_json as any) ?? { version: 1, match: 'all', rules: [] }"
+        :initial-filters="
+            (list.filters_json as any) ?? {
+                version: 1,
+                match: 'all',
+                rules: [],
+            }
+        "
         :statuses="statuses"
         :agents="agents"
         :instances="instances"
@@ -447,18 +614,37 @@ const freezeOpen = ref(false);
     >
         <div class="w-full max-w-2xl rounded-xl bg-card p-4 shadow-xl">
             <div class="mb-3 flex items-center justify-between">
-                <h3 class="text-base font-semibold text-foreground">Adicionar contatos existentes</h3>
-                <button class="text-sm text-muted-foreground hover:text-foreground" @click="pickerOpen = false">Fechar</button>
+                <h3 class="text-base font-semibold text-foreground">
+                    Adicionar contatos existentes
+                </h3>
+                <button
+                    class="text-sm text-muted-foreground hover:text-foreground"
+                    @click="pickerOpen = false"
+                >
+                    Fechar
+                </button>
             </div>
             <input
                 v-model="pickerQuery"
                 type="text"
                 placeholder="Buscar por nome, telefone, CPF ou email"
-                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-1 focus:ring-ring focus:outline-none"
             />
-            <div class="mt-3 max-h-80 overflow-y-auto rounded-md border border-sidebar-border/70">
-                <p v-if="pickerLoading" class="px-3 py-2 text-xs text-muted-foreground">Buscando...</p>
-                <p v-else-if="pickerResults.length === 0" class="px-3 py-2 text-xs text-muted-foreground">Nenhum contato encontrado.</p>
+            <div
+                class="mt-3 max-h-80 overflow-y-auto rounded-md border border-sidebar-border/70"
+            >
+                <p
+                    v-if="pickerLoading"
+                    class="px-3 py-2 text-xs text-muted-foreground"
+                >
+                    Buscando...
+                </p>
+                <p
+                    v-else-if="pickerResults.length === 0"
+                    class="px-3 py-2 text-xs text-muted-foreground"
+                >
+                    Nenhum contato encontrado.
+                </p>
                 <ul v-else class="divide-y divide-sidebar-border/70">
                     <li
                         v-for="c in pickerResults"
@@ -473,16 +659,30 @@ const freezeOpen = ref(false);
                                 @change="togglePicker(c.id)"
                             />
                             <span>
-                                <span class="font-medium text-foreground">{{ c.name || '(sem nome)' }}</span>
-                                <span class="ml-2 text-xs text-muted-foreground">{{ c.phone }}</span>
+                                <span class="font-medium text-foreground">{{
+                                    c.name || '(sem nome)'
+                                }}</span>
+                                <span
+                                    class="ml-2 text-xs text-muted-foreground"
+                                    >{{ c.phone }}</span
+                                >
                             </span>
                         </label>
-                        <span v-if="pickerAlready.includes(c.id)" class="text-xs text-muted-foreground">Já na lista</span>
+                        <span
+                            v-if="pickerAlready.includes(c.id)"
+                            class="text-xs text-muted-foreground"
+                            >Já na lista</span
+                        >
                     </li>
                 </ul>
             </div>
             <div class="mt-4 flex justify-end gap-2">
-                <button class="rounded-md border border-input px-3 py-1.5 text-sm" @click="pickerOpen = false">Cancelar</button>
+                <button
+                    class="rounded-md border border-input px-3 py-1.5 text-sm"
+                    @click="pickerOpen = false"
+                >
+                    Cancelar
+                </button>
                 <button
                     class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     :disabled="pickerSelected.size === 0"

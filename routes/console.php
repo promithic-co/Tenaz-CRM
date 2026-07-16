@@ -22,6 +22,7 @@ Schedule::command(LaboratoryHealthCheckCommand::class)->everyFifteenMinutes();
 Schedule::command('credflow:aggregate-usage')->dailyAt('01:00');
 Schedule::command('credflow:start-scheduled-campaigns')->everyMinute();
 Schedule::command('credflow:monitor-campaigns')->everyFiveMinutes();
+Schedule::command('credflow:reconcile-outbox')->hourly();
 Schedule::command(SyncTemplatesCommand::class)->daily();
 
 // GROW-4: prune append-only observability tables (AgentInteractionEvent, AiRun)

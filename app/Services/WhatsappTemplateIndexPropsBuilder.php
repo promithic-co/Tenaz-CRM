@@ -20,7 +20,8 @@ class WhatsappTemplateIndexPropsBuilder
      */
     public function build(Request $request, string $tenantId): array
     {
-        $templates = WhatsappTemplate::ofKind(TemplateKind::MetaHsm)
+        $templates = WhatsappTemplate::forTenant($tenantId)
+            ->ofKind(TemplateKind::MetaHsm)
             ->with('whatsappInstance')
             ->when($request->query('status'), fn ($query, $status) => $query->where('status', $status))
             ->orderByDesc('created_at')

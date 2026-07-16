@@ -1,17 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { MoreVertical, RefreshCw, Users } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 // useForm kept for delete form below
-import AppLayout from '@/layouts/AppLayout.vue';
-import { create as createRoute, show, destroy as destroyList, refresh } from '@/actions/App/Http/Controllers/ContactListController';
+import {
+    create as createRoute,
+    show,
+    destroy as destroyList,
+    refresh,
+} from '@/actions/App/Http/Controllers/ContactListController';
 import EmptyState from '@/components/EmptyState.vue';
 import { Badge } from '@/components/ui/badge';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
     Dialog,
     DialogContent,
@@ -19,7 +18,13 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
-import { MoreVertical, RefreshCw, Users } from 'lucide-vue-next';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import AppLayout from '@/layouts/AppLayout.vue';
 import { formatRelative } from '@/lib/relative-time';
 import type { BreadcrumbItem } from '@/types';
 
@@ -48,11 +53,18 @@ type Props = {
 
 defineProps<Props>();
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Disparos', href: '/listas-contato' }, { title: 'Listas de Contato', href: '/listas-contato' }];
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Disparos', href: '/listas-contato' },
+    { title: 'Listas de Contato', href: '/listas-contato' },
+];
 
 // Flash success banner (same pattern as Show.vue line 164)
 const page = usePage();
-const flashSuccess = computed(() => (page.props.flash as Record<string, string | null> | undefined)?.success ?? null);
+const flashSuccess = computed(
+    () =>
+        (page.props.flash as Record<string, string | null> | undefined)
+            ?.success ?? null,
+);
 
 // Create dialog
 // Delete confirm
@@ -79,11 +91,17 @@ const refreshing = ref<number | null>(null);
 
 function onRefresh(list: ContactList): void {
     refreshing.value = list.id;
-    router.post(refresh.url({ list: list.id }), {}, {
-        preserveScroll: true,
-        // No toast library. Backend flash 'success' handled by flash banner above.
-        onFinish: () => { refreshing.value = null; },
-    });
+    router.post(
+        refresh.url({ list: list.id }),
+        {},
+        {
+            preserveScroll: true,
+            // No toast library. Backend flash 'success' handled by flash banner above.
+            onFinish: () => {
+                refreshing.value = null;
+            },
+        },
+    );
 }
 
 function sourceBadgeClass(source: string): string {
@@ -97,8 +115,12 @@ function sourceBadgeClass(source: string): string {
 }
 
 function sourceBadgeLabel(source: string): string {
-    if (source === 'csv') { return 'CSV'; }
-    if (source === 'leads') { return 'Leads'; }
+    if (source === 'csv') {
+        return 'CSV';
+    }
+    if (source === 'leads') {
+        return 'Leads';
+    }
     return 'Manual';
 }
 
@@ -117,7 +139,7 @@ function formatDate(value: string): string {
     <Head title="Listas de Contato" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="p-4">
+        <div class="p-3 sm:p-4">
             <!-- Flash success banner (page.props.flash.success — same pattern as Show.vue) -->
             <div
                 v-if="flashSuccess"
@@ -126,43 +148,88 @@ function formatDate(value: string): string {
                 {{ flashSuccess }}
             </div>
 
-            <div class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border">
+            <div
+                class="overflow-x-auto rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border"
+            >
                 <!-- Header -->
-                <div class="flex items-center justify-between border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
+                <div
+                    class="flex min-w-full flex-col gap-3 border-b border-sidebar-border/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-sidebar-border"
+                >
                     <div class="flex items-center gap-3">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Listas de Contato</span>
-                        <span class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{{ lists.total }} listas</span>
+                        <span
+                            class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                            >Listas de Contato</span
+                        >
+                        <span
+                            class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                            >{{ lists.total }} listas</span
+                        >
                     </div>
                     <Link
                         :href="createRoute.url()"
-                        class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                        class="flex min-h-10 items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:min-h-0"
                     >
                         + Nova Lista
                     </Link>
                 </div>
 
                 <!-- Table -->
-                <table class="w-full text-sm">
-                    <thead class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border">
+                <table class="w-full min-w-[52rem] text-sm">
+                    <thead
+                        class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border"
+                    >
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Nome</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Tipo</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Contatos</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Origem</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Última atualização</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">Criada em</th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Nome
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Tipo
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Contatos
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Origem
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Última atualização
+                            </th>
+                            <th
+                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Criada em
+                            </th>
                             <th class="px-4 py-3" />
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border">
+                    <tbody
+                        class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border"
+                    >
                         <tr
                             v-for="list in lists.data"
                             :key="list.id"
                             class="transition-colors hover:bg-muted/40"
                         >
                             <td class="px-4 py-3">
-                                <p class="font-medium text-foreground">{{ list.name }}</p>
-                                <p v-if="list.description" class="text-xs text-muted-foreground">{{ list.description }}</p>
+                                <p class="font-medium text-foreground">
+                                    {{ list.name }}
+                                </p>
+                                <p
+                                    v-if="list.description"
+                                    class="text-xs text-muted-foreground"
+                                >
+                                    {{ list.description }}
+                                </p>
                             </td>
                             <td class="px-4 py-3">
                                 <Badge
@@ -178,13 +245,22 @@ function formatDate(value: string): string {
                                     Estática
                                 </Badge>
                             </td>
-                            <td class="px-4 py-3 text-sm text-foreground">{{ list.entries_count }}</td>
+                            <td class="px-4 py-3 text-sm text-foreground">
+                                {{ list.entries_count }}
+                            </td>
                             <td class="px-4 py-3">
-                                <span :class="sourceBadgeClass(list.source)">{{ sourceBadgeLabel(list.source) }}</span>
+                                <span :class="sourceBadgeClass(list.source)">{{
+                                    sourceBadgeLabel(list.source)
+                                }}</span>
                             </td>
                             <td class="px-4 py-3 text-sm text-muted-foreground">
-                                <span v-if="list.is_dynamic && list.last_resolved_at">
-                                    Atualizada {{ formatRelative(list.last_resolved_at) }}
+                                <span
+                                    v-if="
+                                        list.is_dynamic && list.last_resolved_at
+                                    "
+                                >
+                                    Atualizada
+                                    {{ formatRelative(list.last_resolved_at) }}
                                 </span>
                                 <span v-else-if="list.is_dynamic">
                                     Nunca resolvida
@@ -193,9 +269,13 @@ function formatDate(value: string): string {
                                     {{ formatRelative(list.updated_at) }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-xs text-muted-foreground">{{ formatDate(list.created_at) }}</td>
+                            <td class="px-4 py-3 text-xs text-muted-foreground">
+                                {{ formatDate(list.created_at) }}
+                            </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex items-center justify-end gap-2">
+                                <div
+                                    class="flex items-center justify-end gap-2"
+                                >
                                     <Link
                                         :href="show.url(list.id)"
                                         class="rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -220,10 +300,14 @@ function formatDate(value: string): string {
                                                  Operator must open Show.vue to freeze a list (FreezeListDialog in 51-08). -->
                                             <DropdownMenuItem
                                                 v-if="list.is_dynamic"
-                                                :disabled="refreshing === list.id"
+                                                :disabled="
+                                                    refreshing === list.id
+                                                "
                                                 @select="onRefresh(list)"
                                             >
-                                                <RefreshCw class="mr-2 h-4 w-4" />
+                                                <RefreshCw
+                                                    class="mr-2 h-4 w-4"
+                                                />
                                                 Atualizar agora
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -242,7 +326,10 @@ function formatDate(value: string): string {
                 />
 
                 <!-- Pagination -->
-                <div v-if="lists.links?.length > 3" class="flex items-center gap-1 border-t border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
+                <div
+                    v-if="lists.links?.length > 3"
+                    class="flex items-center gap-1 border-t border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border"
+                >
                     <template v-for="link in lists.links" :key="link.label">
                         <Link
                             v-if="link.url"
@@ -255,7 +342,11 @@ function formatDate(value: string): string {
                                     : 'text-muted-foreground hover:bg-muted',
                             ]"
                         />
-                        <span v-else v-html="link.label" class="px-3 py-1 text-sm text-muted-foreground/40" />
+                        <span
+                            v-else
+                            v-html="link.label"
+                            class="px-3 py-1 text-sm text-muted-foreground/40"
+                        />
                     </template>
                 </div>
             </div>
@@ -264,12 +355,22 @@ function formatDate(value: string): string {
 
     <!-- Create List Dialog -->
     <!-- Delete Confirm Dialog -->
-    <Dialog :open="deleteConfirmId !== null" @update:open="(v) => { if (!v) deleteConfirmId = null; }">
+    <Dialog
+        :open="deleteConfirmId !== null"
+        @update:open="
+            (v) => {
+                if (!v) deleteConfirmId = null;
+            }
+        "
+    >
         <DialogContent class="sm:max-w-sm">
             <DialogHeader>
                 <DialogTitle>Excluir Lista</DialogTitle>
             </DialogHeader>
-            <p class="text-sm text-muted-foreground">Tem certeza que deseja excluir esta lista? Esta ação não pode ser desfeita.</p>
+            <p class="text-sm text-muted-foreground">
+                Tem certeza que deseja excluir esta lista? Esta ação não pode
+                ser desfeita.
+            </p>
             <DialogFooter>
                 <button
                     type="button"

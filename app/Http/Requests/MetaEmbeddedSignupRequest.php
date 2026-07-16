@@ -15,11 +15,11 @@ class MetaEmbeddedSignupRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code'            => ['required', 'string', 'max:1024'],
-            'waba_id'         => ['required', 'string', 'max:64'],
+            'code' => ['required', 'string', 'max:1024'],
+            'waba_id' => ['required', 'string', 'max:64'],
             'phone_number_id' => ['nullable', 'string', 'max:64'],
-            'mode'            => ['nullable', 'string', 'in:new,migrate,coexistence'],
-            'meta_pin'        => ['nullable', 'string', 'size:6'],
+            'business_id' => ['nullable', 'string', 'max:64'],
+            'finish_type' => ['required', 'string', 'in:FINISH,FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING'],
         ];
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Contracts\WhatsApp\WhatsAppProviderInterface;
 use App\Events\CampaignProgressUpdated;
 use App\Events\CampaignStatusChanged;
 use App\Jobs\DispatchCampaignJob;
@@ -45,7 +46,7 @@ it('test_campaign_dispatch_fires_progress_update', function () {
         'status' => 'pending',
     ]);
 
-    $providerMock = Mockery::mock(\App\Contracts\WhatsApp\WhatsAppProviderInterface::class);
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
     $providerMock->shouldReceive('sendTemplate')->once()->andReturn('wamid.test');
 
     $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
@@ -78,7 +79,7 @@ it('test_campaign_progress_debounced_within_2s', function () {
         'whatsapp_template_id' => $template->id,
     ]);
 
-    $providerMock = Mockery::mock(\App\Contracts\WhatsApp\WhatsAppProviderInterface::class);
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
     $providerMock->shouldReceive('sendTemplate')->andReturn('wamid.test');
 
     $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
@@ -115,6 +116,69 @@ it('test_campaign_progress_debounced_within_2s', function () {
     (new SendCampaignMessageJob($message2))->handle($service, $factoryMock, $debouncer);
 
     Event::assertDispatchedTimes(CampaignProgressUpdated::class, 1);
+});
+
+it('maps template parameters by placeholder number, not appearance order', function () {
+    Event::fake([CampaignProgressUpdated::class, CampaignStatusChanged::class]);
+    Cache::flush();
+
+    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 1]);
+    $instance = WhatsappInstance::factory()->create([
+        'user_id' => $campaign->tenant_id,
+        'tenant_id' => (string) $campaign->tenant_id,
+    ]);
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $campaign->tenant_id,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+        'kind' => 'meta_hsm',
+        // Placeholders deliberately out of appearance order: {{2}} precedes {{1}}.
+        'components_json' => [
+            ['type' => 'BODY', 'text' => 'Saldo {{2}} vence em {{1}}'],
+        ],
+    ]);
+    $campaign->update([
+        'whatsapp_instance_id' => $instance->id,
+        'whatsapp_template_id' => $template->id,
+        'template_params_mapping' => ['1' => 'extra_data.data', '2' => 'extra_data.valor'],
+    ]);
+
+    $entry = ContactListEntry::factory()->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+        'phone' => '5511999990001',
+        'extra_data' => ['data' => '10/07', 'valor' => 'R$ 1.000'],
+    ]);
+    $message = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entry->id,
+        'status' => 'pending',
+    ]);
+
+    $capturedComponents = null;
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldReceive('sendTemplate')
+        ->once()
+        ->andReturnUsing(function ($phone, $name, $lang, $components, $opaqueId) use (&$capturedComponents) {
+            $capturedComponents = $components;
+
+            return 'wamid.test';
+        });
+
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+    app()->instance(WhatsAppProviderFactory::class, $factoryMock);
+
+    $job = new SendCampaignMessageJob($message);
+    $job->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+
+    // parameters[0] fills {{1}} (the "data" value), parameters[1] fills {{2}} (the "valor" value),
+    // regardless of the placeholders appearing as {{2}} … {{1}} in the body text.
+    $body = collect($capturedComponents)->firstWhere('type', 'body');
+    expect($body['parameters'])->toBe([
+        ['type' => 'text', 'text' => '10/07'],
+        ['type' => 'text', 'text' => 'R$ 1.000'],
+    ]);
 });
 
 it('test_campaign_status_changed_on_start_and_complete', function () {

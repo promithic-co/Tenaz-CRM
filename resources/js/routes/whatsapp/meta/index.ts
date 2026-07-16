@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::embeddedSignup
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
+ * @see app/Http/Controllers/MetaEmbeddedSignupController.php:22
  * @route '/whatsapp/meta/embedded-signup'
  */
 export const embeddedSignup = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ embeddedSignup.definition = {
 
 /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::embeddedSignup
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
+ * @see app/Http/Controllers/MetaEmbeddedSignupController.php:22
  * @route '/whatsapp/meta/embedded-signup'
  */
 embeddedSignup.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ embeddedSignup.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::embeddedSignup
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
+ * @see app/Http/Controllers/MetaEmbeddedSignupController.php:22
  * @route '/whatsapp/meta/embedded-signup'
  */
 embeddedSignup.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -35,7 +35,7 @@ embeddedSignup.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => 
 
     /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::embeddedSignup
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
+ * @see app/Http/Controllers/MetaEmbeddedSignupController.php:22
  * @route '/whatsapp/meta/embedded-signup'
  */
     const embeddedSignupForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -45,7 +45,7 @@ embeddedSignup.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => 
 
             /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::embeddedSignup
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
+ * @see app/Http/Controllers/MetaEmbeddedSignupController.php:22
  * @route '/whatsapp/meta/embedded-signup'
  */
         embeddedSignupForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\SyncMetaCoexistenceDataJob;
 use App\Models\Agent;
 use App\Models\Lead;
 use App\Models\User;
@@ -7,6 +8,7 @@ use App\Models\WhatsappInstance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -75,8 +77,7 @@ test('user can create a meta cloud instance via embedded signup', function () {
         'permanent' => true,
         'waba_id' => 'waba-456',
         'phone_number_id' => 'phone-456',
-        'mode' => 'new',
-        'meta_pin' => '000000',
+        'coexistence' => false,
     ], now()->addMinutes(30));
 
     $this->actingAs($user)
@@ -89,6 +90,40 @@ test('user can create a meta cloud instance via embedded signup', function () {
         ->assertRedirect();
 
     expect(WhatsappInstance::where('user_id', $user->id)->where('name', 'vendas-sp')->exists())->toBeTrue();
+});
+
+test('coexistence creation skips registration and schedules the initial app data sync', function () {
+    Queue::fake();
+    Http::fake([
+        'graph.facebook.com/*/subscribed_apps' => Http::response(['success' => true], 200),
+    ]);
+
+    $user = User::factory()->create();
+    $token = str_repeat('e', 64);
+
+    Cache::put("meta_signup:{$token}", [
+        'access_token' => 'test-token',
+        'system_user_id' => null,
+        'permanent' => true,
+        'business_id' => 'business-coexistence',
+        'waba_id' => 'waba-coexistence',
+        'phone_number_id' => 'phone-coexistence',
+        'coexistence' => true,
+    ], now()->addMinutes(30));
+
+    $this->actingAs($user)
+        ->post(route('whatsapp.store'), [
+            'display_name' => 'Atendimento no celular',
+            'name' => 'atendimento-celular',
+            'provider' => 'meta_cloud',
+            'meta_signup_token' => $token,
+        ])
+        ->assertRedirect();
+
+    $instance = WhatsappInstance::where('name', 'atendimento-celular')->firstOrFail();
+    expect($instance->meta_coexistence)->toBeTrue();
+    Queue::assertPushed(SyncMetaCoexistenceDataJob::class, fn (SyncMetaCoexistenceDataJob $job): bool => $job->instanceId === $instance->id);
+    Http::assertNotSent(fn ($request): bool => str_ends_with($request->url(), '/register'));
 });
 
 test('meta cloud signup does not create instance when phone registration fails', function () {
@@ -106,8 +141,7 @@ test('meta cloud signup does not create instance when phone registration fails',
         'permanent' => true,
         'waba_id' => 'waba-register-fail',
         'phone_number_id' => 'phone-register-fail',
-        'mode' => 'new',
-        'meta_pin' => '000000',
+        'coexistence' => false,
     ], now()->addMinutes(30));
 
     $this->actingAs($user)
@@ -136,7 +170,7 @@ test('meta cloud signup does not create instance when WABA subscription fails', 
         'permanent' => true,
         'waba_id' => 'waba-subscribe-fail',
         'phone_number_id' => 'phone-subscribe-fail',
-        'mode' => 'coexistence',
+        'coexistence' => true,
     ], now()->addMinutes(30));
 
     $this->actingAs($user)
@@ -188,8 +222,7 @@ test('meta cloud store persists token lifetime from embedded signup cache', func
         'permanent' => false,
         'waba_id' => 'waba-123',
         'phone_number_id' => 'phone-123',
-        'mode' => 'new',
-        'meta_pin' => '123456',
+        'coexistence' => false,
     ], now()->addMinutes(30));
 
     $this->actingAs($user)

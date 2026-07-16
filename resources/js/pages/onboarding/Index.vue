@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { HeartHandshake, Megaphone } from 'lucide-vue-next';
-import AppLayout from '@/layouts/AppLayout.vue';
+import { computed, ref } from 'vue';
+import {
+    storeAgent,
+    storeInstance,
+    storePersona,
+} from '@/actions/App/Http/Controllers/OnboardingController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { storeAgent, storeInstance, storePersona } from '@/actions/App/Http/Controllers/OnboardingController';
+import AppLayout from '@/layouts/AppLayout.vue';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,7 +63,9 @@ const steps = [
 ];
 
 const activeStepIndex = computed(() => {
-    if (props.current_step === 'complete') { return 3; }
+    if (props.current_step === 'complete') {
+        return 3;
+    }
     return steps.findIndex((s) => s.key === props.current_step);
 });
 
@@ -70,7 +76,16 @@ const iconMap: Record<string, unknown> = {
     megaphone: Megaphone,
 };
 
-const modeConfig: Record<string, { label: string; classes: string; ringClass: string; borderClass: string; bgClass: string }> = {
+const modeConfig: Record<
+    string,
+    {
+        label: string;
+        classes: string;
+        ringClass: string;
+        borderClass: string;
+        bgClass: string;
+    }
+> = {
     receptivo: {
         label: 'RECEPTIVO',
         classes: 'bg-teal-500/10 text-teal-500',
@@ -95,15 +110,20 @@ function modeFor(tpl: AgentTemplate) {
 
 const initialTemplate = computed(() => {
     const list = props.templates ?? [];
-    return list.find((t) => t.slug === props.default_template) ?? list[0] ?? null;
+    return (
+        list.find((t) => t.slug === props.default_template) ?? list[0] ?? null
+    );
 });
 
 const agentForm = useForm({
     template_slug: initialTemplate.value?.slug ?? '',
 });
 
-const selectedTemplate = computed(() =>
-    (props.templates ?? []).find((t) => t.slug === agentForm.template_slug) ?? null,
+const selectedTemplate = computed(
+    () =>
+        (props.templates ?? []).find(
+            (t) => t.slug === agentForm.template_slug,
+        ) ?? null,
 );
 
 function selectTemplate(tpl: AgentTemplate): void {
@@ -145,8 +165,7 @@ function submitPersona(): void {
     <Head title="Onboarding" />
 
     <AppLayout>
-        <div class="mx-auto max-w-3xl p-4 lg:p-8">
-
+        <div class="mx-auto max-w-3xl p-3 sm:p-4 lg:p-8">
             <!-- Page heading -->
             <h1 class="text-2xl font-semibold text-foreground">
                 Configure seu primeiro agente
@@ -165,8 +184,8 @@ function submitPersona(): void {
                                     idx < activeStepIndex
                                         ? 'bg-primary/20 text-primary'
                                         : idx === activeStepIndex
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted text-muted-foreground',
+                                          ? 'bg-primary text-primary-foreground'
+                                          : 'bg-muted text-muted-foreground',
                                 ]"
                             >
                                 <svg
@@ -189,7 +208,9 @@ function submitPersona(): void {
                             <span
                                 :class="[
                                     'text-xs font-medium',
-                                    idx === activeStepIndex ? 'text-foreground' : 'text-muted-foreground',
+                                    idx === activeStepIndex
+                                        ? 'text-foreground'
+                                        : 'text-muted-foreground',
                                 ]"
                             >
                                 {{ step.label }}
@@ -201,7 +222,9 @@ function submitPersona(): void {
                             v-if="idx < steps.length - 1"
                             :class="[
                                 'h-px flex-1 transition-colors',
-                                idx < activeStepIndex ? 'bg-primary/40' : 'bg-border',
+                                idx < activeStepIndex
+                                    ? 'bg-primary/40'
+                                    : 'bg-border',
                             ]"
                         />
                     </template>
@@ -212,7 +235,6 @@ function submitPersona(): void {
 
             <!-- ─── Step 1: Agent Template ─────────────────────────────────── -->
             <div v-if="current_step === 'template'" class="mt-6 space-y-6">
-
                 <!-- No templates empty state -->
                 <div
                     v-if="!templates?.length"
@@ -222,7 +244,8 @@ function submitPersona(): void {
                         Nenhum modelo de agente disponível
                     </h2>
                     <p class="mt-2 text-sm text-muted-foreground">
-                        Não há modelos disponíveis para iniciar a configuração. Entre em contato com o suporte para continuar.
+                        Não há modelos disponíveis para iniciar a configuração.
+                        Entre em contato com o suporte para continuar.
                     </p>
                 </div>
 
@@ -233,7 +256,9 @@ function submitPersona(): void {
                             Escolha seu agente especializado
                         </h2>
                         <p class="mt-1 text-sm text-muted-foreground">
-                            Comece com um modelo pronto para o seu tipo de atendimento. Você poderá ajustar a personalidade antes de concluir.
+                            Comece com um modelo pronto para o seu tipo de
+                            atendimento. Você poderá ajustar a personalidade
+                            antes de concluir.
                         </p>
                     </div>
 
@@ -246,11 +271,12 @@ function submitPersona(): void {
                             @click="selectTemplate(tpl)"
                             :class="[
                                 'rounded-lg border p-4 text-left transition-all duration-150',
-                                agentForm.template_slug === tpl.slug && modeFor(tpl)
+                                agentForm.template_slug === tpl.slug &&
+                                modeFor(tpl)
                                     ? `${modeFor(tpl)!.borderClass} ${modeFor(tpl)!.bgClass} ring-1 ${modeFor(tpl)!.ringClass}`
                                     : agentForm.template_slug === tpl.slug
-                                    ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                                    : 'border-border hover:border-primary/30',
+                                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                                      : 'border-border hover:border-primary/30',
                             ]"
                         >
                             <div class="flex items-start gap-3">
@@ -259,14 +285,26 @@ function submitPersona(): void {
                                     class="mt-0.5 h-5 w-5 shrink-0"
                                     :class="[
                                         agentForm.template_slug === tpl.slug
-                                            ? (tpl.mode === 'receptivo' ? 'text-teal-500' : tpl.mode === 'prospeccao' ? 'text-amber-500' : 'text-primary')
+                                            ? tpl.mode === 'receptivo'
+                                                ? 'text-teal-500'
+                                                : tpl.mode === 'prospeccao'
+                                                  ? 'text-amber-500'
+                                                  : 'text-primary'
                                             : 'text-muted-foreground/40',
                                     ]"
                                 />
                                 <div class="min-w-0 flex-1">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <span class="text-sm font-semibold text-foreground">{{ tpl.name }}</span>
-                                        <span class="text-xs text-muted-foreground">— {{ tpl.label }}</span>
+                                    <div
+                                        class="flex flex-wrap items-center gap-2"
+                                    >
+                                        <span
+                                            class="text-sm font-semibold text-foreground"
+                                            >{{ tpl.name }}</span
+                                        >
+                                        <span
+                                            class="text-xs text-muted-foreground"
+                                            >— {{ tpl.label }}</span
+                                        >
                                         <span
                                             v-if="modeFor(tpl)"
                                             class="rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-widest"
@@ -276,11 +314,22 @@ function submitPersona(): void {
                                         </span>
                                     </div>
 
-                                    <p class="mt-1 text-xs text-muted-foreground">{{ tpl.description }}</p>
-                                    <p class="mt-1 text-xs font-medium italic text-foreground/60">{{ tpl.tagline }}</p>
+                                    <p
+                                        class="mt-1 text-xs text-muted-foreground"
+                                    >
+                                        {{ tpl.description }}
+                                    </p>
+                                    <p
+                                        class="mt-1 text-xs font-medium text-foreground/60 italic"
+                                    >
+                                        {{ tpl.tagline }}
+                                    </p>
 
                                     <!-- Use case chips -->
-                                    <div v-if="tpl.use_cases?.length" class="mt-2 flex flex-wrap gap-1">
+                                    <div
+                                        v-if="tpl.use_cases?.length"
+                                        class="mt-2 flex flex-wrap gap-1"
+                                    >
                                         <span
                                             v-for="uc in tpl.use_cases"
                                             :key="uc"
@@ -291,11 +340,19 @@ function submitPersona(): void {
                                     </div>
 
                                     <!-- Preview first message -->
-                                    <div class="mt-3 rounded-md bg-muted/60 px-3 py-2">
-                                        <p class="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                    <div
+                                        class="mt-3 rounded-md bg-muted/60 px-3 py-2"
+                                    >
+                                        <p
+                                            class="text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
+                                        >
                                             Primeira mensagem
                                         </p>
-                                        <p class="mt-0.5 text-xs text-foreground">"{{ tpl.example_first_message }}"</p>
+                                        <p
+                                            class="mt-0.5 text-xs text-foreground"
+                                        >
+                                            "{{ tpl.example_first_message }}"
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -303,7 +360,10 @@ function submitPersona(): void {
                     </div>
 
                     <!-- Validation error -->
-                    <p v-if="agentForm.errors.template_slug" class="text-sm text-destructive">
+                    <p
+                        v-if="agentForm.errors.template_slug"
+                        class="text-sm text-destructive"
+                    >
                         Escolha um agente para continuar.
                     </p>
 
@@ -311,10 +371,16 @@ function submitPersona(): void {
                     <div class="flex items-center justify-end pt-2">
                         <Button
                             type="button"
-                            :disabled="agentForm.processing || !agentForm.template_slug"
+                            :disabled="
+                                agentForm.processing || !agentForm.template_slug
+                            "
                             @click="submitAgent"
                         >
-                            {{ agentForm.processing ? 'Criando agente...' : 'Continuar com este agente' }}
+                            {{
+                                agentForm.processing
+                                    ? 'Criando agente...'
+                                    : 'Continuar com este agente'
+                            }}
                         </Button>
                     </div>
                 </template>
@@ -322,13 +388,13 @@ function submitPersona(): void {
 
             <!-- ─── Step 2: WhatsApp Instance ──────────────────────────────── -->
             <div v-else-if="current_step === 'instance'" class="mt-6 space-y-6">
-
                 <div>
                     <h2 class="text-lg font-semibold text-foreground">
                         Conecte um WhatsApp agora ou continue depois
                     </h2>
                     <p class="mt-1 text-sm text-muted-foreground">
-                        Seu agente só ficará ativo depois que uma instância WhatsApp for vinculada.
+                        Seu agente só ficará ativo depois que uma instância
+                        WhatsApp for vinculada.
                     </p>
                 </div>
 
@@ -348,8 +414,13 @@ function submitPersona(): void {
                                     : 'border-border hover:border-primary/30',
                             ]"
                         >
-                            <span class="font-medium text-foreground">Sem instância (continuar inativo)</span>
-                            <p class="mt-0.5 text-xs text-muted-foreground">O agente ficará salvo como inativo até a vinculação.</p>
+                            <span class="font-medium text-foreground"
+                                >Sem instância (continuar inativo)</span
+                            >
+                            <p class="mt-0.5 text-xs text-muted-foreground">
+                                O agente ficará salvo como inativo até a
+                                vinculação.
+                            </p>
                         </button>
 
                         <!-- Available instances -->
@@ -368,13 +439,21 @@ function submitPersona(): void {
                             <span class="font-medium text-foreground">
                                 {{ inst.display_name ?? inst.name }}
                             </span>
-                            <span v-if="inst.phone_number" class="ml-2 text-xs text-muted-foreground">{{ inst.phone_number }}</span>
+                            <span
+                                v-if="inst.phone_number"
+                                class="ml-2 text-xs text-muted-foreground"
+                                >{{ inst.phone_number }}</span
+                            >
                         </button>
                     </div>
 
                     <!-- Error -->
-                    <p v-if="instanceForm.errors.whatsapp_instance_id" class="text-sm text-destructive">
-                        Não foi possível vincular esta instância. Escolha outra instância livre ou continue sem WhatsApp.
+                    <p
+                        v-if="instanceForm.errors.whatsapp_instance_id"
+                        class="text-sm text-destructive"
+                    >
+                        Não foi possível vincular esta instância. Escolha outra
+                        instância livre ou continue sem WhatsApp.
                     </p>
                 </div>
 
@@ -383,18 +462,24 @@ function submitPersona(): void {
                     v-else
                     class="rounded-lg border border-border bg-muted/30 px-5 py-4"
                 >
-                    <p class="text-sm font-medium text-foreground">Nenhuma instância WhatsApp disponível</p>
+                    <p class="text-sm font-medium text-foreground">
+                        Nenhuma instância WhatsApp disponível
+                    </p>
                     <p class="mt-1 text-xs text-muted-foreground">
-                        Você pode conectar um número agora ou avançar sem WhatsApp. O agente ficará salvo como inativo até a vinculação.
+                        Você pode conectar um número agora ou avançar sem
+                        WhatsApp. O agente ficará salvo como inativo até a
+                        vinculação.
                     </p>
                 </div>
 
                 <!-- Action row -->
-                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                    class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                     <!-- Secondary: connect now (detour) -->
                     <Link
                         href="/whatsapp?return=/onboarding"
-                        class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                        class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus:ring-2 focus:ring-ring focus:outline-none"
                     >
                         Conectar WhatsApp agora
                     </Link>
@@ -405,8 +490,12 @@ function submitPersona(): void {
                         :disabled="instanceForm.processing"
                         @click="submitInstance"
                     >
-                        <span v-if="instanceForm.processing">Vinculando WhatsApp...</span>
-                        <span v-else-if="selectedInstanceId !== null">Vincular e continuar</span>
+                        <span v-if="instanceForm.processing"
+                            >Vinculando WhatsApp...</span
+                        >
+                        <span v-else-if="selectedInstanceId !== null"
+                            >Vincular e continuar</span
+                        >
                         <span v-else>Continuar sem WhatsApp</span>
                     </Button>
                 </div>
@@ -414,13 +503,13 @@ function submitPersona(): void {
 
             <!-- ─── Step 3: Persona ────────────────────────────────────────── -->
             <div v-else-if="current_step === 'persona'" class="mt-6 space-y-6">
-
                 <div>
                     <h2 class="text-lg font-semibold text-foreground">
                         Personalize como seu agente conversa
                     </h2>
                     <p class="mt-1 text-sm text-muted-foreground">
-                        Ajuste a apresentação e o tom de voz. As configurações técnicas continuam gerenciadas pela plataforma.
+                        Ajuste a apresentação e o tom de voz. As configurações
+                        técnicas continuam gerenciadas pela plataforma.
                     </p>
                 </div>
 
@@ -435,10 +524,20 @@ function submitPersona(): void {
                                 type="text"
                                 maxlength="50"
                                 placeholder="Ex: Alicia, Sofia, Max"
-                                :class="{ 'border-destructive': personaForm.errors.agent_name }"
+                                :class="{
+                                    'border-destructive':
+                                        personaForm.errors.agent_name,
+                                }"
                             />
-                            <p class="text-xs text-muted-foreground">Como o agente se apresenta ao cliente</p>
-                            <p v-if="personaForm.errors.agent_name" class="text-xs text-destructive">{{ personaForm.errors.agent_name }}</p>
+                            <p class="text-xs text-muted-foreground">
+                                Como o agente se apresenta ao cliente
+                            </p>
+                            <p
+                                v-if="personaForm.errors.agent_name"
+                                class="text-xs text-destructive"
+                            >
+                                {{ personaForm.errors.agent_name }}
+                            </p>
                         </div>
 
                         <div class="space-y-1.5">
@@ -449,10 +548,20 @@ function submitPersona(): void {
                                 type="text"
                                 maxlength="100"
                                 placeholder="Ex: Amec, Banco Pan, BMG"
-                                :class="{ 'border-destructive': personaForm.errors.company_name }"
+                                :class="{
+                                    'border-destructive':
+                                        personaForm.errors.company_name,
+                                }"
                             />
-                            <p class="text-xs text-muted-foreground">Nome que aparece na apresentação</p>
-                            <p v-if="personaForm.errors.company_name" class="text-xs text-destructive">{{ personaForm.errors.company_name }}</p>
+                            <p class="text-xs text-muted-foreground">
+                                Nome que aparece na apresentação
+                            </p>
+                            <p
+                                v-if="personaForm.errors.company_name"
+                                class="text-xs text-destructive"
+                            >
+                                {{ personaForm.errors.company_name }}
+                            </p>
                         </div>
                     </div>
 
@@ -464,10 +573,20 @@ function submitPersona(): void {
                             type="text"
                             maxlength="200"
                             placeholder="Ex: calorosa e empática"
-                            :class="{ 'border-destructive': personaForm.errors.agent_personality }"
+                            :class="{
+                                'border-destructive':
+                                    personaForm.errors.agent_personality,
+                            }"
                         />
-                        <p class="text-xs text-muted-foreground">Diretriz de tom e linguagem do agente</p>
-                        <p v-if="personaForm.errors.agent_personality" class="text-xs text-destructive">{{ personaForm.errors.agent_personality }}</p>
+                        <p class="text-xs text-muted-foreground">
+                            Diretriz de tom e linguagem do agente
+                        </p>
+                        <p
+                            v-if="personaForm.errors.agent_personality"
+                            class="text-xs text-destructive"
+                        >
+                            {{ personaForm.errors.agent_personality }}
+                        </p>
                     </div>
 
                     <div class="space-y-1.5">
@@ -478,10 +597,20 @@ function submitPersona(): void {
                             type="text"
                             maxlength="300"
                             placeholder="Ex: Diga olá, apresente-se e pergunte como pode ajudar"
-                            :class="{ 'border-destructive': personaForm.errors.agent_greeting }"
+                            :class="{
+                                'border-destructive':
+                                    personaForm.errors.agent_greeting,
+                            }"
                         />
-                        <p class="text-xs text-muted-foreground">Instrução de como o agente inicia a conversa</p>
-                        <p v-if="personaForm.errors.agent_greeting" class="text-xs text-destructive">{{ personaForm.errors.agent_greeting }}</p>
+                        <p class="text-xs text-muted-foreground">
+                            Instrução de como o agente inicia a conversa
+                        </p>
+                        <p
+                            v-if="personaForm.errors.agent_greeting"
+                            class="text-xs text-destructive"
+                        >
+                            {{ personaForm.errors.agent_greeting }}
+                        </p>
                     </div>
 
                     <!-- General error -->
@@ -489,13 +618,21 @@ function submitPersona(): void {
                         v-if="Object.keys(personaForm.errors).length"
                         class="text-sm text-destructive"
                     >
-                        Revise os campos destacados para concluir a configuração.
+                        Revise os campos destacados para concluir a
+                        configuração.
                     </p>
 
                     <!-- Action row -->
                     <div class="flex items-center justify-end pt-2">
-                        <Button type="submit" :disabled="personaForm.processing">
-                            {{ personaForm.processing ? 'Concluindo configuração...' : 'Concluir configuração' }}
+                        <Button
+                            type="submit"
+                            :disabled="personaForm.processing"
+                        >
+                            {{
+                                personaForm.processing
+                                    ? 'Concluindo configuração...'
+                                    : 'Concluir configuração'
+                            }}
                         </Button>
                     </div>
                 </form>
@@ -503,18 +640,20 @@ function submitPersona(): void {
 
             <!-- ─── Completion ─────────────────────────────────────────────── -->
             <div v-else-if="current_step === 'complete'" class="mt-6 space-y-6">
-
                 <!-- Ready state -->
                 <template v-if="is_ready">
                     <div class="space-y-3">
-                        <Badge class="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 hover:bg-green-500/10">
+                        <Badge
+                            class="border-green-500/20 bg-green-500/10 text-green-600 hover:bg-green-500/10 dark:text-green-400"
+                        >
                             WhatsApp conectado
                         </Badge>
                         <h2 class="text-lg font-semibold text-foreground">
                             Seu agente está pronto para atender
                         </h2>
                         <p class="text-sm text-muted-foreground">
-                            A configuração inicial foi concluída e o agente já pode operar pelo número vinculado.
+                            A configuração inicial foi concluída e o agente já
+                            pode operar pelo número vinculado.
                         </p>
                     </div>
                 </template>
@@ -522,31 +661,45 @@ function submitPersona(): void {
                 <!-- Pending state -->
                 <template v-else>
                     <div class="space-y-3">
-                        <Badge class="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/10">
+                        <Badge
+                            class="border-amber-500/20 bg-amber-500/10 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400"
+                        >
                             Aguardando conexão WhatsApp
                         </Badge>
                         <h2 class="text-lg font-semibold text-foreground">
                             Seu agente foi configurado
                         </h2>
                         <p class="text-sm text-muted-foreground">
-                            A configuração inicial foi concluída. Conecte um WhatsApp quando estiver pronto para ativar o agente.
+                            A configuração inicial foi concluída. Conecte um
+                            WhatsApp quando estiver pronto para ativar o agente.
                         </p>
                     </div>
                 </template>
 
                 <!-- Agent summary -->
-                <div v-if="agent_name" class="rounded-lg border border-border bg-muted/30 px-5 py-4">
-                    <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Agente configurado</p>
-                    <p class="mt-1 text-sm font-semibold text-foreground">{{ agent_name }}</p>
+                <div
+                    v-if="agent_name"
+                    class="rounded-lg border border-border bg-muted/30 px-5 py-4"
+                >
+                    <p
+                        class="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+                    >
+                        Agente configurado
+                    </p>
+                    <p class="mt-1 text-sm font-semibold text-foreground">
+                        {{ agent_name }}
+                    </p>
                 </div>
 
                 <!-- Action row -->
-                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                    class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                     <!-- Pending: connect WhatsApp (no return to onboarding) -->
                     <Link
                         v-if="!is_ready"
                         href="/whatsapp"
-                        class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                        class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus:ring-2 focus:ring-ring focus:outline-none"
                     >
                         Conectar WhatsApp
                     </Link>
@@ -554,13 +707,10 @@ function submitPersona(): void {
 
                     <!-- Go to dashboard -->
                     <Link href="/dashboard">
-                        <Button type="button">
-                            Ir para dashboard
-                        </Button>
+                        <Button type="button"> Ir para dashboard </Button>
                     </Link>
                 </div>
             </div>
-
         </div>
     </AppLayout>
 </template>

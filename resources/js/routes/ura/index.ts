@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\UraInboundController::inboundLead
- * @see app/Http/Controllers/UraInboundController.php:14
+ * @see app/Http/Controllers/UraInboundController.php:15
  * @route '/api/ura/inbound-lead'
  */
 export const inboundLead = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ inboundLead.definition = {
 
 /**
 * @see \App\Http\Controllers\UraInboundController::inboundLead
- * @see app/Http/Controllers/UraInboundController.php:14
+ * @see app/Http/Controllers/UraInboundController.php:15
  * @route '/api/ura/inbound-lead'
  */
 inboundLead.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ inboundLead.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\UraInboundController::inboundLead
- * @see app/Http/Controllers/UraInboundController.php:14
+ * @see app/Http/Controllers/UraInboundController.php:15
  * @route '/api/ura/inbound-lead'
  */
 inboundLead.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -35,7 +35,7 @@ inboundLead.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\UraInboundController::inboundLead
- * @see app/Http/Controllers/UraInboundController.php:14
+ * @see app/Http/Controllers/UraInboundController.php:15
  * @route '/api/ura/inbound-lead'
  */
     const inboundLeadForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -45,7 +45,7 @@ inboundLead.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\UraInboundController::inboundLead
- * @see app/Http/Controllers/UraInboundController.php:14
+ * @see app/Http/Controllers/UraInboundController.php:15
  * @route '/api/ura/inbound-lead'
  */
         inboundLeadForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -56,7 +56,7 @@ inboundLead.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     inboundLead.form = inboundLeadForm
 /**
 * @see \App\Http\Controllers\UraInboundController::trigger
- * @see app/Http/Controllers/UraInboundController.php:29
+ * @see app/Http/Controllers/UraInboundController.php:36
  * @route '/api/ura/trigger'
  */
 export const trigger = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -71,7 +71,7 @@ trigger.definition = {
 
 /**
 * @see \App\Http\Controllers\UraInboundController::trigger
- * @see app/Http/Controllers/UraInboundController.php:29
+ * @see app/Http/Controllers/UraInboundController.php:36
  * @route '/api/ura/trigger'
  */
 trigger.url = (options?: RouteQueryOptions) => {
@@ -80,7 +80,7 @@ trigger.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\UraInboundController::trigger
- * @see app/Http/Controllers/UraInboundController.php:29
+ * @see app/Http/Controllers/UraInboundController.php:36
  * @route '/api/ura/trigger'
  */
 trigger.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -90,7 +90,7 @@ trigger.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\UraInboundController::trigger
- * @see app/Http/Controllers/UraInboundController.php:29
+ * @see app/Http/Controllers/UraInboundController.php:36
  * @route '/api/ura/trigger'
  */
     const triggerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -100,7 +100,7 @@ trigger.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\UraInboundController::trigger
- * @see app/Http/Controllers/UraInboundController.php:29
+ * @see app/Http/Controllers/UraInboundController.php:36
  * @route '/api/ura/trigger'
  */
         triggerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

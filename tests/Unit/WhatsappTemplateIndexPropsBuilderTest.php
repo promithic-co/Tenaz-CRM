@@ -2,6 +2,7 @@
 
 use App\Enums\TemplateKind;
 use App\Enums\WhatsAppProvider;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
@@ -13,6 +14,7 @@ uses(RefreshDatabase::class);
 
 test('template index props preserve templates and instance projection', function () {
     $user = User::factory()->create();
+    $otherUser = User::factory()->create();
     $instance = WhatsappInstance::factory()->create([
         'tenant_id' => $user->tenantId,
         'user_id' => $user->id,
@@ -34,6 +36,11 @@ test('template index props preserve templates and instance projection', function
         'status' => 'PENDING',
         'name' => 'Template pendente',
     ]);
+    WhatsappTemplate::factory()->metaHsm()->create([
+        'tenant_id' => $otherUser->tenantId,
+        'status' => 'APPROVED',
+        'name' => 'Template de outro tenant',
+    ]);
 
     $request = Request::create('/templates', 'GET', ['status' => 'APPROVED']);
 
@@ -43,6 +50,8 @@ test('template index props preserve templates and instance projection', function
         ->and($props['currentKind'])->toBe(TemplateKind::MetaHsm->value)
         ->and($props['templates']->total())->toBe(1)
         ->and($props['templates']->items()[0]->id)->toBe($approvedTemplate->id)
+        ->and($approvedTemplate->tenant)->toBeInstanceOf(Tenant::class)
+        ->and($approvedTemplate->tenant->is($user->tenants()->first()))->toBeTrue()
         ->and($props['instances']->first())->toMatchArray([
             'id' => $instance->id,
             'name' => 'meta-instance',

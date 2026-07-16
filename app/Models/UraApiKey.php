@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Database\Factories\UraApiKeyFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Illuminate\Support\Str;
 
 class UraApiKey extends Model
 {
-    /** @use HasFactory<\Database\Factories\UraApiKeyFactory> */
+    /** @use HasFactory<UraApiKeyFactory> */
     use BelongsToTenant, HasFactory;
 
     protected $fillable = [
@@ -34,7 +35,7 @@ class UraApiKey extends Model
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'tenant_id');
+        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     public function agent(): BelongsTo

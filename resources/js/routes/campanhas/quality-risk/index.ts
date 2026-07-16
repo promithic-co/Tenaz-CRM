@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\CampaignController::keepPaused
- * @see app/Http/Controllers/CampaignController.php:173
+ * @see app/Http/Controllers/CampaignController.php:148
  * @route '/campanhas/{campanha}/quality-risk/keep-paused'
  */
 export const keepPaused = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ keepPaused.definition = {
 
 /**
 * @see \App\Http\Controllers\CampaignController::keepPaused
- * @see app/Http/Controllers/CampaignController.php:173
+ * @see app/Http/Controllers/CampaignController.php:148
  * @route '/campanhas/{campanha}/quality-risk/keep-paused'
  */
 keepPaused.url = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -27,7 +27,7 @@ keepPaused.url = (args: { campanha: number | { id: number } } | [campanha: numbe
             if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
             args = { campanha: args.id }
         }
-
+    
     if (Array.isArray(args)) {
         args = {
                     campanha: args[0],
@@ -49,7 +49,7 @@ keepPaused.url = (args: { campanha: number | { id: number } } | [campanha: numbe
 
 /**
 * @see \App\Http\Controllers\CampaignController::keepPaused
- * @see app/Http/Controllers/CampaignController.php:173
+ * @see app/Http/Controllers/CampaignController.php:148
  * @route '/campanhas/{campanha}/quality-risk/keep-paused'
  */
 keepPaused.post = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -59,7 +59,7 @@ keepPaused.post = (args: { campanha: number | { id: number } } | [campanha: numb
 
     /**
 * @see \App\Http\Controllers\CampaignController::keepPaused
- * @see app/Http/Controllers/CampaignController.php:173
+ * @see app/Http/Controllers/CampaignController.php:148
  * @route '/campanhas/{campanha}/quality-risk/keep-paused'
  */
     const keepPausedForm = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -69,18 +69,18 @@ keepPaused.post = (args: { campanha: number | { id: number } } | [campanha: numb
 
             /**
 * @see \App\Http\Controllers\CampaignController::keepPaused
- * @see app/Http/Controllers/CampaignController.php:173
+ * @see app/Http/Controllers/CampaignController.php:148
  * @route '/campanhas/{campanha}/quality-risk/keep-paused'
  */
         keepPausedForm.post = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: keepPaused.url(args, options),
             method: 'post',
         })
-
+    
     keepPaused.form = keepPausedForm
 /**
 * @see \App\Http\Controllers\CampaignController::continueMethod
- * @see app/Http/Controllers/CampaignController.php:186
+ * @see app/Http/Controllers/CampaignController.php:161
  * @route '/campanhas/{campanha}/quality-risk/continue'
  */
 export const continueMethod = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -95,7 +95,7 @@ continueMethod.definition = {
 
 /**
 * @see \App\Http\Controllers\CampaignController::continueMethod
- * @see app/Http/Controllers/CampaignController.php:186
+ * @see app/Http/Controllers/CampaignController.php:161
  * @route '/campanhas/{campanha}/quality-risk/continue'
  */
 continueMethod.url = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -106,7 +106,7 @@ continueMethod.url = (args: { campanha: number | { id: number } } | [campanha: n
             if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
             args = { campanha: args.id }
         }
-
+    
     if (Array.isArray(args)) {
         args = {
                     campanha: args[0],
@@ -128,7 +128,7 @@ continueMethod.url = (args: { campanha: number | { id: number } } | [campanha: n
 
 /**
 * @see \App\Http\Controllers\CampaignController::continueMethod
- * @see app/Http/Controllers/CampaignController.php:186
+ * @see app/Http/Controllers/CampaignController.php:161
  * @route '/campanhas/{campanha}/quality-risk/continue'
  */
 continueMethod.post = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -138,7 +138,7 @@ continueMethod.post = (args: { campanha: number | { id: number } } | [campanha: 
 
     /**
 * @see \App\Http\Controllers\CampaignController::continueMethod
- * @see app/Http/Controllers/CampaignController.php:186
+ * @see app/Http/Controllers/CampaignController.php:161
  * @route '/campanhas/{campanha}/quality-risk/continue'
  */
     const continueMethodForm = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -148,14 +148,14 @@ continueMethod.post = (args: { campanha: number | { id: number } } | [campanha: 
 
             /**
 * @see \App\Http\Controllers\CampaignController::continueMethod
- * @see app/Http/Controllers/CampaignController.php:186
+ * @see app/Http/Controllers/CampaignController.php:161
  * @route '/campanhas/{campanha}/quality-risk/continue'
  */
         continueMethodForm.post = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: continueMethod.url(args, options),
             method: 'post',
         })
-
+    
     continueMethod.form = continueMethodForm
 const qualityRisk = {
     keepPaused: Object.assign(keepPaused, keepPaused),

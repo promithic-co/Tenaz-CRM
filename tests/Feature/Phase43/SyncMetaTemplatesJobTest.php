@@ -117,6 +117,65 @@ it('test_sync_meta_templates_job_upserts_templates', function () {
     expect(WhatsappTemplate::where('kind', 'meta_hsm')->count())->toBe(3);
 });
 
+it('matches an authored row by meta_template_name and keeps its internal name', function () {
+    $user = userWithTenant();
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenant_id,
+    ]);
+
+    // Authoring stores a user-facing internal `name` distinct from Meta's `meta_template_name`.
+    $authored = WhatsappTemplate::factory()->create([
+        'tenant_id' => $instance->tenant_id,
+        'whatsapp_instance_id' => $instance->id,
+        'kind' => 'meta_hsm',
+        'name' => 'Boas Vindas',
+        'meta_template_name' => 'boas_vindas',
+        'language' => 'pt_BR',
+        'status' => 'PENDING',
+    ]);
+
+    Http::fake(['*' => Http::response(['data' => [[
+        'id' => 'tpl_bv',
+        'name' => 'boas_vindas',
+        'status' => 'APPROVED',
+        'category' => 'MARKETING',
+        'language' => 'pt_BR',
+        'components' => [],
+    ]], 'paging' => []], 200)]);
+
+    (new SyncMetaTemplatesJob($instance->id))->handle();
+
+    expect(WhatsappTemplate::where('kind', 'meta_hsm')->count())->toBe(1);
+
+    $fresh = $authored->fresh();
+    expect($fresh->name)->toBe('Boas Vindas')
+        ->and($fresh->status)->toBe('APPROVED')
+        ->and($fresh->meta_template_id)->toBe('tpl_bv');
+});
+
+it('keeps distinct rows per language for the same meta_template_name', function () {
+    $user = userWithTenant();
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenant_id,
+    ]);
+
+    $templates = [
+        ['id' => 'tpl_pt', 'name' => 'welcome', 'status' => 'APPROVED', 'category' => 'MARKETING', 'language' => 'pt_BR', 'components' => []],
+        ['id' => 'tpl_en', 'name' => 'welcome', 'status' => 'APPROVED', 'category' => 'MARKETING', 'language' => 'en_US', 'components' => []],
+    ];
+
+    Http::fake(['*' => Http::response(['data' => $templates, 'paging' => []], 200)]);
+    (new SyncMetaTemplatesJob($instance->id))->handle();
+    expect(WhatsappTemplate::where('meta_template_name', 'welcome')->count())->toBe(2);
+
+    // Re-sync must not duplicate either language.
+    Http::fake(['*' => Http::response(['data' => $templates, 'paging' => []], 200)]);
+    (new SyncMetaTemplatesJob($instance->id))->handle();
+    expect(WhatsappTemplate::where('meta_template_name', 'welcome')->count())->toBe(2);
+});
+
 it('test_sync_meta_templates_job_extracts_variables_count', function () {
     $user = userWithTenant();
     $instance = WhatsappInstance::factory()->metaCloud()->create([

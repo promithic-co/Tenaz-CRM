@@ -3,9 +3,11 @@
 use App\Jobs\SendUraTemplateJob;
 use App\Models\Agent;
 use App\Models\UraApiKey;
+use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use Illuminate\Support\Facades\Queue;
+use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     Queue::fake();
@@ -244,6 +246,63 @@ test('store rejects agent and template from another tenant', function () {
         ->assertSessionHasErrors(['agent_id', 'whatsapp_template_id']);
 
     expect(UraApiKey::count())->toBe(0);
+});
+
+test('management crud uses the active tenant when the member user id differs', function () {
+    $owner = userWithTenant();
+    $tenant = $owner->tenants()->firstOrFail();
+    $member = User::factory()->create();
+    $member->tenants()->attach($tenant->id, ['role' => 'administrator']);
+
+    expect((string) $member->id)->not->toBe((string) $tenant->id);
+
+    $agent = Agent::factory()->create([
+        'user_id' => $owner->id,
+        'tenant_id' => (string) $tenant->id,
+    ]);
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->actingAs($member)
+        ->withSession(['active_tenant_id' => $tenant->id])
+        ->post(route('ura.store'), [
+            'name' => 'Canonical tenant key',
+            'agent_id' => $agent->id,
+            'whatsapp_template_id' => $template->id,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $apiKey = UraApiKey::withoutGlobalScopes()->sole();
+
+    expect((string) $apiKey->tenant_id)->toBe((string) $tenant->id)
+        ->and($apiKey->tenant->is($tenant))->toBeTrue();
+
+    $this->actingAs($member)
+        ->withSession(['active_tenant_id' => $tenant->id])
+        ->get(route('ura.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('ura/Index')
+            ->where('apiKeys.0.id', $apiKey->id));
+
+    $this->actingAs($member)
+        ->withSession(['active_tenant_id' => $tenant->id])
+        ->patch(route('ura.update', $apiKey), [
+            'name' => 'Updated canonical key',
+            'active' => false,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($apiKey->fresh())
+        ->name->toBe('Updated canonical key')
+        ->active->toBeFalse();
+
+    $this->actingAs($member)
+        ->withSession(['active_tenant_id' => $tenant->id])
+        ->delete(route('ura.destroy', $apiKey))
+        ->assertSessionHasNoErrors();
+
+    expect(UraApiKey::withoutGlobalScopes()->find($apiKey->id))->toBeNull();
 });
 
 test('update rejects agent and template from another tenant', function () {

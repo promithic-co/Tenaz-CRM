@@ -29,6 +29,8 @@ class Contact extends Model
 
     public const SOURCE_WHATSAPP_INBOUND = 'whatsapp_inbound';
 
+    public const SOURCE_WHATSAPP_APP_SYNC = 'whatsapp_app_sync';
+
     public const SOURCE_URA = 'ura';
 
     public const SOURCE_AGENT_API = 'agent_api';

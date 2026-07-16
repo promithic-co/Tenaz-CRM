@@ -1,10 +1,4 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
-import campanhas from '@/routes/campanhas';
-import conversas from '@/routes/conversas';
-import { laboratory as laboratoryIndex } from '@/routes';
-import laboratory from '@/routes/laboratory';
-import type { BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/vue3';
 import {
     AlertTriangle,
@@ -30,6 +24,12 @@ import {
     Zap,
 } from 'lucide-vue-next';
 import { computed } from 'vue';
+import AppLayout from '@/layouts/AppLayout.vue';
+import { laboratory as laboratoryIndex } from '@/routes';
+import campanhas from '@/routes/campanhas';
+import conversas from '@/routes/conversas';
+import laboratory from '@/routes/laboratory';
+import type { BreadcrumbItem } from '@/types';
 
 type Stats = {
     pending_retries: number;
@@ -326,7 +326,7 @@ function formatMs(value: number): string {
     <Head title="Laboratory" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="mx-auto flex max-w-7xl flex-col gap-6 p-4 lg:p-6">
+        <div class="mx-auto flex max-w-7xl flex-col gap-6 p-3 sm:p-4 lg:p-6">
             <header
                 class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
             >

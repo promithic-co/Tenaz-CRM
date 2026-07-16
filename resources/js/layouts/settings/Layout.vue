@@ -40,7 +40,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 </script>
 
 <template>
-    <div class="px-4 py-6">
+    <div class="px-3 py-4 sm:px-4 sm:py-6">
         <Heading
             title="Settings"
             description="Manage your profile and account settings"
@@ -49,7 +49,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
         <div class="flex flex-col lg:flex-row lg:space-x-12">
             <aside class="w-full max-w-xl lg:w-48">
                 <nav
-                    class="flex flex-col space-y-1 space-x-0"
+                    class="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0"
                     aria-label="Settings"
                 >
                     <Button
@@ -57,7 +57,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
                         :key="toUrl(item.href)"
                         variant="ghost"
                         :class="[
-                            'w-full justify-start',
+                            'min-h-10 w-auto shrink-0 justify-start lg:w-full',
                             { 'bg-muted': isCurrentOrParentUrl(item.href) },
                         ]"
                         as-child

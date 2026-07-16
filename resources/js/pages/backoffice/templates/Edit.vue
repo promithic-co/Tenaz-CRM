@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Form, Head } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import BackofficeTemplateController from '@/actions/App/Http/Controllers/Backoffice/BackofficeTemplateController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -14,9 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Form, Head } from '@inertiajs/vue3';
 import type { BreadcrumbItem } from '@/types';
-import { ref } from 'vue';
 
 type Template = {
     id: number;
@@ -38,7 +38,9 @@ const props = defineProps<{
 }>();
 
 const agentProvider = ref<string>(props.template.agent_provider);
-const transcriptionProvider = ref<string>(props.template.transcription_provider);
+const transcriptionProvider = ref<string>(
+    props.template.transcription_provider,
+);
 const visionProvider = ref<string>(props.template.vision_provider);
 
 const breadcrumbItems: BreadcrumbItem[] = [
@@ -52,7 +54,7 @@ const breadcrumbItems: BreadcrumbItem[] = [
     <AppLayout :breadcrumbs="breadcrumbItems">
         <Head :title="'Editar Template: ' + template.template_slug" />
 
-        <div class="px-4 py-6">
+        <div class="px-3 py-4 sm:px-4 sm:py-6">
             <div class="max-w-2xl">
                 <Heading
                     :title="'Editar Template: ' + template.template_slug"
@@ -60,11 +62,19 @@ const breadcrumbItems: BreadcrumbItem[] = [
                 />
 
                 <Form
-                    v-bind="BackofficeTemplateController.update.form({ template_slug: template.template_slug })"
+                    v-bind="
+                        BackofficeTemplateController.update.form({
+                            template_slug: template.template_slug,
+                        })
+                    "
                     class="space-y-8"
                     v-slot="{ errors, processing, recentlySuccessful }"
                 >
-                    <input type="hidden" name="template_slug" :value="template.template_slug" />
+                    <input
+                        type="hidden"
+                        name="template_slug"
+                        :value="template.template_slug"
+                    />
 
                     <!-- Section 1: Chat -->
                     <div class="space-y-6">
@@ -76,9 +86,14 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
                         <div class="grid gap-2">
                             <Label for="agent_provider">Provedor</Label>
-                            <Select v-model="agentProvider" name="agent_provider">
+                            <Select
+                                v-model="agentProvider"
+                                name="agent_provider"
+                            >
                                 <SelectTrigger id="agent_provider">
-                                    <SelectValue placeholder="Selecionar provedor" />
+                                    <SelectValue
+                                        placeholder="Selecionar provedor"
+                                    />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem
@@ -90,7 +105,11 @@ const breadcrumbItems: BreadcrumbItem[] = [
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
-                            <input type="hidden" name="agent_provider" :value="agentProvider" />
+                            <input
+                                type="hidden"
+                                name="agent_provider"
+                                :value="agentProvider"
+                            />
                             <InputError :message="errors.agent_provider" />
                         </div>
 
@@ -124,7 +143,9 @@ const breadcrumbItems: BreadcrumbItem[] = [
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="max_tokens">Máx. tokens (1–65535)</Label>
+                            <Label for="max_tokens"
+                                >Máx. tokens (1–65535)</Label
+                            >
                             <Input
                                 id="max_tokens"
                                 name="max_tokens"
@@ -139,7 +160,9 @@ const breadcrumbItems: BreadcrumbItem[] = [
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="max_conversation_messages">Máx. mensagens (1–200)</Label>
+                            <Label for="max_conversation_messages"
+                                >Máx. mensagens (1–200)</Label
+                            >
                             <Input
                                 id="max_conversation_messages"
                                 name="max_conversation_messages"
@@ -148,9 +171,13 @@ const breadcrumbItems: BreadcrumbItem[] = [
                                 max="200"
                                 step="1"
                                 class="w-32"
-                                :default-value="template.max_conversation_messages"
+                                :default-value="
+                                    template.max_conversation_messages
+                                "
                             />
-                            <InputError :message="errors.max_conversation_messages" />
+                            <InputError
+                                :message="errors.max_conversation_messages"
+                            />
                         </div>
                     </div>
 
@@ -166,9 +193,14 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
                         <div class="grid gap-2">
                             <Label for="transcription_provider">Provedor</Label>
-                            <Select v-model="transcriptionProvider" name="transcription_provider">
+                            <Select
+                                v-model="transcriptionProvider"
+                                name="transcription_provider"
+                            >
                                 <SelectTrigger id="transcription_provider">
-                                    <SelectValue placeholder="Selecionar provedor" />
+                                    <SelectValue
+                                        placeholder="Selecionar provedor"
+                                    />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem
@@ -180,8 +212,14 @@ const breadcrumbItems: BreadcrumbItem[] = [
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
-                            <input type="hidden" name="transcription_provider" :value="transcriptionProvider" />
-                            <InputError :message="errors.transcription_provider" />
+                            <input
+                                type="hidden"
+                                name="transcription_provider"
+                                :value="transcriptionProvider"
+                            />
+                            <InputError
+                                :message="errors.transcription_provider"
+                            />
                         </div>
 
                         <div class="grid gap-2">
@@ -211,9 +249,14 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
                         <div class="grid gap-2">
                             <Label for="vision_provider">Provedor</Label>
-                            <Select v-model="visionProvider" name="vision_provider">
+                            <Select
+                                v-model="visionProvider"
+                                name="vision_provider"
+                            >
                                 <SelectTrigger id="vision_provider">
-                                    <SelectValue placeholder="Selecionar provedor" />
+                                    <SelectValue
+                                        placeholder="Selecionar provedor"
+                                    />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem
@@ -225,7 +268,11 @@ const breadcrumbItems: BreadcrumbItem[] = [
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
-                            <input type="hidden" name="vision_provider" :value="visionProvider" />
+                            <input
+                                type="hidden"
+                                name="vision_provider"
+                                :value="visionProvider"
+                            />
                             <InputError :message="errors.vision_provider" />
                         </div>
 
@@ -244,15 +291,22 @@ const breadcrumbItems: BreadcrumbItem[] = [
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-4 mt-6">
-                        <Button :disabled="processing">Salvar alterações</Button>
+                    <div class="mt-6 flex items-center gap-4">
+                        <Button :disabled="processing"
+                            >Salvar alterações</Button
+                        >
                         <Transition
                             enter-active-class="transition ease-in-out"
                             enter-from-class="opacity-0"
                             leave-active-class="transition ease-in-out"
                             leave-to-class="opacity-0"
                         >
-                            <p v-show="recentlySuccessful" class="text-sm text-muted-foreground">Salvo.</p>
+                            <p
+                                v-show="recentlySuccessful"
+                                class="text-sm text-muted-foreground"
+                            >
+                                Salvo.
+                            </p>
                         </Transition>
                     </div>
                 </Form>

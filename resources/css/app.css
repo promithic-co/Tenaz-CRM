@@ -196,5 +196,39 @@
     }
     body {
         @apply bg-background text-foreground;
+        min-width: 20rem;
+        min-height: 100svh;
+        overflow-x: hidden;
+        overflow-wrap: anywhere;
+    }
+
+    html,
+    #app {
+        min-height: 100%;
+        max-width: 100%;
+    }
+
+    img,
+    video,
+    canvas,
+    svg {
+        max-width: 100%;
+    }
+
+    button,
+    [role='button'],
+    a,
+    input,
+    select,
+    textarea {
+        touch-action: manipulation;
+    }
+
+    @media (width < 40rem) {
+        input,
+        select,
+        textarea {
+            font-size: 1rem;
+        }
     }
 }

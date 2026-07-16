@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/AppLayout.vue';
 import {
     FlaskConical,
     Loader2,
@@ -8,6 +7,7 @@ import {
     ChevronRight,
 } from 'lucide-vue-next';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 
 type GroundTruthProduct = {
@@ -155,8 +155,10 @@ onUnmounted(() => {
 <template>
     <Head :title="`${run.label} - Stress Test`" />
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-6 p-4">
-            <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-6 p-3 sm:p-4">
+            <div
+                class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
                 <div class="flex items-center gap-2">
                     <FlaskConical class="h-5 w-5 text-muted-foreground" />
                     <h1 class="text-lg font-semibold text-foreground">
@@ -186,7 +188,9 @@ onUnmounted(() => {
             </p>
 
             <!-- Stats -->
-            <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div
+                class="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 lg:grid-cols-5"
+            >
                 <div
                     class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border"
                 >
@@ -274,7 +278,7 @@ onUnmounted(() => {
                     </span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full min-w-[44rem] text-sm">
                         <thead>
                             <tr
                                 class="border-b border-sidebar-border/70 bg-muted/50 dark:border-sidebar-border"
@@ -411,7 +415,7 @@ onUnmounted(() => {
                                             </div>
                                             <div
                                                 v-if="c.ground_truth_summary"
-                                                class="rounded-md border border-sidebar-border/70 bg-background p-3 dark:border-sidebar-border"
+                                                class="overflow-x-auto rounded-md border border-sidebar-border/70 bg-background p-3 dark:border-sidebar-border"
                                             >
                                                 <p
                                                     class="mb-2 font-medium text-muted-foreground"
@@ -419,7 +423,9 @@ onUnmounted(() => {
                                                     Ground truth (valorTotal vs
                                                     valorParcela por produto)
                                                 </p>
-                                                <table class="w-full text-xs">
+                                                <table
+                                                    class="w-full min-w-[36rem] text-xs"
+                                                >
                                                     <thead>
                                                         <tr
                                                             class="border-b border-sidebar-border/70 dark:border-sidebar-border"
@@ -515,13 +521,16 @@ onUnmounted(() => {
                                             </div>
                                             <div
                                                 v-if="c.hallucinations?.length"
+                                                class="overflow-x-auto"
                                             >
                                                 <p
                                                     class="mb-1 font-medium text-muted-foreground"
                                                 >
                                                     Alucinações
                                                 </p>
-                                                <table class="w-full text-xs">
+                                                <table
+                                                    class="w-full min-w-[36rem] text-xs"
+                                                >
                                                     <thead>
                                                         <tr
                                                             class="border-b border-sidebar-border/70 dark:border-sidebar-border"

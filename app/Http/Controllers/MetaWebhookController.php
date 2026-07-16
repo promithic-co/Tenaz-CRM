@@ -7,6 +7,7 @@ use App\Jobs\AggregateDebouncedMessageJob;
 use App\Jobs\DownloadIncomingMediaJob;
 use App\Jobs\ProcessCampaignDeliveryEventJob;
 use App\Jobs\ProcessIncomingWhatsAppMessageJob;
+use App\Jobs\ProcessMetaCoexistenceWebhookJob;
 use App\Models\WhatsappInstance;
 use App\Services\AgentContextResolver;
 use App\Services\AgentInteractionEventService;
@@ -43,7 +44,6 @@ class MetaWebhookController extends Controller
 
         Log::warning('meta.webhook_verify_failed', [
             'mode' => $mode,
-            'token_matches' => $verifyToken === $expected,
             'ip' => $request->ip(),
         ]);
 
@@ -103,6 +103,12 @@ class MetaWebhookController extends Controller
 
         if (in_array($changeField, ['message_template_status_update', 'phone_number_quality_update', 'template_category_update'], true)) {
             $this->templateStatus->handleValue($instance, $changeField, $value);
+
+            return;
+        }
+
+        if (in_array($changeField, ['history', 'smb_app_state_sync', 'smb_message_echoes'], true)) {
+            ProcessMetaCoexistenceWebhookJob::dispatch($instance->id, $changeField, $value);
 
             return;
         }

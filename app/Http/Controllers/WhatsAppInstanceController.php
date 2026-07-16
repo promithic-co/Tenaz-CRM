@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\WhatsAppProvider;
 use App\Http\Requests\StoreWhatsappInstanceRequest;
+use App\Jobs\SyncMetaCoexistenceDataJob;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use App\Services\WhatsApp\MetaTokenExchangeService;
@@ -126,13 +127,13 @@ class WhatsAppInstanceController extends Controller
             $attributes['meta_system_user_id'] = (string) ($cached['system_user_id'] ?? '') ?: null;
             $attributes['meta_token_permanent'] = (bool) ($cached['permanent'] ?? false);
             $attributes['meta_token_expires_at'] = $attributes['meta_token_permanent'] ? null : now()->addDays(60);
-            $attributes['meta_coexistence'] = ($cached['mode'] ?? 'new') === 'coexistence';
+            $attributes['meta_coexistence'] = (bool) ($cached['coexistence'] ?? false);
             $attributes['api_url'] = 'https://graph.facebook.com';
             $attributes['api_key'] = '';
 
             // Register phone number on Cloud API for modes A (new) and B (migrate)
             if (! $attributes['meta_coexistence'] && $attributes['meta_phone_number_id']) {
-                $pin = (string) ($request->validated('meta_pin') ?? $cached['meta_pin'] ?? '000000');
+                $pin = (string) ($request->validated('meta_pin') ?? '000000');
                 $registered = $this->metaTokenService->registerPhoneNumber(
                     $attributes['meta_phone_number_id'],
                     $attributes['meta_access_token'],
@@ -162,6 +163,10 @@ class WhatsAppInstanceController extends Controller
         }
 
         $instance = WhatsappInstance::create($attributes);
+
+        if ($provider === WhatsAppProvider::MetaCloud->value && $instance->meta_coexistence) {
+            SyncMetaCoexistenceDataJob::dispatch($instance->id)->afterResponse();
+        }
 
         // Populate display phone number right away so the card reflects the WABA number on first render.
         if ($provider === WhatsAppProvider::MetaCloud->value) {

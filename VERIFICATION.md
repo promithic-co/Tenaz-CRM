@@ -49,3 +49,24 @@ The implemented update passed the focused functional gates for this scope. The r
 2. **Pest memory exhaustion** — RESOLVED. Root cause: no `memory_limit` override (PHP CLI default 128MB). Added `<ini name="memory_limit" value="512M"/>` to `phpunit.xml`; full suite now runs **1431 passed, 2 skipped, 0 failed** (4892 assertions, ~251s).
 3. **`composer validate --strict`** — RESOLVED. `predis/predis` exact constraint `"3.4"` → `"^3.4"`; lock resynced; `./composer.json is valid`.
 4. **Guardian automation timeout** — deferred (tooling only, non-blocking). Recommend splitting Guardian verification into scoped checks.
+
+---
+
+## Addendum — Template Tenant Isolation (2026-07-14)
+
+Scope: canonical URA tenant identity, explicit WhatsApp-template tenant projection, and database-enforced campaign/list/template tenant consistency.
+
+Verdict: **VERIFIED_WITH_ACCEPTED_RISKS** for the approved tenant-isolation scope.
+
+- Final focused Pest gate: 94 passed, 385 assertions.
+- Full Pest gate on SQLite `:memory:`: 1,760 passed, 2 skipped, 6,082 assertions.
+- Disposable Docker validation passed on MySQL 8.4 and PostgreSQL 17 for normal apply/rollback, URA shadow swap/reseed, cross-tenant rejection, and all four partial-DDL retry boundaries in both directions.
+- Migration-test helpers now fail closed unless the environment is `testing`, the default connection is `sqlite`, and the resolved database is exactly `:memory:`.
+- Pint, PHP syntax, database/security review, git-scope review, and skeptical verification passed for remediation-owned files.
+- Detailed evidence and residuals are recorded in `.engineering/phases/08-template-tenant-isolation/VERIFICATION.md`.
+
+External findings not approved or modified by this remediation:
+
+- The concurrent untracked migration `2026_07_15_014607_add_language_to_whatsapp_templates_unique_index.php` has a potentially unsafe MySQL rollback when multilingual duplicates exist. It requires a separate approved plan.
+- Older migrations block a complete from-zero migration chain on MySQL (reserved `key`) and PostgreSQL (aborted transaction after a caught leads migration error). The two new tenant-isolation migrations were validated directly on both real drivers.
+- Aggregate `guardian verify --write-report` timed out in the already-dirty worktree; its orphaned process tree was terminated. Deterministic gates and independent reviews completed.

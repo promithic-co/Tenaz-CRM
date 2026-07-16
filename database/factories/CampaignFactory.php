@@ -22,8 +22,10 @@ class CampaignFactory extends Factory
         return [
             'tenant_id' => $tenantId,
             'whatsapp_instance_id' => WhatsappInstance::factory()->state(['user_id' => $user->id, 'tenant_id' => $tenantId]),
-            'contact_list_id' => ContactList::factory()->state(['tenant_id' => $tenantId]),
-            'whatsapp_template_id' => WhatsappTemplate::factory()->state(['tenant_id' => $tenantId]),
+            'contact_list_id' => fn (array $attributes) => ContactList::factory()
+                ->state(['tenant_id' => $attributes['tenant_id']]),
+            'whatsapp_template_id' => fn (array $attributes) => WhatsappTemplate::factory()
+                ->state(['tenant_id' => $attributes['tenant_id']]),
             'name' => fake()->sentence(3),
             'status' => 'draft',
             'template_params_mapping' => null,

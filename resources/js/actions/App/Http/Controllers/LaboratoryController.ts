@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LaboratoryController::index
- * @see app/Http/Controllers/LaboratoryController.php:27
+ * @see app/Http/Controllers/LaboratoryController.php:36
  * @route '/laboratory'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::index
- * @see app/Http/Controllers/LaboratoryController.php:27
+ * @see app/Http/Controllers/LaboratoryController.php:36
  * @route '/laboratory'
  */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::index
- * @see app/Http/Controllers/LaboratoryController.php:27
+ * @see app/Http/Controllers/LaboratoryController.php:36
  * @route '/laboratory'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::index
- * @see app/Http/Controllers/LaboratoryController.php:27
+ * @see app/Http/Controllers/LaboratoryController.php:36
  * @route '/laboratory'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::index
- * @see app/Http/Controllers/LaboratoryController.php:27
+ * @see app/Http/Controllers/LaboratoryController.php:36
  * @route '/laboratory'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::index
- * @see app/Http/Controllers/LaboratoryController.php:27
+ * @see app/Http/Controllers/LaboratoryController.php:36
  * @route '/laboratory'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::index
- * @see app/Http/Controllers/LaboratoryController.php:27
+ * @see app/Http/Controllers/LaboratoryController.php:36
  * @route '/laboratory'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -79,7 +79,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     index.form = indexForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::datasets
- * @see app/Http/Controllers/LaboratoryController.php:61
+ * @see app/Http/Controllers/LaboratoryController.php:70
  * @route '/laboratory/datasets-page'
  */
 export const datasets = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -94,7 +94,7 @@ datasets.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::datasets
- * @see app/Http/Controllers/LaboratoryController.php:61
+ * @see app/Http/Controllers/LaboratoryController.php:70
  * @route '/laboratory/datasets-page'
  */
 datasets.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ datasets.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::datasets
- * @see app/Http/Controllers/LaboratoryController.php:61
+ * @see app/Http/Controllers/LaboratoryController.php:70
  * @route '/laboratory/datasets-page'
  */
 datasets.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -112,7 +112,7 @@ datasets.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::datasets
- * @see app/Http/Controllers/LaboratoryController.php:61
+ * @see app/Http/Controllers/LaboratoryController.php:70
  * @route '/laboratory/datasets-page'
  */
 datasets.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -122,7 +122,7 @@ datasets.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::datasets
- * @see app/Http/Controllers/LaboratoryController.php:61
+ * @see app/Http/Controllers/LaboratoryController.php:70
  * @route '/laboratory/datasets-page'
  */
     const datasetsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -132,7 +132,7 @@ datasets.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::datasets
- * @see app/Http/Controllers/LaboratoryController.php:61
+ * @see app/Http/Controllers/LaboratoryController.php:70
  * @route '/laboratory/datasets-page'
  */
         datasetsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -141,7 +141,7 @@ datasets.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::datasets
- * @see app/Http/Controllers/LaboratoryController.php:61
+ * @see app/Http/Controllers/LaboratoryController.php:70
  * @route '/laboratory/datasets-page'
  */
         datasetsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -157,7 +157,7 @@ datasets.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     datasets.form = datasetsForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::stressTest
- * @see app/Http/Controllers/LaboratoryController.php:81
+ * @see app/Http/Controllers/LaboratoryController.php:90
  * @route '/laboratory/stress-test'
  */
 export const stressTest = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -172,7 +172,7 @@ stressTest.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::stressTest
- * @see app/Http/Controllers/LaboratoryController.php:81
+ * @see app/Http/Controllers/LaboratoryController.php:90
  * @route '/laboratory/stress-test'
  */
 stressTest.url = (options?: RouteQueryOptions) => {
@@ -181,7 +181,7 @@ stressTest.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::stressTest
- * @see app/Http/Controllers/LaboratoryController.php:81
+ * @see app/Http/Controllers/LaboratoryController.php:90
  * @route '/laboratory/stress-test'
  */
 stressTest.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -190,7 +190,7 @@ stressTest.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::stressTest
- * @see app/Http/Controllers/LaboratoryController.php:81
+ * @see app/Http/Controllers/LaboratoryController.php:90
  * @route '/laboratory/stress-test'
  */
 stressTest.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -200,7 +200,7 @@ stressTest.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::stressTest
- * @see app/Http/Controllers/LaboratoryController.php:81
+ * @see app/Http/Controllers/LaboratoryController.php:90
  * @route '/laboratory/stress-test'
  */
     const stressTestForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -210,7 +210,7 @@ stressTest.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::stressTest
- * @see app/Http/Controllers/LaboratoryController.php:81
+ * @see app/Http/Controllers/LaboratoryController.php:90
  * @route '/laboratory/stress-test'
  */
         stressTestForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -219,7 +219,7 @@ stressTest.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::stressTest
- * @see app/Http/Controllers/LaboratoryController.php:81
+ * @see app/Http/Controllers/LaboratoryController.php:90
  * @route '/laboratory/stress-test'
  */
         stressTestForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -235,7 +235,7 @@ stressTest.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     stressTest.form = stressTestForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::stressTestResults
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
 export const stressTestResults = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -250,7 +250,7 @@ stressTestResults.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::stressTestResults
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
 stressTestResults.url = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -283,7 +283,7 @@ stressTestResults.url = (args: { run: number | { id: number } } | [run: number |
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::stressTestResults
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
 stressTestResults.get = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -292,7 +292,7 @@ stressTestResults.get = (args: { run: number | { id: number } } | [run: number |
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::stressTestResults
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
 stressTestResults.head = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -302,7 +302,7 @@ stressTestResults.head = (args: { run: number | { id: number } } | [run: number 
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::stressTestResults
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
     const stressTestResultsForm = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -312,7 +312,7 @@ stressTestResults.head = (args: { run: number | { id: number } } | [run: number 
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::stressTestResults
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
         stressTestResultsForm.get = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -321,7 +321,7 @@ stressTestResults.head = (args: { run: number | { id: number } } | [run: number 
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::stressTestResults
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
         stressTestResultsForm.head = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -337,7 +337,7 @@ stressTestResults.head = (args: { run: number | { id: number } } | [run: number 
     stressTestResults.form = stressTestResultsForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::aiUsage
- * @see app/Http/Controllers/LaboratoryController.php:164
+ * @see app/Http/Controllers/LaboratoryController.php:184
  * @route '/laboratory/ai-usage'
  */
 export const aiUsage = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -352,7 +352,7 @@ aiUsage.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::aiUsage
- * @see app/Http/Controllers/LaboratoryController.php:164
+ * @see app/Http/Controllers/LaboratoryController.php:184
  * @route '/laboratory/ai-usage'
  */
 aiUsage.url = (options?: RouteQueryOptions) => {
@@ -361,7 +361,7 @@ aiUsage.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::aiUsage
- * @see app/Http/Controllers/LaboratoryController.php:164
+ * @see app/Http/Controllers/LaboratoryController.php:184
  * @route '/laboratory/ai-usage'
  */
 aiUsage.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -370,7 +370,7 @@ aiUsage.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::aiUsage
- * @see app/Http/Controllers/LaboratoryController.php:164
+ * @see app/Http/Controllers/LaboratoryController.php:184
  * @route '/laboratory/ai-usage'
  */
 aiUsage.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -380,7 +380,7 @@ aiUsage.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::aiUsage
- * @see app/Http/Controllers/LaboratoryController.php:164
+ * @see app/Http/Controllers/LaboratoryController.php:184
  * @route '/laboratory/ai-usage'
  */
     const aiUsageForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -390,7 +390,7 @@ aiUsage.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::aiUsage
- * @see app/Http/Controllers/LaboratoryController.php:164
+ * @see app/Http/Controllers/LaboratoryController.php:184
  * @route '/laboratory/ai-usage'
  */
         aiUsageForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -399,7 +399,7 @@ aiUsage.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::aiUsage
- * @see app/Http/Controllers/LaboratoryController.php:164
+ * @see app/Http/Controllers/LaboratoryController.php:184
  * @route '/laboratory/ai-usage'
  */
         aiUsageForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -415,7 +415,7 @@ aiUsage.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     aiUsage.form = aiUsageForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::health
- * @see app/Http/Controllers/LaboratoryController.php:254
+ * @see app/Http/Controllers/LaboratoryController.php:274
  * @route '/laboratory/health'
  */
 export const health = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -430,7 +430,7 @@ health.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::health
- * @see app/Http/Controllers/LaboratoryController.php:254
+ * @see app/Http/Controllers/LaboratoryController.php:274
  * @route '/laboratory/health'
  */
 health.url = (options?: RouteQueryOptions) => {
@@ -439,7 +439,7 @@ health.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::health
- * @see app/Http/Controllers/LaboratoryController.php:254
+ * @see app/Http/Controllers/LaboratoryController.php:274
  * @route '/laboratory/health'
  */
 health.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -448,7 +448,7 @@ health.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::health
- * @see app/Http/Controllers/LaboratoryController.php:254
+ * @see app/Http/Controllers/LaboratoryController.php:274
  * @route '/laboratory/health'
  */
 health.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -458,7 +458,7 @@ health.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::health
- * @see app/Http/Controllers/LaboratoryController.php:254
+ * @see app/Http/Controllers/LaboratoryController.php:274
  * @route '/laboratory/health'
  */
     const healthForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -468,7 +468,7 @@ health.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::health
- * @see app/Http/Controllers/LaboratoryController.php:254
+ * @see app/Http/Controllers/LaboratoryController.php:274
  * @route '/laboratory/health'
  */
         healthForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -477,7 +477,7 @@ health.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::health
- * @see app/Http/Controllers/LaboratoryController.php:254
+ * @see app/Http/Controllers/LaboratoryController.php:274
  * @route '/laboratory/health'
  */
         healthForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -493,7 +493,7 @@ health.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     health.form = healthForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::interactionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
 export const interactionTimeline = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -508,7 +508,7 @@ interactionTimeline.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::interactionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
 interactionTimeline.url = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -536,7 +536,7 @@ interactionTimeline.url = (args: { interactionId: string | number } | [interacti
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::interactionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
 interactionTimeline.get = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -545,7 +545,7 @@ interactionTimeline.get = (args: { interactionId: string | number } | [interacti
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::interactionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
 interactionTimeline.head = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -555,7 +555,7 @@ interactionTimeline.head = (args: { interactionId: string | number } | [interact
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::interactionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
     const interactionTimelineForm = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -565,7 +565,7 @@ interactionTimeline.head = (args: { interactionId: string | number } | [interact
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::interactionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
         interactionTimelineForm.get = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -574,7 +574,7 @@ interactionTimeline.head = (args: { interactionId: string | number } | [interact
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::interactionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:269
+ * @see app/Http/Controllers/LaboratoryController.php:289
  * @route '/laboratory/interactions/{interactionId}'
  */
         interactionTimelineForm.head = (args: { interactionId: string | number } | [interactionId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -590,7 +590,7 @@ interactionTimeline.head = (args: { interactionId: string | number } | [interact
     interactionTimeline.form = interactionTimelineForm
 /**
 * @see \App\Http\Controllers\LaboratoryController::leadInteractionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
 export const leadInteractionTimeline = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -605,7 +605,7 @@ leadInteractionTimeline.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::leadInteractionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
 leadInteractionTimeline.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -638,7 +638,7 @@ leadInteractionTimeline.url = (args: { lead: number | { id: number } } | [lead: 
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::leadInteractionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
 leadInteractionTimeline.get = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -647,7 +647,7 @@ leadInteractionTimeline.get = (args: { lead: number | { id: number } } | [lead: 
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::leadInteractionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
 leadInteractionTimeline.head = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -657,7 +657,7 @@ leadInteractionTimeline.head = (args: { lead: number | { id: number } } | [lead:
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::leadInteractionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
     const leadInteractionTimelineForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -667,7 +667,7 @@ leadInteractionTimeline.head = (args: { lead: number | { id: number } } | [lead:
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::leadInteractionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
         leadInteractionTimelineForm.get = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -676,7 +676,7 @@ leadInteractionTimeline.head = (args: { lead: number | { id: number } } | [lead:
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::leadInteractionTimeline
- * @see app/Http/Controllers/LaboratoryController.php:298
+ * @see app/Http/Controllers/LaboratoryController.php:318
  * @route '/laboratory/leads/{lead}/interactions'
  */
         leadInteractionTimelineForm.head = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

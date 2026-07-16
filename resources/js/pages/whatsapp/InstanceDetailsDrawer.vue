@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import { Check, Copy, Users } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -204,7 +204,7 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
 
 <template>
     <Dialog :open="open" @update:open="(v: boolean) => emit('update:open', v)">
-        <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent class="max-h-[90svh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
                 <DialogTitle class="flex items-center gap-2">
                     <span class="truncate">{{ instance.label }}</span>

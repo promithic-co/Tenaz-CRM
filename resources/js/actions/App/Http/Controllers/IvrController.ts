@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\IvrController::script
- * @see app/Http/Controllers/IvrController.php:17
+ * @see app/Http/Controllers/IvrController.php:18
  * @route '/api/ivr/call/{voiceCampaignCall}/script'
  */
 export const script = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ script.definition = {
 
 /**
 * @see \App\Http\Controllers\IvrController::script
- * @see app/Http/Controllers/IvrController.php:17
+ * @see app/Http/Controllers/IvrController.php:18
  * @route '/api/ivr/call/{voiceCampaignCall}/script'
  */
 script.url = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ script.url = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampa
 
 /**
 * @see \App\Http\Controllers\IvrController::script
- * @see app/Http/Controllers/IvrController.php:17
+ * @see app/Http/Controllers/IvrController.php:18
  * @route '/api/ivr/call/{voiceCampaignCall}/script'
  */
 script.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -59,7 +59,7 @@ script.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCamp
 
     /**
 * @see \App\Http\Controllers\IvrController::script
- * @see app/Http/Controllers/IvrController.php:17
+ * @see app/Http/Controllers/IvrController.php:18
  * @route '/api/ivr/call/{voiceCampaignCall}/script'
  */
     const scriptForm = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -69,7 +69,7 @@ script.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCamp
 
             /**
 * @see \App\Http\Controllers\IvrController::script
- * @see app/Http/Controllers/IvrController.php:17
+ * @see app/Http/Controllers/IvrController.php:18
  * @route '/api/ivr/call/{voiceCampaignCall}/script'
  */
         scriptForm.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -80,7 +80,7 @@ script.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCamp
     script.form = scriptForm
 /**
 * @see \App\Http\Controllers\IvrController::handleDtmf
- * @see app/Http/Controllers/IvrController.php:72
+ * @see app/Http/Controllers/IvrController.php:70
  * @route '/api/ivr/call/{voiceCampaignCall}/dtmf'
  */
 export const handleDtmf = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -95,7 +95,7 @@ handleDtmf.definition = {
 
 /**
 * @see \App\Http\Controllers\IvrController::handleDtmf
- * @see app/Http/Controllers/IvrController.php:72
+ * @see app/Http/Controllers/IvrController.php:70
  * @route '/api/ivr/call/{voiceCampaignCall}/dtmf'
  */
 handleDtmf.url = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -128,7 +128,7 @@ handleDtmf.url = (args: { voiceCampaignCall: number | { id: number } } | [voiceC
 
 /**
 * @see \App\Http\Controllers\IvrController::handleDtmf
- * @see app/Http/Controllers/IvrController.php:72
+ * @see app/Http/Controllers/IvrController.php:70
  * @route '/api/ivr/call/{voiceCampaignCall}/dtmf'
  */
 handleDtmf.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -138,7 +138,7 @@ handleDtmf.post = (args: { voiceCampaignCall: number | { id: number } } | [voice
 
     /**
 * @see \App\Http\Controllers\IvrController::handleDtmf
- * @see app/Http/Controllers/IvrController.php:72
+ * @see app/Http/Controllers/IvrController.php:70
  * @route '/api/ivr/call/{voiceCampaignCall}/dtmf'
  */
     const handleDtmfForm = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -148,7 +148,7 @@ handleDtmf.post = (args: { voiceCampaignCall: number | { id: number } } | [voice
 
             /**
 * @see \App\Http\Controllers\IvrController::handleDtmf
- * @see app/Http/Controllers/IvrController.php:72
+ * @see app/Http/Controllers/IvrController.php:70
  * @route '/api/ivr/call/{voiceCampaignCall}/dtmf'
  */
         handleDtmfForm.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -159,7 +159,7 @@ handleDtmf.post = (args: { voiceCampaignCall: number | { id: number } } | [voice
     handleDtmf.form = handleDtmfForm
 /**
 * @see \App\Http\Controllers\IvrController::statusCallback
- * @see app/Http/Controllers/IvrController.php:148
+ * @see app/Http/Controllers/IvrController.php:147
  * @route '/api/ivr/call/{voiceCampaignCall}/status'
  */
 export const statusCallback = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -174,7 +174,7 @@ statusCallback.definition = {
 
 /**
 * @see \App\Http\Controllers\IvrController::statusCallback
- * @see app/Http/Controllers/IvrController.php:148
+ * @see app/Http/Controllers/IvrController.php:147
  * @route '/api/ivr/call/{voiceCampaignCall}/status'
  */
 statusCallback.url = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -207,7 +207,7 @@ statusCallback.url = (args: { voiceCampaignCall: number | { id: number } } | [vo
 
 /**
 * @see \App\Http\Controllers\IvrController::statusCallback
- * @see app/Http/Controllers/IvrController.php:148
+ * @see app/Http/Controllers/IvrController.php:147
  * @route '/api/ivr/call/{voiceCampaignCall}/status'
  */
 statusCallback.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -217,7 +217,7 @@ statusCallback.post = (args: { voiceCampaignCall: number | { id: number } } | [v
 
     /**
 * @see \App\Http\Controllers\IvrController::statusCallback
- * @see app/Http/Controllers/IvrController.php:148
+ * @see app/Http/Controllers/IvrController.php:147
  * @route '/api/ivr/call/{voiceCampaignCall}/status'
  */
     const statusCallbackForm = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -227,7 +227,7 @@ statusCallback.post = (args: { voiceCampaignCall: number | { id: number } } | [v
 
             /**
 * @see \App\Http\Controllers\IvrController::statusCallback
- * @see app/Http/Controllers/IvrController.php:148
+ * @see app/Http/Controllers/IvrController.php:147
  * @route '/api/ivr/call/{voiceCampaignCall}/status'
  */
         statusCallbackForm.post = (args: { voiceCampaignCall: number | { id: number } } | [voiceCampaignCall: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

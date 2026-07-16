@@ -404,7 +404,7 @@ function submitForm(): void {
     <Head title="Nova Campanha" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="p-4">
+        <div class="p-3 sm:p-4">
             <div class="mx-auto max-w-2xl">
                 <!-- Stepper Header -->
                 <div class="mb-6 flex items-center gap-2">
@@ -549,7 +549,7 @@ function submitForm(): void {
                             </p>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
                                 <label
                                     class="mb-1 block text-sm font-medium text-foreground"
@@ -1107,7 +1107,7 @@ function submitForm(): void {
 
                     <!-- Footer buttons -->
                     <div
-                        class="flex items-center justify-between border-t border-sidebar-border/70 px-6 py-4 dark:border-sidebar-border"
+                        class="flex flex-col-reverse gap-2 border-t border-sidebar-border/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:border-sidebar-border"
                     >
                         <button
                             v-if="currentStep > 1"

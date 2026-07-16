@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::index
- * @see app/Http/Controllers/WhatsappTemplateController.php:24
+ * @see app/Http/Controllers/WhatsappTemplateController.php:27
  * @route '/templates'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::index
- * @see app/Http/Controllers/WhatsappTemplateController.php:24
+ * @see app/Http/Controllers/WhatsappTemplateController.php:27
  * @route '/templates'
  */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::index
- * @see app/Http/Controllers/WhatsappTemplateController.php:24
+ * @see app/Http/Controllers/WhatsappTemplateController.php:27
  * @route '/templates'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::index
- * @see app/Http/Controllers/WhatsappTemplateController.php:24
+ * @see app/Http/Controllers/WhatsappTemplateController.php:27
  * @route '/templates'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\WhatsappTemplateController::index
- * @see app/Http/Controllers/WhatsappTemplateController.php:24
+ * @see app/Http/Controllers/WhatsappTemplateController.php:27
  * @route '/templates'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\WhatsappTemplateController::index
- * @see app/Http/Controllers/WhatsappTemplateController.php:24
+ * @see app/Http/Controllers/WhatsappTemplateController.php:27
  * @route '/templates'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\WhatsappTemplateController::index
- * @see app/Http/Controllers/WhatsappTemplateController.php:24
+ * @see app/Http/Controllers/WhatsappTemplateController.php:27
  * @route '/templates'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -79,7 +79,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     index.form = indexForm
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::store
- * @see app/Http/Controllers/WhatsappTemplateController.php:54
+ * @see app/Http/Controllers/WhatsappTemplateController.php:34
  * @route '/templates'
  */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -94,7 +94,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::store
- * @see app/Http/Controllers/WhatsappTemplateController.php:54
+ * @see app/Http/Controllers/WhatsappTemplateController.php:34
  * @route '/templates'
  */
 store.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::store
- * @see app/Http/Controllers/WhatsappTemplateController.php:54
+ * @see app/Http/Controllers/WhatsappTemplateController.php:34
  * @route '/templates'
  */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -113,7 +113,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\WhatsappTemplateController::store
- * @see app/Http/Controllers/WhatsappTemplateController.php:54
+ * @see app/Http/Controllers/WhatsappTemplateController.php:34
  * @route '/templates'
  */
     const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -123,7 +123,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\WhatsappTemplateController::store
- * @see app/Http/Controllers/WhatsappTemplateController.php:54
+ * @see app/Http/Controllers/WhatsappTemplateController.php:34
  * @route '/templates'
  */
         storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -134,7 +134,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     store.form = storeForm
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::update
- * @see app/Http/Controllers/WhatsappTemplateController.php:95
+ * @see app/Http/Controllers/WhatsappTemplateController.php:75
  * @route '/templates/{template}'
  */
 export const update = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -149,7 +149,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::update
- * @see app/Http/Controllers/WhatsappTemplateController.php:95
+ * @see app/Http/Controllers/WhatsappTemplateController.php:75
  * @route '/templates/{template}'
  */
 update.url = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -182,7 +182,7 @@ update.url = (args: { template: number | { id: number } } | [template: number | 
 
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::update
- * @see app/Http/Controllers/WhatsappTemplateController.php:95
+ * @see app/Http/Controllers/WhatsappTemplateController.php:75
  * @route '/templates/{template}'
  */
 update.put = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -191,7 +191,7 @@ update.put = (args: { template: number | { id: number } } | [template: number | 
 })
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::update
- * @see app/Http/Controllers/WhatsappTemplateController.php:95
+ * @see app/Http/Controllers/WhatsappTemplateController.php:75
  * @route '/templates/{template}'
  */
 update.patch = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -201,7 +201,7 @@ update.patch = (args: { template: number | { id: number } } | [template: number 
 
     /**
 * @see \App\Http\Controllers\WhatsappTemplateController::update
- * @see app/Http/Controllers/WhatsappTemplateController.php:95
+ * @see app/Http/Controllers/WhatsappTemplateController.php:75
  * @route '/templates/{template}'
  */
     const updateForm = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -216,7 +216,7 @@ update.patch = (args: { template: number | { id: number } } | [template: number 
 
             /**
 * @see \App\Http\Controllers\WhatsappTemplateController::update
- * @see app/Http/Controllers/WhatsappTemplateController.php:95
+ * @see app/Http/Controllers/WhatsappTemplateController.php:75
  * @route '/templates/{template}'
  */
         updateForm.put = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -230,7 +230,7 @@ update.patch = (args: { template: number | { id: number } } | [template: number 
         })
             /**
 * @see \App\Http\Controllers\WhatsappTemplateController::update
- * @see app/Http/Controllers/WhatsappTemplateController.php:95
+ * @see app/Http/Controllers/WhatsappTemplateController.php:75
  * @route '/templates/{template}'
  */
         updateForm.patch = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -246,7 +246,7 @@ update.patch = (args: { template: number | { id: number } } | [template: number 
     update.form = updateForm
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::destroy
- * @see app/Http/Controllers/WhatsappTemplateController.php:120
+ * @see app/Http/Controllers/WhatsappTemplateController.php:100
  * @route '/templates/{template}'
  */
 export const destroy = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -261,7 +261,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::destroy
- * @see app/Http/Controllers/WhatsappTemplateController.php:120
+ * @see app/Http/Controllers/WhatsappTemplateController.php:100
  * @route '/templates/{template}'
  */
 destroy.url = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -294,7 +294,7 @@ destroy.url = (args: { template: number | { id: number } } | [template: number |
 
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::destroy
- * @see app/Http/Controllers/WhatsappTemplateController.php:120
+ * @see app/Http/Controllers/WhatsappTemplateController.php:100
  * @route '/templates/{template}'
  */
 destroy.delete = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -304,7 +304,7 @@ destroy.delete = (args: { template: number | { id: number } } | [template: numbe
 
     /**
 * @see \App\Http\Controllers\WhatsappTemplateController::destroy
- * @see app/Http/Controllers/WhatsappTemplateController.php:120
+ * @see app/Http/Controllers/WhatsappTemplateController.php:100
  * @route '/templates/{template}'
  */
     const destroyForm = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -319,7 +319,7 @@ destroy.delete = (args: { template: number | { id: number } } | [template: numbe
 
             /**
 * @see \App\Http\Controllers\WhatsappTemplateController::destroy
- * @see app/Http/Controllers/WhatsappTemplateController.php:120
+ * @see app/Http/Controllers/WhatsappTemplateController.php:100
  * @route '/templates/{template}'
  */
         destroyForm.delete = (args: { template: number | { id: number } } | [template: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -335,7 +335,7 @@ destroy.delete = (args: { template: number | { id: number } } | [template: numbe
     destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::syncMeta
- * @see app/Http/Controllers/WhatsappTemplateController.php:104
+ * @see app/Http/Controllers/WhatsappTemplateController.php:84
  * @route '/templates/sync-meta'
  */
 export const syncMeta = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -350,7 +350,7 @@ syncMeta.definition = {
 
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::syncMeta
- * @see app/Http/Controllers/WhatsappTemplateController.php:104
+ * @see app/Http/Controllers/WhatsappTemplateController.php:84
  * @route '/templates/sync-meta'
  */
 syncMeta.url = (options?: RouteQueryOptions) => {
@@ -359,7 +359,7 @@ syncMeta.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\WhatsappTemplateController::syncMeta
- * @see app/Http/Controllers/WhatsappTemplateController.php:104
+ * @see app/Http/Controllers/WhatsappTemplateController.php:84
  * @route '/templates/sync-meta'
  */
 syncMeta.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -369,7 +369,7 @@ syncMeta.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\WhatsappTemplateController::syncMeta
- * @see app/Http/Controllers/WhatsappTemplateController.php:104
+ * @see app/Http/Controllers/WhatsappTemplateController.php:84
  * @route '/templates/sync-meta'
  */
     const syncMetaForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -379,7 +379,7 @@ syncMeta.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\WhatsappTemplateController::syncMeta
- * @see app/Http/Controllers/WhatsappTemplateController.php:104
+ * @see app/Http/Controllers/WhatsappTemplateController.php:84
  * @route '/templates/sync-meta'
  */
         syncMetaForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

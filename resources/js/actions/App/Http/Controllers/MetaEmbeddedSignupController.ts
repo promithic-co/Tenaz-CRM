@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::callback
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
+ * @see app/Http/Controllers/MetaEmbeddedSignupController.php:22
  * @route '/whatsapp/meta/embedded-signup'
  */
 export const callback = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ callback.definition = {
 
 /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::callback
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
+ * @see app/Http/Controllers/MetaEmbeddedSignupController.php:22
  * @route '/whatsapp/meta/embedded-signup'
  */
 callback.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ callback.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::callback
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
+ * @see app/Http/Controllers/MetaEmbeddedSignupController.php:22
  * @route '/whatsapp/meta/embedded-signup'
  */
 callback.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -35,7 +35,7 @@ callback.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::callback
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
+ * @see app/Http/Controllers/MetaEmbeddedSignupController.php:22
  * @route '/whatsapp/meta/embedded-signup'
  */
     const callbackForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -45,7 +45,7 @@ callback.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\MetaEmbeddedSignupController::callback
- * @see app/Http/Controllers/MetaEmbeddedSignupController.php:21
+ * @see app/Http/Controllers/MetaEmbeddedSignupController.php:22
  * @route '/whatsapp/meta/embedded-signup'
  */
         callbackForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

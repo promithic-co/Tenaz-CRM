@@ -76,30 +76,39 @@ class SyncMetaTemplatesJob implements ShouldQueue
                 $buttons = $components->firstWhere('type', 'BUTTONS')['buttons'] ?? null;
                 $qualityScore = $tpl['quality_score']['score'] ?? $tpl['quality_score'] ?? null;
 
-                WhatsappTemplate::updateOrCreate(
-                    [
-                        'tenant_id' => $instance->tenant_id,
-                        'whatsapp_instance_id' => $instance->id,
-                        'kind' => 'meta_hsm',
-                        'name' => $tpl['name'],
-                    ],
-                    [
-                        'meta_template_id' => $tpl['id'],
-                        'meta_template_name' => $tpl['name'],
-                        'meta_waba_id' => $instance->meta_waba_id,
-                        'status' => $tpl['status'],
-                        'category' => $tpl['category'] ?? null,
-                        'language' => $tpl['language'],
-                        'body' => $body,
-                        'header' => $header['text'] ?? null,
-                        'footer' => $footer['text'] ?? null,
-                        'buttons_json' => is_array($buttons) && $buttons !== [] ? $buttons : null,
-                        'components_json' => $components->all(),
-                        'quality_score' => is_scalar($qualityScore) ? (string) $qualityScore : null,
-                        'rejected_reason' => $tpl['rejected_reason'] ?? $tpl['reason'] ?? null,
-                        'variables_count' => $this->countVars($components->all()),
-                    ]
-                );
+                // Match the durable row by the Meta identity (meta_template_name + language),
+                // NOT the local `name` (a user-chosen internal label). A template exists once
+                // per (name, language) on Meta's side, and the authoring flow stores name and
+                // meta_template_name separately — keying on `name` here would never match the
+                // authored row and would spawn a duplicate on the first sync, and would collapse
+                // distinct languages of the same template into one flapping row.
+                $template = WhatsappTemplate::withoutGlobalScope('tenant')->firstOrNew([
+                    'tenant_id' => $instance->tenant_id,
+                    'whatsapp_instance_id' => $instance->id,
+                    'kind' => 'meta_hsm',
+                    'meta_template_name' => $tpl['name'],
+                    'language' => $tpl['language'],
+                ]);
+
+                if (! $template->exists) {
+                    // Seed the internal name only on creation; an authored row keeps its own.
+                    $template->name = $tpl['name'];
+                }
+
+                $template->fill([
+                    'meta_template_id' => $tpl['id'],
+                    'meta_waba_id' => $instance->meta_waba_id,
+                    'status' => $tpl['status'],
+                    'category' => $tpl['category'] ?? null,
+                    'body' => $body,
+                    'header' => $header['text'] ?? null,
+                    'footer' => $footer['text'] ?? null,
+                    'buttons_json' => is_array($buttons) && $buttons !== [] ? $buttons : null,
+                    'components_json' => $components->all(),
+                    'quality_score' => is_scalar($qualityScore) ? (string) $qualityScore : null,
+                    'rejected_reason' => $tpl['rejected_reason'] ?? $tpl['reason'] ?? null,
+                    'variables_count' => $this->countVars($components->all()),
+                ])->save();
             }
 
             $url = $response->json('paging.next');

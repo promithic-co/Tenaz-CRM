@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LaboratoryController::results
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
 export const results = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ results.definition = {
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::results
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
 results.url = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ results.url = (args: { run: number | { id: number } } | [run: number | { id: num
 
 /**
 * @see \App\Http\Controllers\LaboratoryController::results
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
 results.get = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -58,7 +58,7 @@ results.get = (args: { run: number | { id: number } } | [run: number | { id: num
 })
 /**
 * @see \App\Http\Controllers\LaboratoryController::results
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
 results.head = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -68,7 +68,7 @@ results.head = (args: { run: number | { id: number } } | [run: number | { id: nu
 
     /**
 * @see \App\Http\Controllers\LaboratoryController::results
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
     const resultsForm = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -78,7 +78,7 @@ results.head = (args: { run: number | { id: number } } | [run: number | { id: nu
 
             /**
 * @see \App\Http\Controllers\LaboratoryController::results
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
         resultsForm.get = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -87,7 +87,7 @@ results.head = (args: { run: number | { id: number } } | [run: number | { id: nu
         })
             /**
 * @see \App\Http\Controllers\LaboratoryController::results
- * @see app/Http/Controllers/LaboratoryController.php:110
+ * @see app/Http/Controllers/LaboratoryController.php:119
  * @route '/laboratory/stress-test/{run}'
  */
         resultsForm.head = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
