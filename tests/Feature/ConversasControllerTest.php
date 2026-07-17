@@ -1,13 +1,15 @@
 <?php
 
 use App\Models\Agent;
+use App\Models\Contact;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\WhatsappInstance;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 test('test_index_filters_by_search', function () {
     $user = User::factory()->create();
@@ -107,12 +109,24 @@ test('test_show_renders_unified_inbox_with_active_conversation', function () {
     $user = User::factory()->create();
     $agent = Agent::factory()->create(['user_id' => $user->id, 'is_default' => true]);
     $conversationId = Str::uuid()->toString();
+    $contact = Contact::factory()->forTenant((string) $user->tenantId)->create([
+        'extra_data' => [
+            'collected_information' => [
+                'objetivo' => [
+                    'label' => 'Objetivo',
+                    'value' => 'Refinanciamento',
+                    'source' => 'manual',
+                ],
+            ],
+        ],
+    ]);
 
     $lead = Lead::factory()->forAgent($agent)->create([
         'nome' => 'Ana Paula Ferreira',
         'conversation_id' => $conversationId,
         'followup_status' => 'active',
         'status' => 'escalado',
+        'contact_id' => $contact->id,
     ]);
 
     Lead::factory()->forAgent($agent)->create(['nome' => 'Outro Lead']);
@@ -150,6 +164,8 @@ test('test_show_renders_unified_inbox_with_active_conversation', function () {
             ->where('activeConversation.lead.id', $lead->id)
             ->where('activeConversation.lead.nome', 'Ana Paula Ferreira')
             ->where('activeConversation.lead.status', 'escalado')
+            ->where('activeConversation.lead.collected_information.0.label', 'Objetivo')
+            ->where('activeConversation.lead.collected_information.0.value', 'Refinanciamento')
             ->where('activeConversation.mensagens.0.content', 'Oi, recebi a mensagem sobre a proposta.')
             ->where('activeConversation.followupStatus', $lead->followup_status)
         );

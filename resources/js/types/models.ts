@@ -1,5 +1,12 @@
 import type { LeadStatus } from '@/lib/lead-status';
 
+export type CollectedInformationItem = {
+    key: string;
+    label: string;
+    value: string;
+    source: 'manual' | 'ai';
+};
+
 export interface CreditoJson {
     status?: string;
     margem_disponivel?: number;
@@ -23,8 +30,17 @@ export interface Lead {
     cpf: string | null;
     idade: number | null;
     status: LeadStatus;
-    ai_mode: 'automatic' | 'manual' | 'assisted' | 'qualify_then_handoff' | null;
-    effective_ai_mode?: 'automatic' | 'manual' | 'assisted' | 'qualify_then_handoff';
+    ai_mode:
+        | 'automatic'
+        | 'manual'
+        | 'assisted'
+        | 'qualify_then_handoff'
+        | null;
+    effective_ai_mode?:
+        | 'automatic'
+        | 'manual'
+        | 'assisted'
+        | 'qualify_then_handoff';
     operational_stage?: string;
     assigned_user_id?: number | null;
     assigned_user_name?: string | null;
@@ -78,7 +94,11 @@ export interface WhatsappInstance {
     display_name: string;
     phone_number: string | null;
     agent_id: number | null;
-    default_ai_mode?: 'automatic' | 'manual' | 'assisted' | 'qualify_then_handoff';
+    default_ai_mode?:
+        | 'automatic'
+        | 'manual'
+        | 'assisted'
+        | 'qualify_then_handoff';
     api_url: string | null;
 }
 

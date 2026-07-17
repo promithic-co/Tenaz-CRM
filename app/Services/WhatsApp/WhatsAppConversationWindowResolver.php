@@ -89,7 +89,7 @@ class WhatsAppConversationWindowResolver
         if ($instance !== null && (bool) $instance->meta_coexistence === true) {
             $coexistence = [
                 'enabled' => true,
-                'note' => 'Instância em modo coexistência Meta: mensagens fora da janela podem aparecer no app oficial sem passar pela API.',
+                'note' => 'Algumas mensagens podem aparecer apenas no WhatsApp. Confira o aplicativo para acompanhar toda a conversa.',
             ];
         }
 

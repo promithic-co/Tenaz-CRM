@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import CollectedInformationEditor from '@/components/CollectedInformationEditor.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { update as updateCollectedInformation } from '@/routes/contatos/collected-information';
 import type { BreadcrumbItem } from '@/types';
+import type { CollectedInformationItem } from '@/types/models';
 
 type Lead = {
     id: number;
@@ -53,6 +56,7 @@ type ConversationWindow = {
 
 type Props = {
     contact: Contact;
+    collectedInformation: CollectedInformationItem[];
     leads: Lead[];
     listMemberships: ListMembership[];
     conversationWindow?: ConversationWindow | null;
@@ -60,6 +64,12 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+
+const extraDataEntries = computed(() =>
+    Object.entries(props.contact.extra_data ?? {}).filter(
+        ([key]) => key !== 'collected_information',
+    ),
+);
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Contatos', href: '/contatos' },
@@ -162,12 +172,6 @@ function formatDate(value: string | null): string {
                         </dd>
                     </div>
                     <div class="flex justify-between">
-                        <dt class="text-muted-foreground">CPF</dt>
-                        <dd class="text-foreground">
-                            {{ contact.cpf || '—' }}
-                        </dd>
-                    </div>
-                    <div class="flex justify-between">
                         <dt class="text-muted-foreground">Origem</dt>
                         <dd class="text-foreground">{{ contact.source }}</dd>
                     </div>
@@ -236,13 +240,7 @@ function formatDate(value: string | null): string {
                     </button>
                 </form>
 
-                <div
-                    v-if="
-                        contact.extra_data &&
-                        Object.keys(contact.extra_data).length
-                    "
-                    class="mt-4"
-                >
+                <div v-if="extraDataEntries.length" class="mt-4">
                     <h3
                         class="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                     >
@@ -250,8 +248,8 @@ function formatDate(value: string | null): string {
                     </h3>
                     <dl class="space-y-1 text-xs">
                         <div
-                            v-for="(value, key) in contact.extra_data"
-                            :key="String(key)"
+                            v-for="[key, value] in extraDataEntries"
+                            :key="key"
                             class="flex justify-between gap-2"
                         >
                             <dt class="text-muted-foreground">{{ key }}</dt>
@@ -265,6 +263,18 @@ function formatDate(value: string | null): string {
 
             <!-- Leads + memberships + window -->
             <div class="space-y-4 lg:col-span-2">
+                <div
+                    class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border"
+                >
+                    <CollectedInformationEditor
+                        :items="collectedInformation"
+                        :action="
+                            updateCollectedInformation({ contact: contact.id })
+                        "
+                        :can-edit="can.manage"
+                    />
+                </div>
+
                 <div
                     v-if="conversationWindow"
                     class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border"

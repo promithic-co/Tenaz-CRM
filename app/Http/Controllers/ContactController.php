@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AddContactsToListRequest;
 use App\Http\Requests\StoreContactRequest;
+use App\Http\Requests\UpdateContactCollectedInformationRequest;
 use App\Http\Requests\UpdateContactRequest;
 use App\Models\Contact;
 use App\Models\ContactList;
 use App\Models\ContactListEntry;
+use App\Services\ContactCollectedInformationService;
+use App\Services\ContactExtraDataService;
 use App\Services\ContactSyncService;
+use App\Services\WhatsApp\WhatsAppConversationWindowResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +21,11 @@ use Inertia\Response;
 
 class ContactController extends Controller
 {
-    public function __construct(private readonly ContactSyncService $contactSync) {}
+    public function __construct(
+        private readonly ContactSyncService $contactSync,
+        private readonly ContactCollectedInformationService $collectedInformation,
+        private readonly ContactExtraDataService $extraData,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -119,7 +127,7 @@ class ContactController extends Controller
 
         $latestLead = $contact->leads->first();
         $conversationWindow = $latestLead
-            ? app(\App\Services\WhatsApp\WhatsAppConversationWindowResolver::class)->resolve($latestLead->loadMissing('whatsappInstance'))
+            ? app(WhatsAppConversationWindowResolver::class)->resolve($latestLead->loadMissing('whatsappInstance'))
             : null;
 
         return Inertia::render('contatos/Show', [
@@ -127,6 +135,7 @@ class ContactController extends Controller
             'leads' => $contact->leads,
             'listMemberships' => $contact->contactListEntries,
             'conversationWindow' => $conversationWindow,
+            'collectedInformation' => $this->collectedInformation->items($contact),
             'can' => [
                 'manage' => auth()->user()?->isOwnerOrAdmin() ?? false,
             ],
@@ -161,10 +170,35 @@ class ContactController extends Controller
 
     public function update(UpdateContactRequest $request, Contact $contact): RedirectResponse
     {
-        $contact->update($request->validated());
+        $data = $request->validated();
+        $hasExtraData = array_key_exists('extra_data', $data);
+        $extraData = is_array($data['extra_data'] ?? null) ? $data['extra_data'] : [];
+        unset($data['extra_data']);
+
+        if ($data !== []) {
+            $contact->update($data);
+        }
+
+        if ($hasExtraData) {
+            $this->extraData->replacePreserving(
+                $contact,
+                $extraData,
+                ['collected_information'],
+            );
+        }
 
         return redirect()->route('contatos.show', $contact)
             ->with('success', 'Contato atualizado.');
+    }
+
+    public function updateCollectedInformation(
+        UpdateContactCollectedInformationRequest $request,
+        Contact $contact,
+        ContactCollectedInformationService $information,
+    ): RedirectResponse {
+        $information->applyManual($contact, $request->validated());
+
+        return back()->with('success', 'Informações do contato atualizadas.');
     }
 
     public function destroy(Contact $contact): RedirectResponse

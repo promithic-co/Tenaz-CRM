@@ -2,6 +2,7 @@
 
 use App\Http\Resources\ConversationResource;
 use App\Models\Agent;
+use App\Models\AgentConfig;
 use App\Models\Lead;
 use App\Models\Tag;
 use App\Models\WhatsappInstance;
@@ -38,7 +39,9 @@ function legacyLeadData(Lead $lead, array $availableTransitions, string $effecti
         'ai_paused_reason' => $lead->ai_paused_reason,
         'followup_count' => $lead->followup_count,
         'followup_status' => $lead->followup_status,
+        'agent_niche' => $lead->agent?->config?->agent_niche ?? 'inss',
         'resumo_credito' => $lead->credito_json['resumoGeral']['textoResumo'] ?? null,
+        'collected_information' => [],
         'tags' => $lead->tags->map(fn ($t) => [
             'id' => $t->id,
             'name' => $t->name,
@@ -87,10 +90,19 @@ it('matches the legacy $leadData lead sub-object', function () {
     $transitions = ['qualificado', 'escalado', 'convertido'];
     $effectiveAiMode = 'automatic';
 
-    $resource = (new ConversationResource($lead, $transitions, $effectiveAiMode))
+    $collectedInformation = [[
+        'key' => 'objetivo',
+        'label' => 'Objetivo',
+        'value' => 'Refinanciamento',
+        'source' => 'manual',
+    ]];
+    $resource = (new ConversationResource($lead, $transitions, $effectiveAiMode, $collectedInformation))
         ->toArray(request());
 
-    expect($resource)->toEqual(legacyLeadData($lead, $transitions, $effectiveAiMode));
+    $expected = legacyLeadData($lead, $transitions, $effectiveAiMode);
+    $expected['collected_information'] = $collectedInformation;
+
+    expect($resource)->toEqual($expected);
     expect($resource)->toHaveKey('cpf');
     expect($resource['cpf'])->toBe('12345678901');
     expect($resource['resumo_credito'])->toBe('Margem disponível R$ 1.200');
@@ -113,11 +125,37 @@ it('falls back to whatsapp for nome and emits null credit summary when absent', 
         'tags' => fn ($q) => $q->withPivot('source', 'ai_confidence', 'ai_evidence', 'ai_evaluated_at'),
     ]);
 
-    $resource = (new ConversationResource($lead, [], 'manual'))->toArray(request());
+    $resource = (new ConversationResource($lead, [], 'manual', []))->toArray(request());
 
     expect($resource)->toEqual(legacyLeadData($lead, [], 'manual'));
     expect($resource['nome'])->toBe('5511955554444');
     expect($resource['resumo_credito'])->toBeNull();
     expect($resource['available_transitions'])->toBe([]);
     expect($resource['tags'])->toBe([]);
+});
+
+it('emits the agent niche from the agent config, defaulting to inss', function () {
+    $genericAgent = Agent::factory()->has(
+        AgentConfig::factory()->state(['agent_niche' => 'generic']),
+        'config'
+    )->create();
+    $genericLead = Lead::factory()->forAgent($genericAgent)->create();
+    $genericLead->load([
+        'agent.config',
+        'whatsappInstance',
+        'tags' => fn ($q) => $q->withPivot('source', 'ai_confidence', 'ai_evidence', 'ai_evaluated_at'),
+    ]);
+
+    $legacyLead = Lead::factory()->create(['agent_id' => null]);
+    $legacyLead->load([
+        'agent.config',
+        'whatsappInstance',
+        'tags' => fn ($q) => $q->withPivot('source', 'ai_confidence', 'ai_evidence', 'ai_evaluated_at'),
+    ]);
+
+    $genericResource = (new ConversationResource($genericLead, [], 'manual', []))->toArray(request());
+    $legacyResource = (new ConversationResource($legacyLead, [], 'manual', []))->toArray(request());
+
+    expect($genericResource['agent_niche'])->toBe('generic');
+    expect($legacyResource['agent_niche'])->toBe('inss');
 });

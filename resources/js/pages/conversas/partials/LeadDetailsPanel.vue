@@ -14,6 +14,7 @@ import {
     UserRound,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import CollectedInformationEditor from '@/components/CollectedInformationEditor.vue';
 import StatusSelect from '@/components/StatusSelect.vue';
 import TagChip from '@/components/TagChip.vue';
 import TagInput from '@/components/TagInput.vue';
@@ -36,6 +37,7 @@ import {
     prepareCampaign,
     resume,
 } from '@/routes/conversas';
+import { update as updateCollectedInformation } from '@/routes/conversas/collected-information';
 import {
     disable as disableFollowup,
     pause as pauseFollowup,
@@ -205,10 +207,6 @@ function submitClaim(): void {
     });
 }
 
-function formatCpf(cpf: string): string {
-    return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-}
-
 function initials(name: string): string {
     return name.trim().slice(0, 2).toUpperCase() || '?';
 }
@@ -312,19 +310,16 @@ function formatEventDate(value: string): string {
         <section
             class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
         >
-            <div class="space-y-3 text-sm">
-                <div class="flex items-center justify-between gap-3">
-                    <span class="text-muted-foreground">CPF</span>
-                    <span class="font-mono text-xs text-foreground">{{
-                        lead.cpf ? formatCpf(lead.cpf) : 'Não informado'
-                    }}</span>
-                </div>
-                <div class="flex items-center justify-between gap-3">
-                    <span class="text-muted-foreground">Idade</span>
-                    <span class="text-xs text-foreground">{{
-                        lead.idade ? `${lead.idade} anos` : 'Não informada'
-                    }}</span>
-                </div>
+            <CollectedInformationEditor
+                :items="lead.collected_information"
+                :action="updateCollectedInformation({ lead: lead.id })"
+                can-edit
+                compact
+            />
+
+            <div
+                class="mt-3 space-y-3 border-t border-sidebar-border/70 pt-3 text-sm dark:border-sidebar-border"
+            >
                 <div class="flex items-center justify-between gap-3">
                     <span class="text-muted-foreground">Atendente</span>
                     <span class="truncate text-right text-xs text-foreground">{{
@@ -476,6 +471,7 @@ function formatEventDate(value: string): string {
         </section>
 
         <section
+            v-if="lead.agent_niche !== 'generic'"
             class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
         >
             <p class="mb-2 text-xs font-semibold text-muted-foreground">

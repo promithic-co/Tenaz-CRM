@@ -125,6 +125,59 @@ describe('ContactController CRUD', function () {
         expect($contact->fresh()->notes)->toBe("Cliente prefere contato à tarde.\nJá negociou em 2025.");
     });
 
+    test('show projects collected information independently from other extra data', function () {
+        $user = User::factory()->create();
+        $contact = Contact::factory()->forTenant((string) $user->tenantId)->create([
+            'extra_data' => [
+                'campaign_code' => 'summer-26',
+                'collected_information' => [
+                    'objetivo' => [
+                        'label' => 'Objetivo',
+                        'value' => 'Refinanciamento',
+                        'source' => 'manual',
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('contatos.show', $contact))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('collectedInformation.0.key', 'objetivo')
+                ->where('collectedInformation.0.label', 'Objetivo')
+                ->where('collectedInformation.0.value', 'Refinanciamento')
+                ->where('contact.extra_data.campaign_code', 'summer-26')
+            );
+    });
+
+    test('generic contact updates preserve the reserved collected information namespace', function () {
+        $user = User::factory()->create();
+        $contact = Contact::factory()->forTenant((string) $user->tenantId)->create([
+            'extra_data' => [
+                'collected_information' => [
+                    'objetivo' => [
+                        'label' => 'Objetivo',
+                        'value' => 'Refinanciamento',
+                        'source' => 'manual',
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('contatos.update', $contact), [
+                'name' => $contact->name,
+                'phone' => $contact->phone,
+                'extra_data' => ['campaign_code' => 'summer-26'],
+            ])
+            ->assertRedirect();
+
+        expect($contact->fresh()->extra_data)
+            ->campaign_code->toBe('summer-26')
+            ->collected_information->toHaveKey('objetivo');
+    });
+
     test('destroy soft-deletes the contact', function () {
         $user = User::factory()->create();
         $contact = Contact::factory()->forTenant((string) $user->tenantId)->create();

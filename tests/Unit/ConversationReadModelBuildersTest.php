@@ -3,10 +3,12 @@
 use App\Enums\TenantRole;
 use App\Http\Requests\InboxFilterRequest;
 use App\Models\Agent;
+use App\Models\Contact;
 use App\Models\Lead;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsappInstance;
+use App\Services\ContactCollectedInformationService;
 use App\Services\ConversationInboxPropsBuilder;
 use App\Services\ConversationPanelPropsBuilder;
 use App\Services\ConversationTransferTargetsBuilder;
@@ -78,9 +80,16 @@ test('inbox builder preserves the index prop envelope', function () {
 test('panel builder preserves active conversation prop keys', function () {
     $user = User::factory()->create();
     $agent = Agent::factory()->create(['user_id' => $user->id, 'is_default' => true]);
+    $contact = Contact::factory()->forTenant((string) $user->tenantId)->create();
+    app(ContactCollectedInformationService::class)->applyManual($contact, [
+        'operation' => 'upsert',
+        'label' => 'Objetivo',
+        'value' => 'Refinanciamento',
+    ]);
     $lead = Lead::factory()->forAgent($agent)->create([
         'nome' => 'Panel Lead',
         'status' => 'qualificado',
+        'contact_id' => $contact->id,
     ]);
 
     $props = app(ConversationPanelPropsBuilder::class)->build($lead, $user);
@@ -101,5 +110,11 @@ test('panel builder preserves active conversation prop keys', function () {
     ])->and($props['lead']['id'])->toBe($lead->id)
         ->and($props['lead']['nome'])->toBe('Panel Lead')
         ->and($props['lead']['status'])->toBe('qualificado')
+        ->and($props['lead']['collected_information'])->toBe([[
+            'key' => 'objetivo',
+            'label' => 'Objetivo',
+            'value' => 'Refinanciamento',
+            'source' => 'manual',
+        ]])
         ->and($props['canStartCampaign'])->toBeTrue();
 });

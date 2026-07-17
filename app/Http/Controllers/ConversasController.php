@@ -7,9 +7,11 @@ use App\Actions\SendOperatorMessageAction;
 use App\Http\Requests\BulkTransferRequest;
 use App\Http\Requests\InboxFilterRequest;
 use App\Http\Requests\SendConversationMessageRequest;
+use App\Http\Requests\UpdateLeadCollectedInformationRequest;
 use App\Models\Lead;
 use App\Models\User;
 use App\Services\AgentInteractionEventService;
+use App\Services\ContactCollectedInformationService;
 use App\Services\ConversationAutomationService;
 use App\Services\ConversationInboxPropsBuilder;
 use App\Services\ConversationTimelineService;
@@ -214,6 +216,24 @@ class ConversasController extends Controller
         $lead->update(['ai_mode' => $data['ai_mode'] ?? null]);
 
         return back()->with('flash', 'Modo de IA atualizado.');
+    }
+
+    public function updateCollectedInformation(
+        UpdateLeadCollectedInformationRequest $request,
+        Lead $lead,
+        ContactCollectedInformationService $information,
+    ): RedirectResponse {
+        $contact = $information->resolveForLead($lead);
+
+        if ($contact === null) {
+            throw ValidationException::withMessages([
+                'label' => 'Não foi possível vincular este lead a um contato.',
+            ]);
+        }
+
+        $information->applyManual($contact, $request->validated());
+
+        return back()->with('flash', 'Informações do contato atualizadas.');
     }
 
     /**

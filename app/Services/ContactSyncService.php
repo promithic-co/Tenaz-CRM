@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
  */
 class ContactSyncService
 {
+    public function __construct(private readonly ContactExtraDataService $extraData) {}
+
     /**
      * Resolve or create a canonical contact for a tenant + phone, applying optional
      * profile updates (name, email, cpf, extra_data) only when missing/non-empty.
@@ -69,19 +71,16 @@ class ContactSyncService
                 }
             }
 
-            if (! empty($attrs['extra_data'] ?? null) && is_array($attrs['extra_data'])) {
-                $merged = array_merge((array) ($contact->extra_data ?? []), $attrs['extra_data']);
-                if ($merged !== (array) ($contact->extra_data ?? [])) {
-                    $updates['extra_data'] = $merged;
-                }
-            }
-
             if (isset($attrs['last_seen_at'])) {
                 $updates['last_seen_at'] = $attrs['last_seen_at'];
             }
 
             if ($updates !== []) {
                 $contact->update($updates);
+            }
+
+            if (! empty($attrs['extra_data'] ?? null) && is_array($attrs['extra_data'])) {
+                $this->extraData->merge($contact, $attrs['extra_data']);
             }
 
             return $contact;
@@ -99,7 +98,10 @@ class ContactSyncService
 
         if ($lead->contact_id !== null) {
             /** @var Contact|null $existing */
-            $existing = Contact::withoutGlobalScopes()->find($lead->contact_id);
+            $existing = Contact::withoutGlobalScopes()
+                ->whereKey($lead->contact_id)
+                ->where('tenant_id', (string) $lead->tenant_id)
+                ->first();
             if ($existing) {
                 return $existing;
             }

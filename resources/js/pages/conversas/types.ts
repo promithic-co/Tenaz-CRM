@@ -1,3 +1,5 @@
+import type { CollectedInformationItem } from '@/types/models';
+
 export type MediaAttachment = {
     type: 'audio' | 'image' | 'document' | 'video' | 'sticker' | 'unknown';
     mime_type: string;
@@ -54,7 +56,9 @@ export type ConversationLead = {
     ai_paused_reason: string | null;
     followup_count: number;
     followup_status: string;
+    agent_niche: string;
     resumo_credito: string | null;
+    collected_information: CollectedInformationItem[];
     tags?: Array<{
         id: number;
         name: string;
@@ -129,7 +133,12 @@ export type ActiveConversation = {
     canStartCampaign: boolean;
     conversationWindow?: ConversationWindowStatus | null;
     active_handoff: ActiveHandoff | null;
-    handoff_state: 'waiting_human' | 'human_active' | 'waiting_customer' | 'ai_active' | 'closed';
+    handoff_state:
+        | 'waiting_human'
+        | 'human_active'
+        | 'waiting_customer'
+        | 'ai_active'
+        | 'closed';
     handoff_actions: string[];
     transfer_targets: TransferTarget[];
 };

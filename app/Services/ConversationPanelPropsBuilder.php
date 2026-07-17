@@ -20,6 +20,7 @@ class ConversationPanelPropsBuilder
         private readonly HumanHandoffStateService $handoffState,
         private readonly WhatsAppConversationWindowResolver $conversationWindow,
         private readonly ConversationTransferTargetsBuilder $transferTargets,
+        private readonly ContactCollectedInformationService $collectedInformation,
     ) {}
 
     /**
@@ -47,7 +48,9 @@ class ConversationPanelPropsBuilder
         }
 
         $lead->load([
+            'contact',
             'whatsappInstance',
+            'agent.config',
             'tags' => fn ($query) => $query->withPivot('source', 'ai_confidence', 'ai_evidence', 'ai_evaluated_at'),
         ]);
 
@@ -55,7 +58,11 @@ class ConversationPanelPropsBuilder
             ->getAvailableTransitions((string) $lead->status);
         $effectiveAiMode = $this->automation->resolveModesByInstanceId(collect([$lead]))[$lead->id];
 
-        $leadData = (new ConversationResource($lead, $availableTransitions, $effectiveAiMode))
+        $contactInformation = $lead->contact === null
+            ? []
+            : $this->collectedInformation->items($lead->contact);
+
+        $leadData = (new ConversationResource($lead, $availableTransitions, $effectiveAiMode, $contactInformation))
             ->resolve(request());
 
         $followupHistory = $lead->followupMessages()

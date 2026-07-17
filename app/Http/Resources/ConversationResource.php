@@ -16,10 +16,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *   - $availableTransitions ← StatusMachine::getAvailableTransitions
  *   - $effectiveAiMode      ← ConversationAutomationService mode resolution
  *
- *   new ConversationResource($lead, $availableTransitions, $effectiveAiMode)
+ *   new ConversationResource($lead, $availableTransitions, $effectiveAiMode, $collectedInformation)
  *
- * Requires `whatsappInstance` and `tags` (with the source / ai_confidence
- * pivot) eager-loaded. Emits `cpf` (preserved from legacy). Drops the pivot
+ * Requires `whatsappInstance`, `tags` (with the source / ai_confidence
+ * pivot) and `agent.config` eager-loaded. Emits `cpf` (preserved from legacy). Drops the pivot
  * `ai_evidence` / `ai_evaluated_at` columns (legacy drops them — kept dropped).
  *
  * @property-read Lead $resource
@@ -33,6 +33,7 @@ class ConversationResource extends JsonResource
         Lead $resource,
         private readonly array $availableTransitions,
         private readonly string $effectiveAiMode,
+        private readonly array $collectedInformation,
     ) {
         parent::__construct($resource);
     }
@@ -63,7 +64,9 @@ class ConversationResource extends JsonResource
             'ai_paused_reason' => $lead->ai_paused_reason,
             'followup_count' => $lead->followup_count,
             'followup_status' => $lead->followup_status,
+            'agent_niche' => $lead->agent?->config?->agent_niche ?? 'inss',
             'resumo_credito' => $lead->credito_json['resumoGeral']['textoResumo'] ?? null,
+            'collected_information' => $this->collectedInformation,
             'tags' => $lead->tags->map(fn ($t) => [
                 'id' => $t->id,
                 'name' => $t->name,

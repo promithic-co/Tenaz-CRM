@@ -6,6 +6,7 @@ use App\Models\Contact;
 use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
+use App\Services\ContactExtraDataService;
 use App\Services\ContactSyncService;
 use App\Services\ConversationTimelineService;
 use Carbon\Carbon;
@@ -16,6 +17,7 @@ class MetaCoexistenceWebhookService
 {
     public function __construct(
         private readonly ContactSyncService $contacts,
+        private readonly ContactExtraDataService $extraData,
         private readonly ConversationTimelineService $timeline,
     ) {}
 
@@ -112,11 +114,9 @@ class MetaCoexistenceWebhookService
             return;
         }
 
-        $contact->update([
-            'extra_data' => array_merge((array) $contact->extra_data, [
-                'whatsapp_app_sync_action' => 'remove',
-                'whatsapp_app_removed_at' => $timestamp,
-            ]),
+        $this->extraData->merge($contact, [
+            'whatsapp_app_sync_action' => 'remove',
+            'whatsapp_app_removed_at' => $timestamp,
         ]);
     }
 
