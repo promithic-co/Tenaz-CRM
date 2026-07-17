@@ -8,8 +8,10 @@ use App\DTOs\WhatsApp\IncomingMessageDTO;
 use App\Enums\MediaType;
 use App\Exceptions\MetaAmbiguousSendException;
 use App\Exceptions\MetaApiException;
+use App\Exceptions\MetaCampaignConfigurationException;
 use App\Exceptions\MetaNoWhatsAppException;
 use App\Exceptions\MetaRateLimitException;
+use App\Exceptions\MetaRetryableException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
@@ -308,19 +310,15 @@ class MetaCloudProvider implements WhatsAppProviderInterface
             // request was written, so the message MAY have been accepted — that is
             // ambiguous and must never be blindly re-sent.
             if ($this->isDefiniteConnectFailure($e->getMessage())) {
-                throw $e;
+                throw new MetaRetryableException($e->getMessage());
             }
 
-            throw new MetaAmbiguousSendException($e->getMessage(), 0, $e);
+            throw new MetaAmbiguousSendException($e->getMessage());
         }
 
         if (! $response->successful()) {
             // 5xx: the request reached Meta but the outcome is undecidable — treat as
             // ambiguous rather than retrying into a possible duplicate.
-            if ($response->status() >= 500) {
-                throw new MetaAmbiguousSendException('Meta returned a 5xx response', $response->status());
-            }
-
             $this->handleErrorResponse($response);
         }
 
@@ -346,18 +344,21 @@ class MetaCloudProvider implements WhatsAppProviderInterface
     private function handleErrorResponse(Response $response): void
     {
         $code = (int) ($response->json('error.code') ?? 0);
-        $message = (string) ($response->json('error.message') ?? 'Meta API error');
+        $message = MetaApiException::sanitizeMessage((string) ($response->json('error.message') ?? 'Meta API error'));
         $type = $response->json('error.type');
         $subcode = $response->json('error.error_subcode');
         $fbtraceId = $response->json('error.fbtrace_id');
+        $status = $response->status();
+        $errorType = is_scalar($type) ? MetaApiException::sanitizeMetadata((string) $type, 100) : null;
+        $errorSubcode = is_scalar($subcode) ? (int) $subcode : null;
+        $traceId = is_scalar($fbtraceId) ? MetaApiException::sanitizeMetadata((string) $fbtraceId, 255) : null;
 
         Log::error('meta.api_error', [
-            'phone_number_id' => $this->phoneNumberId,
-            'status' => $response->status(),
+            'status' => $status,
             'code' => $code,
-            'type' => is_scalar($type) ? (string) $type : null,
-            'error_subcode' => is_scalar($subcode) ? (int) $subcode : null,
-            'fbtrace_id' => is_scalar($fbtraceId) ? (string) $fbtraceId : null,
+            'type' => $errorType,
+            'error_subcode' => $errorSubcode,
+            'fbtrace_id' => $traceId,
             'message' => $message,
         ]);
 
@@ -366,10 +367,23 @@ class MetaCloudProvider implements WhatsAppProviderInterface
         // number); 131049/130472 are per-user marketing delivery limits; 131026 is the
         // "undeliverable" bucket. All of these are permanent for a given send and must
         // not be retried. 130429/131048/80007 are throttle signals and are retriable.
+        $metadata = [
+            'message' => $message,
+            'code' => $code,
+            'httpStatus' => $status,
+            'errorSubcode' => $errorSubcode,
+            'errorType' => $errorType,
+            'fbtraceId' => $traceId,
+        ];
+
         match (true) {
-            in_array($code, [130429, 131048, 80007], true) => throw new MetaRateLimitException($message, $code),
-            in_array($code, [131026, 131047, 131049, 130472], true) => throw new MetaNoWhatsAppException($message, $code),
-            default => throw new MetaApiException($message, $code),
+            in_array($code, [130429, 131048, 80007], true) => throw new MetaRateLimitException(...$metadata),
+            in_array($code, [131026, 131047, 131049, 130472], true) => throw new MetaNoWhatsAppException(...$metadata),
+            $code === 132001 => throw new MetaCampaignConfigurationException(...$metadata),
+            in_array($code, [10, 190, 200, 294, 299], true) => throw new MetaCampaignConfigurationException(...$metadata),
+            $status === 429 => throw new MetaRateLimitException(...$metadata),
+            $status >= 500 => throw new MetaAmbiguousSendException(...$metadata),
+            default => throw new MetaApiException(...$metadata),
         };
     }
 

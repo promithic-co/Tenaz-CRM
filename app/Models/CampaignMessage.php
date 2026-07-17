@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Exceptions\MetaApiException;
 use Database\Factories\CampaignMessageFactory;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class CampaignMessage extends Model
 {
@@ -18,8 +21,15 @@ class CampaignMessage extends Model
         'provider_message_id',
         'status',
         'provider_attempted_at',
+        'provider_attempt_token',
+        'provider_attempt_lease_expires_at',
+        'provider_retry_not_before',
         'error_code',
         'error_subcode',
+        'provider_error_code',
+        'provider_http_status',
+        'provider_error_type',
+        'provider_error_trace_id',
         'error_message',
         'sent_at',
         'delivered_at',
@@ -32,7 +42,10 @@ class CampaignMessage extends Model
     {
         return [
             'template_params_resolved' => 'array',
+            'provider_http_status' => 'integer',
             'provider_attempted_at' => 'datetime',
+            'provider_attempt_lease_expires_at' => 'datetime',
+            'provider_retry_not_before' => 'datetime',
             'sent_at' => 'datetime',
             'delivered_at' => 'datetime',
             'read_at' => 'datetime',
@@ -87,6 +100,16 @@ class CampaignMessage extends Model
             'status' => 'sent',
             'provider_message_id' => $providerMessageId,
             'sent_at' => now(),
+            'error_code' => null,
+            'error_subcode' => null,
+            'provider_error_code' => null,
+            'provider_http_status' => null,
+            'provider_error_type' => null,
+            'provider_error_trace_id' => null,
+            'error_message' => null,
+            'provider_attempt_token' => null,
+            'provider_attempt_lease_expires_at' => null,
+            'provider_retry_not_before' => null,
         ]);
     }
 
@@ -111,8 +134,42 @@ class CampaignMessage extends Model
         $this->update([
             'status' => 'failed',
             'error_code' => $errorCode,
-            'error_message' => $errorMessage,
+            'error_message' => MetaApiException::sanitizeMessage($errorMessage),
             'failed_at' => now(),
+            'provider_attempt_token' => null,
+            'provider_attempt_lease_expires_at' => null,
+            'provider_retry_not_before' => null,
+        ]);
+    }
+
+    public function markFailedFromProvider(MetaApiException $exception): void
+    {
+        $this->update([
+            'status' => 'failed',
+            'error_code' => $exception->getCode() !== 0 ? (string) $exception->getCode() : 'META_REJECTED',
+            'error_subcode' => $exception->errorSubcode !== null ? (string) $exception->errorSubcode : null,
+            'provider_error_code' => $exception->getCode() !== 0 ? (string) $exception->getCode() : null,
+            'provider_http_status' => $exception->httpStatus,
+            'provider_error_type' => $exception->errorType,
+            'provider_error_trace_id' => $exception->fbtraceId,
+            'error_message' => $exception->sanitizedMessage,
+            'failed_at' => now(),
+            'provider_attempt_token' => null,
+            'provider_attempt_lease_expires_at' => null,
+            'provider_retry_not_before' => null,
+        ]);
+    }
+
+    public function recordProviderError(MetaApiException $exception): void
+    {
+        $this->update([
+            'error_code' => $exception->getCode() !== 0 ? (string) $exception->getCode() : null,
+            'error_subcode' => $exception->errorSubcode !== null ? (string) $exception->errorSubcode : null,
+            'provider_error_code' => $exception->getCode() !== 0 ? (string) $exception->getCode() : null,
+            'provider_http_status' => $exception->httpStatus,
+            'provider_error_type' => $exception->errorType,
+            'provider_error_trace_id' => $exception->fbtraceId,
+            'error_message' => $exception->sanitizedMessage,
         ]);
     }
 
@@ -126,7 +183,8 @@ class CampaignMessage extends Model
         $this->update([
             'status' => 'skipped',
             'error_code' => $errorCode,
-            'error_message' => $errorMessage,
+            'error_message' => MetaApiException::sanitizeMessage($errorMessage),
+            'provider_retry_not_before' => null,
         ]);
     }
 
@@ -137,21 +195,49 @@ class CampaignMessage extends Model
      * for the same row — a resume re-enqueue can legitimately coexist with a released
      * original job. The loser must return without sending.
      */
-    public function claimProviderAttempt(): bool
+    public function claimProviderAttempt(?string $attemptToken = null, ?DateTimeInterface $leaseExpiresAt = null): bool
     {
         $now = now();
+        $attemptToken ??= (string) Str::uuid();
+        $leaseExpiresAt ??= $now->copy()->addSeconds(60);
 
         $claimed = self::query()
             ->whereKey($this->getKey())
+            ->whereIn('status', ['pending', 'queued'])
             ->whereNull('provider_attempted_at')
-            ->update(['provider_attempted_at' => $now]);
+            ->whereNull('provider_attempt_token')
+            ->where(function ($query) use ($now): void {
+                $query->whereNull('provider_retry_not_before')
+                    ->orWhere('provider_retry_not_before', '<=', $now);
+            })
+            ->update([
+                'provider_attempted_at' => $now,
+                'provider_attempt_token' => $attemptToken,
+                'provider_attempt_lease_expires_at' => $leaseExpiresAt,
+                'provider_retry_not_before' => null,
+                'error_code' => null,
+                'error_subcode' => null,
+                'provider_error_code' => null,
+                'provider_http_status' => null,
+                'provider_error_type' => null,
+                'provider_error_trace_id' => null,
+                'error_message' => null,
+            ]);
 
         if ($claimed !== 1) {
             return false;
         }
 
         $this->provider_attempted_at = $now;
-        $this->syncOriginalAttribute('provider_attempted_at');
+        $this->provider_attempt_token = $attemptToken;
+        $this->provider_attempt_lease_expires_at = $leaseExpiresAt;
+        $this->provider_retry_not_before = null;
+        $this->syncOriginalAttributes([
+            'provider_attempted_at',
+            'provider_attempt_token',
+            'provider_attempt_lease_expires_at',
+            'provider_retry_not_before',
+        ]);
 
         return true;
     }
@@ -163,7 +249,222 @@ class CampaignMessage extends Model
      */
     public function clearProviderAttempt(): void
     {
-        $this->update(['provider_attempted_at' => null]);
+        $this->update([
+            'provider_attempted_at' => null,
+            'provider_attempt_token' => null,
+            'provider_attempt_lease_expires_at' => null,
+            'provider_retry_not_before' => null,
+        ]);
+    }
+
+    public function hasActiveProviderAttemptLease(): bool
+    {
+        return $this->provider_attempted_at !== null
+            && $this->provider_attempt_lease_expires_at !== null
+            && $this->provider_attempt_lease_expires_at->isFuture();
+    }
+
+    public function markAbandonedProviderAttemptInDoubt(): bool
+    {
+        $query = self::query()
+            ->whereKey($this->getKey())
+            ->whereIn('status', ['pending', 'queued'])
+            ->whereNotNull('provider_attempted_at')
+            ->where(function ($query): void {
+                $query->whereNull('provider_attempt_lease_expires_at')
+                    ->orWhere('provider_attempt_lease_expires_at', '<=', now());
+            });
+
+        if ($this->provider_attempt_token === null) {
+            $query->whereNull('provider_attempt_token');
+        } else {
+            $query->where('provider_attempt_token', $this->provider_attempt_token);
+        }
+
+        $updated = $query->update([
+            'status' => 'in_doubt',
+            'error_code' => 'IN_DOUBT',
+            'error_message' => 'Provider attempt lease expired without a confirmed outcome.',
+            'provider_attempt_token' => null,
+            'provider_attempt_lease_expires_at' => null,
+            'provider_retry_not_before' => null,
+        ]);
+
+        if ($updated === 1) {
+            $this->refresh();
+        }
+
+        return $updated === 1;
+    }
+
+    /**
+     * Fail closed when an active attempt can no longer be reconciled because the
+     * expiry probe itself could not be queued. The attempt token makes this a CAS:
+     * a winner that completed concurrently is never overwritten.
+     */
+    public function markUnreconciledProviderAttemptInDoubt(): bool
+    {
+        $query = self::query()
+            ->whereKey($this->getKey())
+            ->whereIn('status', ['pending', 'queued'])
+            ->whereNotNull('provider_attempted_at');
+
+        if ($this->provider_attempt_token === null) {
+            $query->whereNull('provider_attempt_token');
+        } else {
+            $query->where('provider_attempt_token', $this->provider_attempt_token);
+        }
+
+        $updated = $query->update([
+            'status' => 'in_doubt',
+            'error_code' => 'IN_DOUBT',
+            'error_message' => 'Provider attempt could not be scheduled for outcome reconciliation.',
+            'provider_attempt_token' => null,
+            'provider_attempt_lease_expires_at' => null,
+            'provider_retry_not_before' => null,
+        ]);
+
+        if ($updated === 1) {
+            $this->refresh();
+        }
+
+        return $updated === 1;
+    }
+
+    public function markSentIfOwned(string $attemptToken, string $providerMessageId): bool
+    {
+        $updated = self::query()
+            ->whereKey($this->getKey())
+            ->whereIn('status', ['pending', 'queued'])
+            ->where('provider_attempt_token', $attemptToken)
+            ->whereNotNull('provider_attempted_at')
+            ->update([
+                'status' => 'sent',
+                'provider_message_id' => $providerMessageId,
+                'sent_at' => now(),
+                'error_code' => null,
+                'error_subcode' => null,
+                'provider_error_code' => null,
+                'provider_http_status' => null,
+                'provider_error_type' => null,
+                'provider_error_trace_id' => null,
+                'error_message' => null,
+                'provider_attempt_token' => null,
+                'provider_attempt_lease_expires_at' => null,
+                'provider_retry_not_before' => null,
+            ]);
+
+        if ($updated === 1) {
+            $this->refresh();
+        }
+
+        return $updated === 1;
+    }
+
+    public function markFailedFromProviderIfOwned(string $attemptToken, MetaApiException $exception): bool
+    {
+        $updated = self::query()
+            ->whereKey($this->getKey())
+            ->whereIn('status', ['pending', 'queued'])
+            ->where('provider_attempt_token', $attemptToken)
+            ->whereNotNull('provider_attempted_at')
+            ->update(array_merge($this->providerErrorAttributes($exception), [
+                'status' => 'failed',
+                'error_code' => $exception->getCode() !== 0 ? (string) $exception->getCode() : 'META_REJECTED',
+                'failed_at' => now(),
+                'provider_attempt_token' => null,
+                'provider_attempt_lease_expires_at' => null,
+                'provider_retry_not_before' => null,
+            ]));
+
+        if ($updated === 1) {
+            $this->refresh();
+        }
+
+        return $updated === 1;
+    }
+
+    public function markFailedIfOwned(string $attemptToken, string $errorCode, string $errorMessage): bool
+    {
+        $updated = self::query()
+            ->whereKey($this->getKey())
+            ->whereIn('status', ['pending', 'queued'])
+            ->where('provider_attempt_token', $attemptToken)
+            ->whereNotNull('provider_attempted_at')
+            ->update([
+                'status' => 'failed',
+                'error_code' => $errorCode,
+                'error_message' => MetaApiException::sanitizeMessage($errorMessage),
+                'failed_at' => now(),
+                'provider_attempt_token' => null,
+                'provider_attempt_lease_expires_at' => null,
+                'provider_retry_not_before' => null,
+            ]);
+
+        if ($updated === 1) {
+            $this->refresh();
+        }
+
+        return $updated === 1;
+    }
+
+    public function markInDoubtFromProviderIfOwned(string $attemptToken, MetaApiException $exception): bool
+    {
+        $updated = self::query()
+            ->whereKey($this->getKey())
+            ->whereIn('status', ['pending', 'queued'])
+            ->where('provider_attempt_token', $attemptToken)
+            ->whereNotNull('provider_attempted_at')
+            ->update(array_merge($this->providerErrorAttributes($exception), [
+                'status' => 'in_doubt',
+                'error_code' => 'IN_DOUBT',
+                'provider_attempt_token' => null,
+                'provider_attempt_lease_expires_at' => null,
+                'provider_retry_not_before' => null,
+            ]));
+
+        if ($updated === 1) {
+            $this->refresh();
+        }
+
+        return $updated === 1;
+    }
+
+    public function releaseProviderAttemptForRetry(
+        string $attemptToken,
+        DateTimeInterface $retryNotBefore,
+        ?MetaApiException $exception = null,
+    ): bool {
+        $providerError = $exception === null ? [
+            'error_code' => null,
+            'error_subcode' => null,
+            'provider_error_code' => null,
+            'provider_http_status' => null,
+            'provider_error_type' => null,
+            'provider_error_trace_id' => null,
+            'error_message' => null,
+        ] : array_merge($this->providerErrorAttributes($exception), [
+            'error_code' => $exception->getCode() !== 0 ? (string) $exception->getCode() : null,
+        ]);
+
+        $updated = self::query()
+            ->whereKey($this->getKey())
+            ->whereIn('status', ['pending', 'queued'])
+            ->where('provider_attempt_token', $attemptToken)
+            ->whereNotNull('provider_attempted_at')
+            ->update(array_merge($providerError, [
+                'status' => 'pending',
+                'provider_attempted_at' => null,
+                'provider_attempt_token' => null,
+                'provider_attempt_lease_expires_at' => null,
+                'provider_retry_not_before' => $retryNotBefore,
+            ]));
+
+        if ($updated === 1) {
+            $this->refresh();
+        }
+
+        return $updated === 1;
     }
 
     /**
@@ -176,7 +477,42 @@ class CampaignMessage extends Model
         $this->update([
             'status' => 'in_doubt',
             'error_code' => 'IN_DOUBT',
-            'error_message' => $errorMessage,
+            'error_message' => MetaApiException::sanitizeMessage($errorMessage),
+            'provider_attempt_token' => null,
+            'provider_attempt_lease_expires_at' => null,
+            'provider_retry_not_before' => null,
         ]);
+    }
+
+    public function markInDoubtFromProvider(MetaApiException $exception): void
+    {
+        $this->update([
+            'status' => 'in_doubt',
+            'error_code' => 'IN_DOUBT',
+            'error_subcode' => $exception->errorSubcode !== null ? (string) $exception->errorSubcode : null,
+            'provider_error_code' => $exception->getCode() !== 0 ? (string) $exception->getCode() : null,
+            'provider_http_status' => $exception->httpStatus,
+            'provider_error_type' => $exception->errorType,
+            'provider_error_trace_id' => $exception->fbtraceId,
+            'error_message' => $exception->sanitizedMessage,
+            'provider_attempt_token' => null,
+            'provider_attempt_lease_expires_at' => null,
+            'provider_retry_not_before' => null,
+        ]);
+    }
+
+    /**
+     * @return array<string, int|string|null>
+     */
+    private function providerErrorAttributes(MetaApiException $exception): array
+    {
+        return [
+            'error_subcode' => $exception->errorSubcode !== null ? (string) $exception->errorSubcode : null,
+            'provider_error_code' => $exception->getCode() !== 0 ? (string) $exception->getCode() : null,
+            'provider_http_status' => $exception->httpStatus,
+            'provider_error_type' => $exception->errorType,
+            'provider_error_trace_id' => $exception->fbtraceId,
+            'error_message' => $exception->sanitizedMessage,
+        ];
     }
 }

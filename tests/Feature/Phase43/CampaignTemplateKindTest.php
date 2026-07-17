@@ -2,6 +2,7 @@
 
 use App\Enums\TemplateKind;
 use App\Enums\WhatsAppProvider;
+use App\Models\ContactList;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,6 +25,8 @@ test('campaign create page shows meta_hsm templates for meta_cloud instances', f
         'whatsapp_instance_id' => $metaInstance->id,
         'kind' => TemplateKind::MetaHsm->value,
         'name' => 'Meta HSM Template',
+        'meta_template_name' => 'meta_hsm_template',
+        'meta_waba_id' => $metaInstance->meta_waba_id,
     ]);
 
     $response = $this->actingAs($user)->get('/campanhas/create');
@@ -36,11 +39,19 @@ test('campaign create page shows meta_hsm templates for meta_cloud instances', f
 
 test('templates have kind property exposed on campaign create page', function () {
     $user = userWithTenant();
+    $instance = WhatsappInstance::factory()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenant_id,
+        'provider' => WhatsAppProvider::MetaCloud,
+    ]);
 
     WhatsappTemplate::factory()->create([
         'tenant_id' => $user->tenant_id,
+        'whatsapp_instance_id' => $instance->id,
         'kind' => TemplateKind::MetaHsm->value,
         'name' => 'Meta Template',
+        'meta_template_name' => 'meta_template',
+        'meta_waba_id' => $instance->meta_waba_id,
     ]);
 
     $response = $this->actingAs($user)->get('/campanhas/create');
@@ -66,7 +77,7 @@ test('campaign store rejects template that does not belong to tenant', function 
         'kind' => TemplateKind::MetaHsm->value,
     ]);
 
-    $contactList = \App\Models\ContactList::factory()->create([
+    $contactList = ContactList::factory()->create([
         'tenant_id' => $user->tenant_id,
     ]);
 

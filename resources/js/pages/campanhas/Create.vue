@@ -39,7 +39,6 @@ type WhatsappTemplate = {
     element_name: string | null;
     variables_count: number;
     whatsapp_instance_id: number;
-    whatsapp_instance: WhatsappInstance | null;
 };
 
 type CampaignDefaults = {
@@ -254,11 +253,16 @@ function getCsrfToken(): string {
 // ─── Derived data ─────────────────────────────────────────────────────────────
 
 const filteredTemplates = computed(() => {
-    if (!templateKindForProvider.value) {
-        return props.templates;
+    if (!form.whatsapp_instance_id || !templateKindForProvider.value) {
+        return [];
     }
+
+    const selectedInstanceId = Number(form.whatsapp_instance_id);
+
     return props.templates.filter(
-        (t) => t.kind === templateKindForProvider.value,
+        (t) =>
+            t.kind === templateKindForProvider.value &&
+            t.whatsapp_instance_id === selectedInstanceId,
     );
 });
 
@@ -302,16 +306,20 @@ const variablesCount = computed(
     () => selectedTemplate.value?.variables_count ?? 0,
 );
 
-// When instance changes, clear template selection if it no longer matches the new kind
+// When instance changes, clear any template that does not belong to the exact new instance.
 watch(
     () => form.whatsapp_instance_id,
     () => {
         const newKind = templateKindForProvider.value;
+        const selectedInstanceId = Number(form.whatsapp_instance_id);
+
         if (
             form.whatsapp_template_id &&
-            selectedTemplate.value &&
-            newKind &&
-            selectedTemplate.value.kind !== newKind
+            (!selectedTemplate.value ||
+                !newKind ||
+                selectedTemplate.value.kind !== newKind ||
+                selectedTemplate.value.whatsapp_instance_id !==
+                    selectedInstanceId)
         ) {
             form.whatsapp_template_id = '';
         }

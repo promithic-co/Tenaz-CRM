@@ -24,6 +24,31 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['credflow.campaigns.rate_per_minute' => 0]);
+
+    WhatsappTemplate::creating(function (WhatsappTemplate $template): void {
+        if ($template->whatsapp_instance_id === null) {
+            return;
+        }
+
+        $instance = WhatsappInstance::withoutGlobalScopes()->find($template->whatsapp_instance_id);
+        $template->meta_template_name ??= 'dispatch_fixture_'.fake()->uuid();
+        $template->meta_waba_id ??= $instance?->meta_waba_id;
+    });
+
+    Campaign::created(function (Campaign $campaign): void {
+        $instance = $campaign->whatsappInstance()->first();
+        $template = $campaign->whatsappTemplate()->first();
+
+        if (! $instance || ! $template) {
+            return;
+        }
+
+        $template->update([
+            'whatsapp_instance_id' => $instance->id,
+            'meta_template_name' => $template->meta_template_name ?? 'dispatch_fixture_'.$template->id,
+            'meta_waba_id' => $instance->meta_waba_id,
+        ]);
+    });
 });
 
 test('DispatchCampaignJob creates CampaignMessages for all entries regardless of opt_in_status', function () {
@@ -172,12 +197,18 @@ test('SendCampaignMessageJob marks failed on provider exception', function () {
 
     expect($message->fresh()->status)->toBe('queued');
 
-    // Only once retries are exhausted does the framework failed() callback finalize it.
+    // A duplicate/failed callback inside the ownership lease cannot overwrite the in-flight owner.
     $job->failed(new RuntimeException('Provider error'));
+    expect($message->fresh()->status)->toBe('queued');
 
-    expect($message->fresh()->status)->toBe('failed');
-    expect($message->fresh()->error_code)->toBe('JOB_FAILED');
-    expect($campaign->fresh()->total_failed)->toBe(1);
+    // Once the lease expires without an outcome, the next retry is conservatively terminal
+    // in_doubt instead of pretending the provider definitely rejected the send.
+    $message->update(['provider_attempt_lease_expires_at' => now()->subSecond()]);
+    $job->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+
+    expect($message->fresh()->status)->toBe('in_doubt');
+    expect($message->fresh()->error_code)->toBe('IN_DOUBT');
+    expect($campaign->fresh()->total_failed)->toBe(0);
 });
 
 test('DispatchCampaignJob suppresses opted-out entries before enqueueing', function () {

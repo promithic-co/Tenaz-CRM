@@ -33,7 +33,13 @@ test('store is forbidden for a restricted (non-owner/admin) user', function () {
     $user = makeRestrictedCampaignUser();
     $instance = WhatsappInstance::factory()->create(['tenant_id' => $user->tenantId, 'user_id' => $user->id]);
     $list = ContactList::factory()->create(['tenant_id' => $user->tenantId]);
-    $template = WhatsappTemplate::factory()->create(['tenant_id' => $user->tenantId, 'status' => 'APPROVED']);
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+        'meta_template_name' => 'restricted_template',
+        'meta_waba_id' => $instance->meta_waba_id,
+    ]);
 
     $this->actingAs($user)->post('/campanhas', [
         'name' => 'Bloqueada',
@@ -56,7 +62,13 @@ test('store creates draft campaign and redirects to show', function () {
     $user = makeCampaignUser();
     $instance = WhatsappInstance::factory()->create(['tenant_id' => $user->tenantId, 'user_id' => $user->id]);
     $list = ContactList::factory()->create(['tenant_id' => $user->tenantId]);
-    $template = WhatsappTemplate::factory()->create(['tenant_id' => $user->tenantId, 'status' => 'APPROVED']);
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+        'meta_template_name' => 'draft_template',
+        'meta_waba_id' => $instance->meta_waba_id,
+    ]);
 
     $response = $this->actingAs($user)->post('/campanhas', [
         'name' => 'Campanha Teste',
@@ -77,7 +89,13 @@ test('store creates scheduled campaign when scheduled_at provided', function () 
     $user = makeCampaignUser();
     $instance = WhatsappInstance::factory()->create(['tenant_id' => $user->tenantId, 'user_id' => $user->id]);
     $list = ContactList::factory()->create(['tenant_id' => $user->tenantId]);
-    $template = WhatsappTemplate::factory()->create(['tenant_id' => $user->tenantId, 'status' => 'APPROVED']);
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+        'meta_template_name' => 'scheduled_template',
+        'meta_waba_id' => $instance->meta_waba_id,
+    ]);
 
     $this->actingAs($user)->post('/campanhas', [
         'name' => 'Campanha Agendada',
@@ -144,7 +162,13 @@ test('start action transitions draft campaign to sending', function () {
     $user = makeCampaignUser();
     $instance = WhatsappInstance::factory()->create(['tenant_id' => $user->tenantId, 'user_id' => $user->id]);
     $list = ContactList::factory()->create(['tenant_id' => $user->tenantId]);
-    $template = WhatsappTemplate::factory()->create(['tenant_id' => $user->tenantId, 'status' => 'APPROVED']);
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+        'meta_template_name' => 'controller_start_template',
+        'meta_waba_id' => $instance->meta_waba_id,
+    ]);
 
     $campaign = Campaign::factory()->create([
         'tenant_id' => $user->tenantId,
@@ -188,7 +212,22 @@ test('pause action transitions sending campaign to paused', function () {
 test('resume action transitions paused campaign to sending', function () {
     Queue::fake();
     $user = makeCampaignUser();
-    $campaign = Campaign::factory()->paused()->create(['tenant_id' => $user->tenantId]);
+    $instance = WhatsappInstance::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'user_id' => $user->id,
+    ]);
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'meta_template_name' => 'controller_resume_template',
+        'meta_waba_id' => $instance->meta_waba_id,
+        'status' => 'APPROVED',
+    ]);
+    $campaign = Campaign::factory()->paused()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'whatsapp_template_id' => $template->id,
+    ]);
 
     $this->actingAs($user)->post("/campanhas/{$campaign->id}/resume");
 

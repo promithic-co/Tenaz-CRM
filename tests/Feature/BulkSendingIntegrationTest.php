@@ -28,6 +28,8 @@ test('full campaign lifecycle creates and starts campaign', function () {
         'tenant_id' => $user->tenantId,
         'whatsapp_instance_id' => $instance->id,
         'status' => 'APPROVED',
+        'meta_template_name' => 'bulk_lifecycle_template',
+        'meta_waba_id' => $instance->meta_waba_id,
     ]);
     $list = ContactList::factory()->create(['tenant_id' => $user->tenantId]);
     ContactListEntry::factory()->count(5)->create([
@@ -43,7 +45,7 @@ test('full campaign lifecycle creates and starts campaign', function () {
         'status' => 'draft',
     ]);
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
     $service->start($campaign);
 
     $campaign->refresh();
@@ -61,7 +63,7 @@ test('campaign auto-pauses on wallet error', function () {
         'status' => 'failed',
     ]);
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
     $service->pause($campaign);
 
     $campaign->refresh();

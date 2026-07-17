@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\CampaignStatusChanged;
+use App\Exceptions\CampaignConfigurationException;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
 use App\Services\AgentInteractionEventService;
@@ -42,6 +43,20 @@ class DispatchCampaignJob implements ShouldQueue
                 'interaction_id' => $interactionId,
                 'campaign_id' => $this->campaign->id,
                 'status' => $campaign?->status,
+            ]);
+
+            return;
+        }
+
+        try {
+            $service->validatedSendConfig($campaign);
+        } catch (CampaignConfigurationException $exception) {
+            $service->pauseForConfigurationViolation($campaign, $exception);
+
+            Log::warning('DispatchCampaignJob: incompatible send configuration, fanout blocked', [
+                'interaction_id' => $interactionId,
+                'campaign_id' => $campaign->id,
+                'reason_code' => $exception->primaryViolation(),
             ]);
 
             return;

@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Enums\TemplateKind;
 use App\Models\Campaign;
 use App\Models\ContactList;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -33,16 +35,13 @@ class CampaignPagePropsBuilder
         return [
             'contactLists' => ContactList::query()
                 ->get(['id', 'name', 'is_dynamic', 'entries_count', 'last_resolved_count', 'last_resolved_at']),
-            'templates' => WhatsappTemplate::query()
-                ->where('status', 'APPROVED')
-                ->with('whatsappInstance')
+            'templates' => $this->selectableTemplates()
                 ->get(['id', 'name', 'kind', 'element_name', 'variables_count', 'whatsapp_instance_id']),
             'instances' => WhatsappInstance::query()->get(['id', 'name', 'display_name', 'provider']),
             'contactListFilters' => Inertia::defer(fn () => ContactList::query()
                 ->whereNotNull('filters_json')
                 ->pluck('filters_json', 'id')),
-            'templateBodies' => Inertia::defer(fn () => WhatsappTemplate::query()
-                ->where('status', 'APPROVED')
+            'templateBodies' => Inertia::defer(fn () => $this->selectableTemplates()
                 ->whereNotNull('body')
                 ->pluck('body', 'id')),
             'defaults' => [
@@ -74,5 +73,20 @@ class CampaignPagePropsBuilder
             'messages' => $messagesQuery->orderByDesc('sent_at')->paginate(25),
             'repliedCount' => Lead::where('campaign_id', $campaign->id)->count(),
         ];
+    }
+
+    /** @return Builder<WhatsappTemplate> */
+    private function selectableTemplates(): Builder
+    {
+        return WhatsappTemplate::query()
+            ->where('kind', TemplateKind::MetaHsm->value)
+            ->where('status', 'APPROVED')
+            ->whereNotNull('whatsapp_instance_id')
+            ->whereRaw("TRIM(meta_template_name) <> ''")
+            ->whereRaw("TRIM(language) <> ''")
+            ->whereRaw("TRIM(meta_waba_id) <> ''")
+            ->whereHas('whatsappInstance', fn (Builder $query): Builder => $query
+                ->whereRaw("TRIM(meta_waba_id) <> ''")
+                ->whereColumn('whatsapp_instances.meta_waba_id', 'whatsapp_templates.meta_waba_id'));
     }
 }

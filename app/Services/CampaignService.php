@@ -3,15 +3,22 @@
 namespace App\Services;
 
 use App\Events\CampaignStatusChanged;
+use App\Exceptions\CampaignConfigurationException;
 use App\Jobs\DispatchCampaignJob;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
+use App\Models\WhatsappInstance;
+use App\Models\WhatsappTemplate;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CampaignService
 {
+    public function __construct(
+        private readonly CampaignTemplateCompatibility $compatibility,
+    ) {}
+
     /**
      * Start a campaign. Guard: must be draft or scheduled, template must be APPROVED.
      */
@@ -28,6 +35,8 @@ class CampaignService
             if (! $locked || ! $locked->canStart()) {
                 throw new \RuntimeException("Campanha '{$campaign->name}' não pode ser iniciada (status: {$campaign->status}).");
             }
+
+            $this->validatedSendConfig($locked);
 
             if (! $locked->whatsappTemplate?->isApproved()) {
                 throw new \RuntimeException('O template da campanha não está aprovado.');
@@ -83,6 +92,8 @@ class CampaignService
                 throw new \RuntimeException("Campanha '{$campaign->name}' não pode ser retomada (status: {$campaign->status}).");
             }
 
+            $this->validatedSendConfig($locked);
+
             $locked->update([
                 'status' => 'sending',
                 'paused_at' => null,
@@ -94,6 +105,123 @@ class CampaignService
         Log::info('CampaignService.resume', ['campaign_id' => $campaign->id]);
 
         DispatchCampaignJob::dispatch($campaign);
+    }
+
+    public function validatedSendConfig(
+        Campaign $campaign,
+        ?WhatsappInstance $instance = null,
+        ?WhatsappTemplate $template = null,
+    ): CampaignSendConfig {
+        $instance ??= $campaign->whatsappInstance()->first();
+        $template ??= $campaign->whatsappTemplate()->first();
+
+        if (! $instance || ! $template) {
+            throw new CampaignConfigurationException(['NO_INSTANCE_OR_TEMPLATE']);
+        }
+
+        $config = CampaignSendConfig::fromModels($campaign, $instance, $template);
+        $violations = $this->compatibility->violationsForConfig($config);
+
+        if ($violations !== []) {
+            throw new CampaignConfigurationException($violations);
+        }
+
+        return $config;
+    }
+
+    public function pauseForConfigurationViolation(
+        Campaign $campaign,
+        CampaignConfigurationException $exception,
+    ): bool {
+        return DB::transaction(function () use ($campaign, $exception): bool {
+            $locked = Campaign::query()->whereKey($campaign->getKey())->lockForUpdate()->first();
+
+            if (! $locked || ! $locked->isSending()) {
+                return false;
+            }
+
+            $reason = $exception->primaryViolation();
+            $locked->update([
+                'status' => 'paused',
+                'paused_at' => now(),
+                'paused_from_status' => 'sending',
+                'pause_reason_code' => $reason,
+                'failure_reason' => "Invalid campaign send configuration: {$reason}",
+            ]);
+
+            $campaign->setRawAttributes($locked->getAttributes());
+
+            Log::warning('CampaignService.configuration_pause', [
+                'campaign_id' => $locked->id,
+                'reason_code' => $reason,
+            ]);
+
+            return true;
+        });
+    }
+
+    public function pauseAndFailForConfigurationViolation(
+        Campaign $campaign,
+        CampaignMessage $message,
+        CampaignConfigurationException $exception,
+    ): bool {
+        return DB::transaction(function () use ($campaign, $message, $exception): bool {
+            $lockedCampaign = Campaign::query()
+                ->whereKey($campaign->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            if (! $lockedCampaign) {
+                return false;
+            }
+
+            $lockedMessage = CampaignMessage::query()
+                ->whereKey($message->getKey())
+                ->where('campaign_id', $lockedCampaign->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            if (! $lockedMessage) {
+                return false;
+            }
+
+            $messageCanFail = in_array($lockedMessage->status, ['pending', 'queued'], true)
+                && $lockedMessage->provider_attempted_at === null;
+
+            if (! $lockedCampaign->isSending()) {
+                if ($messageCanFail) {
+                    $lockedMessage->update(['status' => 'pending']);
+                }
+
+                return false;
+            }
+
+            $reason = $exception->primaryViolation();
+            $lockedCampaign->update([
+                'status' => 'paused',
+                'paused_at' => now(),
+                'paused_from_status' => 'sending',
+                'pause_reason_code' => $reason,
+                'failure_reason' => "Invalid campaign send configuration: {$reason}",
+            ]);
+
+            $messageFailed = $messageCanFail;
+
+            if ($messageFailed) {
+                $lockedMessage->markFailed($reason, $exception->getMessage());
+            }
+
+            $campaign->setRawAttributes($lockedCampaign->getAttributes());
+
+            Log::warning('CampaignService.configuration_pause_with_message_failure', [
+                'campaign_id' => $lockedCampaign->id,
+                'message_id' => $lockedMessage->id,
+                'reason_code' => $reason,
+                'message_failed' => $messageFailed,
+            ]);
+
+            return true;
+        });
     }
 
     /**

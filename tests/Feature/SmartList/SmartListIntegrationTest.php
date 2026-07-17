@@ -48,6 +48,7 @@ it('dispatches campaign with dynamic list and materializes before chunk', functi
         'tenant_id' => $tenantId,
         'contact_list_id' => $list->id,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $job = new DispatchCampaignJob($campaign);
     $job->handle(app(CampaignService::class));
@@ -77,6 +78,7 @@ it('auto-completes campaign when dynamic list resolves to 0 leads', function () 
         'tenant_id' => $tenantId,
         'contact_list_id' => $list->id,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $job = new DispatchCampaignJob($campaign);
     $job->handle(app(CampaignService::class));
@@ -114,6 +116,7 @@ it('end-to-end: create dynamic list via HTTP, dispatch, freeze to static, refres
         'tenant_id' => $tenantId,
         'contact_list_id' => $list->id,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $job = new DispatchCampaignJob($campaign);
     $job->handle(app(CampaignService::class));

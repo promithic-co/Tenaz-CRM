@@ -19,6 +19,7 @@ test('command starts campaigns that are scheduled and due', function () {
         WhatsappTemplate::factory()->create(['tenant_id' => $campaign->tenant_id, 'status' => 'APPROVED'])
     );
     $campaign->save();
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $this->artisan('credflow:start-scheduled-campaigns')
         ->assertExitCode(0);
@@ -66,6 +67,7 @@ test('command continues on individual campaign failure', function () {
         WhatsappTemplate::factory()->create(['tenant_id' => $good->tenant_id, 'status' => 'APPROVED'])
     );
     $good->save();
+    makeCampaignMetaConfigurationCompatible($good);
 
     $this->artisan('credflow:start-scheduled-campaigns')
         ->assertExitCode(0);

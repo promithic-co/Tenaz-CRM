@@ -20,7 +20,13 @@ function makeSendableCampaign(): Campaign
 
     // Ensure template is approved
     $campaign->whatsappTemplate()->associate(
-        WhatsappTemplate::factory()->create(['tenant_id' => $campaign->tenant_id, 'status' => 'APPROVED'])
+        WhatsappTemplate::factory()->create([
+            'tenant_id' => $campaign->tenant_id,
+            'whatsapp_instance_id' => $campaign->whatsapp_instance_id,
+            'status' => 'APPROVED',
+            'meta_template_name' => 'campaign_service_template',
+            'meta_waba_id' => $campaign->whatsappInstance->meta_waba_id,
+        ])
     );
     $campaign->save();
 
@@ -55,7 +61,7 @@ test('start transitions campaign to sending and dispatches job', function () {
         'opt_in_status' => 'opted_in',
     ]);
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
     $service->start($campaign);
 
     $campaign->refresh();
@@ -68,7 +74,7 @@ test('start transitions campaign to sending and dispatches job', function () {
 
 test('start throws if campaign is not draft/scheduled', function () {
     $campaign = Campaign::factory()->sending()->create();
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
 
     expect(fn () => $service->start($campaign))->toThrow(RuntimeException::class);
 });
@@ -80,14 +86,14 @@ test('start throws if template is not approved', function () {
     );
     $campaign->save();
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
     expect(fn () => $service->start($campaign))->toThrow(RuntimeException::class);
 });
 
 test('pause transitions sending campaign to paused', function () {
     $campaign = Campaign::factory()->sending()->create();
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
     $service->pause($campaign);
 
     expect($campaign->fresh()->status)->toBe('paused');
@@ -96,16 +102,21 @@ test('pause transitions sending campaign to paused', function () {
 
 test('pause throws if campaign is not sending', function () {
     $campaign = Campaign::factory()->create(['status' => 'draft']);
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
 
     expect(fn () => $service->pause($campaign))->toThrow(RuntimeException::class);
 });
 
 test('resume transitions paused campaign to sending and dispatches job', function () {
     Queue::fake();
-    $campaign = Campaign::factory()->paused()->create();
+    $campaign = makeSendableCampaign();
+    $campaign->update([
+        'status' => 'paused',
+        'started_at' => now()->subHour(),
+        'paused_at' => now(),
+    ]);
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
     $service->resume($campaign);
 
     expect($campaign->fresh()->status)->toBe('sending');
@@ -117,7 +128,7 @@ test('resume transitions paused campaign to sending and dispatches job', functio
 test('cancel sets status to cancelled with manual cancellation reason', function () {
     $campaign = Campaign::factory()->sending()->create();
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
     $service->cancel($campaign);
 
     expect($campaign->fresh()->status)->toBe('cancelled');
@@ -128,7 +139,7 @@ test('checkAndAutoPause returns false when failure rate below threshold', functi
     $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
     seedCampaignCounters($campaign, sent: 20, failed: 1); // 5% < 10%
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
 
     expect($service->checkAndAutoPause($campaign))->toBeFalse();
     expect($campaign->fresh()->status)->toBe('sending');
@@ -138,7 +149,7 @@ test('checkAndAutoPause pauses campaign when failure rate exceeds threshold', fu
     $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
     seedCampaignCounters($campaign, sent: 20, failed: 3); // 15% > 10%
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
 
     expect($service->checkAndAutoPause($campaign))->toBeTrue();
     expect($campaign->fresh()->status)->toBe('paused');
@@ -150,7 +161,7 @@ test('checkAndAutoPause debounces rapid checks within the window (SCALE-1)', fun
     $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
     seedCampaignCounters($campaign, sent: 20, failed: 1); // 5% < 10%
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
 
     // First call wins the debounce gate, evaluates, and finds the rate below threshold.
     expect($service->checkAndAutoPause($campaign))->toBeFalse();
@@ -173,7 +184,7 @@ test('checkAndAutoPause still evaluates immediately when debounce is disabled', 
     $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
     seedCampaignCounters($campaign, sent: 20, failed: 3); // 15% > 10%
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
 
     expect($service->checkAndAutoPause($campaign))->toBeTrue();
     expect($campaign->fresh()->status)->toBe('paused');
@@ -182,7 +193,7 @@ test('checkAndAutoPause still evaluates immediately when debounce is disabled', 
 test('checkDailyLimit returns true when under limit', function () {
     $campaign = Campaign::factory()->sending()->create(['daily_limit' => 1000]);
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
 
     expect($service->checkDailyLimit($campaign))->toBeTrue();
 });
@@ -197,7 +208,7 @@ test('checkDailyLimit returns false when at daily limit', function () {
         'sent_at' => now(),
     ]);
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
 
     expect($service->checkDailyLimit($campaign))->toBeFalse();
 });
@@ -223,7 +234,7 @@ test('checkDailyLimit counts only messages sent today (SCALE-6)', function () {
         'sent_at' => today()->startOfDay(),
     ]);
 
-    $service = new CampaignService;
+    $service = app(CampaignService::class);
 
     expect($service->checkDailyLimit($campaign))->toBeTrue();
 

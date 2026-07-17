@@ -3,10 +3,14 @@
 namespace App\Jobs;
 
 use App\Events\CampaignProgressUpdated;
+use App\Exceptions\CampaignConfigurationException;
 use App\Exceptions\MetaAmbiguousSendException;
+use App\Exceptions\MetaApiException;
+use App\Exceptions\MetaCampaignConfigurationException;
 use App\Exceptions\MetaInvalidNumberException;
 use App\Exceptions\MetaNoWhatsAppException;
 use App\Exceptions\MetaRateLimitException;
+use App\Exceptions\MetaRetryableException;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
 use App\Models\Contact;
@@ -19,6 +23,7 @@ use App\Services\CampaignService;
 use App\Services\Dashboard\DashboardMetricsService;
 use App\Services\WhatsApp\PhoneNumberValidator;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\ConnectionException;
@@ -26,8 +31,10 @@ use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Str;
 use Throwable;
 
 class SendCampaignMessageJob implements ShouldQueue
@@ -95,6 +102,24 @@ class SendCampaignMessageJob implements ShouldQueue
         }
 
         $campaign = $message->campaign()->first();
+        $isPendingProviderOutcome = in_array($message->status, ['pending', 'queued'], true)
+            && $message->provider_attempted_at !== null;
+
+        // Reconcile an existing provider attempt before applying the campaign-state gate.
+        // An expiry probe is an outcome-safety operation, not a new send: consuming it while
+        // paused/cancelled/completed would strand the claim forever. Active owners are only
+        // deferred; expired owners become conservatively in_doubt. Neither path calls Meta.
+        if ($isPendingProviderOutcome) {
+            if ($message->hasActiveProviderAttemptLease()) {
+                $this->deferUntilProviderAttemptLeaseExpires($message);
+
+                return;
+            }
+
+            $message->markAbandonedProviderAttemptInDoubt();
+
+            return;
+        }
 
         if (! $campaign || ! $campaign->isSending()) {
             // Park the row back in 'pending': returning consumes this queue job, so a message
@@ -120,10 +145,8 @@ class SendCampaignMessageJob implements ShouldQueue
             return;
         }
 
-        // Defensive in-doubt guard: a prior attempt already reached the provider POST
-        // stage without confirming. Re-POSTing risks a duplicate template send.
-        if ($message->provider_attempted_at !== null) {
-            $message->markInDoubt('Re-execution after an unconfirmed provider attempt; not re-sending.');
+        if ($message->provider_retry_not_before?->isFuture()) {
+            $this->deferUntilProviderRetryDeadline($message);
 
             return;
         }
@@ -212,8 +235,24 @@ class SendCampaignMessageJob implements ShouldQueue
         [$instance, $template] = $this->resolveSendConfig($campaign);
 
         if (! $instance || ! $template) {
-            $message->markFailed('NO_INSTANCE_OR_TEMPLATE', 'Campaign is missing a WhatsApp instance or template.');
-            $service->checkAndAutoPause($campaign->fresh());
+            $exception = new CampaignConfigurationException(['NO_INSTANCE_OR_TEMPLATE']);
+            $service->pauseAndFailForConfigurationViolation($campaign, $message, $exception);
+
+            return;
+        }
+
+        try {
+            $sendConfig = $service->validatedSendConfig($campaign, $instance, $template);
+        } catch (CampaignConfigurationException $exception) {
+            $service->pauseAndFailForConfigurationViolation($campaign, $message, $exception);
+            $this->dispatchProgressIfReady($debouncer, $campaign);
+
+            Log::warning('SendCampaignMessageJob: incompatible send configuration, provider blocked', [
+                'interaction_id' => $interactionId,
+                'campaign_id' => $campaign->id,
+                'message_id' => $message->id,
+                'reason_code' => $exception->primaryViolation(),
+            ]);
 
             return;
         }
@@ -244,7 +283,7 @@ class SendCampaignMessageJob implements ShouldQueue
                 $tenantCount = (int) Cache::increment($tenantThrottleKey);
             } catch (Throwable $e) {
                 Log::warning('SendCampaignMessageJob: tenant fairness throttle failed, proceeding', [
-                    'error' => $e->getMessage(),
+                    'error' => MetaApiException::sanitizeMessage($e->getMessage()),
                     'tenant_id' => $campaign->tenant_id,
                 ]);
                 $tenantCount = 0;
@@ -287,7 +326,7 @@ class SendCampaignMessageJob implements ShouldQueue
                 // Redis unavailable — fail open: log and let the send proceed so a Redis
                 // outage doesn't block the campaign entirely.
                 Log::warning('SendCampaignMessageJob: throttle check failed, proceeding', [
-                    'error' => $e->getMessage(),
+                    'error' => MetaApiException::sanitizeMessage($e->getMessage()),
                     'instance_id' => $instance->id,
                 ]);
                 $current = 0;
@@ -316,7 +355,7 @@ class SendCampaignMessageJob implements ShouldQueue
         // (errors 131026/131027). Mark as failed without retry so the campaign moves on.
         $destination = PhoneNumberValidator::normalize((string) $entry->phone);
         if ($destination === null) {
-            $message->markFailed('INVALID_PHONE', "Invalid phone number: {$entry->phone}");
+            $message->markFailed('INVALID_PHONE', 'Invalid destination format.');
             $service->checkAndAutoPause($campaign->fresh());
 
             $interactionEvents->record(
@@ -327,8 +366,8 @@ class SendCampaignMessageJob implements ShouldQueue
                 payload: [
                     'campaign_id' => $campaign->id,
                     'campaign_message_id' => $message->id,
+                    'contact_list_entry_id' => $entry->id,
                     'error' => 'INVALID_PHONE',
-                    'raw_phone' => (string) $entry->phone,
                 ],
                 severity: 'warning',
             );
@@ -336,13 +375,25 @@ class SendCampaignMessageJob implements ShouldQueue
             return;
         }
 
+        $attemptToken = (string) Str::uuid();
+        $leaseSeconds = max($this->timeout + 15, (int) config('credflow.campaigns.provider_attempt_lease_seconds', 60));
+        $providerAttemptClaimed = false;
+
         try {
-            $provider = $factory->makeProvider($instance);
+            $provider = $factory->makeProvider($sendConfig->providerInstance());
 
             // Atomically claim immediately before the POST so an ambiguous failure is never
             // retried. Losing the claim means a concurrent duplicate job (a resume re-enqueue
             // racing a released original) owns this message — let the owner finish it.
-            if (! $message->claimProviderAttempt()) {
+            if (! $message->claimProviderAttempt($attemptToken, now()->addSeconds($leaseSeconds))) {
+                $currentMessage = $message->fresh();
+
+                if ($currentMessage?->hasActiveProviderAttemptLease()) {
+                    $this->deferUntilProviderAttemptLeaseExpires($currentMessage);
+                } elseif ($currentMessage?->provider_attempted_at !== null) {
+                    $currentMessage->markAbandonedProviderAttemptInDoubt();
+                }
+
                 Log::info('SendCampaignMessageJob: lost provider claim to a concurrent job, skipping', [
                     'interaction_id' => $interactionId,
                     'message_id' => $message->id,
@@ -350,12 +401,13 @@ class SendCampaignMessageJob implements ShouldQueue
 
                 return;
             }
+            $providerAttemptClaimed = true;
 
             $providerMessageId = $provider->sendTemplate(
                 phone: $destination,
-                templateName: (string) ($template->meta_template_name ?? $template->name),
-                langCode: (string) ($template->language ?? 'pt_BR'),
-                components: $this->buildMetaComponents($resolvedParams, $template),
+                templateName: (string) $sendConfig->templateName,
+                langCode: (string) $sendConfig->templateLanguage,
+                components: $this->buildMetaComponents($resolvedParams, $sendConfig->templateComponents),
                 opaqueId: (string) $message->id,
             );
 
@@ -364,7 +416,9 @@ class SendCampaignMessageJob implements ShouldQueue
                 throw new MetaAmbiguousSendException('Meta returned no message id for the template send.');
             }
 
-            $message->markSent($providerMessageId);
+            if (! $message->markSentIfOwned($attemptToken, $providerMessageId)) {
+                return;
+            }
 
             $this->dispatchProgressIfReady($debouncer, $campaign);
             app(DashboardMetricsService::class)->dispatchUpdate((string) $campaign->tenant_id);
@@ -385,13 +439,17 @@ class SendCampaignMessageJob implements ShouldQueue
                     'campaign_message_id' => $message->id,
                     'provider' => $instance->provider->value,
                     'provider_message_id' => $providerMessageId,
-                    'destination' => $destination,
                 ],
             );
         } catch (MetaRateLimitException $e) {
             // Rate-limit: back off WITHOUT marking the message failed or incrementing the
             // counter. release() reschedules the job so we can try once Meta's window opens.
-            $delay = (int) config('credflow.campaigns.rate_limit_release_seconds', 60);
+            $delay = (int) config('credflow.campaigns.rate_limit_release_seconds', 60) + random_int(0, 60);
+            $retryNotBefore = now()->addSeconds($delay);
+
+            if (! $providerAttemptClaimed || ! $message->releaseProviderAttemptForRetry($attemptToken, $retryNotBefore, $e)) {
+                return;
+            }
 
             Log::warning('SendCampaignMessageJob: rate limited by Meta, releasing', [
                 'interaction_id' => $interactionId,
@@ -415,16 +473,13 @@ class SendCampaignMessageJob implements ShouldQueue
             // Reset to pending so the job's status check on re-execution lets it through.
             // Meta rejected the send (nothing delivered) — clear the in-doubt marker so the
             // released retry is allowed to actually re-send.
-            $message->update(['status' => 'pending']);
-            $message->clearProviderAttempt();
-            $this->release($delay + random_int(0, 60));
+            $this->release($retryNotBefore);
 
             return;
-        } catch (MetaInvalidNumberException|MetaNoWhatsAppException $e) {
-            // Permanent destination failures — no retry, no exception propagation.
-            $code = $e instanceof MetaInvalidNumberException ? 'INVALID_NUMBER' : 'NO_WHATSAPP';
-            $message->markFailed($code, $e->getMessage());
-            $service->checkAndAutoPause($campaign->fresh());
+        } catch (MetaCampaignConfigurationException $e) {
+            if (! $providerAttemptClaimed || ! $this->pauseForProviderConfigurationRejection($campaign, $message, $e, $attemptToken)) {
+                return;
+            }
             $this->dispatchProgressIfReady($debouncer, $campaign);
 
             $interactionEvents->record(
@@ -435,9 +490,38 @@ class SendCampaignMessageJob implements ShouldQueue
                 payload: [
                     'campaign_id' => $campaign->id,
                     'campaign_message_id' => $message->id,
+                    'contact_list_entry_id' => $entry->id,
+                    'error_code' => (string) $e->getCode(),
+                ],
+                severity: 'error',
+            );
+
+            return;
+        } catch (MetaInvalidNumberException|MetaNoWhatsAppException $e) {
+            // Permanent destination failures — no retry, no exception propagation.
+            $code = $e instanceof MetaInvalidNumberException ? 'INVALID_NUMBER' : (string) ($e->getCode() ?: 'NO_WHATSAPP');
+            if ($e instanceof MetaInvalidNumberException) {
+                $finalized = $message->markFailedIfOwned($attemptToken, $code, $e->getMessage());
+            } else {
+                $finalized = $message->markFailedFromProviderIfOwned($attemptToken, $e);
+            }
+
+            if (! $providerAttemptClaimed || ! $finalized) {
+                return;
+            }
+            $this->dispatchProgressIfReady($debouncer, $campaign);
+
+            $interactionEvents->record(
+                interactionId: $interactionId,
+                tenantId: $campaign->tenant_id,
+                eventType: 'outbound_failed',
+                eventSource: 'send_campaign_message_job',
+                payload: [
+                    'campaign_id' => $campaign->id,
+                    'campaign_message_id' => $message->id,
+                    'contact_list_entry_id' => $entry->id,
                     'error_code' => $code,
-                    'error' => $e->getMessage(),
-                    'destination' => $destination,
+                    'error' => $e->sanitizedMessage,
                 ],
                 severity: 'warning',
             );
@@ -447,7 +531,9 @@ class SendCampaignMessageJob implements ShouldQueue
             // Undecidable send (timeout/reset/5xx/empty id). The message MAY have reached
             // the contact, so we neither re-send nor count it as failed. The row is left
             // in_doubt for a webhook (echoing the opaque id) or reconciliation to resolve.
-            $message->markInDoubt($e->getMessage());
+            if (! $providerAttemptClaimed || ! $message->markInDoubtFromProviderIfOwned($attemptToken, $e)) {
+                return;
+            }
 
             $interactionEvents->record(
                 interactionId: $interactionId,
@@ -457,8 +543,34 @@ class SendCampaignMessageJob implements ShouldQueue
                 payload: [
                     'campaign_id' => $campaign->id,
                     'campaign_message_id' => $message->id,
-                    'error' => $e->getMessage(),
-                    'destination' => $destination,
+                    'contact_list_entry_id' => $entry->id,
+                    'error' => $e->sanitizedMessage,
+                ],
+                severity: 'error',
+            );
+
+            return;
+        } catch (MetaApiException $e) {
+            if (! $e->isExplicitClientRejection()) {
+                throw new MetaRetryableException($e->getMessage());
+            }
+
+            if (! $providerAttemptClaimed || ! $message->markFailedFromProviderIfOwned($attemptToken, $e)) {
+                return;
+            }
+            $this->dispatchProgressIfReady($debouncer, $campaign);
+
+            $interactionEvents->record(
+                interactionId: $interactionId,
+                tenantId: $campaign->tenant_id,
+                eventType: 'outbound_failed',
+                eventSource: 'send_campaign_message_job',
+                payload: [
+                    'campaign_id' => $campaign->id,
+                    'campaign_message_id' => $message->id,
+                    'contact_list_entry_id' => $entry->id,
+                    'error_code' => (string) ($e->getCode() ?: 'META_REJECTED'),
+                    'error' => $e->sanitizedMessage,
                 ],
                 severity: 'error',
             );
@@ -468,8 +580,19 @@ class SendCampaignMessageJob implements ShouldQueue
             // A connection-refused / DNS failure proves nothing reached Meta — clear the
             // in-doubt marker so the retry re-sends. Any other unknown error keeps the
             // marker (possibly-sent), so a retry resolves to in_doubt rather than duplicating.
-            if ($e instanceof ConnectionException) {
-                $message->clearProviderAttempt();
+            $isDefiniteTransportFailure = $e instanceof ConnectionException || $e instanceof MetaRetryableException;
+
+            if ($isDefiniteTransportFailure) {
+                $retryDelay = max(1, (int) ($this->backoff[0] ?? 30));
+                $retryNotBefore = now()->addSeconds($retryDelay);
+
+                if ($providerAttemptClaimed) {
+                    if (! $message->releaseProviderAttemptForRetry($attemptToken, $retryNotBefore)) {
+                        return;
+                    }
+                }
+
+                $this->release($retryNotBefore);
             }
 
             // Transient/unknown error: rethrow WITHOUT finalizing so the queue retries
@@ -485,13 +608,93 @@ class SendCampaignMessageJob implements ShouldQueue
                 payload: [
                     'campaign_id' => $campaign->id,
                     'campaign_message_id' => $message->id,
-                    'error' => $e->getMessage(),
+                    'contact_list_entry_id' => $entry->id,
+                    'error' => MetaApiException::sanitizeMessage($e->getMessage()),
                 ],
                 severity: 'warning',
             );
 
-            throw $e;
+            throw new MetaRetryableException($e->getMessage());
         }
+    }
+
+    private function deferUntilProviderRetryDeadline(CampaignMessage $message): void
+    {
+        $retryNotBefore = $message->provider_retry_not_before;
+        $delay = $retryNotBefore === null
+            ? 1
+            : max(1, (int) ceil(now()->diffInSeconds($retryNotBefore, false)) + 1);
+
+        Log::info('SendCampaignMessageJob: durable provider backoff active, deferring', [
+            'message_id' => $message->id,
+            'release_after_seconds' => $delay,
+        ]);
+
+        $this->release($retryNotBefore ?? $delay);
+    }
+
+    private function deferUntilProviderAttemptLeaseExpires(CampaignMessage $message): void
+    {
+        $leaseExpiresAt = $message->provider_attempt_lease_expires_at;
+        $delay = $leaseExpiresAt === null
+            ? 1
+            : max(1, (int) ceil(now()->diffInSeconds($leaseExpiresAt, false)) + 1);
+
+        Log::info('SendCampaignMessageJob: provider attempt owned by another worker, deferring', [
+            'message_id' => $message->id,
+            'release_after_seconds' => $delay,
+        ]);
+
+        $this->release($delay);
+    }
+
+    private function pauseForProviderConfigurationRejection(
+        Campaign $campaign,
+        CampaignMessage $message,
+        MetaCampaignConfigurationException $exception,
+        string $attemptToken,
+    ): bool {
+        $paused = DB::transaction(function () use ($campaign, $message, $exception, $attemptToken): bool {
+            $lockedCampaign = Campaign::query()->whereKey($campaign->getKey())->lockForUpdate()->first();
+            $lockedMessage = CampaignMessage::query()->whereKey($message->getKey())->lockForUpdate()->first();
+
+            if (! $lockedCampaign || ! $lockedMessage) {
+                return false;
+            }
+
+            if (! $lockedMessage->markFailedFromProviderIfOwned($attemptToken, $exception)) {
+                return false;
+            }
+            $message->setRawAttributes($lockedMessage->getAttributes());
+
+            if ($lockedCampaign->isSending()) {
+                $reasonCode = $exception->getCode() !== 0 ? 'META_'.$exception->getCode() : 'META_CONFIGURATION_REJECTED';
+
+                $lockedCampaign->update([
+                    'status' => 'paused',
+                    'paused_at' => now(),
+                    'paused_from_status' => 'sending',
+                    'pause_reason_code' => $reasonCode,
+                    'failure_reason' => 'Meta rejected the campaign send configuration.',
+                ]);
+                $campaign->setRawAttributes($lockedCampaign->getAttributes());
+            }
+
+            return true;
+        });
+
+        if (! $paused) {
+            return false;
+        }
+
+        Log::warning('SendCampaignMessageJob: provider configuration rejected, campaign paused', [
+            'campaign_id' => $campaign->id,
+            'message_id' => $message->id,
+            'error_code' => $exception->getCode(),
+            'provider_http_status' => $exception->httpStatus,
+        ]);
+
+        return true;
     }
 
     private function dispatchProgressIfReady(BroadcastDebouncer $debouncer, ?Campaign $campaign): void
@@ -589,13 +792,52 @@ class SendCampaignMessageJob implements ShouldQueue
             return;
         }
 
-        $message->markFailed('JOB_FAILED', $e->getMessage());
+        if ($message->provider_attempted_at !== null) {
+            if ($message->hasActiveProviderAttemptLease()) {
+                if (! $this->scheduleProviderAttemptExpiryProbe($message)) {
+                    $message->markUnreconciledProviderAttemptInDoubt();
+                }
+
+                return;
+            }
+
+            $message->markAbandonedProviderAttemptInDoubt();
+
+            return;
+        }
+
+        $message->markFailed('JOB_FAILED', MetaApiException::sanitizeMessage($e->getMessage()));
 
         $campaign = $message->campaign;
 
         if ($campaign) {
             app(CampaignService::class)->checkAndAutoPause($campaign->fresh());
         }
+    }
+
+    private function scheduleProviderAttemptExpiryProbe(CampaignMessage $message): bool
+    {
+        $leaseExpiresAt = $message->provider_attempt_lease_expires_at;
+
+        if ($leaseExpiresAt === null) {
+            return false;
+        }
+
+        $probeAt = $leaseExpiresAt->copy()->addSecond();
+        $probe = (new self($message, $this->interactionId, $probeAt))->delay($probeAt);
+
+        try {
+            app(Dispatcher::class)->dispatch($probe);
+        } catch (Throwable $dispatchException) {
+            Log::error('SendCampaignMessageJob: failed to schedule provider-attempt expiry probe', [
+                'message_id' => $message->id,
+                'error' => MetaApiException::sanitizeMessage($dispatchException->getMessage()),
+            ]);
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -665,13 +907,12 @@ class SendCampaignMessageJob implements ShouldQueue
      * @param  array<string, string>  $resolved
      * @return list<array<string, mixed>>
      */
-    private function buildMetaComponents(array $resolved, ?WhatsappTemplate $template = null): array
+    private function buildMetaComponents(array $resolved, ?array $components = null): array
     {
         if ($resolved === []) {
             return [];
         }
 
-        $components = $template?->components_json ?? null;
         if (! is_array($components) || $components === []) {
             uksort($resolved, fn (string $a, string $b): int => (int) $a <=> (int) $b);
 

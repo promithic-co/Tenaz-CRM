@@ -43,6 +43,7 @@ function campaignWithTenant(array $state = []): array
         'whatsapp_template_id' => $template->id,
         'daily_limit' => 1000,
     ], $state));
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     return compact('campaign', 'contactList');
 }

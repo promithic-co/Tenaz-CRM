@@ -2,9 +2,11 @@
 
 use App\Exceptions\MetaAmbiguousSendException;
 use App\Exceptions\MetaApiException;
+use App\Exceptions\MetaCampaignConfigurationException;
 use App\Exceptions\MetaInvalidNumberException;
 use App\Exceptions\MetaNoWhatsAppException;
 use App\Exceptions\MetaRateLimitException;
+use App\Exceptions\MetaRetryableException;
 use App\Services\WhatsApp\Providers\MetaCloudProvider;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
@@ -110,6 +112,60 @@ it('spam/throttle codes are retriable rate-limit errors', function (int $code): 
         ->toThrow(MetaRateLimitException::class);
 })->with([131048, 80007]);
 
+it('uses Meta error-code precedence before HTTP fallback', function (): void {
+    Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['code' => 131026, 'message' => 'Recipient rejected']], 429)]);
+
+    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->toThrow(MetaNoWhatsAppException::class);
+});
+
+it('maps HTTP 429 without a known code to a rate-limit error', function (): void {
+    Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['code' => 0, 'message' => 'Too many requests']], 429)]);
+
+    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->toThrow(MetaRateLimitException::class);
+});
+
+it('maps template and auth rejections to campaign configuration errors', function (int $code): void {
+    Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['code' => $code, 'message' => 'Configuration rejected']], 400)]);
+
+    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->toThrow(MetaCampaignConfigurationException::class);
+})->with([132001, 190, 200]);
+
+it('carries sanitized explicit response metadata on confirmed 4xx rejections', function (): void {
+    Log::spy();
+    Http::fake(['graph.facebook.com/*' => Http::response([
+        'error' => [
+            'code' => 131000,
+            'error_subcode' => 2494010,
+            'type' => 'OAuthException',
+            'fbtrace_id' => 'FBTRACE123',
+            'message' => 'Invalid destination +55 11 99999-9999 / 5511999999999',
+        ],
+    ], 400)]);
+
+    try {
+        makeProvider()->sendText('5511999999999', 'test');
+        $this->fail('Expected MetaApiException.');
+    } catch (MetaApiException $exception) {
+        expect($exception)
+            ->not->toBeInstanceOf(MetaAmbiguousSendException::class)
+            ->and($exception->httpStatus)->toBe(400)
+            ->and($exception->getCode())->toBe(131000)
+            ->and($exception->errorSubcode)->toBe(2494010)
+            ->and($exception->errorType)->toBe('OAuthException')
+            ->and($exception->fbtraceId)->toBe('FBTRACE123')
+            ->and($exception->getMessage())->not->toContain('5511999999999')
+            ->and($exception->getMessage())->not->toContain('99999-9999');
+    }
+
+    Log::shouldHaveReceived('error')->with('meta.api_error', Mockery::on(
+        fn (array $context): bool => ! str_contains(json_encode($context), '5511999999999')
+            && ! str_contains(json_encode($context), '99999-9999')
+    ));
+});
+
 it('unknown error code throws base MetaApiException', function (): void {
     Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['code' => 500, 'message' => 'Server error']], 500)]);
 
@@ -136,10 +192,60 @@ it('omits biz_opaque_callback_data when no opaque id is provided', function (): 
 });
 
 it('maps a 5xx response to an ambiguous-send exception (not blind-retryable)', function (): void {
-    Http::fake(['graph.facebook.com/*' => Http::response('upstream error', 503)]);
+    Http::fake(['graph.facebook.com/*' => Http::response([
+        'error' => [
+            'code' => 131000,
+            'message' => 'Upstream failure',
+            'type' => 'OAuthException',
+            'fbtrace_id' => 'TRACE-5XX',
+        ],
+    ], 503)]);
 
-    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
-        ->toThrow(MetaAmbiguousSendException::class);
+    try {
+        makeProvider()->sendText('5511999999999', 'test');
+        $this->fail('Expected MetaAmbiguousSendException.');
+    } catch (MetaAmbiguousSendException $exception) {
+        expect($exception->getCode())->toBe(131000)
+            ->and($exception->httpStatus)->toBe(503)
+            ->and($exception->errorType)->toBe('OAuthException')
+            ->and($exception->fbtraceId)->toBe('TRACE-5XX');
+    }
+});
+
+it('sanitizes phone-like and control sequences in every provider error metadata field before logging', function (): void {
+    Log::spy();
+    $phone = '5511987654321';
+
+    Http::fake(['graph.facebook.com/*' => Http::response([
+        'error' => [
+            'code' => 131000,
+            'message' => "Rejected {$phone}\r\nforged-log=true",
+            'type' => "OAuth{$phone}\r\nInjected",
+            'fbtrace_id' => "TRACE-{$phone}\r\nInjected",
+        ],
+    ], 400)]);
+
+    try {
+        makeProvider()->sendText($phone, 'test');
+        $this->fail('Expected MetaApiException.');
+    } catch (MetaApiException $exception) {
+        $serialized = json_encode([
+            $exception->getMessage(),
+            $exception->errorType,
+            $exception->fbtraceId,
+        ]);
+
+        expect($serialized)->not->toContain($phone)
+            ->not->toContain("\r")
+            ->not->toContain("\n");
+    }
+
+    Log::shouldHaveReceived('error')->with('meta.api_error', Mockery::on(
+        fn (array $context): bool => ! array_key_exists('phone_number_id', $context)
+            && ! str_contains(json_encode($context), $phone)
+            && ! str_contains(json_encode($context), "\r")
+            && ! str_contains(json_encode($context), "\n")
+    ));
 });
 
 it('maps a transport timeout to an ambiguous-send exception', function (): void {
@@ -149,13 +255,23 @@ it('maps a transport timeout to an ambiguous-send exception', function (): void 
         ->toThrow(MetaAmbiguousSendException::class);
 });
 
-it('rethrows a connection-refused failure as retryable (definitely not sent)', function (): void {
-    Http::fake(fn () => throw new ConnectionException('cURL error 7: Failed to connect to graph.facebook.com'));
+it('rethrows a connection-refused failure as a sanitized retryable exception', function (): void {
+    $secret = 'raw-access-token';
+    $phone = '5511999990001';
+    Http::fake(fn () => throw new ConnectionException(
+        "cURL error 7: Failed https://graph.facebook.com/v23/messages?access_token={$secret} for {$phone}",
+    ));
 
-    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
-        ->toThrow(ConnectionException::class)
-        ->and(fn () => makeProvider()->sendText('5511999999999', 'test'))
-        ->not->toThrow(MetaAmbiguousSendException::class);
+    try {
+        makeProvider()->sendText($phone, 'test');
+        $this->fail('A retryable exception should have been thrown.');
+    } catch (MetaRetryableException $exception) {
+        expect($exception->getMessage())
+            ->not->toContain($secret)
+            ->not->toContain($phone)
+            ->not->toContain('https://')
+            ->and($exception->getPrevious())->toBeNull();
+    }
 });
 
 // ─── verifyWebhook ────────────────────────────────────────────────────────────

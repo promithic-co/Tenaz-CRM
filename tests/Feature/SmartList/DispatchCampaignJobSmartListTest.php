@@ -38,6 +38,7 @@ it('materializes dynamic list before dispatching messages', function () {
         'tenant_id' => $tenantId,
         'contact_list_id' => $list->id,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $job = new DispatchCampaignJob($campaign);
     $job->handle(app(CampaignService::class));
@@ -73,6 +74,7 @@ it('writes total_recipients from the materialized count for dynamic lists (CAMP-
         'contact_list_id' => $list->id,
         'total_recipients' => 0,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $job = new DispatchCampaignJob($campaign);
     $job->handle(app(CampaignService::class));
@@ -106,6 +108,7 @@ it('does not re-materialize a dynamic list once the fan-out has begun (CAMP-06 s
         'contact_list_id' => $list->id,
         'total_recipients' => 1,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     // A message row proves the first dispatch already snapshotted the audience; a revive run
     // must reuse that snapshot, never re-resolve the dynamic list.
@@ -146,6 +149,7 @@ it('auto-completes campaign when dynamic list resolves to 0 leads', function () 
         'tenant_id' => $tenantId,
         'contact_list_id' => $list->id,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $job = new DispatchCampaignJob($campaign);
     $job->handle(app(CampaignService::class));
@@ -174,6 +178,7 @@ it('does not call materialize for static lists (regression)', function () {
         'tenant_id' => $tenantId,
         'contact_list_id' => $list->id,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $resolverSpy = Mockery::spy(SmartListResolverService::class);
     app()->instance(SmartListResolverService::class, $resolverSpy);
@@ -208,6 +213,7 @@ it('opt-out leads never receive messages from dynamic list', function () {
         'tenant_id' => $tenantId,
         'contact_list_id' => $list->id,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $job = new DispatchCampaignJob($campaign);
     $job->handle(app(CampaignService::class));

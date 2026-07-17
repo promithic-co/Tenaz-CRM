@@ -25,6 +25,16 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['credflow.campaigns.rate_per_minute' => 0]);
+
+    WhatsappTemplate::creating(function (WhatsappTemplate $template): void {
+        if ($template->whatsapp_instance_id === null) {
+            return;
+        }
+
+        $instance = WhatsappInstance::withoutGlobalScopes()->find($template->whatsapp_instance_id);
+        $template->meta_template_name ??= 'ambiguous_fixture_'.fake()->uuid();
+        $template->meta_waba_id ??= $instance?->meta_waba_id;
+    });
 });
 
 function makeSendableCampaignMessage(): CampaignMessage

@@ -34,6 +34,7 @@ it('test_campaign_dispatch_fires_progress_update', function () {
         'whatsapp_instance_id' => $instance->id,
         'whatsapp_template_id' => $template->id,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $entry = ContactListEntry::factory()->create([
         'contact_list_id' => $campaign->contact_list_id,
@@ -78,6 +79,7 @@ it('test_campaign_progress_debounced_within_2s', function () {
         'whatsapp_instance_id' => $instance->id,
         'whatsapp_template_id' => $template->id,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
     $providerMock->shouldReceive('sendTemplate')->andReturn('wamid.test');
@@ -142,6 +144,7 @@ it('maps template parameters by placeholder number, not appearance order', funct
         'whatsapp_template_id' => $template->id,
         'template_params_mapping' => ['1' => 'extra_data.data', '2' => 'extra_data.valor'],
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     $entry = ContactListEntry::factory()->create([
         'contact_list_id' => $campaign->contact_list_id,
@@ -199,6 +202,7 @@ it('test_campaign_status_changed_on_start_and_complete', function () {
         'whatsapp_instance_id' => $instance->id,
         'whatsapp_template_id' => $template->id,
     ]);
+    makeCampaignMetaConfigurationCompatible($campaign);
 
     ContactListEntry::factory()->create([
         'contact_list_id' => $campaign->contact_list_id,

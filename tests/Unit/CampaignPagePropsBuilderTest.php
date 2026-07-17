@@ -31,6 +31,8 @@ test('create props preserve campaign creation page contract', function () {
         'whatsapp_instance_id' => $instance->id,
         'status' => 'APPROVED',
         'name' => 'Template aprovado',
+        'meta_template_name' => 'template_aprovado',
+        'meta_waba_id' => $instance->meta_waba_id,
     ]);
     WhatsappTemplate::factory()->create([
         'tenant_id' => $user->tenantId,
@@ -72,6 +74,8 @@ test('create props defer filters_json and template bodies out of the initial pay
         'tenant_id' => $user->tenantId,
         'whatsapp_instance_id' => $instance->id,
         'status' => 'APPROVED',
+        'meta_template_name' => 'template_deferred',
+        'meta_waba_id' => $instance->meta_waba_id,
         'body' => 'Olá {{1}}, tudo bem?',
     ]);
 
@@ -93,6 +97,54 @@ test('create props defer filters_json and template bodies out of the initial pay
 
     expect($resolvedFilters[$dynamicList->id])->toBe($filters)
         ->and($resolvedBodies[$template->id])->toBe('Olá {{1}}, tudo bem?');
+});
+
+test('create props expose only complete templates owned by their instance WABA', function () {
+    $user = User::factory()->create();
+    $instance = WhatsappInstance::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'user_id' => $user->id,
+        'meta_waba_id' => 'waba-create-props',
+    ]);
+    $validTemplate = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+        'meta_template_name' => 'template_valido',
+        'meta_waba_id' => $instance->meta_waba_id,
+        'body' => 'Template válido',
+    ]);
+    $invalidTemplate = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+        'meta_template_name' => 'template_waba_incorreto',
+        'meta_waba_id' => 'waba-foreign',
+        'body' => 'Template inválido',
+    ]);
+    $unboundTemplate = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => null,
+        'status' => 'APPROVED',
+        'meta_template_name' => 'template_sem_instancia',
+        'meta_waba_id' => $instance->meta_waba_id,
+    ]);
+    $incompleteTemplate = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+        'meta_template_name' => '   ',
+        'meta_waba_id' => $instance->meta_waba_id,
+    ]);
+
+    $props = app(CampaignPagePropsBuilder::class)->create(Request::create('/campanhas/create', 'GET'));
+    $templateIds = $props['templates']->pluck('id');
+    $bodyIds = collect(($props['templateBodies'])())->keys();
+
+    expect($templateIds)->toContain($validTemplate->id)
+        ->and($templateIds)->not->toContain($invalidTemplate->id, $unboundTemplate->id, $incompleteTemplate->id)
+        ->and($bodyIds)->toContain($validTemplate->id)
+        ->and($bodyIds)->not->toContain($invalidTemplate->id, $unboundTemplate->id, $incompleteTemplate->id);
 });
 
 test('show props preserve campaign detail contract and status filter', function () {
