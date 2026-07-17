@@ -64,6 +64,8 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::post('/conversas/{lead}/resume', [ConversasController::class, 'resume'])->name('conversas.resume');
     Route::post('/conversas/{lead}/claim', [ConversasController::class, 'claim'])->name('conversas.claim');
     Route::patch('/conversas/{lead}/ai-mode', [ConversasController::class, 'updateAiMode'])->name('conversas.ai-mode');
+    Route::patch('/conversas/{lead}/informacoes-coletadas', [ConversasController::class, 'updateCollectedInformation'])
+        ->name('conversas.collected-information.update');
     Route::post('/conversas/{lead}/assume', [ConversasController::class, 'assume'])->name('conversas.assume');
     Route::post('/conversas/{lead}/followup-pause', [LeadFollowUpController::class, 'pause'])->name('conversas.followup.pause');
     Route::post('/conversas/{lead}/followup-resume', [LeadFollowUpController::class, 'resume'])->name('conversas.followup.resume');
@@ -82,6 +84,8 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::middleware('role:owner,administrator')->group(function () {
         Route::post('/contatos', [ContactController::class, 'store'])->name('contatos.store');
         Route::patch('/contatos/{contact}', [ContactController::class, 'update'])->name('contatos.update');
+        Route::patch('/contatos/{contact}/informacoes-coletadas', [ContactController::class, 'updateCollectedInformation'])
+            ->name('contatos.collected-information.update');
         Route::delete('/contatos/{contact}', [ContactController::class, 'destroy'])->name('contatos.destroy');
         Route::post('/listas-contato/{list}/contatos', [ContactController::class, 'addToList'])->name('listas-contato.add-contacts');
     });
@@ -149,6 +153,9 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
         Route::patch('/{agent}/assign', [AgentsController::class, 'assign'])
             ->middleware('role:owner,administrator')
             ->name('assign');
+        Route::post('/{agent}/snapshot', [AgentsController::class, 'snapshot'])
+            ->middleware('role:owner,administrator')
+            ->name('snapshot');
         Route::get('/{agent}/follow-up', [AgentFollowUpController::class, 'show'])->name('followup');
         Route::post('/{agent}/follow-up', [AgentFollowUpController::class, 'update'])->name('followup.update');
         Route::get('/{agent}/regras-operacionais', [RegrasOperacionaisController::class, 'show'])->name('regras-operacionais');

@@ -2,34 +2,98 @@
 
 namespace App\Models;
 
+use App\Observers\NicheTemplateObserver;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class NicheTemplate extends Model
 {
     use HasFactory;
 
+    /**
+     * Registry cache key for the active template cards (creation gallery).
+     * Single driver-agnostic key — production CACHE_STORE=database does not
+     * support tag-based invalidation (Pitfall C2). Busted by NicheTemplateObserver.
+     */
+    public const REGISTRY_CACHE_KEY = 'niche_templates_registry';
+
     protected $fillable = [
         'slug',
         'name',
+        'label',
         'description',
+        'category',
+        'mode',
+        'icon',
+        'tagline',
+        'use_cases',
+        'example_first_message',
         'prompt_templates',
         'tool_definitions',
         'status_machine',
         'custom_fields',
         'default_config',
+        'variables_schema',
+        'niche_sections',
+        'agent_class',
+        'visibility',
+        'origin_tenant_id',
+        'is_active',
+        'sort_order',
     ];
+
+    protected static function booted(): void
+    {
+        static::observe(NicheTemplateObserver::class);
+    }
 
     protected function casts(): array
     {
         return [
+            'use_cases' => 'array',
             'prompt_templates' => 'array',
             'tool_definitions' => 'array',
             'status_machine' => 'array',
             'custom_fields' => 'array',
             'default_config' => 'array',
+            'variables_schema' => 'array',
+            'niche_sections' => 'array',
+            'is_active' => 'boolean',
+            'sort_order' => 'integer',
         ];
+    }
+
+    /** Active templates eligible for the agent-creation gallery. */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Restrict to templates a tenant may see/use: system-wide templates plus
+     * that tenant's own private (visibility=tenant) snapshots. A null tenant
+     * gets only system templates — never another tenant's private rows.
+     *
+     * This is the cross-tenant boundary for the marketplace (Slice 6): private
+     * snapshots carry the source tenant's prompt/tool copies and must never
+     * leak into another tenant's gallery, slug allow-list, or apply path.
+     */
+    public function scopeVisibleTo(Builder $query, ?string $tenantId): Builder
+    {
+        return $query->where(function (Builder $q) use ($tenantId): void {
+            $q->where('visibility', 'system')
+                ->orWhere(function (Builder $inner) use ($tenantId): void {
+                    $inner->where('visibility', 'tenant')
+                        ->where('origin_tenant_id', $tenantId);
+
+                    if ($tenantId === null) {
+                        $inner->whereRaw('1 = 0');
+                    }
+                });
+        });
     }
 
     /**
@@ -90,10 +154,35 @@ class NicheTemplate extends Model
         }
     }
 
+    /**
+     * Replace the tenant's status machine — guarded against orphaning leads.
+     * If production leads sit on statuses the incoming machine does not define,
+     * swapping the machine would strand them (no transitions out, broken panel
+     * filters), so the apply is rejected listing the statuses still in use.
+     *
+     * @throws ValidationException
+     */
     private function applyStatusMachine(string $tenantId): void
     {
         if (empty($this->status_machine)) {
             return;
+        }
+
+        $newSlugs = array_column($this->status_machine['statuses'] ?? [], 'slug');
+
+        $strandedStatuses = Lead::query()
+            ->where('tenant_id', $tenantId)
+            ->production()
+            ->whereNotIn('status', $newSlugs)
+            ->distinct()
+            ->pluck('status');
+
+        if ($strandedStatuses->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'template_slug' => 'Este modelo não pode ser aplicado: existem conversas ativas nos status '
+                    .$strandedStatuses->implode(', ')
+                    .', que não existem no novo funil.',
+            ]);
         }
 
         StatusMachine::updateOrCreate(

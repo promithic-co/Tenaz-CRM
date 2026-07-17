@@ -2,6 +2,7 @@
 
 namespace App\Ai\Agents;
 
+use App\Ai\Agents\Concerns\InssPromptContext;
 use App\Ai\Middleware\AuditLogMiddleware;
 use App\Ai\Middleware\ToolCallGuardMiddleware;
 use App\Ai\Tools\AtualizarStatusLeadTool;
@@ -15,6 +16,8 @@ use Stringable;
 
 class CredFlowFollowUpAgent extends BaseCustomerServiceAgent
 {
+    use InssPromptContext;
+
     /**
      * Follow-up parameters come from FollowUpSettingsResolver — the same source the
      * engine (CheckFollowUpsCommand / FollowUpWindowService) uses — so the prompt's

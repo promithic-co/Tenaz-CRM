@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Actions\CreateAgentAction;
 use App\Actions\ReassignAgentInstanceAction;
+use App\Actions\SnapshotAgentAsTemplateAction;
 use App\Http\Requests\AssignAgentRequest;
 use App\Http\Requests\StoreAgentRequest;
+use App\Http\Requests\StoreAgentSnapshotRequest;
 use App\Http\Requests\UpdateAgentBasicsRequest;
 use App\Http\Requests\UpdateAgentInstanceRequest;
 use App\Http\Resources\AgentResource;
@@ -81,12 +83,17 @@ class AgentsController extends Controller
                 'phone_number' => $instance->phone_number,
             ]);
 
+        $templates = app(AgentTemplateService::class)->all(auth()->user()->tenantId);
+        $defaultTemplate = config('agent_templates.default');
+
+        if (! collect($templates)->contains('slug', $defaultTemplate)) {
+            $defaultTemplate = $templates[0]['slug'] ?? null;
+        }
+
         return Inertia::render('agentes/Create', [
             'instances' => $instances,
-            'templates' => app(AgentTemplateService::class)->all(),
-            'default_template' => config('agent_templates.default'),
-            'specializations' => $this->specializations(),
-            'default_specialization' => 'inss',
+            'templates' => $templates,
+            'default_template' => $defaultTemplate,
         ]);
     }
 
@@ -98,9 +105,9 @@ class AgentsController extends Controller
             name: trim((string) $request->validated('name')),
             templateSlug: $request->validated('template_slug'),
             companyName: $request->validated('company_name'),
-            agentNiche: $request->validated('agent_niche'),
             description: $request->validated('description'),
             whatsappInstanceId: $request->validated('whatsapp_instance_id'),
+            variables: $request->validated('variables') ?? [],
         );
 
         return redirect()->route('agentes.config', $agent)->with('success', 'Agente criado com sucesso.');
@@ -181,6 +188,25 @@ class AgentsController extends Controller
     }
 
     /**
+     * Snapshot an existing agent into a reusable NicheTemplate (marketplace).
+     * Owner/Administrator only (StoreAgentSnapshotRequest::authorize) and
+     * tenant-scoped (policy manage). Visibility is clamped to the caller's
+     * privilege inside the request.
+     */
+    public function snapshot(StoreAgentSnapshotRequest $request, Agent $agent, SnapshotAgentAsTemplateAction $snapshot): RedirectResponse
+    {
+        $this->authorize('manage', $agent);
+
+        $snapshot->execute(
+            $agent,
+            trim((string) $request->validated('name')),
+            $request->resolvedVisibility(),
+        );
+
+        return back()->with('success', 'Modelo criado a partir do agente.');
+    }
+
+    /**
      * Assign (or unassign) an agent to a specific user in the same tenant.
      * Owner/Administrator only (enforced by AssignAgentRequest::authorize).
      */
@@ -189,16 +215,5 @@ class AgentsController extends Controller
         $agent->update(['user_id' => $request->validated('user_id') ?? null]);
 
         return back()->with('success', 'Agente atribuído.');
-    }
-
-    /**
-     * @return array<int, array{value: string, label: string, description: string, badge_classes: string}>
-     */
-    private function specializations(): array
-    {
-        return collect(config('credflow.agent_specializations', []))
-            ->map(fn (array $specialization, string $value) => array_merge(['value' => $value], $specialization))
-            ->values()
-            ->all();
     }
 }

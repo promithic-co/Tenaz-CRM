@@ -54,6 +54,18 @@ const selectedSpecialization = computed(
         props.specializations.find((item) => item.value === form.agent_niche) ??
         props.specializations[0],
 );
+
+const snapshotForm = useForm({ name: '' });
+
+function saveAsTemplate() {
+    if (!props.agent) {
+        return;
+    }
+    snapshotForm.post(`/agentes/${props.agent.id}/snapshot`, {
+        preserveScroll: true,
+        onSuccess: () => snapshotForm.reset('name'),
+    });
+}
 </script>
 
 <template>
@@ -266,6 +278,54 @@ const selectedSpecialization = computed(
                         </div>
                     </div>
                 </a>
+
+                <!-- Salvar como modelo (marketplace) -->
+                <div
+                    v-if="agent"
+                    class="rounded-2xl border border-sidebar-border/70 bg-card p-6 shadow-sm sm:p-8 dark:border-sidebar-border"
+                >
+                    <h2
+                        class="mb-1.5 text-lg font-semibold tracking-tight text-foreground"
+                    >
+                        Salvar como modelo
+                    </h2>
+                    <p class="mb-4 text-xs text-muted-foreground">
+                        Gera um modelo replicável a partir deste agente. Segredos
+                        (URLs de webhook, tokens) e dados de clientes nunca são
+                        copiados — você reconfigura ao aplicar em outra empresa.
+                    </p>
+                    <div class="flex flex-col gap-3 sm:flex-row">
+                        <input
+                            v-model="snapshotForm.name"
+                            type="text"
+                            maxlength="100"
+                            placeholder="Nome do modelo (ex: Recepção Clínica)"
+                            class="flex-1 rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground shadow-sm transition-colors focus:ring-2 focus:ring-primary/50 focus:outline-none"
+                            @keyup.enter.prevent="saveAsTemplate"
+                        />
+                        <button
+                            type="button"
+                            :disabled="
+                                snapshotForm.processing || !snapshotForm.name
+                            "
+                            class="flex items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-5 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/20 disabled:opacity-50"
+                            @click="saveAsTemplate"
+                        >
+                            <Sparkles class="h-4 w-4" />
+                            {{
+                                snapshotForm.processing
+                                    ? 'Gerando...'
+                                    : 'Salvar como modelo'
+                            }}
+                        </button>
+                    </div>
+                    <p
+                        v-if="snapshotForm.errors.name"
+                        class="mt-2 text-xs font-medium text-red-600 dark:text-red-400"
+                    >
+                        {{ snapshotForm.errors.name }}
+                    </p>
+                </div>
 
                 <!-- Sticky Footer Save -->
                 <div

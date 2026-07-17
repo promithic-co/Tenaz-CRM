@@ -2,12 +2,15 @@
 
 namespace App\Ai\Agents;
 
+use App\Ai\Agents\Concerns\InssPromptContext;
 use App\Ai\Tools\ConsultarCreditoSiapeTool;
 use App\Models\AgentOperationalRule;
 use Stringable;
 
 class SiapeAgent extends BaseCustomerServiceAgent
 {
+    use InssPromptContext;
+
     public function instructions(): Stringable|string
     {
         $userId = $this->resolveUserId();

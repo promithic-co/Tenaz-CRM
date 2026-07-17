@@ -74,6 +74,11 @@ return [
     ],
 
     'agent_specializations' => [
+        'generic' => [
+            'label' => 'Geral',
+            'description' => 'Atendimento definido pelo modelo do agente, sem especialização de crédito.',
+            'badge_classes' => 'border-zinc-500/30 bg-zinc-500/10 text-zinc-600 dark:text-zinc-400',
+        ],
         'inss' => [
             'label' => 'INSS',
             'description' => 'Aposentados e pensionistas com benefício consignável.',

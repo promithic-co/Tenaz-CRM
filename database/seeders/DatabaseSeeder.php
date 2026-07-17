@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(AgentTemplateConfigSeeder::class);
+        $this->call(NicheTemplateSeeder::class);
 
         if (! app()->environment('local', 'testing')) {
             $this->command->warn('Skipping local admin seeder outside the local environment.');

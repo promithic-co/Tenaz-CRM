@@ -18,7 +18,7 @@ class AgentConfigController extends Controller
 
         $config = AgentConfig::firstOrCreate(
             ['agent_id' => $agent->id],
-            ['tenant_id' => $agent->tenant_id, 'agent_name' => $agent->name, 'agent_niche' => 'inss']
+            ['tenant_id' => $agent->tenant_id, 'agent_name' => $agent->name, 'agent_niche' => 'generic']
         );
 
         return Inertia::render('agente-config/Index', [

@@ -2,6 +2,7 @@
 
 namespace App\Ai\Agents;
 
+use App\Ai\Agents\Concerns\InssPromptContext;
 use App\Ai\Tools\AtualizarStatusLeadTool;
 use App\Ai\Tools\ConsultarCreditoInssTool;
 use App\Ai\Tools\EscalarParaHumanoTool;
@@ -10,6 +11,8 @@ use Stringable;
 
 class CredFlowBulkAgent extends BaseCustomerServiceAgent
 {
+    use InssPromptContext;
+
     public function instructions(): Stringable|string
     {
         $userId = $this->resolveUserId();

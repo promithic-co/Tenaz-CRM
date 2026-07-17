@@ -8,8 +8,8 @@ use App\Ai\Middleware\ToolCallGuardMiddleware;
 use App\Ai\Tools\AtualizarStatusLeadTool;
 use App\Ai\Tools\EscalarParaHumanoTool;
 use App\Ai\Tools\GenericWebhookTool;
+use App\Ai\Tools\RegistrarInformacaoContatoTool;
 use App\Ai\Tools\RegistrarLeadSemCreditoTool;
-use App\Models\AgentOperationalRule;
 use App\Models\Lead;
 use App\Models\PromptExperiment;
 use App\Models\PromptTemplate;
@@ -206,6 +206,8 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
             $tools[] = $consulta;
         }
 
+        $tools[] = new RegistrarInformacaoContatoTool($this->lead);
+
         if (! in_array($this->lead->status, ['escalado', 'convertido', 'optou_sair'])) {
             $tools[] = new EscalarParaHumanoTool($this->lead);
         }
@@ -222,18 +224,14 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
     }
 
     /**
-     * Build the shared variable map for prompt template rendering.
-     * Concrete agents may merge niche-specific keys on top.
+     * Build the shared, niche-agnostic variable map for prompt template rendering.
+     * Concrete agents (or the InssPromptContext concern) merge niche keys on top.
      *
      * @param  array<string, mixed>  $cfg
      * @return array<string, mixed>
      */
     protected function buildPromptVariables(?int $userId, array $cfg): array
     {
-        $rules = $userId
-            ? AgentOperationalRule::forUser($userId)
-            : AgentOperationalRule::forTenant($this->lead->tenant_id ?? 'default');
-
         return [
             'agent_name' => $cfg['agent_name'],
             'company_name' => $cfg['company_name'],
@@ -244,11 +242,6 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
             'local_time' => $this->localTime(),
             'required_docs' => $cfg['required_docs'] ?? '',
             'extra_rules' => $cfg['extra_rules'] ? "\n- {$cfg['extra_rules']}" : '',
-            'min_novo' => number_format((float) $rules->regra('valor_minimo_liberado_novo'), 0, ',', '.'),
-            'min_refin' => number_format((float) $rules->regra('valor_minimo_liberado_refin'), 0, ',', '.'),
-            'min_parcela_port' => number_format((float) $rules->regra('valor_minimo_parcela_portabilidade'), 0, ',', '.'),
-            'perc_min_port' => (int) round((float) $rules->regra('percentual_minimo_pago_portabilidade') * 100),
-            'idade_max' => (int) $rules->regra('idade_maxima'),
         ];
     }
 
@@ -324,32 +317,25 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
     }
 
     /**
-     * Generates a concise next-action hint based on lead status and collected documents.
+     * Generates a concise next-action hint based on lead status.
      * Placed at the end of the system prompt, immediately before the conversation history,
      * so the LLM sees it as the most recent instruction.
+     *
+     * Base version covers only the platform-universal statuses; niche concerns
+     * (e.g. InssPromptContext) override with pipeline-specific hints.
      */
     protected function buildStatusHint(): string
     {
-        $docs = array_filter($this->lead->documentos_coletados ?? []);
-        $docsCount = count($docs);
-
         return match ($this->lead->status) {
-            'novo' => "\n→ PRÓXIMO PASSO: solicite o CPF se ainda não tiver.",
-            'qualificado' => match (true) {
-                $docsCount >= 3 => "\n→ PRÓXIMO PASSO: documentação completa — acione `escalar_para_humano`.",
-                $docsCount > 0 => "\n→ PRÓXIMO PASSO: continue coletando documentos (já recebidos: {$docsCount}). Não reapresente as ofertas.",
-                default => "\n→ PRÓXIMO PASSO: apresente as ofertas disponíveis e inicie a coleta de documentos.",
-            },
-            'sem_credito' => "\n→ PRÓXIMO PASSO: acione `registrar_lead_sem_credito` se o cliente confirmar interesse futuro.",
-            'desqualificado' => "\n→ PRÓXIMO PASSO: explique que os critérios mínimos do corretor não foram atingidos. Não há produto disponível no momento.",
             'escalado' => "\n→ LEAD JÁ ESCALADO: não acione `escalar_para_humano` novamente. Aguarde o especialista assumir.",
             default => '',
         };
     }
 
     /**
-     * Build a compact lead context block for the system prompt.
-     * Ensures valor_total and valor_parcela are always present when credit data exists.
+     * Build a compact lead context block for the system prompt:
+     * identity, status and collected contact information, followed by the
+     * niche-specific extension point (nicheLeadContext).
      */
     protected function buildLeadContext(): string
     {
@@ -370,70 +356,17 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
             $ctx .= " | Idade: {$this->lead->idade}";
         }
 
-        if ($this->lead->credito_json) {
-            $c = $this->lead->credito_json;
-            $ctx .= $this->creditContextExtras($c);
-
-            $t = $c['resumoGeral']['totais'] ?? [];
-            if (! empty($t)) {
-                $ctx .= $this->creditValuesBlock($c, $t);
-            } elseif (! empty($c['status'])) {
-                $ctx .= "\nCrédito: {$c['status']}";
-            }
-        }
-
-        if ($this->lead->documentos_coletados) {
-            $coletados = array_keys(array_filter($this->lead->documentos_coletados));
-            if (! empty($coletados)) {
-                $ctx .= "\nDocs: ".implode(', ', $coletados);
-            }
-        }
+        $ctx .= $this->nicheLeadContext();
 
         return $ctx;
     }
 
     /**
-     * Niche-specific context appended right after the identity line and before the
-     * credit-values block (e.g. SIAPE órgão/matrícula/renda). Default: none.
-     *
-     * @param  array<string, mixed>  $c  Decoded credito_json
+     * Niche-specific lead context appended after the shared block (e.g. INSS
+     * credit values via InssPromptContext). Default: none.
      */
-    protected function creditContextExtras(array $c): string
+    protected function nicheLeadContext(): string
     {
         return '';
-    }
-
-    /**
-     * Format the "Valores (use EXATAMENTE)" credit block. Default is the INSS
-     * benefício-based shape; niche agents override for their product layout.
-     *
-     * @param  array<string, mixed>  $c  Decoded credito_json
-     * @param  array<string, mixed>  $t  resumoGeral.totais
-     */
-    protected function creditValuesBlock(array $c, array $t): string
-    {
-        $ctx = "\nValores (use EXATAMENTE):";
-        if (($t['margemLivre'] ?? 0) > 0) {
-            $parcela = $c['beneficios'][0]['produtos']['emprestimoNovo']['parcelaMensal'] ?? 0;
-            $ctx .= " Novo=libera {$this->brl($t['margemLivre'])} (parcela {$this->brl($parcela)}/mês)";
-        }
-        if (($t['refinanciamento'] ?? 0) > 0) {
-            $ctx .= " | Refin=troco de {$this->brl($t['refinanciamento'])} (sem parcela nova)";
-        }
-        if (($t['cartoes'] ?? 0) > 0) {
-            $cartoes = $c['beneficios'][0]['produtos']['cartoes'] ?? [];
-            $partes = [];
-            foreach ($cartoes as $cartao) {
-                $tipo = $cartao['tipo'] ?? 'Cartão';
-                $pc = ($cartao['parcelaMensal'] ?? 0) > 0 ? " parcela {$this->brl($cartao['parcelaMensal'])}/mês" : '';
-                $saque = ($cartao['valorSaque'] ?? null) ? " saque {$this->brl((float) $cartao['valorSaque'])}" : '';
-                $partes[] = "{$tipo}:{$saque}{$pc}";
-            }
-            $cartaoStr = ! empty($partes) ? ' ('.implode(' | ', $partes).')' : '';
-            $ctx .= " | Cartões={$this->brl($t['cartoes'])}{$cartaoStr}";
-        }
-        $ctx .= " | Total={$this->brl($t['totalEstimado'] ?? 0)}";
-
-        return $ctx;
     }
 }

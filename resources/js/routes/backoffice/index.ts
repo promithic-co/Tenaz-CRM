@@ -1,5 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
 import templates from './templates'
+import nicheTemplates from './niche-templates'
 import tenants from './tenants'
 /**
 * @see \App\Http\Controllers\Backoffice\BackofficeController::index
@@ -82,6 +83,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 const backoffice = {
     index: Object.assign(index, index),
 templates: Object.assign(templates, templates),
+nicheTemplates: Object.assign(nicheTemplates, nicheTemplates),
 tenants: Object.assign(tenants, tenants),
 }
 

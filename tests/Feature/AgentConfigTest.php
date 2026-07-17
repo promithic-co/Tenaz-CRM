@@ -55,7 +55,7 @@ test('agent scoped config page returns persona settings with correct types', fun
             ->missing('settings.agent_model')
             ->missing('settings.max_tokens')
             ->missing('settings.escalation_whatsapp_number')
-            ->has('specializations', 3)
+            ->has('specializations', 4)
         );
 });
 

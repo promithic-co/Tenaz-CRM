@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\AgentsController::update
- * @see app/Http/Controllers/AgentsController.php:169
+ * @see app/Http/Controllers/AgentsController.php:176
  * @route '/agentes/{agent}/instance'
  */
 export const update = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -16,7 +16,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentsController::update
- * @see app/Http/Controllers/AgentsController.php:169
+ * @see app/Http/Controllers/AgentsController.php:176
  * @route '/agentes/{agent}/instance'
  */
 update.url = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ update.url = (args: { agent: number | { id: number } } | [agent: number | { id: 
 
 /**
 * @see \App\Http\Controllers\AgentsController::update
- * @see app/Http/Controllers/AgentsController.php:169
+ * @see app/Http/Controllers/AgentsController.php:176
  * @route '/agentes/{agent}/instance'
  */
 update.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -59,7 +59,7 @@ update.patch = (args: { agent: number | { id: number } } | [agent: number | { id
 
     /**
 * @see \App\Http\Controllers\AgentsController::update
- * @see app/Http/Controllers/AgentsController.php:169
+ * @see app/Http/Controllers/AgentsController.php:176
  * @route '/agentes/{agent}/instance'
  */
     const updateForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -74,7 +74,7 @@ update.patch = (args: { agent: number | { id: number } } | [agent: number | { id
 
             /**
 * @see \App\Http\Controllers\AgentsController::update
- * @see app/Http/Controllers/AgentsController.php:169
+ * @see app/Http/Controllers/AgentsController.php:176
  * @route '/agentes/{agent}/instance'
  */
         updateForm.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

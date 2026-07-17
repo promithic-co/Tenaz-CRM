@@ -9,8 +9,11 @@ class NicheTemplateSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->seedCreationCards();
+
         NicheTemplate::updateOrCreate(['slug' => 'inss-consignado'], [
             'name' => 'Empréstimo Consignado INSS',
+            'is_active' => false,
             'description' => 'Template padrão para SDR de crédito consignado INSS. Cobre Novo, Refinanciamento e Cartões.',
             'status_machine' => [
                 'initial_status' => 'novo',
@@ -88,6 +91,7 @@ class NicheTemplateSeeder extends Seeder
 
         NicheTemplate::updateOrCreate(['slug' => 'imobiliario'], [
             'name' => 'Imobiliário',
+            'is_active' => false,
             'description' => 'Template para SDR imobiliário. Fluxo: lead → visita agendada → proposta → contrato.',
             'status_machine' => [
                 'initial_status' => 'lead',
@@ -126,6 +130,73 @@ class NicheTemplateSeeder extends Seeder
                 'followup_max_count' => 3,
                 'followup_approach' => 'consultivo',
             ],
+        ]);
+    }
+
+    /**
+     * Agent-creation gallery cards (registry rows consumed by AgentTemplateService).
+     * The first two mirror config/agent_templates.php so DB-first resolution keeps
+     * today's behavior byte-for-byte. The CORBAN card ships inactive until the
+     * generic runtime (GenericAgent) can execute its toolset.
+     */
+    private function seedCreationCards(): void
+    {
+        $baseVariablesSchema = [
+            ['key' => 'agent_name', 'label' => 'Nome do agente', 'type' => 'text', 'required' => true, 'max' => 100, 'placeholder' => 'Ex: Alicia'],
+            ['key' => 'company_name', 'label' => 'Nome da empresa', 'type' => 'text', 'required' => true, 'max' => 100, 'placeholder' => 'Ex: Minha Empresa'],
+            ['key' => 'description', 'label' => 'Descrição (opcional)', 'type' => 'text', 'required' => false, 'max' => 255, 'placeholder' => 'Ex: WhatsApp principal de atendimento'],
+        ];
+
+        foreach (config('agent_templates.templates', []) as $slug => $tpl) {
+            NicheTemplate::updateOrCreate(['slug' => $slug], [
+                'name' => $tpl['name'],
+                'label' => $tpl['label'],
+                'description' => $tpl['description'],
+                'category' => 'credito-consignado',
+                'mode' => $tpl['mode'] ?? null,
+                'icon' => $tpl['icon'],
+                'tagline' => $tpl['tagline'],
+                'use_cases' => $tpl['use_cases'] ?? [],
+                'example_first_message' => $tpl['example_first_message'],
+                'default_config' => $tpl['defaults'] ?? [],
+                'variables_schema' => $baseVariablesSchema,
+                'visibility' => 'system',
+                'is_active' => true,
+                'sort_order' => $slug === config('agent_templates.default') ? 0 : 10,
+            ]);
+        }
+
+        NicheTemplate::updateOrCreate(['slug' => 'corban-simulador'], [
+            'name' => 'Simulador CORBAN',
+            'label' => 'Consulta e simulação B2B',
+            'description' => 'Atende correspondentes bancários (CORBAN): recebe CPF, consulta benefício e entrega simulação real INSS multi-banco.',
+            'category' => 'credito-consignado',
+            'mode' => 'receptivo',
+            'icon' => 'heart-handshake',
+            'tagline' => 'Operacional, direto, sem rodeios.',
+            'use_cases' => ['promotoras', 'CORBAN', 'simulação multi-banco'],
+            'example_first_message' => 'Oi! Faço consultas e simulações de contrato INSS. Me manda o CPF do cliente que eu já te retorno.',
+            'prompt_templates' => [
+                [
+                    'slug' => 'corban-simulador-system',
+                    'name' => 'Simulador CORBAN — Prompt Principal',
+                    'type' => 'system',
+                    'content' => file_get_contents(database_path('seeders/data/prompt_corban_simulador_v3_3.md')),
+                    'variables_schema' => ['agent_name', 'company_name', 'personality_block'],
+                ],
+            ],
+            'default_config' => [
+                'max_chars' => 500,
+                'temperature' => 0.3,
+            ],
+            'variables_schema' => [
+                ['key' => 'agent_name', 'label' => 'Nome do agente', 'type' => 'text', 'required' => true, 'max' => 100, 'placeholder' => 'Ex: Simulador Amec'],
+                ['key' => 'company_name', 'label' => 'Nome da promotora', 'type' => 'text', 'required' => true, 'max' => 100, 'placeholder' => 'Ex: Amec Promotora'],
+                ['key' => 'personality_block', 'label' => 'Personalidade (opcional)', 'type' => 'textarea', 'required' => false, 'max' => 1000, 'placeholder' => 'Tom e estilo do agente. Não altera regras operacionais.'],
+            ],
+            'visibility' => 'system',
+            'is_active' => false,
+            'sort_order' => 20,
         ]);
     }
 }

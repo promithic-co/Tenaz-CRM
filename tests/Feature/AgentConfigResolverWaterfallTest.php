@@ -5,9 +5,10 @@ use App\Models\AgentConfig;
 use App\Models\AgentTemplateConfig;
 use App\Models\AppSetting;
 use App\Services\AgentConfigResolver;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Cache::flush();
@@ -247,4 +248,34 @@ test('legacy fallback path casts extra integer settings while preserving string 
     expect($resolved['followup_interval_days'])->toBe(3);
     expect($resolved['followup_persuasion_intensity'])->toBe(5);
     expect($resolved['transcription_model'])->toBe('custom-transcription-model');
+});
+
+// ─── Slice 5: AgentConfig writes bust the per-agent cache automatically ──────
+
+test('direct AgentConfig save busts the agent_config_id cache without manual forget', function () {
+    $agent = Agent::factory()->create();
+    $config = AgentConfig::factory()->create([
+        'agent_id' => $agent->id,
+        'agent_name' => 'Antes',
+    ]);
+
+    $resolved = app(AgentConfigResolver::class)->forAgentId($agent->id);
+    expect($resolved['agent_name'])->toBe('Antes');
+
+    $config->update(['agent_name' => 'Depois']);
+
+    $resolvedAfter = app(AgentConfigResolver::class)->forAgentId($agent->id);
+    expect($resolvedAfter['agent_name'])->toBe('Depois');
+});
+
+test('AgentConfig delete busts the agent_config_id cache', function () {
+    $agent = Agent::factory()->create();
+    $config = AgentConfig::factory()->create(['agent_id' => $agent->id]);
+
+    app(AgentConfigResolver::class)->forAgentId($agent->id);
+    expect(Cache::has("agent_config_id_{$agent->id}"))->toBeTrue();
+
+    $config->delete();
+
+    expect(Cache::has("agent_config_id_{$agent->id}"))->toBeFalse();
 });

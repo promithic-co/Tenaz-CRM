@@ -36,10 +36,15 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
         <div class="px-3 py-4 sm:px-4 sm:py-6">
             <div class="flex max-w-5xl flex-col space-y-12">
-                <Heading
-                    title="Templates LLM"
-                    description="Configuração de provedor e modelo por template de agente."
-                />
+                <div class="flex items-start justify-between gap-4">
+                    <Heading
+                        title="Templates LLM"
+                        description="Configuração de provedor e modelo por template de agente."
+                    />
+                    <Button variant="outline" size="sm" as-child>
+                        <Link href="/backoffice/modelos">Modelos de agente</Link>
+                    </Button>
+                </div>
 
                 <div class="overflow-x-auto rounded-md border">
                     <table class="w-full min-w-[52rem] text-sm">

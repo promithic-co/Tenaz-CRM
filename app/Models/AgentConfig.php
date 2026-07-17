@@ -3,14 +3,27 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Database\Factories\AgentConfigFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 
 class AgentConfig extends Model
 {
-    /** @use HasFactory<\Database\Factories\AgentConfigFactory> */
+    /** @use HasFactory<AgentConfigFactory> */
     use BelongsToTenant, HasFactory;
+
+    /**
+     * AgentConfigResolver caches the resolved row under agent_config_id_{agent_id}
+     * (300s TTL). Bust it on every write path — controllers used to forget it
+     * manually, which left gaps (e.g. template apply, seeding, console edits).
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn (self $config) => Cache::forget("agent_config_id_{$config->agent_id}"));
+        static::deleted(fn (self $config) => Cache::forget("agent_config_id_{$config->agent_id}"));
+    }
 
     protected $fillable = [
         'agent_id',

@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Ai\Agents\CredFlowFollowUpAgent;
+use App\Ai\AgentFactory;
 use App\Models\FollowupMessage;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
@@ -234,7 +234,7 @@ class ProcessLeadFollowUpJob implements ShouldBeUniqueUntilProcessing, ShouldQue
         }
 
         try {
-            $agent = app(CredFlowFollowUpAgent::class, ['lead' => $this->lead]);
+            $agent = app(AgentFactory::class)->makeFollowUp($this->lead);
             $instructionPrompt = 'Por favor, gere a mensagem de follow-up agora mesmo.';
 
             // Resume previous conversation to maintain context, if available.

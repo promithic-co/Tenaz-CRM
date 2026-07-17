@@ -2,12 +2,17 @@
 
 namespace App\Ai\Agents;
 
+use App\Ai\Agents\Concerns\InssPromptContext;
 use App\Ai\Tools\ConsultarCreditoCltTool;
 use App\Models\Lead;
 use Stringable;
 
 class CltAgent extends BaseCustomerServiceAgent
 {
+    use InssPromptContext {
+        creditValuesBlock as private inssDefaultCreditValuesBlock;
+    }
+
     public function __construct(Lead $lead)
     {
         parent::__construct($lead);
@@ -88,7 +93,7 @@ class CltAgent extends BaseCustomerServiceAgent
     protected function creditValuesBlock(array $c, array $t): string
     {
         if (($c['niche'] ?? null) !== 'clt') {
-            return parent::creditValuesBlock($c, $t);
+            return $this->inssDefaultCreditValuesBlock($c, $t);
         }
 
         $vinculos = $c['vinculos'] ?? [];

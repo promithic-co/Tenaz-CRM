@@ -2,6 +2,7 @@
 
 namespace App\Ai\Agents;
 
+use App\Ai\Agents\Concerns\InssPromptContext;
 use App\Ai\Tools\ConsultarCreditoInssTool;
 use App\Models\AgentOperationalRule;
 use App\Models\Lead;
@@ -9,6 +10,8 @@ use Stringable;
 
 class CredFlowAgent extends BaseCustomerServiceAgent
 {
+    use InssPromptContext;
+
     public function __construct(Lead $lead, private readonly ?string $overridePrompt = null)
     {
         parent::__construct($lead);
@@ -134,7 +137,8 @@ class CredFlowAgent extends BaseCustomerServiceAgent
     }
 
     /**
-     * INSS variable map: shared keys plus the INSS-only LOAS/invalidez criteria.
+     * INSS variable map: shared keys, corretor rules plus the INSS-only
+     * LOAS/invalidez criteria.
      *
      * @param  array<string, mixed>  $cfg
      * @return array<string, mixed>
@@ -145,10 +149,14 @@ class CredFlowAgent extends BaseCustomerServiceAgent
             ? AgentOperationalRule::forUser($userId)
             : AgentOperationalRule::forTenant($this->lead->tenant_id ?? 'default');
 
-        return array_merge(parent::buildPromptVariables($userId, $cfg), [
-            'aceita_loas' => $rules->especie('aceita_loas_emprestimo') ? 'sim' : 'não',
-            'aceita_invalidez' => $rules->especie('aceita_invalidez_abaixo_60') ? 'sim' : 'não',
-        ]);
+        return array_merge(
+            parent::buildPromptVariables($userId, $cfg),
+            $this->corretorRuleVariables($userId),
+            [
+                'aceita_loas' => $rules->especie('aceita_loas_emprestimo') ? 'sim' : 'não',
+                'aceita_invalidez' => $rules->especie('aceita_invalidez_abaixo_60') ? 'sim' : 'não',
+            ],
+        );
     }
 
     protected function consultaTool(): ?object

@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\AgentsController::index
- * @see app/Http/Controllers/AgentsController.php:23
+ * @see app/Http/Controllers/AgentsController.php:25
  * @route '/agentes'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentsController::index
- * @see app/Http/Controllers/AgentsController.php:23
+ * @see app/Http/Controllers/AgentsController.php:25
  * @route '/agentes'
  */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\AgentsController::index
- * @see app/Http/Controllers/AgentsController.php:23
+ * @see app/Http/Controllers/AgentsController.php:25
  * @route '/agentes'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\AgentsController::index
- * @see app/Http/Controllers/AgentsController.php:23
+ * @see app/Http/Controllers/AgentsController.php:25
  * @route '/agentes'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\AgentsController::index
- * @see app/Http/Controllers/AgentsController.php:23
+ * @see app/Http/Controllers/AgentsController.php:25
  * @route '/agentes'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\AgentsController::index
- * @see app/Http/Controllers/AgentsController.php:23
+ * @see app/Http/Controllers/AgentsController.php:25
  * @route '/agentes'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\AgentsController::index
- * @see app/Http/Controllers/AgentsController.php:23
+ * @see app/Http/Controllers/AgentsController.php:25
  * @route '/agentes'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -79,7 +79,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     index.form = indexForm
 /**
 * @see \App\Http\Controllers\AgentsController::create
- * @see app/Http/Controllers/AgentsController.php:70
+ * @see app/Http/Controllers/AgentsController.php:72
  * @route '/agentes/create'
  */
 export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -94,7 +94,7 @@ create.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentsController::create
- * @see app/Http/Controllers/AgentsController.php:70
+ * @see app/Http/Controllers/AgentsController.php:72
  * @route '/agentes/create'
  */
 create.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ create.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\AgentsController::create
- * @see app/Http/Controllers/AgentsController.php:70
+ * @see app/Http/Controllers/AgentsController.php:72
  * @route '/agentes/create'
  */
 create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -112,7 +112,7 @@ create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\AgentsController::create
- * @see app/Http/Controllers/AgentsController.php:70
+ * @see app/Http/Controllers/AgentsController.php:72
  * @route '/agentes/create'
  */
 create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -122,7 +122,7 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\AgentsController::create
- * @see app/Http/Controllers/AgentsController.php:70
+ * @see app/Http/Controllers/AgentsController.php:72
  * @route '/agentes/create'
  */
     const createForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -132,7 +132,7 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\AgentsController::create
- * @see app/Http/Controllers/AgentsController.php:70
+ * @see app/Http/Controllers/AgentsController.php:72
  * @route '/agentes/create'
  */
         createForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -141,7 +141,7 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\AgentsController::create
- * @see app/Http/Controllers/AgentsController.php:70
+ * @see app/Http/Controllers/AgentsController.php:72
  * @route '/agentes/create'
  */
         createForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -157,7 +157,7 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     create.form = createForm
 /**
 * @see \App\Http\Controllers\AgentsController::store
- * @see app/Http/Controllers/AgentsController.php:93
+ * @see app/Http/Controllers/AgentsController.php:100
  * @route '/agentes'
  */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -172,7 +172,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentsController::store
- * @see app/Http/Controllers/AgentsController.php:93
+ * @see app/Http/Controllers/AgentsController.php:100
  * @route '/agentes'
  */
 store.url = (options?: RouteQueryOptions) => {
@@ -181,7 +181,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\AgentsController::store
- * @see app/Http/Controllers/AgentsController.php:93
+ * @see app/Http/Controllers/AgentsController.php:100
  * @route '/agentes'
  */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -191,7 +191,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\AgentsController::store
- * @see app/Http/Controllers/AgentsController.php:93
+ * @see app/Http/Controllers/AgentsController.php:100
  * @route '/agentes'
  */
     const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -201,7 +201,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\AgentsController::store
- * @see app/Http/Controllers/AgentsController.php:93
+ * @see app/Http/Controllers/AgentsController.php:100
  * @route '/agentes'
  */
         storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -212,7 +212,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     store.form = storeForm
 /**
 * @see \App\Http\Controllers\AgentsController::update
- * @see app/Http/Controllers/AgentsController.php:109
+ * @see app/Http/Controllers/AgentsController.php:116
  * @route '/agentes/{agent}'
  */
 export const update = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -227,7 +227,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentsController::update
- * @see app/Http/Controllers/AgentsController.php:109
+ * @see app/Http/Controllers/AgentsController.php:116
  * @route '/agentes/{agent}'
  */
 update.url = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -260,7 +260,7 @@ update.url = (args: { agent: number | { id: number } } | [agent: number | { id: 
 
 /**
 * @see \App\Http\Controllers\AgentsController::update
- * @see app/Http/Controllers/AgentsController.php:109
+ * @see app/Http/Controllers/AgentsController.php:116
  * @route '/agentes/{agent}'
  */
 update.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -270,7 +270,7 @@ update.patch = (args: { agent: number | { id: number } } | [agent: number | { id
 
     /**
 * @see \App\Http\Controllers\AgentsController::update
- * @see app/Http/Controllers/AgentsController.php:109
+ * @see app/Http/Controllers/AgentsController.php:116
  * @route '/agentes/{agent}'
  */
     const updateForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -285,7 +285,7 @@ update.patch = (args: { agent: number | { id: number } } | [agent: number | { id
 
             /**
 * @see \App\Http\Controllers\AgentsController::update
- * @see app/Http/Controllers/AgentsController.php:109
+ * @see app/Http/Controllers/AgentsController.php:116
  * @route '/agentes/{agent}'
  */
         updateForm.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -301,7 +301,7 @@ update.patch = (args: { agent: number | { id: number } } | [agent: number | { id
     update.form = updateForm
 /**
 * @see \App\Http\Controllers\AgentsController::destroy
- * @see app/Http/Controllers/AgentsController.php:119
+ * @see app/Http/Controllers/AgentsController.php:126
  * @route '/agentes/{agent}'
  */
 export const destroy = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -316,7 +316,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentsController::destroy
- * @see app/Http/Controllers/AgentsController.php:119
+ * @see app/Http/Controllers/AgentsController.php:126
  * @route '/agentes/{agent}'
  */
 destroy.url = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -349,7 +349,7 @@ destroy.url = (args: { agent: number | { id: number } } | [agent: number | { id:
 
 /**
 * @see \App\Http\Controllers\AgentsController::destroy
- * @see app/Http/Controllers/AgentsController.php:119
+ * @see app/Http/Controllers/AgentsController.php:126
  * @route '/agentes/{agent}'
  */
 destroy.delete = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -359,7 +359,7 @@ destroy.delete = (args: { agent: number | { id: number } } | [agent: number | { 
 
     /**
 * @see \App\Http\Controllers\AgentsController::destroy
- * @see app/Http/Controllers/AgentsController.php:119
+ * @see app/Http/Controllers/AgentsController.php:126
  * @route '/agentes/{agent}'
  */
     const destroyForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -374,7 +374,7 @@ destroy.delete = (args: { agent: number | { id: number } } | [agent: number | { 
 
             /**
 * @see \App\Http\Controllers\AgentsController::destroy
- * @see app/Http/Controllers/AgentsController.php:119
+ * @see app/Http/Controllers/AgentsController.php:126
  * @route '/agentes/{agent}'
  */
         destroyForm.delete = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -390,7 +390,7 @@ destroy.delete = (args: { agent: number | { id: number } } | [agent: number | { 
     destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\AgentsController::restore
- * @see app/Http/Controllers/AgentsController.php:141
+ * @see app/Http/Controllers/AgentsController.php:148
  * @route '/agentes/{agent_id}/restore'
  */
 export const restore = (args: { agent_id: string | number } | [agent_id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -405,7 +405,7 @@ restore.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentsController::restore
- * @see app/Http/Controllers/AgentsController.php:141
+ * @see app/Http/Controllers/AgentsController.php:148
  * @route '/agentes/{agent_id}/restore'
  */
 restore.url = (args: { agent_id: string | number } | [agent_id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -433,7 +433,7 @@ restore.url = (args: { agent_id: string | number } | [agent_id: string | number 
 
 /**
 * @see \App\Http\Controllers\AgentsController::restore
- * @see app/Http/Controllers/AgentsController.php:141
+ * @see app/Http/Controllers/AgentsController.php:148
  * @route '/agentes/{agent_id}/restore'
  */
 restore.patch = (args: { agent_id: string | number } | [agent_id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -443,7 +443,7 @@ restore.patch = (args: { agent_id: string | number } | [agent_id: string | numbe
 
     /**
 * @see \App\Http\Controllers\AgentsController::restore
- * @see app/Http/Controllers/AgentsController.php:141
+ * @see app/Http/Controllers/AgentsController.php:148
  * @route '/agentes/{agent_id}/restore'
  */
     const restoreForm = (args: { agent_id: string | number } | [agent_id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -458,7 +458,7 @@ restore.patch = (args: { agent_id: string | number } | [agent_id: string | numbe
 
             /**
 * @see \App\Http\Controllers\AgentsController::restore
- * @see app/Http/Controllers/AgentsController.php:141
+ * @see app/Http/Controllers/AgentsController.php:148
  * @route '/agentes/{agent_id}/restore'
  */
         restoreForm.patch = (args: { agent_id: string | number } | [agent_id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -474,7 +474,7 @@ restore.patch = (args: { agent_id: string | number } | [agent_id: string | numbe
     restore.form = restoreForm
 /**
 * @see \App\Http\Controllers\AgentsController::toggleActive
- * @see app/Http/Controllers/AgentsController.php:153
+ * @see app/Http/Controllers/AgentsController.php:160
  * @route '/agentes/{agent}/toggle-active'
  */
 export const toggleActive = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -489,7 +489,7 @@ toggleActive.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentsController::toggleActive
- * @see app/Http/Controllers/AgentsController.php:153
+ * @see app/Http/Controllers/AgentsController.php:160
  * @route '/agentes/{agent}/toggle-active'
  */
 toggleActive.url = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -522,7 +522,7 @@ toggleActive.url = (args: { agent: number | { id: number } } | [agent: number | 
 
 /**
 * @see \App\Http\Controllers\AgentsController::toggleActive
- * @see app/Http/Controllers/AgentsController.php:153
+ * @see app/Http/Controllers/AgentsController.php:160
  * @route '/agentes/{agent}/toggle-active'
  */
 toggleActive.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -532,7 +532,7 @@ toggleActive.patch = (args: { agent: number | { id: number } } | [agent: number 
 
     /**
 * @see \App\Http\Controllers\AgentsController::toggleActive
- * @see app/Http/Controllers/AgentsController.php:153
+ * @see app/Http/Controllers/AgentsController.php:160
  * @route '/agentes/{agent}/toggle-active'
  */
     const toggleActiveForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -547,7 +547,7 @@ toggleActive.patch = (args: { agent: number | { id: number } } | [agent: number 
 
             /**
 * @see \App\Http\Controllers\AgentsController::toggleActive
- * @see app/Http/Controllers/AgentsController.php:153
+ * @see app/Http/Controllers/AgentsController.php:160
  * @route '/agentes/{agent}/toggle-active'
  */
         toggleActiveForm.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -563,7 +563,7 @@ toggleActive.patch = (args: { agent: number | { id: number } } | [agent: number 
     toggleActive.form = toggleActiveForm
 /**
 * @see \App\Http\Controllers\AgentsController::updateInstance
- * @see app/Http/Controllers/AgentsController.php:169
+ * @see app/Http/Controllers/AgentsController.php:176
  * @route '/agentes/{agent}/instance'
  */
 export const updateInstance = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -578,7 +578,7 @@ updateInstance.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentsController::updateInstance
- * @see app/Http/Controllers/AgentsController.php:169
+ * @see app/Http/Controllers/AgentsController.php:176
  * @route '/agentes/{agent}/instance'
  */
 updateInstance.url = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -611,7 +611,7 @@ updateInstance.url = (args: { agent: number | { id: number } } | [agent: number 
 
 /**
 * @see \App\Http\Controllers\AgentsController::updateInstance
- * @see app/Http/Controllers/AgentsController.php:169
+ * @see app/Http/Controllers/AgentsController.php:176
  * @route '/agentes/{agent}/instance'
  */
 updateInstance.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -621,7 +621,7 @@ updateInstance.patch = (args: { agent: number | { id: number } } | [agent: numbe
 
     /**
 * @see \App\Http\Controllers\AgentsController::updateInstance
- * @see app/Http/Controllers/AgentsController.php:169
+ * @see app/Http/Controllers/AgentsController.php:176
  * @route '/agentes/{agent}/instance'
  */
     const updateInstanceForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -636,7 +636,7 @@ updateInstance.patch = (args: { agent: number | { id: number } } | [agent: numbe
 
             /**
 * @see \App\Http\Controllers\AgentsController::updateInstance
- * @see app/Http/Controllers/AgentsController.php:169
+ * @see app/Http/Controllers/AgentsController.php:176
  * @route '/agentes/{agent}/instance'
  */
         updateInstanceForm.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -652,7 +652,7 @@ updateInstance.patch = (args: { agent: number | { id: number } } | [agent: numbe
     updateInstance.form = updateInstanceForm
 /**
 * @see \App\Http\Controllers\AgentsController::assign
- * @see app/Http/Controllers/AgentsController.php:187
+ * @see app/Http/Controllers/AgentsController.php:213
  * @route '/agentes/{agent}/assign'
  */
 export const assign = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -667,7 +667,7 @@ assign.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentsController::assign
- * @see app/Http/Controllers/AgentsController.php:187
+ * @see app/Http/Controllers/AgentsController.php:213
  * @route '/agentes/{agent}/assign'
  */
 assign.url = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -700,7 +700,7 @@ assign.url = (args: { agent: number | { id: number } } | [agent: number | { id: 
 
 /**
 * @see \App\Http\Controllers\AgentsController::assign
- * @see app/Http/Controllers/AgentsController.php:187
+ * @see app/Http/Controllers/AgentsController.php:213
  * @route '/agentes/{agent}/assign'
  */
 assign.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -710,7 +710,7 @@ assign.patch = (args: { agent: number | { id: number } } | [agent: number | { id
 
     /**
 * @see \App\Http\Controllers\AgentsController::assign
- * @see app/Http/Controllers/AgentsController.php:187
+ * @see app/Http/Controllers/AgentsController.php:213
  * @route '/agentes/{agent}/assign'
  */
     const assignForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -725,7 +725,7 @@ assign.patch = (args: { agent: number | { id: number } } | [agent: number | { id
 
             /**
 * @see \App\Http\Controllers\AgentsController::assign
- * @see app/Http/Controllers/AgentsController.php:187
+ * @see app/Http/Controllers/AgentsController.php:213
  * @route '/agentes/{agent}/assign'
  */
         assignForm.patch = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -739,6 +739,85 @@ assign.patch = (args: { agent: number | { id: number } } | [agent: number | { id
         })
     
     assign.form = assignForm
-const AgentsController = { index, create, store, update, destroy, restore, toggleActive, updateInstance, assign }
+/**
+* @see \App\Http\Controllers\AgentsController::snapshot
+ * @see app/Http/Controllers/AgentsController.php:196
+ * @route '/agentes/{agent}/snapshot'
+ */
+export const snapshot = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: snapshot.url(args, options),
+    method: 'post',
+})
+
+snapshot.definition = {
+    methods: ["post"],
+    url: '/agentes/{agent}/snapshot',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\AgentsController::snapshot
+ * @see app/Http/Controllers/AgentsController.php:196
+ * @route '/agentes/{agent}/snapshot'
+ */
+snapshot.url = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { agent: args }
+    }
+
+            if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
+            args = { agent: args.id }
+        }
+    
+    if (Array.isArray(args)) {
+        args = {
+                    agent: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        agent: typeof args.agent === 'object'
+                ? args.agent.id
+                : args.agent,
+                }
+
+    return snapshot.definition.url
+            .replace('{agent}', parsedArgs.agent.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\AgentsController::snapshot
+ * @see app/Http/Controllers/AgentsController.php:196
+ * @route '/agentes/{agent}/snapshot'
+ */
+snapshot.post = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: snapshot.url(args, options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\AgentsController::snapshot
+ * @see app/Http/Controllers/AgentsController.php:196
+ * @route '/agentes/{agent}/snapshot'
+ */
+    const snapshotForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: snapshot.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\AgentsController::snapshot
+ * @see app/Http/Controllers/AgentsController.php:196
+ * @route '/agentes/{agent}/snapshot'
+ */
+        snapshotForm.post = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: snapshot.url(args, options),
+            method: 'post',
+        })
+    
+    snapshot.form = snapshotForm
+const AgentsController = { index, create, store, update, destroy, restore, toggleActive, updateInstance, assign, snapshot }
 
 export default AgentsController
