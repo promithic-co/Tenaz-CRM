@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/AppLayout.vue';
+import { ref, computed } from 'vue';
+import { store } from '@/actions/App/Http/Controllers/ContactListController';
 import Button from '@/components/ui/button/Button.vue';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     Dialog,
     DialogContent,
@@ -13,14 +11,16 @@ import {
     DialogFooter,
     DialogDescription,
 } from '@/components/ui/dialog';
-import FilterBuilder from './partials/FilterBuilder.vue';
-import { store } from '@/actions/App/Http/Controllers/ContactListController';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 import type { FiltersJson } from '@/types/filters';
+import FilterBuilder from './partials/FilterBuilder.vue';
 
 type ListType = 'estatica' | 'dinamica';
 
-const props = defineProps<{
+defineProps<{
     statuses: Array<{ value: string; label: string }>;
     agents: Array<{ id: number; nome: string }>;
     instances: Array<{ id: number; label: string }>;
@@ -38,8 +38,8 @@ const confirmDialogOpen = ref(false);
 
 // Form state
 const form = useForm({
-    nome: '',
-    descricao: '',
+    name: '',
+    description: '',
     is_dynamic: false as boolean,
     filters_json: { version: 1, match: 'all', rules: [] } as FiltersJson,
 });
@@ -99,7 +99,9 @@ function cancelTypeChange(): void {
 }
 
 const submitLabel = computed(() =>
-    listType.value === 'dinamica' ? 'Criar lista dinâmica' : 'Criar lista estática',
+    listType.value === 'dinamica'
+        ? 'Criar lista dinâmica'
+        : 'Criar lista estática',
 );
 </script>
 
@@ -110,39 +112,50 @@ const submitLabel = computed(() =>
         <div class="flex flex-col gap-8 p-4 sm:p-6">
             <!-- Page title -->
             <div>
-                <h1 class="text-2xl font-semibold leading-tight text-foreground">
+                <h1
+                    class="text-2xl leading-tight font-semibold text-foreground"
+                >
                     Nova lista de contatos
                 </h1>
             </div>
 
             <form @submit.prevent="onSubmit" class="flex flex-col gap-8">
                 <!-- Section: common fields -->
-                <div class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-6">
+                <div
+                    class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-6"
+                >
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <!-- Nome -->
-                        <div class="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
+                        <div
+                            class="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1"
+                        >
                             <Label for="nome">
                                 Nome <span class="text-destructive">*</span>
                             </Label>
                             <Input
                                 id="nome"
-                                v-model="form.nome"
+                                v-model="form.name"
                                 type="text"
                                 placeholder="Ex: Leads SIAPE Janeiro"
                                 required
-                                :aria-invalid="!!form.errors.nome"
+                                :aria-invalid="!!form.errors.name"
                             />
-                            <p v-if="form.errors.nome" class="text-xs text-destructive">
-                                {{ form.errors.nome }}
+                            <p
+                                v-if="form.errors.name"
+                                class="text-xs text-destructive"
+                            >
+                                {{ form.errors.name }}
                             </p>
                         </div>
 
                         <!-- Descrição -->
-                        <div class="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
+                        <div
+                            class="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1"
+                        >
                             <Label for="descricao">Descrição</Label>
                             <Input
                                 id="descricao"
-                                v-model="form.descricao"
+                                v-model="form.description"
                                 type="text"
                                 placeholder="Opcional"
                             />
@@ -151,14 +164,21 @@ const submitLabel = computed(() =>
                 </div>
 
                 <!-- Section: Tipo de lista -->
-                <div class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-6">
-                    <h2 class="text-lg font-semibold text-foreground">Tipo de lista</h2>
+                <div
+                    class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-6"
+                >
+                    <h2 class="text-lg font-semibold text-foreground">
+                        Tipo de lista
+                    </h2>
 
                     <div class="flex flex-col gap-3 sm:flex-row sm:gap-6">
                         <!-- Estática option -->
                         <label
                             class="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-4 transition-colors hover:bg-muted/40"
-                            :class="{ 'border-primary bg-primary/5': listType === 'estatica' }"
+                            :class="{
+                                'border-primary bg-primary/5':
+                                    listType === 'estatica',
+                            }"
                         >
                             <input
                                 type="radio"
@@ -169,7 +189,11 @@ const submitLabel = computed(() =>
                                 @change="tryChangeType('estatica')"
                             />
                             <div class="flex flex-col gap-0.5">
-                                <span class="text-sm font-semibold text-foreground">Estática — importar CSV ou adicionar manualmente</span>
+                                <span
+                                    class="text-sm font-semibold text-foreground"
+                                    >Estática — importar CSV ou adicionar
+                                    manualmente</span
+                                >
                                 <span class="text-xs text-muted-foreground">
                                     Contatos fixos. Você define a lista uma vez.
                                 </span>
@@ -179,7 +203,10 @@ const submitLabel = computed(() =>
                         <!-- Dinâmica option -->
                         <label
                             class="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-4 transition-colors hover:bg-muted/40"
-                            :class="{ 'border-primary bg-primary/5': listType === 'dinamica' }"
+                            :class="{
+                                'border-primary bg-primary/5':
+                                    listType === 'dinamica',
+                            }"
                         >
                             <input
                                 type="radio"
@@ -190,15 +217,23 @@ const submitLabel = computed(() =>
                                 @change="tryChangeType('dinamica')"
                             />
                             <div class="flex flex-col gap-0.5">
-                                <span class="text-sm font-semibold text-foreground">Dinâmica — filtros que resolvem no disparo</span>
+                                <span
+                                    class="text-sm font-semibold text-foreground"
+                                    >Dinâmica — filtros que resolvem no
+                                    disparo</span
+                                >
                                 <span class="text-xs text-muted-foreground">
-                                    Leads calculados automaticamente no momento do envio.
+                                    Leads calculados automaticamente no momento
+                                    do envio.
                                 </span>
                             </div>
                         </label>
                     </div>
 
-                    <p v-if="form.errors.is_dynamic" class="text-xs text-destructive">
+                    <p
+                        v-if="form.errors.is_dynamic"
+                        class="text-xs text-destructive"
+                    >
                         {{ form.errors.is_dynamic }}
                     </p>
                 </div>
@@ -214,7 +249,10 @@ const submitLabel = computed(() =>
                         :agents="agents"
                         :instances="instances"
                     />
-                    <p v-if="form.errors.filters_json" class="mt-2 text-xs text-destructive">
+                    <p
+                        v-if="form.errors.filters_json"
+                        class="mt-2 text-xs text-destructive"
+                    >
                         {{ form.errors.filters_json }}
                     </p>
                 </div>
@@ -225,7 +263,8 @@ const submitLabel = computed(() =>
                     class="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card py-10 text-center"
                 >
                     <p class="text-sm text-muted-foreground">
-                        Contatos serão adicionados após criar a lista via importação CSV ou manualmente.
+                        Contatos serão adicionados após criar a lista via
+                        importação CSV ou manualmente.
                     </p>
                 </div>
 
@@ -237,10 +276,7 @@ const submitLabel = computed(() =>
                     >
                         Cancelar
                     </a>
-                    <Button
-                        type="submit"
-                        :disabled="form.processing"
-                    >
+                    <Button type="submit" :disabled="form.processing">
                         {{ form.processing ? 'Criando...' : submitLabel }}
                     </Button>
                 </div>
@@ -258,11 +294,15 @@ const submitLabel = computed(() =>
                 </DialogDescription>
             </DialogHeader>
             <p class="text-sm text-muted-foreground">
-                Ao trocar o tipo de lista, os dados preenchidos no modo atual serão perdidos.
-                Deseja continuar?
+                Ao trocar o tipo de lista, os dados preenchidos no modo atual
+                serão perdidos. Deseja continuar?
             </p>
             <DialogFooter>
-                <Button variant="outline" type="button" @click="cancelTypeChange">
+                <Button
+                    variant="outline"
+                    type="button"
+                    @click="cancelTypeChange"
+                >
                     Cancelar
                 </Button>
                 <Button type="button" @click="confirmTypeChange">
