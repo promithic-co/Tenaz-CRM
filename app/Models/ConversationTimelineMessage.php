@@ -23,6 +23,7 @@ class ConversationTimelineMessage extends Model
         'source',
         'interaction_id',
         'provider_message_id',
+        'metadata',
         'synced_to_agent_at',
     ];
 
@@ -30,6 +31,7 @@ class ConversationTimelineMessage extends Model
     {
         return [
             'media' => 'array',
+            'metadata' => 'array',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'synced_to_agent_at' => 'datetime',

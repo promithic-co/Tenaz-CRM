@@ -4,6 +4,7 @@ import { AlertTriangle } from 'lucide-vue-next';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import CampaignController from '@/actions/App/Http/Controllers/CampaignController';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatDateTime } from '@/lib/datetime';
 import type { BreadcrumbItem } from '@/types';
 
 type WhatsappInstance = {
@@ -361,7 +362,7 @@ function applyFilter(): void {
                                     class="mt-1 text-xs text-red-700 dark:text-red-300"
                                 >
                                     Risco confirmado em
-                                    {{ campaign.risk_acknowledged_at }}.
+                                    {{ formatDateTime(campaign.risk_acknowledged_at) }}.
                                 </p>
                             </div>
                         </div>
@@ -740,13 +741,13 @@ function applyFilter(): void {
                                 >
                             </td>
                             <td class="px-4 py-3 text-xs text-muted-foreground">
-                                {{ msg.sent_at ?? '—' }}
+                                {{ formatDateTime(msg.sent_at) ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-xs text-muted-foreground">
-                                {{ msg.delivered_at ?? '—' }}
+                                {{ formatDateTime(msg.delivered_at) ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-xs text-muted-foreground">
-                                {{ msg.read_at ?? '—' }}
+                                {{ formatDateTime(msg.read_at) ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-xs text-muted-foreground">
                                 <span

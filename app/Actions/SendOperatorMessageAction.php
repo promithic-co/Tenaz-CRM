@@ -9,6 +9,7 @@ use App\Services\AgentInteractionEventService;
 use App\Services\ConversationAutomationService;
 use App\Services\ConversationTimelineService;
 use App\Services\ServiceTicketLifecycleService;
+use App\Services\WhatsApp\WhatsAppConversationWindowResolver;
 use App\Services\WhatsappOutboxService;
 use Illuminate\Http\UploadedFile;
 
@@ -21,6 +22,7 @@ class SendOperatorMessageAction
         private readonly AgentInteractionEventService $interactionEvents,
         private readonly ServiceTicketLifecycleService $ticketLifecycle,
         private readonly StoreInboundMediaAction $storeMedia,
+        private readonly WhatsAppConversationWindowResolver $windowResolver,
     ) {}
 
     /**
@@ -60,6 +62,12 @@ class SendOperatorMessageAction
 
         $instance = $instanceModel->name;
         $providerKey = $instanceModel->provider?->value ?? 'meta_cloud';
+
+        // Server-side 24h window guard (defense against a stale UI or a direct API call).
+        // Throws ValidationException → 422 when the window is closed. Template sends do not
+        // reach this action, so they are unaffected.
+        $this->windowResolver->ensureFreeFormAllowed($lead, $providerKey);
+
         $mediaData = null;
         $timelineMessage = null;
 

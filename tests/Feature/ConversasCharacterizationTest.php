@@ -179,6 +179,9 @@ test('characterization: show prop tree exposes activeConversation shape', functi
                 ->has('handoff_state')
                 ->has('handoff_actions')
                 ->has('transfer_targets')
+                ->has('whatsappTemplatesEnabled')
+                ->has('whatsappTemplates')
+                ->has('templateSync')
             )
         );
 });
@@ -334,6 +337,9 @@ function sendMessageFixture(): array
         'nome' => 'Send Target',
         'whatsapp' => '5511988887777',
         'whatsapp_instance_id' => $instance->id,
+        // Free-form send now requires an open 24h window (guard added in the campaign-validation
+        // adjustments); open it so the branch characterization exercises the send path.
+        'service_window_expires_at' => now()->addHours(12),
     ]);
 
     return [$user, $lead, $instance];
@@ -487,6 +493,7 @@ test('characterization: sendMessage uses the per-lead instance, not a global def
     $lead = Lead::factory()->forAgent($agent)->create([
         'whatsapp' => '5511966665555',
         'whatsapp_instance_id' => $leadInstance->id,
+        'service_window_expires_at' => now()->addHours(12),
     ]);
 
     $response = $this->actingAs($user)

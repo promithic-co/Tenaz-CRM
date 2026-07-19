@@ -26,6 +26,7 @@ class IncomingConversationPersister
         private readonly CampaignReplyDetector $campaignDetector,
         private readonly ConversationAutomationService $automation,
         private readonly ContactSyncService $contactSync,
+        private readonly CampaignConversationTimelineWriter $campaignTimeline,
     ) {}
 
     /**
@@ -183,6 +184,10 @@ class IncomingConversationPersister
             return null;
         }
 
+        // Captured before any refresh()/detect() so the campaign-template backfill only runs
+        // for a lead born on this very inbound (not a returning contact).
+        $leadWasCreated = $lead->wasRecentlyCreated;
+
         // CRM-first: link the inbound lead to its canonical Contact. Runs outside the
         // lead-create transaction (own cache lock + writes) and must never hide the
         // message — a sync failure is logged, not propagated.
@@ -284,6 +289,13 @@ class IncomingConversationPersister
                 'mode' => $mode,
                 'duplicate' => true,
             ];
+        }
+
+        // Backfill the campaign templates that reached this phone before the lead existed, so a
+        // first-reply conversation opens already showing the message that started it. New leads
+        // only; ordered by original sent_at ahead of this inbound. Best-effort — never throws.
+        if ($leadWasCreated) {
+            $this->campaignTimeline->backfillForNewLead($lead);
         }
 
         $this->events->recordForLead(

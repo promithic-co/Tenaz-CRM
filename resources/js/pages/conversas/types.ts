@@ -102,6 +102,25 @@ export type ConversationWindowStatus = {
     };
 };
 
+export type WhatsappTemplateField = {
+    path: string;
+    component: 'header' | 'body' | 'button';
+    type: string;
+    label: string;
+    example: string | null;
+    required: boolean;
+};
+
+export type WhatsappTemplateOption = {
+    id: number;
+    name: string;
+    language: string | null;
+    category: string | null;
+    fields: WhatsappTemplateField[];
+    preview: string;
+    last_synced_at: string | null;
+};
+
 export type ActiveHandoff = {
     id: number;
     type: string;
@@ -132,6 +151,9 @@ export type ActiveConversation = {
     recentEvents: AuditEvent[];
     canStartCampaign: boolean;
     conversationWindow?: ConversationWindowStatus | null;
+    whatsappTemplatesEnabled?: boolean;
+    whatsappTemplates?: WhatsappTemplateOption[];
+    templateSync?: { count: number; synced_at: string | null } | null;
     active_handoff: ActiveHandoff | null;
     handoff_state:
         | 'waiting_human'

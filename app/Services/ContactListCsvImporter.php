@@ -7,9 +7,42 @@ use App\Models\ContactList;
 use App\Models\ContactListEntry;
 use App\Support\CsvDelimiterDetector;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 
 class ContactListCsvImporter
 {
+    /**
+     * Header aliases for the primary phone column, in descending priority.
+     * `contato` is deliberately last: it is ambiguous (may hold a name) and is
+     * only elected when no other phone alias is present.
+     *
+     * @var list<string>
+     */
+    private const PHONE_HEADER_ALIASES = [
+        'telefone', 'telefone1', 'telefoneprincipal', 'tel', 'tel1',
+        'celular', 'celular1', 'cel', 'whatsapp', 'wpp', 'zap',
+        'fone', 'numero', 'numerowhatsapp', 'numerotelefone', 'numerocelular',
+        'phone', 'phonenumber', 'mobile', 'contato',
+    ];
+
+    /**
+     * Header aliases for the secondary phone column, in descending priority.
+     *
+     * @var list<string>
+     */
+    private const PHONE2_HEADER_ALIASES = [
+        'telefone2', 'tel2', 'celular2', 'whatsapp2', 'numero2', 'phone2', 'telefonesecundario',
+    ];
+
+    /**
+     * Header aliases for the name column, in descending priority.
+     *
+     * @var list<string>
+     */
+    private const NAME_HEADER_ALIASES = [
+        'nome', 'nomecompleto', 'name', 'fullname', 'cliente', 'nomecliente', 'razaosocial',
+    ];
+
     public function __construct(
         private readonly ContactSyncService $contactSync,
     ) {}
@@ -54,12 +87,30 @@ class ContactListCsvImporter
                 return strtolower(trim($h));
             }, $rawHeaders);
 
-            $phoneCol = array_search('telefone', $headers) !== false ? array_search('telefone', $headers) : array_search('phone', $headers);
-            $phone2Col = array_search('telefone2', $headers) !== false ? array_search('telefone2', $headers) : array_search('phone2', $headers);
-            $nameCol = array_search('nome', $headers) !== false ? array_search('nome', $headers) : array_search('name', $headers);
+            // Aggressively normalized headers (accents stripped, separators collapsed)
+            // are used ONLY for alias matching. extra_data keeps the original $headers
+            // keys, which the campaign param mapping references.
+            $matchHeaders = array_map(fn (string $h): string => $this->normalizeHeaderForMatch($h), $headers);
+
+            $phoneCol = $this->resolveColumn($matchHeaders, self::PHONE_HEADER_ALIASES);
+            $phone2Col = $this->resolveColumn($matchHeaders, self::PHONE2_HEADER_ALIASES, [$phoneCol]);
+            $nameCol = $this->resolveColumn($matchHeaders, self::NAME_HEADER_ALIASES, [$phoneCol, $phone2Col]);
+
+            $hasHeader = true;
 
             if ($phoneCol === false) {
-                return ['error' => 'Coluna "TELEFONE" não encontrada. Verifique o padrão da planilha.'];
+                // Headerless fallback: if the first row itself is a valid phone, treat
+                // the file as having no header (common for .txt with one number per line)
+                // and reprocess that row as the first data row.
+                if ($this->contactSync->normalizePhone($rawHeaders[0] ?? null) !== null) {
+                    $hasHeader = false;
+                    $phoneCol = 0;
+                    $phone2Col = false;
+                    $nameCol = false;
+                    $headers = [];
+                } else {
+                    return ['error' => 'Nenhuma coluna de telefone encontrada. Use um cabeçalho como TELEFONE, CELULAR, WHATSAPP ou NUMERO.'];
+                }
             }
 
             // MEM-5: only preload the existing entries whose phone actually appears in
@@ -67,6 +118,11 @@ class ContactListCsvImporter
             // (which grows unbounded as a list matures). A first streaming pass collects
             // the file's canonical phones; the dedup set is then scoped to just those.
             $filePhones = [];
+
+            if (! $hasHeader) {
+                // Headerless: the first row is data, so scan from the very beginning.
+                rewind($handle);
+            }
 
             while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
                 $row = array_map(fn ($v) => $v !== null ? $this->toUtf8($v) : null, $row);
@@ -89,7 +145,10 @@ class ContactListCsvImporter
             // Rewind for the insert pass; the dedup set still accumulates phones imported
             // earlier in this same file to guard intra-file duplicates.
             rewind($handle);
-            fgetcsv($handle, 0, $delimiter);
+
+            if ($hasHeader) {
+                fgetcsv($handle, 0, $delimiter);
+            }
 
             $imported = 0;
             $skipped = 0;
@@ -175,6 +234,42 @@ class ContactListCsvImporter
         }
 
         return $phones;
+    }
+
+    /**
+     * Normalize a header for alias matching: strip accents and collapse any
+     * whitespace/underscore/hyphen/dot separators so that "Número  Whatsapp",
+     * "numero_whatsapp" and "NUMERO-WHATSAPP" all converge to "numerowhatsapp".
+     * The input is already lowercased/trimmed/BOM-stripped.
+     */
+    private function normalizeHeaderForMatch(string $header): string
+    {
+        $header = Str::ascii($header);
+        $header = preg_replace('/[\s_\-.]+/', '', $header) ?? $header;
+
+        return strtolower($header);
+    }
+
+    /**
+     * Resolve a column index by walking the aliases in descending priority and
+     * returning the first (leftmost) column whose normalized header matches,
+     * skipping any column indexes already claimed by another field.
+     *
+     * @param  list<string>  $matchHeaders  headers normalized via normalizeHeaderForMatch
+     * @param  list<string>  $aliases  aliases in descending priority
+     * @param  list<int|false>  $exclude  column indexes already claimed
+     */
+    private function resolveColumn(array $matchHeaders, array $aliases, array $exclude = []): int|false
+    {
+        foreach ($aliases as $alias) {
+            foreach ($matchHeaders as $i => $header) {
+                if ($header === $alias && ! in_array($i, $exclude, true)) {
+                    return $i;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

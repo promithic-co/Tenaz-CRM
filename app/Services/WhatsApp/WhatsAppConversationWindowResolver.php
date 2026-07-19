@@ -2,7 +2,11 @@
 
 namespace App\Services\WhatsApp;
 
+use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Pure read-side resolver for the WhatsApp conversation windows on a Lead.
@@ -20,6 +24,32 @@ use App\Models\Lead;
  */
 class WhatsAppConversationWindowResolver
 {
+    private const SERVICE_WINDOW_HOURS = 24;
+
+    /**
+     * Enforce Meta's 24h customer-service window server-side before a free-form (text/media)
+     * operator message. Template sends bypass this guard (they are always allowed). Only
+     * meta_cloud instances have the window — other providers return early.
+     *
+     * @throws ValidationException when the window is not open (closed, or no inbound yet).
+     */
+    public function ensureFreeFormAllowed(Lead $lead, string $providerKey): void
+    {
+        if ($providerKey !== 'meta_cloud') {
+            return;
+        }
+
+        $resolved = $this->resolve($lead);
+
+        if ($resolved['service_window']['status'] === 'open' || $resolved['free_entry_point']['status'] === 'active') {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'content' => 'A janela de 24 horas encerrou. Selecione um template aprovado para falar com o cliente.',
+        ]);
+    }
+
     /**
      * @return array{
      *   service_window: array{status: 'open'|'closed'|'unknown', remaining_seconds: int|null, expires_at: string|null},
@@ -32,8 +62,10 @@ class WhatsAppConversationWindowResolver
     {
         $now = now();
 
-        // Service window (24h)
-        $expiresAt = $lead->service_window_expires_at;
+        // Service window (24h). The stored column is authoritative; when it is null (legacy
+        // lead), derive the deadline from the last inbound timeline message so the window still
+        // resolves correctly for the guard, the props, and the side panel.
+        $expiresAt = $this->effectiveServiceWindowExpiry($lead);
         if ($expiresAt === null) {
             $serviceWindow = [
                 'status' => 'unknown',
@@ -99,5 +131,28 @@ class WhatsAppConversationWindowResolver
             'free_entry_point' => $freeEntry,
             'coexistence' => $coexistence,
         ];
+    }
+
+    /**
+     * The stored `service_window_expires_at` when present; otherwise the last inbound
+     * timeline message's time + 24h. Null when the column is unset and the lead has never
+     * sent an inbound (no window has ever opened).
+     */
+    private function effectiveServiceWindowExpiry(Lead $lead): ?CarbonInterface
+    {
+        if ($lead->service_window_expires_at !== null) {
+            return $lead->service_window_expires_at;
+        }
+
+        $lastInboundAt = ConversationTimelineMessage::query()
+            ->where('lead_id', $lead->id)
+            ->where('direction', 'inbound')
+            ->max('created_at');
+
+        if ($lastInboundAt === null) {
+            return null;
+        }
+
+        return Carbon::parse($lastInboundAt)->addHours(self::SERVICE_WINDOW_HOURS);
     }
 }

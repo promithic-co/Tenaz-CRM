@@ -98,6 +98,14 @@ class ProcessWhatsappOutboxMessageJob implements ShouldQueue
                     caption: $payload['caption'] ?? null,
                     opaqueId: $outbox->idempotency_key,
                 ),
+                'template' => $whatsapp->sendTemplateViaInstance(
+                    instance: $instance,
+                    phone: (string) $payload['phone'],
+                    templateName: (string) $payload['template_name'],
+                    langCode: (string) ($payload['lang_code'] ?? 'pt_BR'),
+                    components: is_array($payload['components'] ?? null) ? $payload['components'] : [],
+                    opaqueId: $outbox->idempotency_key,
+                ),
                 default => $whatsapp->sendTextViaInstance(
                     instance: $instance,
                     phone: (string) $payload['phone'],

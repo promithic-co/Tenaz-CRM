@@ -2,6 +2,7 @@
 import {
     AlertCircle,
     ArrowLeft,
+    Clock,
     FileText,
     MessageSquare,
     PanelRight,
@@ -10,10 +11,15 @@ import {
     Send,
     X,
 } from 'lucide-vue-next';
-import { nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import echo from '@/echo';
 import { send } from '@/routes/conversas';
-import type { ActiveConversation, Message } from '../types';
+import type {
+    ActiveConversation,
+    Message,
+    WhatsappTemplateOption,
+} from '../types';
+import TemplateSendDialog from './TemplateSendDialog.vue';
 
 type Props = {
     conversation: ActiveConversation | null;
@@ -24,6 +30,73 @@ const emit = defineEmits<{
     back: [];
     details: [];
 }>();
+
+const templateDialogOpen = ref(false);
+
+const availableTemplates = computed<WhatsappTemplateOption[]>(
+    () => props.conversation?.whatsappTemplates ?? [],
+);
+
+function openTemplateDialog(): void {
+    templateDialogOpen.value = true;
+}
+
+function onTemplateSent(message: Message): void {
+    upsertMessage(message);
+    // Sending a template reopens the 24h window; unlock the composer immediately.
+    serviceDeadline.value = Date.now() + SERVICE_WINDOW_MS;
+    scrollToBottom();
+}
+
+const SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+// A ticking clock drives the live window countdown so the composer locks the moment the 24h
+// window lapses, without a page reload. 30s granularity is plenty for a 24h window.
+const now = ref(Date.now());
+let clockTimer: ReturnType<typeof setInterval> | null = null;
+
+function toMs(value: string | null | undefined): number | null {
+    if (!value) {
+        return null;
+    }
+    const ms = new Date(value).getTime();
+    return Number.isNaN(ms) ? null : ms;
+}
+
+// Service-window deadline is reactive: it starts from the server payload and is pushed forward
+// locally when a new inbound message arrives (mirrors Meta reopening the 24h window on reply).
+const serviceDeadline = ref<number | null>(
+    toMs(props.conversation?.conversationWindow?.service_window.expires_at),
+);
+const freeEntryDeadline = ref<number | null>(
+    toMs(props.conversation?.conversationWindow?.free_entry_point.expires_at),
+);
+
+const windowClosed = computed<boolean>(() => {
+    const w = props.conversation?.conversationWindow;
+    if (!w) {
+        // No window signal (e.g. non-Meta provider) → never lock.
+        return false;
+    }
+
+    // A live free-entry-point window keeps the conversation open.
+    if (freeEntryDeadline.value !== null && freeEntryDeadline.value > now.value) {
+        return false;
+    }
+
+    if (serviceDeadline.value !== null) {
+        return serviceDeadline.value <= now.value;
+    }
+
+    // No deadline known — trust the server's requirement flag (no inbound ⇒ locked).
+    return w.template_required === true;
+});
+
+const templatesAvailable = computed<boolean>(
+    () =>
+        (props.conversation?.whatsappTemplatesEnabled ?? false) &&
+        (props.conversation?.whatsappTemplates?.length ?? 0) > 0,
+);
 
 const messages = ref<Message[]>(
     props.conversation ? [...props.conversation.mensagens] : [],
@@ -50,6 +123,10 @@ let channel: ReturnType<typeof echo.private> | null = null;
 onMounted(() => {
     scrollToBottom();
 
+    clockTimer = setInterval(() => {
+        now.value = Date.now();
+    }, 30_000);
+
     if (!props.conversation) {
         return;
     }
@@ -57,6 +134,7 @@ onMounted(() => {
     channel = echo.private(`conversation.${props.conversation.lead.id}`);
     channel.listen('.message.new', (event: { message: Message }) => {
         upsertMessage(event.message);
+        reopenWindowForInbound(event.message);
         scrollToBottom();
     });
 });
@@ -64,11 +142,24 @@ onMounted(() => {
 onUnmounted(() => {
     clearFile();
 
+    if (clockTimer) {
+        clearInterval(clockTimer);
+        clockTimer = null;
+    }
+
     if (channel && props.conversation) {
         channel.stopListening('.message.new');
         echo.leave(`conversation.${props.conversation.lead.id}`);
     }
 });
+
+// A fresh inbound reopens Meta's 24h service window; recompute the deadline locally so the
+// composer unlocks immediately without waiting for a page reload.
+function reopenWindowForInbound(message: Message): void {
+    if (message.role === 'user') {
+        serviceDeadline.value = Date.now() + SERVICE_WINDOW_MS;
+    }
+}
 
 function formatBytes(bytes: number): string {
     if (bytes < 1024) {
@@ -180,6 +271,12 @@ async function sendMessage(): Promise<void> {
     }
 
     if (!messageText.value.trim() && !selectedFile.value) {
+        return;
+    }
+
+    if (windowClosed.value) {
+        sendError.value =
+            'A janela de 24h está fechada. Envie um template aprovado ou aguarde o cliente responder.';
         return;
     }
 
@@ -424,10 +521,42 @@ function onKeydown(event: KeyboardEvent): void {
         </div>
 
         <div
+            v-if="windowClosed"
+            class="flex shrink-0 flex-col gap-2 border-t border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/40 dark:bg-amber-900/15"
+        >
+            <div class="flex items-start gap-2">
+                <Clock
+                    class="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+                />
+                <div class="text-xs text-amber-800 dark:text-amber-200">
+                    <p class="font-semibold">Janela de 24h fechada</p>
+                    <p class="text-amber-700/90 dark:text-amber-300/80">
+                        Para falar de novo, envie um template aprovado ou aguarde
+                        o cliente responder.
+                    </p>
+                </div>
+            </div>
+            <button
+                v-if="templatesAvailable"
+                type="button"
+                class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
+                @click="openTemplateDialog"
+            >
+                <FileText class="h-3.5 w-3.5" />
+                Enviar template
+            </button>
+        </div>
+
+        <div
             class="flex shrink-0 items-end gap-2 border-t border-sidebar-border/70 px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-3 dark:border-sidebar-border"
         >
             <label
-                class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                :class="[
+                    'flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors',
+                    windowClosed
+                        ? 'cursor-not-allowed opacity-40'
+                        : 'cursor-pointer hover:bg-muted hover:text-foreground',
+                ]"
             >
                 <Paperclip class="h-4 w-4" />
                 <input
@@ -435,25 +564,53 @@ function onKeydown(event: KeyboardEvent): void {
                     type="file"
                     accept=".jpg,.jpeg,.png,.pdf"
                     class="hidden"
+                    :disabled="windowClosed"
                     @change="onFileSelect"
                 />
             </label>
+            <button
+                v-if="templatesAvailable && !windowClosed"
+                type="button"
+                class="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Enviar template"
+                @click="openTemplateDialog"
+            >
+                <FileText class="h-4 w-4" />
+            </button>
             <textarea
                 v-model="messageText"
                 rows="1"
-                placeholder="Digite uma mensagem..."
-                class="min-h-10 flex-1 resize-none rounded-lg border border-sidebar-border/70 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:outline-none dark:border-sidebar-border"
+                :disabled="windowClosed"
+                :placeholder="
+                    windowClosed
+                        ? 'Janela fechada — envie um template para continuar.'
+                        : 'Digite uma mensagem...'
+                "
+                class="min-h-10 flex-1 resize-none rounded-lg border border-sidebar-border/70 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-sidebar-border"
                 @keydown="onKeydown"
             />
             <button
                 type="button"
-                :disabled="sending || (!messageText.trim() && !selectedFile)"
+                :disabled="
+                    windowClosed ||
+                    sending ||
+                    (!messageText.trim() && !selectedFile)
+                "
                 class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 @click="sendMessage"
             >
                 <Send class="h-4 w-4" />
             </button>
         </div>
+
+        <TemplateSendDialog
+            v-if="conversation"
+            :open="templateDialogOpen"
+            :lead-id="conversation.lead.id"
+            :templates="availableTemplates"
+            @close="templateDialogOpen = false"
+            @sent="onTemplateSent"
+        />
     </section>
 
     <section

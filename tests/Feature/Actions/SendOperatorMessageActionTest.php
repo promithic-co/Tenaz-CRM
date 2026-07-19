@@ -6,11 +6,12 @@ use App\Models\Lead;
 use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappOutboxMessage;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Storage;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 /**
  * Behaviour coverage for SendOperatorMessageAction (Plan B.4), the operator
@@ -32,6 +33,9 @@ function sendActionFixture(): array
     $lead = Lead::factory()->forAgent($agent)->create([
         'whatsapp' => '5511955554444',
         'whatsapp_instance_id' => $instance->id,
+        // Free-form sends now require an open 24h window (guard added in the campaign-validation
+        // adjustments); open it so these branch-mechanics tests exercise the send, not the guard.
+        'service_window_expires_at' => now()->addHours(12),
     ]);
 
     return [$user, $lead, $instance];
@@ -133,6 +137,7 @@ test('resolves the per-lead instance and never a global default', function () {
     $lead = Lead::factory()->forAgent($agent)->create([
         'whatsapp' => '5511933332222',
         'whatsapp_instance_id' => $leadInstance->id,
+        'service_window_expires_at' => now()->addHours(12),
     ]);
     $this->actingAs($user);
 

@@ -19,6 +19,7 @@ use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use App\Services\AgentInteractionEventService;
 use App\Services\BroadcastDebouncer;
+use App\Services\CampaignConversationTimelineWriter;
 use App\Services\CampaignService;
 use App\Services\Dashboard\DashboardMetricsService;
 use App\Services\WhatsApp\PhoneNumberValidator;
@@ -419,6 +420,15 @@ class SendCampaignMessageJob implements ShouldQueue
             if (! $message->markSentIfOwned($attemptToken, $providerMessageId)) {
                 return;
             }
+
+            app(CampaignConversationTimelineWriter::class)->mirrorSentTemplate(
+                $campaign,
+                $entry,
+                $destination,
+                $providerMessageId,
+                $resolvedParams,
+                $sendConfig->templateComponents,
+            );
 
             $this->dispatchProgressIfReady($debouncer, $campaign);
             app(DashboardMetricsService::class)->dispatchUpdate((string) $campaign->tenant_id);

@@ -130,6 +130,75 @@ it('returns an error when the phone column is missing', function () {
     expect($result['error'])->toContain('TELEFONE');
 });
 
+it('imports using a phone header alias', function (string $header) {
+    $list = makeImportList();
+
+    $result = importContent($list, "{$header},nome\n5511999990001,João\n");
+
+    expect($result)->toBe(['imported' => 1, 'skipped' => 0]);
+    expect(ContactListEntry::where('contact_list_id', $list->id)->first()->phone)->toBe('5511999990001');
+})->with(['CELULAR', 'whatsapp', 'Numero', 'Fone', 'Mobile']);
+
+it('matches a phone header ignoring accents and separators', function () {
+    $list = makeImportList();
+
+    $result = importContent($list, "Número  Whatsapp,nome\n5511999990001,João\n");
+
+    expect($result)->toBe(['imported' => 1, 'skipped' => 0]);
+});
+
+it('uses contato as the phone column when no other phone alias exists', function () {
+    $list = makeImportList();
+
+    $result = importContent($list, "contato,cidade\n5511999990001,Curitiba\n");
+
+    expect($result)->toBe(['imported' => 1, 'skipped' => 0]);
+    $entry = ContactListEntry::where('contact_list_id', $list->id)->first();
+    expect($entry->phone)->toBe('5511999990001')
+        ->and($entry->extra_data)->toBe(['cidade' => 'Curitiba']);
+});
+
+it('prefers a stronger phone alias over contato and keeps contato in extra_data', function () {
+    $list = makeImportList();
+
+    $result = importContent($list, "contato,celular\nJoão da Silva,5511999990001\n");
+
+    expect($result)->toBe(['imported' => 1, 'skipped' => 0]);
+    $entry = ContactListEntry::where('contact_list_id', $list->id)->first();
+    expect($entry->phone)->toBe('5511999990001')
+        ->and($entry->extra_data)->toBe(['contato' => 'João da Silva']);
+});
+
+it('imports a secondary phone via a phone2 alias', function () {
+    $list = makeImportList();
+
+    $result = importContent($list, "celular,celular2,nome\n5511999990001,5511988887777,João\n");
+
+    expect($result)->toBe(['imported' => 2, 'skipped' => 0]);
+    $phones = ContactListEntry::where('contact_list_id', $list->id)->orderBy('phone')->pluck('phone')->all();
+    expect($phones)->toBe(['5511988887777', '5511999990001']);
+});
+
+it('imports a headerless file with one phone per line', function () {
+    $list = makeImportList();
+
+    $result = importContent($list, "5511999990001\n5511988887777\n");
+
+    expect($result)->toBe(['imported' => 2, 'skipped' => 0]);
+    $phones = ContactListEntry::where('contact_list_id', $list->id)->orderBy('phone')->pluck('phone')->all();
+    expect($phones)->toBe(['5511988887777', '5511999990001']);
+    expect(ContactListEntry::where('contact_list_id', $list->id)->whereNotNull('extra_data')->count())->toBe(0);
+});
+
+it('errors with guidance when no phone column and first row is not a phone', function () {
+    $list = makeImportList();
+
+    $result = importContent($list, "cargo,cidade\nGerente,Curitiba\n");
+
+    expect($result)->toHaveKey('error');
+    expect($result['error'])->toContain('CELULAR');
+});
+
 it('scopes the dedup preload to phones present in the file, not the whole list (MEM-5)', function () {
     $list = makeImportList();
 

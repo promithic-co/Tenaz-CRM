@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\ClearLeadHistoryAction;
 use App\Actions\SendOperatorMessageAction;
+use App\Actions\SendOperatorTemplateAction;
 use App\Http\Requests\BulkTransferRequest;
 use App\Http\Requests\InboxFilterRequest;
 use App\Http\Requests\SendConversationMessageRequest;
@@ -269,14 +270,25 @@ class ConversasController extends Controller
         SendConversationMessageRequest $request,
         Lead $lead,
         SendOperatorMessageAction $sendMessage,
+        SendOperatorTemplateAction $sendTemplate,
     ): JsonResponse {
-        $result = $sendMessage->send(
-            lead: $lead,
-            content: $request->input('content'),
-            file: $request->file('file'),
-            actor: auth()->user(),
-            broadcastToOthers: (bool) $request->header('X-Socket-ID'),
-        );
+        $templateId = $request->integer('template_id');
+
+        $result = $templateId > 0
+            ? $sendTemplate->send(
+                lead: $lead,
+                templateId: $templateId,
+                parameters: (array) $request->input('template_parameters', []),
+                actor: auth()->user(),
+                broadcastToOthers: (bool) $request->header('X-Socket-ID'),
+            )
+            : $sendMessage->send(
+                lead: $lead,
+                content: $request->input('content'),
+                file: $request->file('file'),
+                actor: auth()->user(),
+                broadcastToOthers: (bool) $request->header('X-Socket-ID'),
+            );
 
         if ($result === null) {
             return response()->json([

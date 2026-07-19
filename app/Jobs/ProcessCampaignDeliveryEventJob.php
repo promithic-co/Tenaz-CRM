@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\CampaignMessage;
+use App\Models\ConversationTimelineMessage;
 use App\Models\WhatsappOutboxMessage;
 use App\Services\ConversationTimelineService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -182,6 +183,10 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
         }
 
         if (! $outbox) {
+            // Campaigns bypass the outbox, so a delivery event for a campaign send finds none.
+            // Fall back to correlating the campaign's mirrored timeline row by wamid.
+            $this->syncCampaignTimeline($newStatus);
+
             return;
         }
 
@@ -205,6 +210,27 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
         $status = $newStatus === 'failed' ? 'failed' : $newStatus;
         $outbox->timelineMessage->update(['status' => $status]);
         app(ConversationTimelineService::class)->broadcast($outbox->timelineMessage->fresh());
+    }
+
+    /**
+     * Advance the campaign's mirrored timeline row (source='campaign'), correlated by wamid,
+     * when no outbox row owns this send. Keeps the /conversas bubble's delivered/read/failed
+     * status in sync in real time.
+     */
+    private function syncCampaignTimeline(string $newStatus): void
+    {
+        $timelineMessage = ConversationTimelineMessage::query()
+            ->where('provider_message_id', $this->providerMessageId)
+            ->where('direction', 'outbound')
+            ->when($this->tenantId !== null, fn ($q) => $q->where('tenant_id', $this->tenantId))
+            ->first();
+
+        if (! $timelineMessage) {
+            return;
+        }
+
+        $timelineMessage->update(['status' => $newStatus === 'failed' ? 'failed' : $newStatus]);
+        app(ConversationTimelineService::class)->broadcast($timelineMessage->fresh());
     }
 
     private function mapEventToStatus(string $eventType): ?string

@@ -7,12 +7,17 @@ use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ConversationTimelineService
 {
     /**
      * @param  array<string, mixed>|null  $media
+     * @param  array<string, mixed>|null  $metadata  extra structured payload (e.g. a template snapshot)
+     * @param  \DateTimeInterface|null  $occurredAt  overrides created_at/updated_at — used when
+     *                                               backfilling historical rows (campaign templates)
+     *                                               so they sort into the timeline at their real time.
      */
     public function record(
         Lead $lead,
@@ -26,13 +31,15 @@ class ConversationTimelineService
         ?string $interactionId = null,
         ?string $providerMessageId = null,
         ?string $conversationId = null,
+        ?array $metadata = null,
+        ?\DateTimeInterface $occurredAt = null,
     ): ConversationTimelineMessage {
         // Agent-authored rows are pre-marked synced because laravel/ai already wrote them
         // into agent_conversation_messages when $agent->prompt() returned. Lead/human rows
         // start NULL so ConversationContextSynchronizer picks them up on the next turn.
         $syncedAt = $senderType === 'agent' ? now() : null;
 
-        $message = ConversationTimelineMessage::create([
+        $message = new ConversationTimelineMessage([
             'tenant_id' => (string) $lead->tenant_id,
             'lead_id' => $lead->id,
             'conversation_id' => $conversationId ?? $lead->conversation_id,
@@ -45,8 +52,18 @@ class ConversationTimelineService
             'source' => $source,
             'interaction_id' => $interactionId,
             'provider_message_id' => $providerMessageId,
+            'metadata' => $metadata,
             'synced_to_agent_at' => $syncedAt,
         ]);
+
+        // Setting the timestamps before save() marks them dirty, so Eloquent's
+        // updateTimestamps() leaves them untouched and the backfilled row keeps its real time.
+        if ($occurredAt !== null) {
+            $message->created_at = $occurredAt;
+            $message->updated_at = $occurredAt;
+        }
+
+        $message->save();
 
         return $message;
     }
@@ -63,7 +80,7 @@ class ConversationTimelineService
                 $pending->toOthers();
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('conversation_timeline.broadcast_failed', [
+            Log::warning('conversation_timeline.broadcast_failed', [
                 'timeline_message_id' => $message->id,
                 'lead_id' => $message->lead_id,
                 'error' => $e->getMessage(),

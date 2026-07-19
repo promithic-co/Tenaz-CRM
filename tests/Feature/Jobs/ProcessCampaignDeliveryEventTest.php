@@ -3,6 +3,8 @@
 use App\Jobs\ProcessCampaignDeliveryEventJob;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
+use App\Models\ConversationTimelineMessage;
+use App\Models\Lead;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -104,6 +106,33 @@ test('ProcessCampaignDeliveryEventJob mutates own-tenant message when tenant thr
 
     expect($message->fresh()->status)->toBe('delivered');
     expect($campaign->fresh()->total_delivered)->toBe(1);
+});
+
+test('ProcessCampaignDeliveryEventJob syncs the mirrored campaign timeline row by wamid', function () {
+    $campaign = Campaign::factory()->sending()->create(['total_sent' => 1]);
+    $message = CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'provider_message_id' => 'gs-timeline-001',
+    ]);
+
+    $lead = Lead::factory()->forTenant((string) $campaign->tenant_id)->create();
+    $timelineRow = ConversationTimelineMessage::create([
+        'tenant_id' => (string) $campaign->tenant_id,
+        'lead_id' => $lead->id,
+        'direction' => 'outbound',
+        'sender_type' => 'system',
+        'channel' => 'whatsapp',
+        'body' => 'Template body',
+        'status' => 'sent',
+        'source' => 'campaign',
+        'provider_message_id' => 'gs-timeline-001',
+    ]);
+
+    $job = new ProcessCampaignDeliveryEventJob('gs-timeline-001', 'read', tenantId: (string) $campaign->tenant_id);
+    $job->handle();
+
+    expect($timelineRow->fresh()->status)->toBe('read')
+        ->and($message->fresh()->status)->toBe('read');
 });
 
 test('ProcessCampaignDeliveryEventJob saves Meta delivery error details', function () {
