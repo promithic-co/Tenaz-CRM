@@ -141,6 +141,9 @@ class FollowUpSettingsResolver
         return [
             ...$this->defaults(),
             'first_delay_minutes' => $config->followup_first_delay_minutes,
+            'min_interval_minutes' => $config->followup_interval_days > 0
+                ? (int) $config->followup_interval_days * 1440
+                : 60,
             'max_attempts_within_window' => $config->followup_max_count,
             'business_window_start' => $config->followup_window_start ?? '08:00',
             'business_window_end' => $config->followup_window_end ?? '20:00',

@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::show
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
 export const show = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::show
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
 show.url = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ show.url = (args: { agent: number | { id: number } } | [agent: number | { id: nu
 
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::show
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
 show.get = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -58,7 +58,7 @@ show.get = (args: { agent: number | { id: number } } | [agent: number | { id: nu
 })
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::show
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
 show.head = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -68,7 +68,7 @@ show.head = (args: { agent: number | { id: number } } | [agent: number | { id: n
 
     /**
 * @see \App\Http\Controllers\AgentFollowUpController::show
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
     const showForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -78,7 +78,7 @@ show.head = (args: { agent: number | { id: number } } | [agent: number | { id: n
 
             /**
 * @see \App\Http\Controllers\AgentFollowUpController::show
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
         showForm.get = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -87,7 +87,7 @@ show.head = (args: { agent: number | { id: number } } | [agent: number | { id: n
         })
             /**
 * @see \App\Http\Controllers\AgentFollowUpController::show
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
         showForm.head = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -103,7 +103,7 @@ show.head = (args: { agent: number | { id: number } } | [agent: number | { id: n
     show.form = showForm
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::update
- * @see app/Http/Controllers/AgentFollowUpController.php:56
+ * @see app/Http/Controllers/AgentFollowUpController.php:47
  * @route '/agentes/{agent}/follow-up'
  */
 export const update = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -118,7 +118,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::update
- * @see app/Http/Controllers/AgentFollowUpController.php:56
+ * @see app/Http/Controllers/AgentFollowUpController.php:47
  * @route '/agentes/{agent}/follow-up'
  */
 update.url = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -151,7 +151,7 @@ update.url = (args: { agent: number | { id: number } } | [agent: number | { id: 
 
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::update
- * @see app/Http/Controllers/AgentFollowUpController.php:56
+ * @see app/Http/Controllers/AgentFollowUpController.php:47
  * @route '/agentes/{agent}/follow-up'
  */
 update.post = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -161,7 +161,7 @@ update.post = (args: { agent: number | { id: number } } | [agent: number | { id:
 
     /**
 * @see \App\Http\Controllers\AgentFollowUpController::update
- * @see app/Http/Controllers/AgentFollowUpController.php:56
+ * @see app/Http/Controllers/AgentFollowUpController.php:47
  * @route '/agentes/{agent}/follow-up'
  */
     const updateForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -171,7 +171,7 @@ update.post = (args: { agent: number | { id: number } } | [agent: number | { id:
 
             /**
 * @see \App\Http\Controllers\AgentFollowUpController::update
- * @see app/Http/Controllers/AgentFollowUpController.php:56
+ * @see app/Http/Controllers/AgentFollowUpController.php:47
  * @route '/agentes/{agent}/follow-up'
  */
         updateForm.post = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

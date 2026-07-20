@@ -12,6 +12,7 @@ use App\Models\ContactListEntry;
 use App\Services\ContactCollectedInformationService;
 use App\Services\ContactExtraDataService;
 use App\Services\ContactSyncService;
+use App\Services\FollowUpStateSummarizer;
 use App\Services\WhatsApp\WhatsAppConversationWindowResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -113,12 +114,12 @@ class ContactController extends Controller
         ]);
     }
 
-    public function show(Contact $contact): Response
+    public function show(Contact $contact, FollowUpStateSummarizer $followUpState): Response
     {
         $this->authorize('view', $contact);
 
         $contact->load([
-            'leads' => fn ($q) => $q->select('id', 'contact_id', 'nome', 'whatsapp', 'status', 'operational_stage', 'agent_id', 'evolution_instance', 'service_window_expires_at', 'free_entry_point_expires_at', 'conversation_window_source', 'updated_at'),
+            'leads' => fn ($q) => $q->select('id', 'contact_id', 'nome', 'whatsapp', 'status', 'operational_stage', 'agent_id', 'tenant_id', 'followup_status', 'followup_count', 'last_inbound_at', 'evolution_instance', 'service_window_expires_at', 'free_entry_point_expires_at', 'conversation_window_source', 'updated_at'),
             'leads.tags:id,name,color,slug,is_hot',
             'contactListEntries.contactList:id,name,tenant_id',
         ]);
@@ -130,11 +131,15 @@ class ContactController extends Controller
             ? app(WhatsAppConversationWindowResolver::class)->resolve($latestLead->loadMissing('whatsappInstance'))
             : null;
 
+        $followupByLead = $followUpState->forLeads($contact->leads);
+        $contact->leads->each(fn ($lead) => $lead->setAttribute('followup', $followupByLead[$lead->id] ?? null));
+
         return Inertia::render('contatos/Show', [
             'contact' => $contact,
             'leads' => $contact->leads,
             'listMemberships' => $contact->contactListEntries,
             'conversationWindow' => $conversationWindow,
+            'followupState' => $latestLead ? $followUpState->forLead($latestLead) : null,
             'collectedInformation' => $this->collectedInformation->items($contact),
             'can' => [
                 'manage' => auth()->user()?->isOwnerOrAdmin() ?? false,

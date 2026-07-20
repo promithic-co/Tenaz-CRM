@@ -167,18 +167,18 @@ test('agent follow-up update clears scheduler settings cache', function () {
 
     $this->actingAs($user)
         ->post(route('agentes.followup.update', $agent), [
+            'enabled' => true,
             'first_delay_minutes' => 35,
-            'daily_time' => '10:00',
             'max_count' => 3,
-            'approach' => 'natural',
             'followup_window_start' => '08:00',
             'followup_window_end' => '20:00',
-            'followup_interval_days' => 1,
+            'min_interval_minutes' => 60,
             'message_type' => 'reengajamento',
             'tone' => 'consultivo',
             'persuasion_intensity' => 2,
             'custom_instructions' => '',
         ])
+        ->assertSessionHasNoErrors()
         ->assertRedirect();
 
     expect($resolver->forLead($lead)['first_delay_minutes'])->toBe(35);

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Events\NewConversationMessage;
+use App\Models\ConversationSession;
 use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
 use Carbon\Carbon;
@@ -33,15 +34,27 @@ class ConversationTimelineService
         ?string $conversationId = null,
         ?array $metadata = null,
         ?\DateTimeInterface $occurredAt = null,
+        ?int $sessionId = null,
     ): ConversationTimelineMessage {
         // Agent-authored rows are pre-marked synced because laravel/ai already wrote them
         // into agent_conversation_messages when $agent->prompt() returned. Lead/human rows
         // start NULL so ConversationContextSynchronizer picks them up on the next turn.
         $syncedAt = $senderType === 'agent' ? now() : null;
 
+        // Stamp the atendimento this message belongs to. Callers on the inbound path pass
+        // the session they just opened; every other path (operator reply, follow-up,
+        // campaign) falls back to the lead's currently-open session so history segments
+        // correctly without touching each call site. Global scopes are bypassed because
+        // this runs on the queue where the tenant scope is inert.
+        $resolvedSessionId = $sessionId ?? ConversationSession::withoutGlobalScopes()
+            ->where('lead_id', $lead->id)
+            ->where('status', ConversationSession::STATUS_OPEN)
+            ->value('id');
+
         $message = new ConversationTimelineMessage([
             'tenant_id' => (string) $lead->tenant_id,
             'lead_id' => $lead->id,
+            'session_id' => $resolvedSessionId,
             'conversation_id' => $conversationId ?? $lead->conversation_id,
             'direction' => $direction,
             'sender_type' => $senderType,
@@ -95,6 +108,7 @@ class ConversationTimelineService
     {
         return [
             'id' => $message->id,
+            'session_id' => $message->session_id,
             'role' => match ($message->sender_type) {
                 'lead' => 'user',
                 'human' => 'operator',

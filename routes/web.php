@@ -10,6 +10,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ContactListController;
 use App\Http\Controllers\ContactListEntryController;
 use App\Http\Controllers\ConversasController;
+use App\Http\Controllers\ConversationSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeRedirectController;
 use App\Http\Controllers\InvitationController;
@@ -73,6 +74,10 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::post('/conversas/{lead}/followup-reactivate', [LeadFollowUpController::class, 'reactivate'])->name('conversas.followup.reactivate');
     Route::post('/conversas/{lead}/clear-history', [ConversasController::class, 'clearHistory'])->name('conversas.clearHistory');
     Route::post('/conversas/{lead}/send', [ConversasController::class, 'sendMessage'])->name('conversas.send');
+    Route::post('/conversas/{lead}/sessions', [ConversationSessionController::class, 'store'])->name('conversas.sessions.store');
+    Route::post('/conversas/{lead}/sessions/{session}/close', [ConversationSessionController::class, 'close'])
+        ->scopeBindings()
+        ->name('conversas.sessions.close');
     Route::post('/conversas/{lead}/prepare-campaign', [LeadManagementController::class, 'prepareCampaign'])->name('conversas.prepare-campaign');
     Route::post('/conversas/{lead}/add-to-contacts', [LeadManagementController::class, 'addToContacts'])->name('conversas.add-to-contacts');
     Route::post('/leads/{lead}/status', [LeadStatusController::class, 'update'])->name('leads.status.update');

@@ -7,6 +7,15 @@ export type CollectedInformationItem = {
     source: 'manual' | 'ai';
 };
 
+export type FollowupState = {
+    status: string;
+    count: number;
+    max: number;
+    next_due_at: string | null;
+    reason: string;
+    reason_label: string;
+};
+
 export interface CreditoJson {
     status?: string;
     margem_disponivel?: number;

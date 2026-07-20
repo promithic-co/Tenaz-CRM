@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\ContactController::update
- * @see app/Http/Controllers/ContactController.php:194
+ * @see app/Http/Controllers/ContactController.php:199
  * @route '/contatos/{contact}/informacoes-coletadas'
  */
 export const update = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -16,7 +16,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\ContactController::update
- * @see app/Http/Controllers/ContactController.php:194
+ * @see app/Http/Controllers/ContactController.php:199
  * @route '/contatos/{contact}/informacoes-coletadas'
  */
 update.url = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ update.url = (args: { contact: number | { id: number } } | [contact: number | { 
 
 /**
 * @see \App\Http\Controllers\ContactController::update
- * @see app/Http/Controllers/ContactController.php:194
+ * @see app/Http/Controllers/ContactController.php:199
  * @route '/contatos/{contact}/informacoes-coletadas'
  */
 update.patch = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -59,7 +59,7 @@ update.patch = (args: { contact: number | { id: number } } | [contact: number | 
 
     /**
 * @see \App\Http\Controllers\ContactController::update
- * @see app/Http/Controllers/ContactController.php:194
+ * @see app/Http/Controllers/ContactController.php:199
  * @route '/contatos/{contact}/informacoes-coletadas'
  */
     const updateForm = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -74,7 +74,7 @@ update.patch = (args: { contact: number | { id: number } } | [contact: number | 
 
             /**
 * @see \App\Http\Controllers\ContactController::update
- * @see app/Http/Controllers/ContactController.php:194
+ * @see app/Http/Controllers/ContactController.php:199
  * @route '/contatos/{contact}/informacoes-coletadas'
  */
         updateForm.patch = (args: { contact: number | { id: number } } | [contact: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

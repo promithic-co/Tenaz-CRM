@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Contact;
+use App\Models\ConversationSession;
 use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
@@ -27,6 +28,7 @@ class IncomingConversationPersister
         private readonly ConversationAutomationService $automation,
         private readonly ContactSyncService $contactSync,
         private readonly CampaignConversationTimelineWriter $campaignTimeline,
+        private readonly ConversationSessionLifecycleService $sessions,
     ) {}
 
     /**
@@ -220,8 +222,9 @@ class IncomingConversationPersister
         // Campaign detection runs against the freshly persisted lead — keeping
         // it inside the persister keeps "what the CRM knows about this contact"
         // in one place. Failure of the detector must not hide the message.
+        $campaign = null;
         try {
-            $this->campaignDetector->detect($lead, $phone, $tenantId);
+            $campaign = $this->campaignDetector->detect($lead, $phone, $tenantId);
             $lead->refresh();
         } catch (\Throwable $e) {
             Log::warning('whatsapp_persister.campaign_detect_failed', [
@@ -240,6 +243,24 @@ class IncomingConversationPersister
         // failure before it triggers a clean full retry rather than committing a half-inbound.
         $mode = $this->automation->resolveMode($lead, $instanceName);
 
+        // Campaign attribution (Slice 5): when this inbound replies to a campaign, open the
+        // atendimento as a campaign cycle and stamp campaign_id so conversion is attributed to
+        // this session, not the lead's whole life. A post-terminal reengagement still wins the
+        // open_reason (the guard below depends on it) — the campaign_id metadata is kept regardless.
+        $sessionReason = null;
+        $sessionMetadata = [];
+        if ($campaign !== null) {
+            $sessionMetadata['campaign_id'] = $campaign->id;
+
+            if (! in_array((string) $lead->status, ConversationSessionLifecycleService::TERMINAL_STATUSES, true)) {
+                $sessionReason = ConversationSession::OPEN_REASON_CAMPAIGN;
+            }
+        }
+
+        // Open (or reuse) the atendimento this inbound belongs to before the inbound
+        // bookkeeping, so markInbound and the timeline row below both see the session.
+        $session = $this->sessions->ensureOpenSession($lead, $sessionReason, $sessionMetadata);
+
         DB::transaction(function () use ($lead, $mode, $referral): void {
             if ($lead->followup_status === 'active') {
                 $lead->update(['followup_status' => 'inactive']);
@@ -247,6 +268,15 @@ class IncomingConversationPersister
 
             $this->automation->markInbound($lead, $mode, $referral);
         });
+
+        // A returning inbound after a terminal status opens a fresh session: the AI must
+        // not answer a concluded sale — park it in the human queue and pause automation.
+        // markInbound leaves the terminal stage frozen, so this override wins cleanly.
+        if ($session->wasRecentlyCreated
+            && $session->open_reason === ConversationSession::OPEN_REASON_REENGAGEMENT_AFTER_TERMINAL) {
+            $this->sessions->applyPostTerminalGuard($lead);
+            $lead->refresh();
+        }
 
         try {
             $timelineMessage = $this->timeline->record(
@@ -259,6 +289,7 @@ class IncomingConversationPersister
                 source: 'webhook',
                 interactionId: $interactionId,
                 providerMessageId: $providerMessageId,
+                sessionId: $session->id,
             );
         } catch (QueryException $e) {
             // A concurrent redelivery won the insert race because the Redis lock degraded;

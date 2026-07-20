@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Lead extends Model
@@ -330,6 +331,18 @@ class Lead extends Model
     public function tickets(): HasMany
     {
         return $this->hasMany(ServiceTicket::class);
+    }
+
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(ConversationSession::class);
+    }
+
+    /** The single currently-open atendimento, if any (one-open-per-lead invariant). */
+    public function openSession(): HasOne
+    {
+        return $this->hasOne(ConversationSession::class)
+            ->where('status', ConversationSession::STATUS_OPEN);
     }
 
     public function followupMessages(): HasMany

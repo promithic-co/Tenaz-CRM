@@ -6,6 +6,7 @@ use App\Events\AtendimentoCountersUpdated;
 use App\Events\HumanHandoffClaimed;
 use App\Events\HumanHandoffResolved;
 use App\Events\HumanHandoffReturnedToAi;
+use App\Models\ConversationSession;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
 use App\Models\User;
@@ -15,7 +16,10 @@ use Illuminate\Validation\ValidationException;
 
 class ServiceTicketLifecycleService
 {
-    public function __construct(private readonly PauseService $pause) {}
+    public function __construct(
+        private readonly PauseService $pause,
+        private readonly ConversationSessionLifecycleService $sessions,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -259,6 +263,13 @@ class ServiceTicketLifecycleService
 
             $this->syncLeadConclusion($ticket, $reason);
 
+            // A finalised ticket ends the atendimento: close the lead's open session so
+            // the funnel/metrics stop counting it as live. Outcome is mapped from the
+            // resolution reason, falling back to a neutral manual close.
+            if ($ticket->lead) {
+                $this->sessions->closeOpenForLead($ticket->lead, $this->outcomeForResolution($reason), $user);
+            }
+
             return $ticket->fresh(['lead', 'assignedUser']);
         });
 
@@ -396,6 +407,16 @@ class ServiceTicketLifecycleService
             'followup_status' => 'inactive',
             'operational_stage' => $targetStatus === 'convertido' ? Lead::STAGE_WON : Lead::STAGE_LOST,
         ]);
+    }
+
+    private function outcomeForResolution(?string $reason): string
+    {
+        return match ($reason) {
+            'convertido' => ConversationSession::OUTCOME_CONVERTED,
+            'optou_sair', ServiceTicket::RESOLUTION_LOST => ConversationSession::OUTCOME_LOST,
+            ServiceTicket::RESOLUTION_NO_RESPONSE => ConversationSession::OUTCOME_NO_RESPONSE,
+            default => ConversationSession::OUTCOME_MANUAL_CLOSE,
+        };
     }
 
     /**

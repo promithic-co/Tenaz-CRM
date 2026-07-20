@@ -5,13 +5,12 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 
 type Settings = {
+    enabled: boolean;
     first_delay_minutes: number;
-    daily_time: string;
     max_count: number;
-    approach: string;
     followup_window_start: string;
     followup_window_end: string;
-    followup_interval_days: number;
+    min_interval_minutes: number;
     message_type: string;
     tone: string;
     persuasion_intensity: number;
@@ -40,37 +39,44 @@ const breadcrumbs: BreadcrumbItem[] = props.agent
           { title: 'Configurações do Follow-Up', href: '/agente/follow-up' },
       ];
 
+const intervalPresets = [
+    { value: 30, label: '30 min' },
+    { value: 60, label: '1 hora' },
+    { value: 120, label: '2 horas' },
+    { value: 240, label: '4 horas' },
+    { value: 480, label: '8 horas' },
+    { value: 720, label: '12 horas' },
+    { value: 1440, label: '24 horas' },
+];
+
+/**
+ * Legacy rows may carry a day-derived interval (e.g. 4320 min) that no longer
+ * maps to a preset. Snap the initial value to the nearest chip so the UI stays
+ * honest without a data migration.
+ */
+function nearestPreset(minutes: number): number {
+    return intervalPresets.reduce(
+        (best, opt) =>
+            Math.abs(opt.value - minutes) < Math.abs(best - minutes)
+                ? opt.value
+                : best,
+        intervalPresets[0].value,
+    );
+}
+
 const form = useForm({
+    enabled: props.settings.enabled,
     first_delay_minutes: props.settings.first_delay_minutes,
-    daily_time: props.settings.daily_time,
     max_count: props.settings.max_count,
-    approach: props.settings.approach,
     followup_window_start: props.settings.followup_window_start,
     followup_window_end: props.settings.followup_window_end,
-    followup_interval_days: props.settings.followup_interval_days,
+    min_interval_minutes: nearestPreset(props.settings.min_interval_minutes),
     message_type: props.settings.message_type,
     tone: props.settings.tone,
     persuasion_intensity: props.settings.persuasion_intensity,
     custom_instructions: props.settings.custom_instructions,
 });
 
-const abordagens = [
-    {
-        value: 'amigavel',
-        label: 'Amigável',
-        desc: 'Tom muito caloroso e empático. Sem pressão, foca no cuidado com o cliente.',
-    },
-    {
-        value: 'natural',
-        label: 'Natural',
-        desc: 'Tom conversacional e equilibrado. Padrão recomendado para a maioria dos leads.',
-    },
-    {
-        value: 'persuasivo',
-        label: 'Persuasivo',
-        desc: 'Destaca a oportunidade e cria urgência leve. Para leads com alto potencial.',
-    },
-];
 const tiposMensagem = [
     { value: 'contextual', label: 'Contextual (padrão)' },
     { value: 'reengajamento', label: 'Reengajamento' },
@@ -103,6 +109,48 @@ const tons = [
             </div>
 
             <form @submit.prevent="form.post(followupPath)" class="space-y-6">
+                <!-- Enable follow-up -->
+                <div
+                    class="rounded-xl border border-sidebar-border/70 bg-card p-6 dark:border-sidebar-border"
+                >
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h2 class="text-sm font-semibold text-foreground">
+                                Follow-up automático
+                            </h2>
+                            <p class="mt-1 text-xs text-muted-foreground">
+                                Quando ativo, o agente reengaja leads sem
+                                resposta dentro das regras abaixo.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            :aria-checked="form.enabled"
+                            @click="form.enabled = !form.enabled"
+                            :class="[
+                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:ring-2 focus:ring-ring focus:outline-none',
+                                form.enabled ? 'bg-primary' : 'bg-muted',
+                            ]"
+                        >
+                            <span
+                                :class="[
+                                    'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform',
+                                    form.enabled
+                                        ? 'translate-x-5'
+                                        : 'translate-x-0.5',
+                                ]"
+                            />
+                        </button>
+                    </div>
+                    <p
+                        v-if="form.errors.enabled"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ form.errors.enabled }}
+                    </p>
+                </div>
+
                 <div
                     class="rounded-xl border border-sidebar-border/70 bg-card p-6 dark:border-sidebar-border"
                 >
@@ -225,8 +273,8 @@ const tons = [
                     </h2>
                     <div class="flex items-center gap-3">
                         <label
-                            class="w-48 shrink-0 text-sm text-muted-foreground"
-                            >Enviar após qualificação</label
+                            class="w-56 shrink-0 text-sm text-muted-foreground"
+                            >Enviar após a última mensagem do cliente</label
                         >
                         <div class="flex items-center gap-2">
                             <input
@@ -246,37 +294,6 @@ const tons = [
                         class="mt-1 text-xs text-red-500"
                     >
                         {{ form.errors.first_delay_minutes }}
-                    </p>
-                </div>
-
-                <!-- Daily time -->
-                <div
-                    class="rounded-xl border border-sidebar-border/70 bg-card p-6 dark:border-sidebar-border"
-                >
-                    <h2 class="mb-4 text-sm font-semibold text-foreground">
-                        Follow-ups do Dia Seguinte
-                    </h2>
-                    <div class="flex items-center gap-3">
-                        <label
-                            class="w-48 shrink-0 text-sm text-muted-foreground"
-                            >Horário de envio</label
-                        >
-                        <div class="flex items-center gap-2">
-                            <input
-                                v-model="form.daily_time"
-                                type="time"
-                                class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
-                            />
-                            <span class="text-sm text-muted-foreground"
-                                >fuso horário São Paulo</span
-                            >
-                        </div>
-                    </div>
-                    <p
-                        v-if="form.errors.daily_time"
-                        class="mt-1 text-xs text-red-500"
-                    >
-                        {{ form.errors.daily_time }}
                     </p>
                 </div>
 
@@ -335,23 +352,17 @@ const tons = [
                         Intervalo entre Follow-ups
                     </h2>
                     <p class="mb-4 text-xs text-muted-foreground">
-                        Dias de espera entre cada mensagem de follow-up
+                        Tempo mínimo de espera entre cada mensagem de follow-up.
                     </p>
-                    <div class="flex gap-2">
+                    <div class="flex flex-wrap gap-2">
                         <button
-                            v-for="opt in [
-                                { value: 1, label: '1 dia' },
-                                { value: 2, label: '2 dias' },
-                                { value: 3, label: '3 dias' },
-                                { value: 5, label: '5 dias' },
-                                { value: 7, label: '7 dias' },
-                            ]"
+                            v-for="opt in intervalPresets"
                             :key="opt.value"
                             type="button"
-                            @click="form.followup_interval_days = opt.value"
+                            @click="form.min_interval_minutes = opt.value"
                             :class="[
                                 'rounded-lg border-2 px-4 py-3 text-sm font-semibold transition-colors',
-                                form.followup_interval_days === opt.value
+                                form.min_interval_minutes === opt.value
                                     ? 'border-primary bg-primary text-primary-foreground'
                                     : 'border-border bg-background text-foreground hover:border-primary/50',
                             ]"
@@ -360,10 +371,10 @@ const tons = [
                         </button>
                     </div>
                     <p
-                        v-if="form.errors.followup_interval_days"
+                        v-if="form.errors.min_interval_minutes"
                         class="mt-1 text-xs text-red-500"
                     >
-                        {{ form.errors.followup_interval_days }}
+                        {{ form.errors.min_interval_minutes }}
                     </p>
                 </div>
 
@@ -398,48 +409,6 @@ const tons = [
                         class="mt-1 text-xs text-red-500"
                     >
                         {{ form.errors.max_count }}
-                    </p>
-                </div>
-
-                <!-- Approach method -->
-                <div
-                    class="rounded-xl border border-sidebar-border/70 bg-card p-6 dark:border-sidebar-border"
-                >
-                    <h2 class="mb-4 text-sm font-semibold text-foreground">
-                        Método de Abordagem
-                    </h2>
-                    <div class="space-y-3">
-                        <label
-                            v-for="opt in abordagens"
-                            :key="opt.value"
-                            :class="[
-                                'flex cursor-pointer items-start gap-3 rounded-lg border-2 p-3 transition-colors',
-                                form.approach === opt.value
-                                    ? 'border-primary bg-primary/5'
-                                    : 'border-border hover:border-border/80',
-                            ]"
-                        >
-                            <input
-                                type="radio"
-                                v-model="form.approach"
-                                :value="opt.value"
-                                class="mt-0.5 accent-primary"
-                            />
-                            <div>
-                                <p class="text-sm font-medium text-foreground">
-                                    {{ opt.label }}
-                                </p>
-                                <p class="mt-0.5 text-xs text-muted-foreground">
-                                    {{ opt.desc }}
-                                </p>
-                            </div>
-                        </label>
-                    </div>
-                    <p
-                        v-if="form.errors.approach"
-                        class="mt-1 text-xs text-red-500"
-                    >
-                        {{ form.errors.approach }}
                     </p>
                 </div>
 

@@ -4,6 +4,7 @@ namespace App\Services\Dashboard;
 
 use App\Jobs\ComputeDashboardMetricsJob;
 use App\Models\Campaign;
+use App\Models\ConversationSession;
 use App\Models\Lead;
 use App\Models\VoiceCampaignCall;
 use App\Models\WhatsappInstance;
@@ -89,6 +90,8 @@ class DashboardMetricsService
                 ->whereDate('created_at', today())
                 ->count();
 
+            $atendimentos = $this->sessionCounters($tenantId);
+
             return [
                 'leads_today' => $leadsToday,
                 'leads_new_this_week' => $leadsNewThisWeek,
@@ -100,8 +103,57 @@ class DashboardMetricsService
                 'instance_statuses' => $instanceStatuses,
                 'follow_ups_pending' => $followUpsPending,
                 'voice_calls_today' => $voiceCallsToday,
+                'atendimentos' => $atendimentos,
             ];
         });
+    }
+
+    /**
+     * Per-session (atendimento) KPIs: how many cycles opened / reengaged today, how
+     * many are live now, and — over the last 7 days — how many closed, the outcome
+     * breakdown, and the average minutes from open to close.
+     *
+     * @return array{opened_today: int, reengaged_today: int, open_now: int, closed_7d: int, avg_close_minutes: float, outcomes_7d: array<string, int>}
+     */
+    private function sessionCounters(string $tenantId): array
+    {
+        $base = fn () => ConversationSession::withoutGlobalScopes()->where('tenant_id', $tenantId);
+
+        $openedToday = (clone $base())->whereDate('opened_at', today())->count();
+
+        $reengagedToday = (clone $base())
+            ->whereDate('opened_at', today())
+            ->whereIn('open_reason', ConversationSession::REENGAGEMENT_REASONS)
+            ->count();
+
+        $openNow = (clone $base())->where('status', ConversationSession::STATUS_OPEN)->count();
+
+        $closedLast7d = (clone $base())
+            ->where('status', ConversationSession::STATUS_CLOSED)
+            ->where('closed_at', '>=', now()->subDays(7))
+            ->get(['outcome', 'opened_at', 'closed_at']);
+
+        $outcomes = $closedLast7d
+            ->groupBy(fn (ConversationSession $s): string => (string) ($s->outcome ?? 'unknown'))
+            ->map(fn ($group): int => $group->count())
+            ->all();
+
+        // Averaged in PHP (not SQL) for driver portability — epoch-diff syntax differs
+        // between Postgres (prod) and SQLite (tests). 7d closed sessions per tenant is bounded.
+        $durations = $closedLast7d
+            ->filter(fn (ConversationSession $s): bool => $s->opened_at !== null && $s->closed_at !== null)
+            ->map(fn (ConversationSession $s): float => $s->opened_at->diffInMinutes($s->closed_at, true));
+
+        $avgCloseMinutes = $durations->isEmpty() ? 0.0 : round((float) $durations->avg(), 1);
+
+        return [
+            'opened_today' => $openedToday,
+            'reengaged_today' => $reengagedToday,
+            'open_now' => $openNow,
+            'closed_7d' => $closedLast7d->count(),
+            'avg_close_minutes' => $avgCloseMinutes,
+            'outcomes_7d' => $outcomes,
+        ];
     }
 
     /**

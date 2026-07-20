@@ -837,7 +837,7 @@ snapshot.post = (args: { agent: number | { id: number } } | [agent: number | { i
     snapshot.form = snapshotForm
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::followup
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
 export const followup = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -852,7 +852,7 @@ followup.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::followup
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
 followup.url = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -885,7 +885,7 @@ followup.url = (args: { agent: number | { id: number } } | [agent: number | { id
 
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::followup
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
 followup.get = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -894,7 +894,7 @@ followup.get = (args: { agent: number | { id: number } } | [agent: number | { id
 })
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::followup
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
 followup.head = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -904,7 +904,7 @@ followup.head = (args: { agent: number | { id: number } } | [agent: number | { i
 
     /**
 * @see \App\Http\Controllers\AgentFollowUpController::followup
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
     const followupForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -914,7 +914,7 @@ followup.head = (args: { agent: number | { id: number } } | [agent: number | { i
 
             /**
 * @see \App\Http\Controllers\AgentFollowUpController::followup
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
         followupForm.get = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -923,7 +923,7 @@ followup.head = (args: { agent: number | { id: number } } | [agent: number | { i
         })
             /**
 * @see \App\Http\Controllers\AgentFollowUpController::followup
- * @see app/Http/Controllers/AgentFollowUpController.php:17
+ * @see app/Http/Controllers/AgentFollowUpController.php:18
  * @route '/agentes/{agent}/follow-up'
  */
         followupForm.head = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

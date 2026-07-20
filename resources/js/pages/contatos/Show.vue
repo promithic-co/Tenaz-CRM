@@ -2,10 +2,17 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import CollectedInformationEditor from '@/components/CollectedInformationEditor.vue';
+import FollowUpStateSummary from '@/components/FollowUpStateSummary.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { update as updateCollectedInformation } from '@/routes/contatos/collected-information';
 import type { BreadcrumbItem } from '@/types';
-import type { CollectedInformationItem } from '@/types/models';
+import type { CollectedInformationItem, FollowupState } from '@/types/models';
+
+type LeadFollowup = {
+    status: string;
+    count: number;
+    max: number;
+};
 
 type Lead = {
     id: number;
@@ -14,6 +21,7 @@ type Lead = {
     status: string;
     operational_stage: string | null;
     updated_at: string;
+    followup: LeadFollowup | null;
 };
 
 type ListMembership = {
@@ -60,10 +68,19 @@ type Props = {
     leads: Lead[];
     listMemberships: ListMembership[];
     conversationWindow?: ConversationWindow | null;
+    followupState?: FollowupState | null;
     can: { manage: boolean };
 };
 
 const props = defineProps<Props>();
+
+const latestLead = computed(() => props.leads[0] ?? null);
+
+const followupDotStyles: Record<string, string> = {
+    active: 'bg-emerald-500',
+    paused: 'bg-amber-500',
+    inactive: 'bg-muted-foreground/40',
+};
 
 const extraDataEntries = computed(() =>
     Object.entries(props.contact.extra_data ?? {}).filter(
@@ -359,6 +376,26 @@ function formatDate(value: string | null): string {
                 </div>
 
                 <div
+                    v-if="followupState && latestLead"
+                    class="rounded-xl border border-sidebar-border/70 bg-card p-4 dark:border-sidebar-border"
+                >
+                    <div class="mb-3 flex items-center justify-between gap-2">
+                        <p
+                            class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                        >
+                            Follow-up (último lead)
+                        </p>
+                        <Link
+                            :href="`/conversas/${latestLead.id}`"
+                            class="text-xs font-medium text-primary hover:underline"
+                        >
+                            Abrir conversa
+                        </Link>
+                    </div>
+                    <FollowUpStateSummary :state="followupState" />
+                </div>
+
+                <div
                     class="rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border"
                 >
                     <div
@@ -403,9 +440,30 @@ function formatDate(value: string | null): string {
                                     <p class="font-medium text-foreground">
                                         {{ lead.nome || lead.whatsapp }}
                                     </p>
-                                    <p class="text-xs text-muted-foreground">
-                                        Status: {{ lead.status }} · Stage:
-                                        {{ lead.operational_stage || '—' }}
+                                    <p
+                                        class="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground"
+                                    >
+                                        <span>
+                                            Status: {{ lead.status }} · Stage:
+                                            {{ lead.operational_stage || '—' }}
+                                        </span>
+                                        <span
+                                            v-if="lead.followup"
+                                            class="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 font-medium text-foreground"
+                                        >
+                                            <span
+                                                :class="[
+                                                    'size-1.5 rounded-full',
+                                                    followupDotStyles[
+                                                        lead.followup.status
+                                                    ] ??
+                                                        followupDotStyles.inactive,
+                                                ]"
+                                            />
+                                            {{ lead.followup.count }}/{{
+                                                lead.followup.max
+                                            }}
+                                        </span>
                                     </p>
                                 </div>
                                 <span class="text-xs text-muted-foreground">{{

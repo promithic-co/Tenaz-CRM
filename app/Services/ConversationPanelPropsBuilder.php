@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Http\Resources\AgentInteractionEventResource;
 use App\Http\Resources\ConversationResource;
 use App\Models\AgentInteractionEvent;
+use App\Models\ConversationSession;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
 use App\Models\StatusMachine;
@@ -25,14 +26,17 @@ class ConversationPanelPropsBuilder
         private readonly ConversationTransferTargetsBuilder $transferTargets,
         private readonly ContactCollectedInformationService $collectedInformation,
         private readonly WhatsappTemplateRenderer $templateRenderer,
+        private readonly FollowUpStateSummarizer $followUpState,
     ) {}
 
     /**
      * @return array{
      *     lead: array<string, mixed>,
      *     mensagens: array<int, array<string, mixed>>,
+     *     sessions: list<array<string, mixed>>,
      *     pausado: bool,
      *     followupStatus: string|null,
+     *     followupState: array<string, mixed>,
      *     followupHistory: mixed,
      *     conversationWindow: array<string, mixed>,
      *     recentEvents: mixed,
@@ -103,8 +107,10 @@ class ConversationPanelPropsBuilder
         return [
             'lead' => $leadData,
             'mensagens' => $messages,
+            'sessions' => $this->buildSessions($lead),
             'pausado' => $this->pause->isPaused($lead->whatsapp, $lead->tenant_id),
             'followupStatus' => $lead->followup_status,
+            'followupState' => $this->followUpState->forLead($lead),
             'followupHistory' => $followupHistory,
             'conversationWindow' => $this->conversationWindow->resolve($lead),
             'recentEvents' => $recentEvents,
@@ -120,6 +126,31 @@ class ConversationPanelPropsBuilder
                 'synced_at' => $templates === [] ? null : ($templates[0]['last_synced_at'] ?? null),
             ],
         ];
+    }
+
+    /**
+     * The lead's atendimentos (service cycles), newest first, so the panel can render
+     * session dividers, the returning badge, and the close/new-atendimento controls.
+     *
+     * @return list<array{id: int, number: int, status: string, open_reason: string, outcome: string|null, opened_at: string|null, closed_at: string|null, last_message_at: string|null, is_returning: bool}>
+     */
+    private function buildSessions(Lead $lead): array
+    {
+        return $lead->sessions()
+            ->orderByDesc('number')
+            ->get()
+            ->map(fn (ConversationSession $session): array => [
+                'id' => $session->id,
+                'number' => $session->number,
+                'status' => $session->status,
+                'open_reason' => $session->open_reason,
+                'outcome' => $session->outcome,
+                'opened_at' => $session->opened_at?->toIso8601String(),
+                'closed_at' => $session->closed_at?->toIso8601String(),
+                'last_message_at' => $session->last_message_at?->toIso8601String(),
+                'is_returning' => $session->isReengagement(),
+            ])
+            ->all();
     }
 
     /**

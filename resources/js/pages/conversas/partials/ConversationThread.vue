@@ -16,6 +16,8 @@ import echo from '@/echo';
 import { send } from '@/routes/conversas';
 import type {
     ActiveConversation,
+    ConversationSessionOpenReason,
+    ConversationSessionSummary,
     Message,
     WhatsappTemplateOption,
 } from '../types';
@@ -80,7 +82,10 @@ const windowClosed = computed<boolean>(() => {
     }
 
     // A live free-entry-point window keeps the conversation open.
-    if (freeEntryDeadline.value !== null && freeEntryDeadline.value > now.value) {
+    if (
+        freeEntryDeadline.value !== null &&
+        freeEntryDeadline.value > now.value
+    ) {
         return false;
     }
 
@@ -101,6 +106,74 @@ const templatesAvailable = computed<boolean>(
 const messages = ref<Message[]>(
     props.conversation ? [...props.conversation.mensagens] : [],
 );
+
+const sessionReasonLabels: Record<ConversationSessionOpenReason, string> = {
+    first_contact: 'Primeiro contato',
+    reengagement_after_terminal: 'Retorno após conclusão',
+    reengagement_after_inactivity: 'Retorno após inatividade',
+    campaign: 'Campanha',
+    manual: 'Atendimento manual',
+};
+
+// Index sessions by id so a divider can label each atendimento with its number/reason.
+const sessionMap = computed<Map<number, ConversationSessionSummary>>(() => {
+    const map = new Map<number, ConversationSessionSummary>();
+    for (const session of props.conversation?.sessions ?? []) {
+        map.set(session.id, session);
+    }
+    return map;
+});
+
+type ThreadItem =
+    | {
+          kind: 'divider';
+          key: string;
+          sessionId: number;
+          session: ConversationSessionSummary | null;
+      }
+    | { kind: 'message'; key: string | number; msg: Message };
+
+// Interleave a session divider before the first message of each atendimento so the
+// operator can see where one service cycle ends and the next begins. Messages with no
+// session_id (pre-timeline history) never emit a divider.
+const threadItems = computed<ThreadItem[]>(() => {
+    const items: ThreadItem[] = [];
+    let lastSessionId: number | null = null;
+
+    messages.value.forEach((msg, idx) => {
+        const sessionId = msg.session_id ?? null;
+
+        if (sessionId !== null && sessionId !== lastSessionId) {
+            items.push({
+                kind: 'divider',
+                key: `divider-${sessionId}`,
+                sessionId,
+                session: sessionMap.value.get(sessionId) ?? null,
+            });
+        }
+
+        lastSessionId = sessionId;
+        items.push({ kind: 'message', key: msg.id ?? `idx-${idx}`, msg });
+    });
+
+    return items;
+});
+
+function dividerLabel(item: Extract<ThreadItem, { kind: 'divider' }>): string {
+    if (!item.session) {
+        return 'Atendimento';
+    }
+    return `Atendimento #${item.session.number}`;
+}
+
+function dividerReason(
+    item: Extract<ThreadItem, { kind: 'divider' }>,
+): string | null {
+    if (!item.session) {
+        return null;
+    }
+    return sessionReasonLabels[item.session.open_reason] ?? null;
+}
 const messageText = ref('');
 const selectedFile = ref<File | null>(null);
 const filePreviewUrl = ref<string | null>(null);
@@ -393,75 +466,107 @@ function onKeydown(event: KeyboardEvent): void {
                 Nenhuma mensagem ainda.
             </div>
 
-            <div
-                v-for="(msg, idx) in messages"
-                :key="msg.id ?? idx"
-                :class="[
-                    'flex',
-                    msg.role === 'user' ? 'justify-end' : 'justify-start',
-                ]"
-            >
+            <template v-for="item in threadItems" :key="item.key">
                 <div
+                    v-if="item.kind === 'divider'"
+                    class="flex items-center gap-2 py-1"
+                >
+                    <span class="h-px flex-1 bg-sidebar-border/70" />
+                    <span
+                        class="flex items-center gap-1.5 rounded-full border border-sidebar-border/70 bg-muted/60 px-3 py-0.5 text-xs font-medium text-muted-foreground dark:border-sidebar-border"
+                    >
+                        {{ dividerLabel(item) }}
+                        <span
+                            v-if="item.session?.is_returning"
+                            class="rounded-full bg-violet-500/10 px-1.5 text-[10px] font-medium text-violet-500 dark:text-violet-400"
+                        >
+                            Retornante
+                        </span>
+                        <span
+                            v-else-if="dividerReason(item)"
+                            class="text-muted-foreground/70"
+                        >
+                            · {{ dividerReason(item) }}
+                        </span>
+                    </span>
+                    <span class="h-px flex-1 bg-sidebar-border/70" />
+                </div>
+
+                <div
+                    v-else
                     :class="[
-                        'flex max-w-[88%] flex-col gap-1 sm:max-w-[76%]',
-                        msg.role === 'user' ? 'items-end' : 'items-start',
+                        'flex',
+                        item.msg.role === 'user'
+                            ? 'justify-end'
+                            : 'justify-start',
                     ]"
                 >
-                    <span
-                        v-if="msg.role === 'operator'"
-                        class="px-1 text-xs font-medium text-blue-400"
-                        >Operador</span
-                    >
-
-                    <div
-                        v-if="msg.media"
-                        class="flex items-center gap-1.5 rounded-full border border-sidebar-border/70 bg-muted/60 px-2.5 py-1 text-xs text-muted-foreground dark:border-sidebar-border"
-                    >
-                        <FileText class="h-3.5 w-3.5" />
-                        <span>{{
-                            mediaLabels[msg.media.type] ?? 'Midia'
-                        }}</span>
-                        <span
-                            v-if="msg.media.duration_secs"
-                            class="text-muted-foreground/70"
-                            >{{ msg.media.duration_secs }}s</span
-                        >
-                        <span
-                            v-else-if="msg.media.filename"
-                            class="max-w-32 truncate text-muted-foreground/70"
-                            >{{ msg.media.filename }}</span
-                        >
-                        <span v-else class="text-muted-foreground/70">{{
-                            formatBytes(msg.media.size_bytes)
-                        }}</span>
-                    </div>
-
                     <div
                         :class="[
-                            'rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
-                            msg.role === 'user'
-                                ? 'rounded-br-sm bg-primary text-primary-foreground'
-                                : msg.role === 'operator'
-                                  ? 'rounded-bl-sm bg-blue-600 text-white'
-                                  : 'rounded-bl-sm bg-muted text-foreground',
+                            'flex max-w-[88%] flex-col gap-1 sm:max-w-[76%]',
+                            item.msg.role === 'user'
+                                ? 'items-end'
+                                : 'items-start',
                         ]"
                     >
-                        <p class="whitespace-pre-wrap">{{ msg.content }}</p>
-                        <p
+                        <span
+                            v-if="item.msg.role === 'operator'"
+                            class="px-1 text-xs font-medium text-blue-400"
+                            >Operador</span
+                        >
+
+                        <div
+                            v-if="item.msg.media"
+                            class="flex items-center gap-1.5 rounded-full border border-sidebar-border/70 bg-muted/60 px-2.5 py-1 text-xs text-muted-foreground dark:border-sidebar-border"
+                        >
+                            <FileText class="h-3.5 w-3.5" />
+                            <span>{{
+                                mediaLabels[item.msg.media.type] ?? 'Midia'
+                            }}</span>
+                            <span
+                                v-if="item.msg.media.duration_secs"
+                                class="text-muted-foreground/70"
+                                >{{ item.msg.media.duration_secs }}s</span
+                            >
+                            <span
+                                v-else-if="item.msg.media.filename"
+                                class="max-w-32 truncate text-muted-foreground/70"
+                                >{{ item.msg.media.filename }}</span
+                            >
+                            <span v-else class="text-muted-foreground/70">{{
+                                formatBytes(item.msg.media.size_bytes)
+                            }}</span>
+                        </div>
+
+                        <div
                             :class="[
-                                'mt-1 text-xs',
-                                msg.role === 'user'
-                                    ? 'text-primary-foreground/60'
-                                    : msg.role === 'operator'
-                                      ? 'text-blue-200'
-                                      : 'text-muted-foreground',
+                                'rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
+                                item.msg.role === 'user'
+                                    ? 'rounded-br-sm bg-primary text-primary-foreground'
+                                    : item.msg.role === 'operator'
+                                      ? 'rounded-bl-sm bg-blue-600 text-white'
+                                      : 'rounded-bl-sm bg-muted text-foreground',
                             ]"
                         >
-                            {{ msg.hora }}
-                        </p>
+                            <p class="whitespace-pre-wrap">
+                                {{ item.msg.content }}
+                            </p>
+                            <p
+                                :class="[
+                                    'mt-1 text-xs',
+                                    item.msg.role === 'user'
+                                        ? 'text-primary-foreground/60'
+                                        : item.msg.role === 'operator'
+                                          ? 'text-blue-200'
+                                          : 'text-muted-foreground',
+                                ]"
+                            >
+                                {{ item.msg.hora }}
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </template>
         </div>
 
         <div
@@ -531,8 +636,8 @@ function onKeydown(event: KeyboardEvent): void {
                 <div class="text-xs text-amber-800 dark:text-amber-200">
                     <p class="font-semibold">Janela de 24h fechada</p>
                     <p class="text-amber-700/90 dark:text-amber-300/80">
-                        Para falar de novo, envie um template aprovado ou aguarde
-                        o cliente responder.
+                        Para falar de novo, envie um template aprovado ou
+                        aguarde o cliente responder.
                     </p>
                 </div>
             </div>

@@ -1,4 +1,6 @@
-import type { CollectedInformationItem } from '@/types/models';
+import type { CollectedInformationItem, FollowupState } from '@/types/models';
+
+export type { FollowupState };
 
 export type MediaAttachment = {
     type: 'audio' | 'image' | 'document' | 'video' | 'sticker' | 'unknown';
@@ -13,11 +15,40 @@ export type MediaAttachment = {
 
 export type Message = {
     id?: number;
+    session_id?: number | null;
     role: 'user' | 'assistant' | 'operator';
     content: string;
     hora: string;
     media?: MediaAttachment | null;
     status?: string;
+};
+
+export type ConversationSessionStatus = 'open' | 'closed';
+
+export type ConversationSessionOutcome =
+    | 'converted'
+    | 'lost'
+    | 'no_response'
+    | 'abandoned'
+    | 'manual_close';
+
+export type ConversationSessionOpenReason =
+    | 'first_contact'
+    | 'reengagement_after_terminal'
+    | 'reengagement_after_inactivity'
+    | 'campaign'
+    | 'manual';
+
+export type ConversationSessionSummary = {
+    id: number;
+    number: number;
+    status: ConversationSessionStatus;
+    open_reason: ConversationSessionOpenReason;
+    outcome: ConversationSessionOutcome | null;
+    opened_at: string | null;
+    closed_at: string | null;
+    last_message_at: string | null;
+    is_returning: boolean;
 };
 
 export type InboxLead = {
@@ -35,6 +66,7 @@ export type InboxLead = {
     ultima_interacao: string | null;
     pausado: boolean;
     evolution_instance: string | null;
+    is_returning: boolean;
 };
 
 export type ConversationLead = {
@@ -145,8 +177,10 @@ export type TransferTarget = {
 export type ActiveConversation = {
     lead: ConversationLead;
     mensagens: Message[];
+    sessions: ConversationSessionSummary[];
     pausado: boolean;
     followupStatus: string;
+    followupState: FollowupState;
     followupHistory: FollowupHistoryItem[];
     recentEvents: AuditEvent[];
     canStartCampaign: boolean;

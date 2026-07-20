@@ -4,9 +4,11 @@ import {
     AlertTriangle,
     Bot,
     ExternalLink,
+    History,
     Megaphone,
     Phone,
     Play,
+    Plus,
     RefreshCw,
     Trash2,
     UserCheck,
@@ -15,6 +17,7 @@ import {
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import CollectedInformationEditor from '@/components/CollectedInformationEditor.vue';
+import FollowUpStateSummary from '@/components/FollowUpStateSummary.vue';
 import StatusSelect from '@/components/StatusSelect.vue';
 import TagChip from '@/components/TagChip.vue';
 import TagInput from '@/components/TagInput.vue';
@@ -44,8 +47,16 @@ import {
     reactivate as reactivateFollowup,
     resume as resumeFollowup,
 } from '@/routes/conversas/followup';
+import {
+    close as closeSession,
+    store as storeSession,
+} from '@/routes/conversas/sessions';
 import { store as autoTagStore } from '@/routes/leads/auto-tag';
-import type { ActiveConversation } from '../types';
+import type {
+    ActiveConversation,
+    ConversationSessionOpenReason,
+    ConversationSessionOutcome,
+} from '../types';
 
 type Props = {
     conversation: ActiveConversation;
@@ -71,6 +82,11 @@ const aiModeForm = useForm({
 const returnToAiForm = useForm({});
 const keepManualForm = useForm({});
 const autoTagForm = useForm({});
+
+const newSessionForm = useForm({});
+const closeSessionForm = useForm<{ outcome: ConversationSessionOutcome }>({
+    outcome: 'manual_close',
+});
 
 const showClearConfirm = ref(false);
 const showDeleteConfirm = ref(false);
@@ -112,6 +128,66 @@ const followupStatus = computed(() => props.conversation.followupStatus);
 const conversationWindow = computed(
     () => props.conversation.conversationWindow ?? null,
 );
+
+const sessions = computed(() => props.conversation.sessions ?? []);
+const openSession = computed(
+    () => sessions.value.find((session) => session.status === 'open') ?? null,
+);
+
+const sessionReasonLabels: Record<ConversationSessionOpenReason, string> = {
+    first_contact: 'Primeiro contato',
+    reengagement_after_terminal: 'Retorno após conclusão',
+    reengagement_after_inactivity: 'Retorno após inatividade',
+    campaign: 'Campanha',
+    manual: 'Manual',
+};
+
+const sessionOutcomeLabels: Record<ConversationSessionOutcome, string> = {
+    converted: 'Convertido',
+    lost: 'Perdido',
+    no_response: 'Sem resposta',
+    abandoned: 'Abandonado',
+    manual_close: 'Encerrado manual',
+};
+
+// Outcomes an operator may pick when closing by hand (mirrors CloseConversationSessionRequest).
+const selectableOutcomes: ConversationSessionOutcome[] = [
+    'converted',
+    'lost',
+    'no_response',
+    'manual_close',
+];
+
+function submitNewSession(): void {
+    newSessionForm.post(storeSession.url({ lead: lead.value.id }), {
+        preserveScroll: true,
+    });
+}
+
+function submitCloseSession(): void {
+    if (!openSession.value) {
+        return;
+    }
+    closeSessionForm.post(
+        closeSession.url({
+            lead: lead.value.id,
+            session: openSession.value.id,
+        }),
+        { preserveScroll: true },
+    );
+}
+
+function formatSessionDate(value: string | null): string {
+    if (!value) {
+        return '—';
+    }
+    return new Date(value).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
 
 type LeadTag = {
     id: number;
@@ -636,6 +712,112 @@ function formatEventDate(value: string): string {
             class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
         >
             <div class="mb-2 flex items-center gap-2">
+                <History class="h-4 w-4 text-muted-foreground" />
+                <p class="text-xs font-semibold text-muted-foreground">
+                    Atendimentos
+                </p>
+            </div>
+
+            <div
+                v-if="openSession"
+                class="mb-3 space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2.5"
+            >
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-semibold text-foreground"
+                        >Atendimento #{{ openSession.number }} · aberto</span
+                    >
+                    <span
+                        v-if="openSession.is_returning"
+                        class="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500 dark:text-violet-400"
+                        >Retornante</span
+                    >
+                </div>
+                <p class="text-[11px] text-muted-foreground">
+                    {{ sessionReasonLabels[openSession.open_reason] }} ·
+                    {{ formatSessionDate(openSession.opened_at) }}
+                </p>
+                <div class="flex items-center gap-2 pt-1">
+                    <select
+                        v-model="closeSessionForm.outcome"
+                        class="h-8 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                        :disabled="closeSessionForm.processing"
+                    >
+                        <option
+                            v-for="outcome in selectableOutcomes"
+                            :key="outcome"
+                            :value="outcome"
+                        >
+                            {{ sessionOutcomeLabels[outcome] }}
+                        </option>
+                    </select>
+                    <button
+                        type="button"
+                        :disabled="closeSessionForm.processing"
+                        class="h-8 shrink-0 rounded-md bg-emerald-600 px-3 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                        @click="submitCloseSession"
+                    >
+                        Encerrar
+                    </button>
+                </div>
+            </div>
+
+            <form v-else class="mb-3" @submit.prevent="submitNewSession">
+                <button
+                    type="submit"
+                    :disabled="newSessionForm.processing"
+                    class="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                >
+                    <Plus class="h-3.5 w-3.5" />
+                    Novo atendimento
+                </button>
+            </form>
+
+            <div v-if="sessions.length > 0" class="space-y-2">
+                <div
+                    v-for="session in sessions"
+                    :key="session.id"
+                    class="border-l-2 border-muted pl-3"
+                >
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-medium text-foreground"
+                            >#{{ session.number }}</span
+                        >
+                        <span
+                            :class="[
+                                'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                                session.status === 'open'
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                    : 'bg-muted text-muted-foreground',
+                            ]"
+                        >
+                            {{
+                                session.status === 'open' ? 'Aberto' : 'Fechado'
+                            }}
+                        </span>
+                    </div>
+                    <p class="mt-0.5 text-[11px] text-muted-foreground">
+                        {{ sessionReasonLabels[session.open_reason] }}
+                        <span v-if="session.outcome">
+                            · {{ sessionOutcomeLabels[session.outcome] }}</span
+                        >
+                    </p>
+                    <p class="text-[11px] text-muted-foreground/70">
+                        {{ formatSessionDate(session.opened_at) }}
+                        <span v-if="session.closed_at">
+                            → {{ formatSessionDate(session.closed_at) }}</span
+                        >
+                    </p>
+                </div>
+            </div>
+            <p v-else class="text-xs text-muted-foreground">
+                Nenhum atendimento registrado.
+            </p>
+        </section>
+
+        <section
+            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
+        >
+            <div class="mb-2 flex items-center gap-2">
                 <Bot class="h-4 w-4 text-muted-foreground" />
                 <p class="text-xs font-semibold text-muted-foreground">
                     Controle do Agente
@@ -785,6 +967,12 @@ function formatEventDate(value: string): string {
                         Desativar follow-up
                     </button>
                 </form>
+            </div>
+
+            <div
+                class="mt-3 border-t border-sidebar-border/70 pt-3 dark:border-sidebar-border"
+            >
+                <FollowUpStateSummary :state="conversation.followupState" />
             </div>
         </section>
 

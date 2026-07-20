@@ -22,8 +22,9 @@ class CredFlowFollowUpAgent extends BaseCustomerServiceAgent
      * Follow-up parameters come from FollowUpSettingsResolver — the same source the
      * engine (CheckFollowUpsCommand / FollowUpWindowService) uses — so the prompt's
      * attempt counter and is_last/farewell logic can never diverge from what the
-     * engine enforces. Legacy AgentConfig supplies only UI-era fields (agent_name,
-     * followup_approach) that have no resolver equivalent.
+     * engine enforces. Legacy AgentConfig supplies only UI-era fields (agent_name)
+     * that have no resolver equivalent; the `{approach}` template placeholder is now
+     * derived from the resolver tone (approachFromTone) instead of a dead config column.
      */
     public function instructions(): Stringable|string
     {
@@ -47,7 +48,7 @@ class CredFlowFollowUpAgent extends BaseCustomerServiceAgent
                 'agent_name' => $cfg['agent_name'] ?? 'Tenaz CRM',
                 'attempt_number' => $attemptNumber,
                 'max_count' => $maxCount,
-                'approach' => $cfg['followup_approach'] ?? 'natural',
+                'approach' => $this->approachFromTone($tone),
                 'tone_by_attempt' => $toneByAttempt,
                 'message_type' => $messageType,
                 'tone' => $tone,
@@ -231,6 +232,19 @@ class CredFlowFollowUpAgent extends BaseCustomerServiceAgent
         }
 
         return "\n        - Instrucoes adicionais do gestor: {$customInstructions}.";
+    }
+
+    /**
+     * Map the resolver tone onto the legacy template's {approach} vocabulary so DB
+     * prompt templates that still reference {approach} stay filled without a config column.
+     */
+    private function approachFromTone(string $tone): string
+    {
+        return match ($tone) {
+            'acolhedor', 'descontraido' => 'amigavel',
+            'direto' => 'persuasivo',
+            default => 'natural',
+        };
     }
 
     private function toneByAttempt(int $currentCount, bool $isLast, string $tone, int $persuasionIntensity): string

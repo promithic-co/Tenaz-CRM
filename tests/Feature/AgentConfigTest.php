@@ -2,6 +2,7 @@
 
 use App\Models\Agent;
 use App\Models\AgentConfig;
+use App\Models\AgentFollowUpSetting;
 use App\Models\AppSetting;
 use App\Models\Tenant;
 use App\Models\User;
@@ -116,13 +117,12 @@ test('follow-up settings are persisted per agent', function () {
 
     $this->actingAs($user)
         ->post(route('agentes.followup.update', $agentA), [
+            'enabled' => true,
             'first_delay_minutes' => 45,
-            'daily_time' => '11:30',
             'max_count' => 5,
-            'approach' => 'persuasivo',
             'followup_window_start' => '08:00',
             'followup_window_end' => '20:00',
-            'followup_interval_days' => 1,
+            'min_interval_minutes' => 120,
             'message_type' => 'urgencia',
             'tone' => 'direto',
             'persuasion_intensity' => 4,
@@ -130,17 +130,70 @@ test('follow-up settings are persisted per agent', function () {
         ])
         ->assertRedirect();
 
+    $rowA = AgentFollowUpSetting::withoutGlobalScope('tenant')->where('agent_id', $agentA->id)->first();
+    expect($rowA->enabled)->toBeTrue();
+    expect($rowA->first_delay_minutes)->toBe(45);
+    expect($rowA->min_interval_minutes)->toBe(120);
+    expect($rowA->max_attempts_within_window)->toBe(5);
+    expect($rowA->tone)->toBe('direto');
+
+    // Legacy AgentConfig mirror keeps primary fields only — dead UI columns untouched.
     expect($agentA->fresh()->config->followup_first_delay_minutes)->toBe(45);
-    expect($agentA->fresh()->config->followup_daily_time)->toBe('11:30');
     expect($agentA->fresh()->config->followup_max_count)->toBe(5);
-    expect($agentA->fresh()->config->followup_approach)->toBe('persuasivo');
     expect($agentA->fresh()->config->followup_message_type)->toBe('urgencia');
     expect($agentA->fresh()->config->followup_tone)->toBe('direto');
     expect($agentA->fresh()->config->followup_persuasion_intensity)->toBe(4);
     expect($agentA->fresh()->config->followup_custom_instructions)->toBe('Mencionar que a simulacao ja esta pronta.');
 
-    expect($agentB->fresh()->config->followup_first_delay_minutes)->toBe(10);
-    expect($agentB->fresh()->config->followup_approach)->toBe('natural');
+    expect(AgentFollowUpSetting::withoutGlobalScope('tenant')->where('agent_id', $agentB->id)->exists())->toBeFalse();
+});
+
+test('follow-up enabled=false is persisted', function () {
+    $user = User::factory()->create();
+    $agent = createAgentWithConfig($user);
+
+    $this->actingAs($user)
+        ->post(route('agentes.followup.update', $agent), [
+            'enabled' => false,
+            'first_delay_minutes' => 10,
+            'max_count' => 2,
+            'followup_window_start' => '08:00',
+            'followup_window_end' => '20:00',
+            'min_interval_minutes' => 60,
+        ])
+        ->assertRedirect();
+
+    $row = AgentFollowUpSetting::withoutGlobalScope('tenant')->where('agent_id', $agent->id)->first();
+    expect($row->enabled)->toBeFalse();
+});
+
+test('min_interval_minutes outside the preset set is rejected', function () {
+    $user = User::factory()->create();
+    $agent = createAgentWithConfig($user);
+
+    $this->actingAs($user)
+        ->post(route('agentes.followup.update', $agent), [
+            'enabled' => true,
+            'first_delay_minutes' => 10,
+            'max_count' => 2,
+            'followup_window_start' => '08:00',
+            'followup_window_end' => '20:00',
+            'min_interval_minutes' => 45,
+        ])
+        ->assertSessionHasErrors('min_interval_minutes');
+});
+
+test('follow-up show does not create an agent_configs row', function () {
+    $user = User::factory()->create();
+    $agent = Agent::factory()->create(['user_id' => $user->id, 'tenant_id' => $user->tenantId]);
+
+    expect(AgentConfig::withoutGlobalScope('tenant')->where('agent_id', $agent->id)->exists())->toBeFalse();
+
+    $this->actingAs($user)
+        ->get(route('agentes.followup', $agent))
+        ->assertOk();
+
+    expect(AgentConfig::withoutGlobalScope('tenant')->where('agent_id', $agent->id)->exists())->toBeFalse();
 });
 
 // ─── getAgentConfig includes new keys ────────────────────────────────────────
@@ -223,18 +276,24 @@ test('advanced params are isolated per user', function () {
 // ─── Phase 11: Follow-up schedule validation ─────────────────────────────
 
 describe('Phase 11: Follow-up schedule validation', function () {
+    function followupPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'enabled' => true,
+            'first_delay_minutes' => 30,
+            'max_count' => 3,
+            'followup_window_start' => '08:00',
+            'followup_window_end' => '20:00',
+            'min_interval_minutes' => 60,
+        ], $overrides);
+    }
+
     test('window_start required', function () {
         $user = User::factory()->create();
         $agent = createAgentWithConfig($user);
 
-        $payload = [
-            'first_delay_minutes' => 30,
-            'daily_time' => '10:00',
-            'max_count' => 3,
-            'approach' => 'amigavel',
-            'followup_window_end' => '20:00',
-            'followup_interval_days' => 1,
-        ];
+        $payload = followupPayload();
+        unset($payload['followup_window_start']);
 
         $this->actingAs($user)
             ->post(route('agentes.followup.update', $agent), $payload)
@@ -245,56 +304,26 @@ describe('Phase 11: Follow-up schedule validation', function () {
         $user = User::factory()->create();
         $agent = createAgentWithConfig($user);
 
-        $payload = [
-            'first_delay_minutes' => 30,
-            'daily_time' => '10:00',
-            'max_count' => 3,
-            'approach' => 'amigavel',
-            'followup_window_start' => '9:30',
-            'followup_window_end' => '20:00',
-            'followup_interval_days' => 1,
-        ];
-
         $this->actingAs($user)
-            ->post(route('agentes.followup.update', $agent), $payload)
+            ->post(route('agentes.followup.update', $agent), followupPayload(['followup_window_start' => '9:30']))
             ->assertSessionHasErrors('followup_window_start');
     });
 
-    test('interval_days must be in [1,2,3,5,7]', function () {
+    test('min_interval_minutes must be one of the presets', function () {
         $user = User::factory()->create();
         $agent = createAgentWithConfig($user);
 
-        $payload = [
-            'first_delay_minutes' => 30,
-            'daily_time' => '10:00',
-            'max_count' => 3,
-            'approach' => 'amigavel',
-            'followup_window_start' => '08:00',
-            'followup_window_end' => '20:00',
-            'followup_interval_days' => 4,
-        ];
-
         $this->actingAs($user)
-            ->post(route('agentes.followup.update', $agent), $payload)
-            ->assertSessionHasErrors('followup_interval_days');
+            ->post(route('agentes.followup.update', $agent), followupPayload(['min_interval_minutes' => 90]))
+            ->assertSessionHasErrors('min_interval_minutes');
     });
 
     test('window fields reject out-of-range times', function () {
         $user = User::factory()->create();
         $agent = createAgentWithConfig($user);
 
-        $payload = [
-            'first_delay_minutes' => 30,
-            'daily_time' => '10:00',
-            'max_count' => 3,
-            'approach' => 'amigavel',
-            'followup_window_start' => '25:99',
-            'followup_window_end' => '20:00',
-            'followup_interval_days' => 1,
-        ];
-
         $this->actingAs($user)
-            ->post(route('agentes.followup.update', $agent), $payload)
+            ->post(route('agentes.followup.update', $agent), followupPayload(['followup_window_start' => '25:99']))
             ->assertSessionHasErrors('followup_window_start');
     });
 
@@ -302,48 +331,35 @@ describe('Phase 11: Follow-up schedule validation', function () {
         $user = User::factory()->create();
         $agent = createAgentWithConfig($user);
 
-        $payload = [
-            'first_delay_minutes' => 30,
-            'daily_time' => '10:00',
-            'max_count' => 3,
-            'approach' => 'amigavel',
-            'followup_window_start' => '22:00',
-            'followup_window_end' => '06:00',
-            'followup_interval_days' => 1,
-        ];
-
         $this->actingAs($user)
-            ->post(route('agentes.followup.update', $agent), $payload)
+            ->post(route('agentes.followup.update', $agent), followupPayload([
+                'followup_window_start' => '22:00',
+                'followup_window_end' => '06:00',
+            ]))
             ->assertSessionHasNoErrors()
             ->assertRedirect();
 
-        $config = $agent->fresh()->config;
-        expect($config->followup_window_start)->toBe('22:00');
-        expect($config->followup_window_end)->toBe('06:00');
+        $row = AgentFollowUpSetting::withoutGlobalScope('tenant')->where('agent_id', $agent->id)->first();
+        expect(substr((string) $row->business_window_start, 0, 5))->toBe('22:00');
+        expect(substr((string) $row->business_window_end, 0, 5))->toBe('06:00');
     });
 
     test('new fields are persisted', function () {
         $user = User::factory()->create();
         $agent = createAgentWithConfig($user);
 
-        $payload = [
-            'first_delay_minutes' => 30,
-            'daily_time' => '10:00',
-            'max_count' => 3,
-            'approach' => 'amigavel',
-            'followup_window_start' => '09:00',
-            'followup_window_end' => '19:00',
-            'followup_interval_days' => 2,
-        ];
-
         $this->actingAs($user)
-            ->post(route('agentes.followup.update', $agent), $payload)
+            ->post(route('agentes.followup.update', $agent), followupPayload([
+                'followup_window_start' => '09:00',
+                'followup_window_end' => '19:00',
+                'min_interval_minutes' => 240,
+            ]))
             ->assertRedirect();
 
-        $config = $agent->fresh()->config;
-        expect($config->followup_window_start)->toBe('09:00');
-        expect($config->followup_window_end)->toBe('19:00');
-        expect((int) $config->followup_interval_days)->toBe(2);
+        $row = AgentFollowUpSetting::withoutGlobalScope('tenant')->where('agent_id', $agent->id)->first();
+        expect(substr((string) $row->business_window_start, 0, 5))->toBe('09:00');
+        expect(substr((string) $row->business_window_end, 0, 5))->toBe('19:00');
+        expect($row->min_interval_minutes)->toBe(240);
     });
 });
 

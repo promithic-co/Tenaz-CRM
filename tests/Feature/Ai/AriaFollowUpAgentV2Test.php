@@ -6,6 +6,8 @@ use App\Ai\Middleware\ToolCallGuardMiddleware;
 use App\Ai\Tools\AtualizarStatusLeadTool;
 use App\Ai\Tools\ConsultarCreditoInssTool;
 use App\Ai\Tools\EscalarParaHumanoTool;
+use App\Models\Agent;
+use App\Models\AgentFollowUpSetting;
 use App\Models\Lead;
 use App\Models\PromptTemplate;
 use App\Models\User;
@@ -166,6 +168,32 @@ test('CredFlowFollowUpAgent loads DB prompt template when available', function (
     expect($instructions)->toContain('Tentativa 1 de');
     expect($instructions)->not->toContain('{{attempt_number}}');
     expect($instructions)->not->toContain('{{max_count}}');
+});
+
+test('CredFlowFollowUpAgent derives template approach from resolver tone', function () {
+    $agent = Agent::factory()->create();
+    AgentFollowUpSetting::factory()->create([
+        'agent_id' => $agent->id,
+        'tenant_id' => $agent->tenant_id,
+        'tone' => 'direto',
+    ]);
+
+    $lead = makeFollowUpLead(['agent_id' => $agent->id, 'tenant_id' => $agent->tenant_id]);
+
+    PromptTemplate::create([
+        'tenant_id' => $lead->tenant_id,
+        'agent_id' => null,
+        'name' => 'Follow-up Approach',
+        'slug' => 'followup-approach',
+        'type' => 'followup',
+        'content' => 'Abordagem: {{approach}}.',
+        'version' => 1,
+        'is_active' => true,
+    ]);
+
+    $instructions = (string) (new CredFlowFollowUpAgent($lead))->instructions();
+
+    expect($instructions)->toContain('Abordagem: persuasivo.');
 });
 
 test('CredFlowFollowUpAgent instructions include tool result semantics', function () {

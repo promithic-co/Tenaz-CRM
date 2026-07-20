@@ -155,6 +155,20 @@ class FollowUpWindowService
             return [...$base, 'reason' => 'not_active'];
         }
 
+        // A follow-up belongs to an open atendimento. Once the session closes (terminal
+        // status, ticket finalise, or auto-close) the sales cycle is over — a closed
+        // session must never receive a follow-up. Treated as a deactivation reason by
+        // the command/job so the lead flips to inactive instead of re-evaluating forever.
+        //
+        // Gated on "has sessions but none open" (a genuinely concluded cycle), NOT on the
+        // mere absence of a session: a legacy lead created before sessions existed (pending
+        // the sessions:backfill) has no rows yet and must keep its follow-up behaviour until
+        // backfilled. In production every inbound opens a session, so an active-followup lead
+        // normally has an open one — this only catches the closed-cycle case.
+        if ($lead->openSession === null && $lead->sessions()->exists()) {
+            return [...$base, 'reason' => 'no_open_session'];
+        }
+
         $aiMode = $effectiveAiMode ?? $lead->ai_mode;
 
         if ($aiMode === Lead::AI_MODE_MANUAL || in_array($lead->operational_stage, Lead::HUMAN_HANDOFF_STAGES, true)) {
@@ -181,13 +195,15 @@ class FollowUpWindowService
             return [...$base, 'reason' => 'window_expired_requires_hsm'];
         }
 
-        if (! $this->isInsideBusinessHours($settings, $now)) {
-            return [...$base, 'reason' => 'outside_business_hours'];
-        }
-
+        // Evaluate max_reached before business hours so an exhausted lead deactivates
+        // on the first tick instead of lingering `active` until the window reopens.
         $maxAttempts = (int) ($settings['max_attempts_within_window'] ?? 2);
         if ((int) $lead->followup_count >= $maxAttempts) {
             return [...$base, 'reason' => 'max_reached'];
+        }
+
+        if (! $this->isInsideBusinessHours($settings, $now)) {
+            return [...$base, 'reason' => 'outside_business_hours'];
         }
 
         $dueAt = $this->nextDueAt($lead, $settings);

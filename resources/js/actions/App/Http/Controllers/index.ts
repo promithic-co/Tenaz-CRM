@@ -11,6 +11,7 @@ import SearchController from './SearchController'
 import ConversasController from './ConversasController'
 import LeadManagementController from './LeadManagementController'
 import LeadFollowUpController from './LeadFollowUpController'
+import ConversationSessionController from './ConversationSessionController'
 import LeadStatusController from './LeadStatusController'
 import ContactController from './ContactController'
 import TagController from './TagController'
@@ -55,6 +56,7 @@ SearchController: Object.assign(SearchController, SearchController),
 ConversasController: Object.assign(ConversasController, ConversasController),
 LeadManagementController: Object.assign(LeadManagementController, LeadManagementController),
 LeadFollowUpController: Object.assign(LeadFollowUpController, LeadFollowUpController),
+ConversationSessionController: Object.assign(ConversationSessionController, ConversationSessionController),
 LeadStatusController: Object.assign(LeadStatusController, LeadStatusController),
 ContactController: Object.assign(ContactController, ContactController),
 TagController: Object.assign(TagController, TagController),

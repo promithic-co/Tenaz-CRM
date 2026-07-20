@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Requests\InboxFilterRequest;
+use App\Models\ConversationSession;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\WhatsappInstance;
@@ -63,6 +64,8 @@ class ConversationInboxPropsBuilder
             'ultima_interacao' => $lead->last_interaction_at?->diffForHumans() ?? $lead->created_at?->diffForHumans(),
             'pausado' => $pauseMap[$lead->whatsapp] ?? false,
             'whatsapp_instance_id' => $lead->whatsapp_instance_id,
+            'is_returning' => $lead->openSession !== null
+                && in_array($lead->openSession->open_reason, ConversationSession::REENGAGEMENT_REASONS, true),
         ]);
 
         return [
@@ -84,7 +87,7 @@ class ConversationInboxPropsBuilder
     {
         $query = Lead::production()
             ->forTenant($tenantId)
-            ->with(['assignedUser', 'tags:id,name,color,slug,is_hot']);
+            ->with(['assignedUser', 'tags:id,name,color,slug,is_hot', 'openSession']);
 
         if ($filters['instance'] !== '') {
             $instanceId = WhatsappInstance::query()

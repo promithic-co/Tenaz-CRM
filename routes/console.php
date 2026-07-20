@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\AutoCloseIdleConversationSessionsCommand;
 use App\Console\Commands\CleanOldMediaFilesCommand;
 use App\Console\Commands\LaboratoryHealthCheckCommand;
 use App\Console\Commands\ProcessPendingRetriesCommand;
@@ -24,6 +25,7 @@ Schedule::command('credflow:start-scheduled-campaigns')->everyMinute();
 Schedule::command('credflow:monitor-campaigns')->everyFiveMinutes();
 Schedule::command('credflow:reconcile-outbox')->hourly();
 Schedule::command(SyncTemplatesCommand::class)->daily();
+Schedule::command(AutoCloseIdleConversationSessionsCommand::class)->dailyAt('03:30');
 
 // GROW-4: prune append-only observability tables (AgentInteractionEvent, AiRun)
 // past their configured retention window so they don't grow unbounded.

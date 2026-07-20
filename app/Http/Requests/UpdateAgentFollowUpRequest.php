@@ -26,13 +26,12 @@ class UpdateAgentFollowUpRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'enabled' => 'required|boolean',
             'first_delay_minutes' => 'required|integer|min:1|max:1440',
-            'daily_time' => ['required', 'date_format:H:i'],
             'max_count' => 'required|integer|min:1|max:5',
-            'approach' => 'required|in:amigavel,natural,persuasivo',
             'followup_window_start' => ['required', 'date_format:H:i'],
             'followup_window_end' => ['required', 'date_format:H:i'],
-            'followup_interval_days' => 'required|integer|in:1,2,3,5,7',
+            'min_interval_minutes' => 'required|integer|in:30,60,120,240,480,720,1440',
             'message_type' => 'nullable|string|in:contextual,reengajamento,urgencia,duvida,encerramento,proposta',
             'tone' => 'nullable|string|in:consultivo,acolhedor,direto,descontraido,premium',
             'persuasion_intensity' => 'nullable|integer|min:1|max:5',

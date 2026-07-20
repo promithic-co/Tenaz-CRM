@@ -774,7 +774,8 @@ describe('Phase 10: Smart Scheduler', function () {
             'is_sandbox' => false,
             'followup_status' => 'active',
             'followup_count' => 1,
-            'last_interaction_at' => $frozenTime->copy()->subMinutes(90),
+            // interval_days=2 → min_interval_minutes=2880 (2 days); interaction older than that.
+            'last_interaction_at' => $frozenTime->copy()->subDays(3),
             'last_inbound_at' => $frozenTime->copy()->subHours(2),
         ]);
         AgentConfig::factory()->create([
@@ -822,6 +823,53 @@ describe('Phase 10: Smart Scheduler', function () {
         $this->artisan('credflow:check-followups');
 
         expect($lead->fresh()->followup_status)->toBe('active');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// evaluate() reason ordering & legacy interval mapping
+// ---------------------------------------------------------------------------
+
+describe('evaluate reason ordering', function () {
+    test('reports max_reached even when outside business hours', function () {
+        // 21:00 São Paulo — past the default 20:00 window end.
+        $this->travelTo(Carbon::parse('2026-03-16 21:00:00', 'America/Sao_Paulo'));
+
+        $lead = Lead::factory()->create([
+            'is_sandbox' => false,
+            'followup_status' => 'active',
+            'followup_count' => 2,
+            'last_inbound_at' => now()->subHours(1),
+            'last_interaction_at' => now()->subHours(1),
+        ]);
+
+        $settings = app(FollowUpSettingsResolver::class)->forLead($lead);
+        $evaluation = app(FollowUpWindowService::class)->evaluate($lead, $settings);
+
+        expect($evaluation['reason'])->toBe('max_reached')
+            ->and($evaluation['eligible'])->toBeFalse();
+
+        $this->travelBack();
+    });
+});
+
+describe('legacy interval mapping', function () {
+    test('maps followup_interval_days to min_interval_minutes when no agent settings row', function () {
+        $agent = Agent::factory()->create();
+        AgentConfig::factory()->create([
+            'agent_id' => $agent->id,
+            'tenant_id' => $agent->tenant_id,
+            'followup_interval_days' => 3,
+        ]);
+
+        $lead = Lead::factory()->create([
+            'agent_id' => $agent->id,
+            'tenant_id' => $agent->tenant_id,
+        ]);
+
+        $settings = app(FollowUpSettingsResolver::class)->forLead($lead);
+
+        expect($settings['min_interval_minutes'])->toBe(4320);
     });
 });
 

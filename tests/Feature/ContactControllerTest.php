@@ -1,8 +1,10 @@
 <?php
 
+use App\Models\Agent;
 use App\Models\Contact;
 use App\Models\ContactList;
 use App\Models\ContactListEntry;
+use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -148,6 +150,45 @@ describe('ContactController CRUD', function () {
                 ->where('collectedInformation.0.label', 'Objetivo')
                 ->where('collectedInformation.0.value', 'Refinanciamento')
                 ->where('contact.extra_data.campaign_code', 'summer-26')
+            );
+    });
+
+    test('show exposes follow-up state for the latest lead and per-lead in the list', function () {
+        $user = User::factory()->create();
+        $tenantId = (string) $user->tenantId;
+        $contact = Contact::factory()->forTenant($tenantId)->create();
+
+        $agent = Agent::factory()->create(['user_id' => $user->id, 'tenant_id' => $tenantId]);
+
+        $older = Lead::factory()->create([
+            'contact_id' => $contact->id,
+            'tenant_id' => $tenantId,
+            'agent_id' => $agent->id,
+            'followup_status' => 'inactive',
+            'followup_count' => 2,
+            'updated_at' => now()->subDay(),
+        ]);
+        $latest = Lead::factory()->create([
+            'contact_id' => $contact->id,
+            'tenant_id' => $tenantId,
+            'agent_id' => $agent->id,
+            'followup_status' => 'paused',
+            'followup_count' => 1,
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('contatos.show', $contact))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('followupState.status', 'paused')
+                ->where('followupState.count', 1)
+                ->where('followupState.reason_label', 'pausado')
+                ->where('leads.0.id', $latest->id)
+                ->where('leads.0.followup.status', 'paused')
+                ->where('leads.1.id', $older->id)
+                ->where('leads.1.followup.status', 'inactive')
+                ->where('leads.1.followup.count', 2)
             );
     });
 

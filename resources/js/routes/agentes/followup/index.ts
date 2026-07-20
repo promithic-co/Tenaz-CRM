@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::update
- * @see app/Http/Controllers/AgentFollowUpController.php:56
+ * @see app/Http/Controllers/AgentFollowUpController.php:47
  * @route '/agentes/{agent}/follow-up'
  */
 export const update = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::update
- * @see app/Http/Controllers/AgentFollowUpController.php:56
+ * @see app/Http/Controllers/AgentFollowUpController.php:47
  * @route '/agentes/{agent}/follow-up'
  */
 update.url = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ update.url = (args: { agent: number | { id: number } } | [agent: number | { id: 
 
 /**
 * @see \App\Http\Controllers\AgentFollowUpController::update
- * @see app/Http/Controllers/AgentFollowUpController.php:56
+ * @see app/Http/Controllers/AgentFollowUpController.php:47
  * @route '/agentes/{agent}/follow-up'
  */
 update.post = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -59,7 +59,7 @@ update.post = (args: { agent: number | { id: number } } | [agent: number | { id:
 
     /**
 * @see \App\Http\Controllers\AgentFollowUpController::update
- * @see app/Http/Controllers/AgentFollowUpController.php:56
+ * @see app/Http/Controllers/AgentFollowUpController.php:47
  * @route '/agentes/{agent}/follow-up'
  */
     const updateForm = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -69,7 +69,7 @@ update.post = (args: { agent: number | { id: number } } | [agent: number | { id:
 
             /**
 * @see \App\Http\Controllers\AgentFollowUpController::update
- * @see app/Http/Controllers/AgentFollowUpController.php:56
+ * @see app/Http/Controllers/AgentFollowUpController.php:47
  * @route '/agentes/{agent}/follow-up'
  */
         updateForm.post = (args: { agent: number | { id: number } } | [agent: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

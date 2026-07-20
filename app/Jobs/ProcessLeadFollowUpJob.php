@@ -104,7 +104,7 @@ class ProcessLeadFollowUpJob implements ShouldBeUniqueUntilProcessing, ShouldQue
                 'remaining_minutes' => $evaluation['remaining_minutes'],
             ]);
 
-            if (in_array($evaluation['reason'], ['window_expired', 'window_expired_requires_hsm', 'no_inbound_window', 'terminal_status', 'max_reached'], true)) {
+            if (in_array($evaluation['reason'], ['window_expired', 'window_expired_requires_hsm', 'no_inbound_window', 'terminal_status', 'max_reached', 'no_open_session'], true)) {
                 $this->lead->update(['followup_status' => 'inactive']);
             } elseif ($evaluation['reason'] === 'human_paused') {
                 $this->lead->update(['followup_status' => 'paused']);

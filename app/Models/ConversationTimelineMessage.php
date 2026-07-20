@@ -13,6 +13,7 @@ class ConversationTimelineMessage extends Model
     protected $fillable = [
         'tenant_id',
         'lead_id',
+        'session_id',
         'conversation_id',
         'direction',
         'sender_type',
@@ -41,5 +42,10 @@ class ConversationTimelineMessage extends Model
     public function lead(): BelongsTo
     {
         return $this->belongsTo(Lead::class);
+    }
+
+    public function session(): BelongsTo
+    {
+        return $this->belongsTo(ConversationSession::class, 'session_id');
     }
 }

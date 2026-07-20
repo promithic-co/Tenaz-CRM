@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 import entries from './entries'
 /**
 * @see \App\Http\Controllers\ContactController::addContacts
- * @see app/Http/Controllers/ContactController.php:218
+ * @see app/Http/Controllers/ContactController.php:223
  * @route '/listas-contato/{list}/contatos'
  */
 export const addContacts = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -17,7 +17,7 @@ addContacts.definition = {
 
 /**
 * @see \App\Http\Controllers\ContactController::addContacts
- * @see app/Http/Controllers/ContactController.php:218
+ * @see app/Http/Controllers/ContactController.php:223
  * @route '/listas-contato/{list}/contatos'
  */
 addContacts.url = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -50,7 +50,7 @@ addContacts.url = (args: { list: number | { id: number } } | [list: number | { i
 
 /**
 * @see \App\Http\Controllers\ContactController::addContacts
- * @see app/Http/Controllers/ContactController.php:218
+ * @see app/Http/Controllers/ContactController.php:223
  * @route '/listas-contato/{list}/contatos'
  */
 addContacts.post = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -60,7 +60,7 @@ addContacts.post = (args: { list: number | { id: number } } | [list: number | { 
 
     /**
 * @see \App\Http\Controllers\ContactController::addContacts
- * @see app/Http/Controllers/ContactController.php:218
+ * @see app/Http/Controllers/ContactController.php:223
  * @route '/listas-contato/{list}/contatos'
  */
     const addContactsForm = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -70,7 +70,7 @@ addContacts.post = (args: { list: number | { id: number } } | [list: number | { 
 
             /**
 * @see \App\Http\Controllers\ContactController::addContacts
- * @see app/Http/Controllers/ContactController.php:218
+ * @see app/Http/Controllers/ContactController.php:223
  * @route '/listas-contato/{list}/contatos'
  */
         addContactsForm.post = (args: { list: number | { id: number } } | [list: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

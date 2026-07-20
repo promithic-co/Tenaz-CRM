@@ -95,6 +95,9 @@ class CheckFollowUpsCommand extends Command
                 $query->whereHas('agent', fn ($q) => $q->where('is_active', true))
                     ->orWhereNull('agent_id');
             })
+            // Eager-load the open session so evaluate()'s no_open_session guard stays
+            // N+1-free across the chunk (one query per chunk, not per lead).
+            ->with('openSession')
             ->chunkById((int) config('credflow.followup.check_chunk_size', 200), function ($leads) use ($now, &$dispatchedCount, $settingsResolver, $window, $pause, $automation, $jitter): void {
                 $effectiveModes = $automation->resolveInstanceDefaultedModes($leads);
 
@@ -119,7 +122,7 @@ class CheckFollowUpsCommand extends Command
                         continue;
                     }
 
-                    if (in_array($evaluation['reason'], ['window_expired', 'window_expired_requires_hsm', 'no_inbound_window', 'terminal_status', 'max_reached'], true)) {
+                    if (in_array($evaluation['reason'], ['window_expired', 'window_expired_requires_hsm', 'no_inbound_window', 'terminal_status', 'max_reached', 'no_open_session'], true)) {
                         $lead->update(['followup_status' => 'inactive']);
                     } elseif ($evaluation['reason'] === 'human_paused') {
                         $lead->update(['followup_status' => 'paused']);

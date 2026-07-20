@@ -5,7 +5,12 @@ import { computed, ref, watch } from 'vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import { bulkAction, index, show, store, transfer } from '@/routes/conversas';
 import type { QueryParams } from '@/wayfinder';
-import type { ConversationFilters, LeadPaginator, InboxLead, TransferTarget } from '../types';
+import type {
+    ConversationFilters,
+    LeadPaginator,
+    InboxLead,
+    TransferTarget,
+} from '../types';
 
 type Props = {
     leads: LeadPaginator;
@@ -61,9 +66,12 @@ const transferForm = useForm({
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
-watch(() => props.filters.search, (value) => {
-    searchQuery.value = value ?? '';
-});
+watch(
+    () => props.filters.search,
+    (value) => {
+        searchQuery.value = value ?? '';
+    },
+);
 
 watch(searchQuery, (value) => {
     if (searchTimeout) {
@@ -75,9 +83,12 @@ watch(searchQuery, (value) => {
     }, 300);
 });
 
-watch(() => props.filters.instance, (value) => {
-    newContactForm.evolution_instance = value ?? '';
-});
+watch(
+    () => props.filters.instance,
+    (value) => {
+        newContactForm.evolution_instance = value ?? '';
+    },
+);
 
 const selectedCount = computed(() => selectedLeadIds.value.size);
 
@@ -206,12 +217,20 @@ function openNewContactModal(): void {
 </script>
 
 <template>
-    <aside class="flex min-h-0 min-w-0 flex-col border-sidebar-border/70 bg-card dark:border-sidebar-border lg:border-r">
-        <div class="shrink-0 border-b border-sidebar-border/70 p-3 dark:border-sidebar-border">
+    <aside
+        class="flex min-h-0 min-w-0 flex-col border-sidebar-border/70 bg-card lg:border-r dark:border-sidebar-border"
+    >
+        <div
+            class="shrink-0 border-b border-sidebar-border/70 p-3 dark:border-sidebar-border"
+        >
             <div class="mb-3 flex items-center justify-between gap-3">
                 <div>
-                    <h1 class="text-sm font-semibold text-foreground">Conversas</h1>
-                    <p class="text-xs text-muted-foreground">{{ leads.total }} contatos</p>
+                    <h1 class="text-sm font-semibold text-foreground">
+                        Conversas
+                    </h1>
+                    <p class="text-xs text-muted-foreground">
+                        {{ leads.total }} contatos
+                    </p>
                 </div>
                 <button
                     type="button"
@@ -224,7 +243,9 @@ function openNewContactModal(): void {
             </div>
 
             <div class="relative">
-                <Search class="absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Search
+                    class="absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                />
                 <input
                     v-model="searchQuery"
                     type="text"
@@ -234,19 +255,32 @@ function openNewContactModal(): void {
             </div>
         </div>
 
-        <div class="shrink-0 border-b border-sidebar-border/70 px-3 py-2 dark:border-sidebar-border">
-            <label class="mb-1.5 block text-xs font-medium text-muted-foreground">Instancia</label>
+        <div
+            class="shrink-0 border-b border-sidebar-border/70 px-3 py-2 dark:border-sidebar-border"
+        >
+            <label
+                class="mb-1.5 block text-xs font-medium text-muted-foreground"
+                >Instancia</label
+            >
             <select
                 class="h-9 w-full rounded-md border border-input bg-background px-2.5 text-xs text-foreground"
                 :value="filters.instance ?? ''"
                 @change="onInstanceChange"
             >
                 <option value="">Todas</option>
-                <option v-for="instance in instances" :key="instance.name" :value="instance.name">{{ instance.label }}</option>
+                <option
+                    v-for="instance in instances"
+                    :key="instance.name"
+                    :value="instance.name"
+                >
+                    {{ instance.label }}
+                </option>
             </select>
         </div>
 
-        <nav class="flex shrink-0 flex-wrap gap-1.5 border-b border-sidebar-border/70 px-3 py-2 dark:border-sidebar-border">
+        <nav
+            class="flex shrink-0 flex-wrap gap-1.5 border-b border-sidebar-border/70 px-3 py-2 dark:border-sidebar-border"
+        >
             <Link
                 v-for="filter in statusFilters"
                 :key="filter.key"
@@ -270,8 +304,14 @@ function openNewContactModal(): void {
             class="flex shrink-0 flex-col gap-2 border-b border-sidebar-border/70 bg-primary/5 px-3 py-2 dark:border-sidebar-border"
         >
             <div class="flex items-center justify-between">
-                <p class="text-xs font-medium text-foreground">{{ selectedCount }} selecionado(s)</p>
-                <button type="button" class="text-xs text-muted-foreground hover:text-foreground" @click="clearSelection">
+                <p class="text-xs font-medium text-foreground">
+                    {{ selectedCount }} selecionado(s)
+                </p>
+                <button
+                    type="button"
+                    class="text-xs text-muted-foreground hover:text-foreground"
+                    @click="clearSelection"
+                >
                     Limpar
                 </button>
             </div>
@@ -280,7 +320,13 @@ function openNewContactModal(): void {
                     v-model="bulkActionChoice"
                     class="h-8 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground"
                 >
-                    <option v-for="(label, key) in bulkActionLabels" :key="key" :value="key">{{ label }}</option>
+                    <option
+                        v-for="(label, key) in bulkActionLabels"
+                        :key="key"
+                        :value="key"
+                    >
+                        {{ label }}
+                    </option>
                 </select>
                 <button
                     type="button"
@@ -291,13 +337,22 @@ function openNewContactModal(): void {
                     Aplicar
                 </button>
             </div>
-            <div v-if="transferTargets.length > 0" class="flex items-center gap-2 border-t border-primary/20 pt-2">
+            <div
+                v-if="transferTargets.length > 0"
+                class="flex items-center gap-2 border-t border-primary/20 pt-2"
+            >
                 <select
                     v-model="transferTargetId"
                     class="h-8 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground"
                 >
                     <option :value="null" disabled>Transferir para...</option>
-                    <option v-for="t in transferTargets" :key="t.id" :value="t.id">{{ t.name }}</option>
+                    <option
+                        v-for="t in transferTargets"
+                        :key="t.id"
+                        :value="t.id"
+                    >
+                        {{ t.name }}
+                    </option>
                 </select>
                 <button
                     type="button"
@@ -316,7 +371,9 @@ function openNewContactModal(): void {
                 :key="lead.id"
                 :class="[
                     'flex items-start gap-3 border-b border-sidebar-border/70 px-4 py-3 transition-colors dark:border-sidebar-border',
-                    activeLeadId === lead.id ? 'bg-muted/80' : 'hover:bg-muted/50',
+                    activeLeadId === lead.id
+                        ? 'bg-muted/80'
+                        : 'hover:bg-muted/50',
                 ]"
             >
                 <input
@@ -324,29 +381,60 @@ function openNewContactModal(): void {
                     class="mt-3 h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-input text-primary focus:ring-1 focus:ring-ring"
                     :aria-label="`Selecionar ${lead.nome}`"
                     :checked="selectedLeadIds.has(lead.id)"
-                    @change="(event) => toggleLeadSelection(lead.id, (event.target as HTMLInputElement).checked)"
+                    @change="
+                        (event) =>
+                            toggleLeadSelection(
+                                lead.id,
+                                (event.target as HTMLInputElement).checked,
+                            )
+                    "
                 />
-                <Link :href="leadHref(lead)" preserve-scroll class="flex min-w-0 flex-1 gap-3">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                <Link
+                    :href="leadHref(lead)"
+                    preserve-scroll
+                    class="flex min-w-0 flex-1 gap-3"
+                >
+                    <div
+                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                    >
                         {{ initials(lead.nome) }}
                     </div>
                     <div class="min-w-0 flex-1">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <p class="truncate text-sm font-medium text-foreground">{{ lead.nome }}</p>
-                                <p class="truncate text-xs text-muted-foreground">{{ lead.whatsapp }}</p>
+                                <p
+                                    class="truncate text-sm font-medium text-foreground"
+                                >
+                                    {{ lead.nome }}
+                                </p>
+                                <p
+                                    class="truncate text-xs text-muted-foreground"
+                                >
+                                    {{ lead.whatsapp }}
+                                </p>
                             </div>
-                            <p class="shrink-0 text-xs text-muted-foreground">{{ lead.ultima_interacao ?? 'Sem historico' }}</p>
+                            <p class="shrink-0 text-xs text-muted-foreground">
+                                {{ lead.ultima_interacao ?? 'Sem historico' }}
+                            </p>
                         </div>
                         <div class="mt-2 flex flex-wrap items-center gap-1.5">
                             <StatusBadge :status="lead.status" />
+                            <span
+                                v-if="lead.is_returning"
+                                class="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-500 dark:text-violet-400"
+                            >
+                                Retornante
+                            </span>
                             <span
                                 v-if="automationLabel(lead)"
                                 class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
                             >
                                 {{ automationLabel(lead) }}
                             </span>
-                            <span v-if="lead.assigned_user_name" class="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400">
+                            <span
+                                v-if="lead.assigned_user_name"
+                                class="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400"
+                            >
                                 {{ lead.assigned_user_name }}
                             </span>
                         </div>
@@ -354,14 +442,24 @@ function openNewContactModal(): void {
                 </Link>
             </div>
 
-            <div v-if="leads.data.length === 0" class="flex flex-col items-center justify-center gap-2 px-8 py-16 text-center">
+            <div
+                v-if="leads.data.length === 0"
+                class="flex flex-col items-center justify-center gap-2 px-8 py-16 text-center"
+            >
                 <MessageSquare class="h-10 w-10 text-muted-foreground" />
-                <p class="text-sm font-medium text-foreground">Nenhuma conversa encontrada</p>
-                <p class="text-xs text-muted-foreground">Ajuste a busca ou adicione um novo contato.</p>
+                <p class="text-sm font-medium text-foreground">
+                    Nenhuma conversa encontrada
+                </p>
+                <p class="text-xs text-muted-foreground">
+                    Ajuste a busca ou adicione um novo contato.
+                </p>
             </div>
         </div>
 
-        <div v-if="leads.links?.length > 3" class="flex shrink-0 items-center gap-1 border-t border-sidebar-border/70 px-3 py-2 dark:border-sidebar-border">
+        <div
+            v-if="leads.links?.length > 3"
+            class="flex shrink-0 items-center gap-1 border-t border-sidebar-border/70 px-3 py-2 dark:border-sidebar-border"
+        >
             <template v-for="link in leads.links" :key="link.label">
                 <Link
                     v-if="link.url"
@@ -370,10 +468,16 @@ function openNewContactModal(): void {
                     preserve-scroll
                     :class="[
                         'rounded px-2.5 py-1 text-xs',
-                        link.active ? 'bg-primary font-medium text-primary-foreground' : 'text-muted-foreground hover:bg-muted',
+                        link.active
+                            ? 'bg-primary font-medium text-primary-foreground'
+                            : 'text-muted-foreground hover:bg-muted',
                     ]"
                 />
-                <span v-else v-html="link.label" class="px-2.5 py-1 text-xs text-muted-foreground/40" />
+                <span
+                    v-else
+                    v-html="link.label"
+                    class="px-2.5 py-1 text-xs text-muted-foreground/40"
+                />
             </template>
         </div>
 
@@ -388,12 +492,19 @@ function openNewContactModal(): void {
                 @submit.prevent="submitNewContact"
             >
                 <div>
-                    <h3 class="text-lg font-semibold text-foreground">Novo contato</h3>
-                    <p class="text-xs text-muted-foreground">Cria ou restaura um lead manualmente para esta conta.</p>
+                    <h3 class="text-lg font-semibold text-foreground">
+                        Novo contato
+                    </h3>
+                    <p class="text-xs text-muted-foreground">
+                        Cria ou restaura um lead manualmente para esta conta.
+                    </p>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-xs font-medium text-foreground">Nome</label>
+                    <label
+                        class="mb-1 block text-xs font-medium text-foreground"
+                        >Nome</label
+                    >
                     <input
                         v-model="newContactForm.nome"
                         type="text"
@@ -401,11 +512,19 @@ function openNewContactModal(): void {
                         maxlength="255"
                         class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
                     />
-                    <p v-if="newContactForm.errors.nome" class="mt-1 text-xs text-rose-500">{{ newContactForm.errors.nome }}</p>
+                    <p
+                        v-if="newContactForm.errors.nome"
+                        class="mt-1 text-xs text-rose-500"
+                    >
+                        {{ newContactForm.errors.nome }}
+                    </p>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-xs font-medium text-foreground">WhatsApp (55DDDNNNNNNNN)</label>
+                    <label
+                        class="mb-1 block text-xs font-medium text-foreground"
+                        >WhatsApp (55DDDNNNNNNNN)</label
+                    >
                     <input
                         v-model="newContactForm.whatsapp"
                         type="text"
@@ -413,31 +532,58 @@ function openNewContactModal(): void {
                         placeholder="5511999999999"
                         class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
                     />
-                    <p v-if="newContactForm.errors.whatsapp" class="mt-1 text-xs text-rose-500">{{ newContactForm.errors.whatsapp }}</p>
+                    <p
+                        v-if="newContactForm.errors.whatsapp"
+                        class="mt-1 text-xs text-rose-500"
+                    >
+                        {{ newContactForm.errors.whatsapp }}
+                    </p>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-xs font-medium text-foreground">CPF (opcional)</label>
+                    <label
+                        class="mb-1 block text-xs font-medium text-foreground"
+                        >CPF (opcional)</label
+                    >
                     <input
                         v-model="newContactForm.cpf"
                         type="text"
                         placeholder="00000000000"
                         class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
                     />
-                    <p v-if="newContactForm.errors.cpf" class="mt-1 text-xs text-rose-500">{{ newContactForm.errors.cpf }}</p>
+                    <p
+                        v-if="newContactForm.errors.cpf"
+                        class="mt-1 text-xs text-rose-500"
+                    >
+                        {{ newContactForm.errors.cpf }}
+                    </p>
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-xs font-medium text-foreground">Instância de WhatsApp</label>
+                    <label
+                        class="mb-1 block text-xs font-medium text-foreground"
+                        >Instância de WhatsApp</label
+                    >
                     <select
                         v-model="newContactForm.evolution_instance"
                         required
                         class="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground"
                     >
                         <option value="" disabled>Selecione</option>
-                        <option v-for="instance in instances" :key="instance.name" :value="instance.name">{{ instance.label }}</option>
+                        <option
+                            v-for="instance in instances"
+                            :key="instance.name"
+                            :value="instance.name"
+                        >
+                            {{ instance.label }}
+                        </option>
                     </select>
-                    <p v-if="newContactForm.errors.evolution_instance" class="mt-1 text-xs text-rose-500">{{ newContactForm.errors.evolution_instance }}</p>
+                    <p
+                        v-if="newContactForm.errors.evolution_instance"
+                        class="mt-1 text-xs text-rose-500"
+                    >
+                        {{ newContactForm.errors.evolution_instance }}
+                    </p>
                 </div>
 
                 <div class="flex gap-2 pt-2">

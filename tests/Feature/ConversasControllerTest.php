@@ -168,6 +168,9 @@ test('test_show_renders_unified_inbox_with_active_conversation', function () {
             ->where('activeConversation.lead.collected_information.0.value', 'Refinanciamento')
             ->where('activeConversation.mensagens.0.content', 'Oi, recebi a mensagem sobre a proposta.')
             ->where('activeConversation.followupStatus', $lead->followup_status)
+            ->where('activeConversation.followupState.status', $lead->followup_status)
+            ->has('activeConversation.followupState.max')
+            ->has('activeConversation.followupState.reason_label')
         );
 });
 
