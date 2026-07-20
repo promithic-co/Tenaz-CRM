@@ -3,11 +3,14 @@ import {
     AlertCircle,
     ArrowLeft,
     Clock,
+    ExternalLink,
     FileText,
     MessageSquare,
     PanelRight,
     Paperclip,
+    Phone,
     RefreshCw,
+    Reply,
     Send,
     X,
 } from 'lucide-vue-next';
@@ -548,7 +551,34 @@ function onKeydown(event: KeyboardEvent): void {
                                       : 'rounded-bl-sm bg-muted text-foreground',
                             ]"
                         >
-                            <p class="whitespace-pre-wrap">
+                            <template v-if="item.msg.template">
+                                <p
+                                    v-if="item.msg.template.header?.text"
+                                    class="mb-1 font-semibold whitespace-pre-wrap"
+                                >
+                                    {{ item.msg.template.header.text }}
+                                </p>
+                                <p class="whitespace-pre-wrap">
+                                    {{
+                                        item.msg.template.body ??
+                                        item.msg.content
+                                    }}
+                                </p>
+                                <p
+                                    v-if="item.msg.template.footer"
+                                    :class="[
+                                        'mt-1 text-xs',
+                                        item.msg.role === 'user'
+                                            ? 'text-primary-foreground/60'
+                                            : item.msg.role === 'operator'
+                                              ? 'text-blue-200'
+                                              : 'text-muted-foreground',
+                                    ]"
+                                >
+                                    {{ item.msg.template.footer }}
+                                </p>
+                            </template>
+                            <p v-else class="whitespace-pre-wrap">
                                 {{ item.msg.content }}
                             </p>
                             <p
@@ -563,6 +593,49 @@ function onKeydown(event: KeyboardEvent): void {
                             >
                                 {{ item.msg.hora }}
                             </p>
+
+                            <div
+                                v-if="item.msg.template?.buttons.length"
+                                :class="[
+                                    'mt-2 -mb-0.5 flex flex-col border-t pt-1',
+                                    item.msg.role === 'operator'
+                                        ? 'border-blue-400/40'
+                                        : 'border-sidebar-border/70',
+                                ]"
+                            >
+                                <span
+                                    v-for="(button, buttonIdx) in item.msg
+                                        .template.buttons"
+                                    :key="buttonIdx"
+                                    :class="[
+                                        'flex items-center justify-center gap-1.5 py-1.5 text-center text-sm font-medium',
+                                        buttonIdx > 0
+                                            ? item.msg.role === 'operator'
+                                                ? 'border-t border-blue-400/40'
+                                                : 'border-t border-sidebar-border/70'
+                                            : '',
+                                        item.msg.role === 'operator'
+                                            ? 'text-blue-100'
+                                            : 'text-sky-500',
+                                    ]"
+                                >
+                                    <ExternalLink
+                                        v-if="button.type === 'URL'"
+                                        class="h-3.5 w-3.5 shrink-0"
+                                    />
+                                    <Phone
+                                        v-else-if="
+                                            button.type === 'PHONE_NUMBER'
+                                        "
+                                        class="h-3.5 w-3.5 shrink-0"
+                                    />
+                                    <Reply
+                                        v-else
+                                        class="h-3.5 w-3.5 shrink-0"
+                                    />
+                                    {{ button.text }}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>

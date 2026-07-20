@@ -61,14 +61,17 @@ class CampaignConversationTimelineWriter
                 return;
             }
 
+            $rendered = $this->renderSnapshot($templateComponents, $resolvedParams);
+
             $message = $this->timeline->record(
                 lead: $lead,
                 direction: 'outbound',
                 senderType: 'system',
-                body: $this->renderBody($templateComponents, $resolvedParams),
+                body: $this->renderBody($rendered, $resolvedParams),
                 status: 'sent',
                 source: 'campaign',
                 providerMessageId: $providerMessageId,
+                metadata: $rendered !== null ? ['whatsapp_template' => ['rendered' => $rendered]] : null,
             );
             $this->timeline->broadcast($message);
 
@@ -112,15 +115,17 @@ class CampaignConversationTimelineWriter
 
                 $components = $message->campaign?->whatsappTemplate?->components_json;
                 $resolved = is_array($message->template_params_resolved) ? $message->template_params_resolved : [];
+                $rendered = $this->renderSnapshot($components, $resolved);
 
                 $this->timeline->record(
                     lead: $lead,
                     direction: 'outbound',
                     senderType: 'system',
-                    body: $this->renderBody($components, $resolved),
+                    body: $this->renderBody($rendered, $resolved),
                     status: $message->status,
                     source: 'campaign',
                     providerMessageId: $providerMessageId,
+                    metadata: $rendered !== null ? ['whatsapp_template' => ['rendered' => $rendered]] : null,
                     occurredAt: $message->sent_at,
                 );
             }
@@ -141,17 +146,18 @@ class CampaignConversationTimelineWriter
     }
 
     /**
-     * Human-readable snapshot of the template as the customer received it, via the shared
-     * renderer's example-tolerant preview. Falls back to the raw resolved values when the
-     * template has no structured components or the renderer rejects them, so this never throws.
+     * Structured snapshot of the template as the customer received it, via the shared
+     * renderer's example-tolerant preview. Null when the template has no structured
+     * components or the renderer rejects them, so this never throws.
      *
      * @param  array<int, mixed>|null  $components
      * @param  array<string, string>  $resolved
+     * @return array{header: ?array<string, mixed>, body: ?string, footer: ?string, buttons: list<array<string, mixed>>, text: string}|null
      */
-    private function renderBody(?array $components, array $resolved): string
+    private function renderSnapshot(?array $components, array $resolved): ?array
     {
         if (! is_array($components) || $components === []) {
-            return trim(implode(' ', $resolved));
+            return null;
         }
 
         $sectionParams = [
@@ -161,9 +167,21 @@ class CampaignConversationTimelineWriter
         ];
 
         try {
-            return $this->renderer->preview($components, $sectionParams)['text'];
+            return $this->renderer->preview($components, $sectionParams);
         } catch (Throwable) {
-            return trim(implode(' ', $resolved));
+            return null;
         }
+    }
+
+    /**
+     * Human-readable body for the timeline row, falling back to the raw resolved values
+     * when no structured snapshot could be rendered.
+     *
+     * @param  array{text: string}|null  $rendered
+     * @param  array<string, string>  $resolved
+     */
+    private function renderBody(?array $rendered, array $resolved): string
+    {
+        return $rendered !== null ? $rendered['text'] : trim(implode(' ', $resolved));
     }
 }

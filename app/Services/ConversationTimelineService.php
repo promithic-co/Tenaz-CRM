@@ -124,6 +124,49 @@ class ConversationTimelineService
             'source' => $message->source,
             'interaction_id' => $message->interaction_id,
             'provider_message_id' => $message->provider_message_id,
+            'template' => $this->templateSnapshotForFrontend($message->metadata),
+        ];
+    }
+
+    /**
+     * Extract the structured template snapshot recorded at send time so the UI can
+     * render header/body/footer/buttons as a real template bubble instead of the
+     * flattened `[Botão] …` text stored in `body`. Returns null for non-template rows.
+     *
+     * @param  array<string, mixed>|null  $metadata
+     * @return array{header: array<string, mixed>|null, body: string|null, footer: string|null, buttons: list<array{type: string, text: string}>}|null
+     */
+    private function templateSnapshotForFrontend(?array $metadata): ?array
+    {
+        $rendered = $metadata['whatsapp_template']['rendered'] ?? null;
+
+        if (! is_array($rendered)) {
+            return null;
+        }
+
+        $header = null;
+        if (is_array($rendered['header'] ?? null)) {
+            $format = (string) ($rendered['header']['format'] ?? 'TEXT');
+            $header = $format === 'TEXT'
+                ? ['format' => 'TEXT', 'text' => (string) ($rendered['header']['text'] ?? '')]
+                : ['format' => $format];
+        }
+
+        $buttons = [];
+        foreach (is_array($rendered['buttons'] ?? null) ? $rendered['buttons'] : [] as $button) {
+            if (is_array($button) && is_string($button['text'] ?? null) && trim($button['text']) !== '') {
+                $buttons[] = [
+                    'type' => (string) ($button['type'] ?? 'QUICK_REPLY'),
+                    'text' => $button['text'],
+                ];
+            }
+        }
+
+        return [
+            'header' => $header,
+            'body' => is_string($rendered['body'] ?? null) ? $rendered['body'] : null,
+            'footer' => is_string($rendered['footer'] ?? null) ? $rendered['footer'] : null,
+            'buttons' => $buttons,
         ];
     }
 

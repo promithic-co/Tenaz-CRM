@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappOutboxMessage;
 use App\Models\WhatsappTemplate;
+use App\Services\ConversationTimelineService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 
@@ -78,6 +79,52 @@ it('queues an approved template and records a manual_template timeline row with 
     expect($outbox->payload_json['type'])->toBe('template')
         ->and($outbox->payload_json['template_name'])->toBe('promo_proposta')
         ->and($outbox->payload_json['components'])->not->toBeEmpty();
+});
+
+it('exposes the structured template snapshot with buttons to the frontend message', function () {
+    [$lead, $template, $user] = templateScenario([
+        'components_json' => [
+            [
+                'type' => 'BODY',
+                'text' => 'Olá {{1}}, sua proposta {{2}} está pronta.',
+                'example' => ['body_text' => [['Maria', '#0']]],
+            ],
+            ['type' => 'FOOTER', 'text' => 'Responda para continuar'],
+            [
+                'type' => 'BUTTONS',
+                'buttons' => [
+                    ['type' => 'QUICK_REPLY', 'text' => 'Sim, sou eu'],
+                    ['type' => 'QUICK_REPLY', 'text' => 'Do que se trata?'],
+                ],
+            ],
+        ],
+    ]);
+
+    $result = templateAction()->send($lead, $template->id, ['body' => ['1' => 'João', '2' => '#42']], $user, false);
+
+    expect($result['message']['template'])->not->toBeNull()
+        ->and($result['message']['template']['body'])->toBe('Olá João, sua proposta #42 está pronta.')
+        ->and($result['message']['template']['footer'])->toBe('Responda para continuar')
+        ->and($result['message']['template']['buttons'])->toBe([
+            ['type' => 'QUICK_REPLY', 'text' => 'Sim, sou eu'],
+            ['type' => 'QUICK_REPLY', 'text' => 'Do que se trata?'],
+        ]);
+});
+
+it('returns a null template snapshot for plain text messages', function () {
+    [$lead, $template, $user] = templateScenario();
+
+    $result = templateAction()->send($lead, $template->id, ['body' => ['1' => 'João', '2' => '#42']], $user, false);
+
+    expect($result['message']['template']['buttons'])->toBe([]);
+
+    $row = ConversationTimelineMessage::where('lead_id', $lead->id)->first();
+    $frontend = app(ConversationTimelineService::class)->toFrontendMessage(
+        new ConversationTimelineMessage(['body' => 'oi', 'sender_type' => 'lead', 'direction' => 'inbound']),
+    );
+
+    expect($frontend['template'])->toBeNull()
+        ->and($row)->not->toBeNull();
 });
 
 it('rejects a template that does not belong to the lead instance', function () {

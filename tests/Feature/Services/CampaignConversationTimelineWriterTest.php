@@ -49,7 +49,39 @@ it('mirrors a sent campaign template into an existing lead conversation', functi
         ->and($row->source)->toBe('campaign')
         ->and($row->status)->toBe('sent')
         ->and($row->provider_message_id)->toBe('wamid-001')
-        ->and($row->body)->toBe('Olá João, sua proposta #42 está pronta.');
+        ->and($row->body)->toBe('Olá João, sua proposta #42 está pronta.')
+        ->and($row->metadata['whatsapp_template']['rendered']['body'])->toBe('Olá João, sua proposta #42 está pronta.');
+});
+
+it('stores the rendered snapshot with buttons for a campaign template', function () {
+    $campaign = Campaign::factory()->sending()->create();
+    $entry = ContactListEntry::factory()->create();
+    $lead = Lead::factory()->forTenant((string) $campaign->tenant_id)->create(['whatsapp' => $entry->phone]);
+
+    writer()->mirrorSentTemplate(
+        $campaign,
+        $entry,
+        (string) $entry->phone,
+        'wamid-btn-001',
+        ['1' => 'João', '2' => '#42'],
+        [
+            ...templateComponents(),
+            [
+                'type' => 'BUTTONS',
+                'buttons' => [
+                    ['type' => 'QUICK_REPLY', 'text' => 'Sim, sou eu'],
+                    ['type' => 'QUICK_REPLY', 'text' => 'Bloquear'],
+                ],
+            ],
+        ],
+    );
+
+    $row = ConversationTimelineMessage::where('lead_id', $lead->id)->first();
+    $buttons = $row->metadata['whatsapp_template']['rendered']['buttons'];
+
+    expect($buttons)->toHaveCount(2)
+        ->and($buttons[0]['text'])->toBe('Sim, sou eu')
+        ->and($row->body)->toContain('[Botão] Sim, sou eu');
 });
 
 it('does not mirror or create a lead when the recipient has no conversation', function () {

@@ -13,6 +13,18 @@ export type MediaAttachment = {
     size_bytes: number;
 };
 
+export type TemplateButton = {
+    type: string;
+    text: string;
+};
+
+export type TemplateSnapshot = {
+    header: { format: string; text?: string } | null;
+    body: string | null;
+    footer: string | null;
+    buttons: TemplateButton[];
+};
+
 export type Message = {
     id?: number;
     session_id?: number | null;
@@ -21,6 +33,7 @@ export type Message = {
     hora: string;
     media?: MediaAttachment | null;
     status?: string;
+    template?: TemplateSnapshot | null;
 };
 
 export type ConversationSessionStatus = 'open' | 'closed';
