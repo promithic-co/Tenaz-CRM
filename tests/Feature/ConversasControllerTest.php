@@ -5,6 +5,7 @@ use App\Models\Contact;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\WhatsappInstance;
+use App\Services\ConversationAutomationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -103,6 +104,41 @@ test('test_index_reports_agentless_lead_effective_mode_as_manual', function () {
             ->where('leads.total', 1)
             ->where('leads.data.0.effective_ai_mode', Lead::AI_MODE_MANUAL)
         );
+});
+
+test('resume clears a manual template pause and restores automatic AI responses', function () {
+    $user = User::factory()->create();
+    $agent = Agent::factory()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenantId,
+        'is_default' => true,
+    ]);
+    $instance = WhatsappInstance::factory()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenantId,
+        'agent_id' => $agent->id,
+        'default_ai_mode' => Lead::AI_MODE_MANUAL,
+        'name' => 'manual-template-instance',
+    ]);
+    $lead = Lead::factory()->forAgent($agent)->create([
+        'whatsapp_instance_id' => $instance->id,
+        'evolution_instance' => $instance->name,
+        'ai_mode' => null,
+        'ai_paused_until' => now()->addHours(10),
+        'ai_paused_reason' => 'manual_template',
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('conversas.resume', $lead))
+        ->assertRedirect();
+
+    $lead->refresh();
+
+    expect($lead->ai_mode)->toBe(Lead::AI_MODE_AUTOMATIC)
+        ->and($lead->ai_paused_until)->toBeNull()
+        ->and($lead->ai_paused_reason)->toBeNull()
+        ->and($lead->isAiPaused())->toBeFalse()
+        ->and(app(ConversationAutomationService::class)->shouldAutoRespond($lead, $instance->name))->toBeTrue();
 });
 
 test('test_show_renders_unified_inbox_with_active_conversation', function () {

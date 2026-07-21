@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\ConversasController::update
- * @see app/Http/Controllers/ConversasController.php:222
+ * @see app/Http/Controllers/ConversasController.php:236
  * @route '/conversas/{lead}/informacoes-coletadas'
  */
 export const update = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -16,7 +16,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::update
- * @see app/Http/Controllers/ConversasController.php:222
+ * @see app/Http/Controllers/ConversasController.php:236
  * @route '/conversas/{lead}/informacoes-coletadas'
  */
 update.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ update.url = (args: { lead: number | { id: number } } | [lead: number | { id: nu
 
 /**
 * @see \App\Http\Controllers\ConversasController::update
- * @see app/Http/Controllers/ConversasController.php:222
+ * @see app/Http/Controllers/ConversasController.php:236
  * @route '/conversas/{lead}/informacoes-coletadas'
  */
 update.patch = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -59,7 +59,7 @@ update.patch = (args: { lead: number | { id: number } } | [lead: number | { id: 
 
     /**
 * @see \App\Http\Controllers\ConversasController::update
- * @see app/Http/Controllers/ConversasController.php:222
+ * @see app/Http/Controllers/ConversasController.php:236
  * @route '/conversas/{lead}/informacoes-coletadas'
  */
     const updateForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -74,7 +74,7 @@ update.patch = (args: { lead: number | { id: number } } | [lead: number | { id: 
 
             /**
 * @see \App\Http\Controllers\ConversasController::update
- * @see app/Http/Controllers/ConversasController.php:222
+ * @see app/Http/Controllers/ConversasController.php:236
  * @route '/conversas/{lead}/informacoes-coletadas'
  */
         updateForm.patch = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

@@ -99,8 +99,22 @@ class ConversasController extends Controller
     public function resume(Lead $lead): RedirectResponse
     {
         $this->authorize('update', $lead);
+
+        $previousAiMode = $lead->ai_mode;
+        $previousPauseReason = $lead->ai_paused_reason;
+
         $this->pause->resume($lead->whatsapp, $lead->tenant_id);
         app(ConversationAutomationService::class)->resumeAi($lead);
+        $lead->refresh();
+
+        Log::info('conversation.ai_resumed', [
+            'lead_id' => $lead->id,
+            'tenant_id' => $lead->tenant_id,
+            'previous_ai_mode' => $previousAiMode,
+            'previous_pause_reason' => $previousPauseReason,
+            'ai_mode' => $lead->ai_mode,
+            'is_ai_paused' => $lead->isAiPaused(),
+        ]);
 
         $events = app(AgentInteractionEventService::class);
         $events->recordForLead(

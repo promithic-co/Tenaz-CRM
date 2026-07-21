@@ -268,6 +268,7 @@ class ConversationAutomationService
     public function resumeAi(Lead $lead): void
     {
         $updates = [
+            'ai_mode' => Lead::AI_MODE_AUTOMATIC,
             'ai_paused_until' => null,
             'ai_paused_reason' => null,
             'ai_paused_by' => null,
