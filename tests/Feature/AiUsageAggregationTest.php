@@ -138,6 +138,28 @@ test('records minimal ai run metrics', function () {
         ->and($run->outcome)->toBe('replied');
 });
 
+test('accumulates repeated model calls without duplicating the model name', function () {
+    $lead = Lead::factory()->create([
+        'agent_id' => $this->agent->id,
+        'tenant_id' => $this->user->tenantId,
+        'conversation_id' => (string) Str::uuid(),
+    ]);
+    $runId = (string) Str::uuid();
+    $recorder = app(AiRunRecorder::class);
+
+    $recorder->start($runId, $lead, 'CredFlowAgent', 'legacy_prompt');
+    $recorder->recordModelCall($runId, 'gpt-4o-mini', 1000, 500, hash('sha256', 'first-prompt'));
+    $recorder->recordModelCall($runId, 'gpt-4o-mini', 200, 100, hash('sha256', 'second-prompt'));
+
+    $run = AiRun::query()->where('run_id', $runId)->firstOrFail();
+
+    expect($run->model)->toBe('gpt-4o-mini')
+        ->and($run->llm_calls)->toBe(2)
+        ->and($run->input_tokens)->toBe(1200)
+        ->and($run->output_tokens)->toBe(600)
+        ->and((float) $run->estimated_cost_usd)->toBeGreaterThan(0);
+});
+
 test('rounds fractional durations before persisting ai run metrics', function () {
     $lead = Lead::factory()->create([
         'agent_id' => $this->agent->id,

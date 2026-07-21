@@ -28,18 +28,33 @@ class AiRunRecorder
 
     public function recordModelCall(string $runId, ?string $model, int $inputTokens, int $outputTokens, string $promptHash): void
     {
-        $cost = $this->estimateCost($model ?? 'unknown', $inputTokens, $outputTokens);
+        $modelName = trim($model ?: 'unknown');
+        $cost = $this->estimateCost($modelName, $inputTokens, $outputTokens);
 
-        AiRun::query()
-            ->where('run_id', $runId)
-            ->update([
-                'model' => DB::raw($this->mergeModelExpression($model)),
+        DB::transaction(function () use ($runId, $modelName, $inputTokens, $outputTokens, $promptHash, $cost): void {
+            $run = AiRun::query()
+                ->where('run_id', $runId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $run) {
+                return;
+            }
+
+            $models = array_values(array_filter(array_map('trim', explode(',', (string) $run->model))));
+            if (! in_array($modelName, $models, true)) {
+                $models[] = $modelName;
+            }
+
+            $run->forceFill([
+                'model' => implode(',', $models),
                 'prompt_hash' => $promptHash,
-                'llm_calls' => DB::raw('llm_calls + 1'),
-                'input_tokens' => DB::raw('input_tokens + '.max(0, $inputTokens)),
-                'output_tokens' => DB::raw('output_tokens + '.max(0, $outputTokens)),
-                'estimated_cost_usd' => DB::raw('estimated_cost_usd + '.$cost),
-            ]);
+                'llm_calls' => $run->llm_calls + 1,
+                'input_tokens' => $run->input_tokens + max(0, $inputTokens),
+                'output_tokens' => $run->output_tokens + max(0, $outputTokens),
+                'estimated_cost_usd' => round((float) $run->estimated_cost_usd + $cost, 6),
+            ])->save();
+        });
     }
 
     public function recordToolCalls(string $runId, int $count): void
@@ -91,17 +106,5 @@ class AiRunRecorder
         }
 
         return 0.0;
-    }
-
-    private function mergeModelExpression(?string $model): string
-    {
-        $model = str_replace("'", "''", $model ?: 'unknown');
-
-        return "CASE
-            WHEN model IS NULL OR model = '' THEN '{$model}'
-            WHEN model = '{$model}' THEN model
-            WHEN instr(model, '{$model}') > 0 THEN model
-            ELSE model || ',' || '{$model}'
-        END";
     }
 }
