@@ -6,6 +6,7 @@ use App\Models\AiUsageDaily;
 use App\Models\Lead;
 use App\Models\User;
 use App\Services\AiRunRecorder;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -135,6 +136,31 @@ test('records minimal ai run metrics', function () {
         ->and((float) $run->estimated_cost_usd)->toBeGreaterThan(0)
         ->and($run->status)->toBe('success')
         ->and($run->outcome)->toBe('replied');
+});
+
+test('rounds fractional durations before persisting ai run metrics', function () {
+    $lead = Lead::factory()->create([
+        'agent_id' => $this->agent->id,
+        'tenant_id' => $this->user->tenantId,
+        'conversation_id' => (string) Str::uuid(),
+    ]);
+    $runId = (string) Str::uuid();
+    $startedAt = Carbon::parse('2026-07-21 20:39:33.000000 UTC');
+    $recorder = app(AiRunRecorder::class);
+
+    Carbon::setTestNow($startedAt);
+
+    try {
+        $recorder->start($runId, $lead, 'CredFlowAgent', 'legacy_prompt');
+
+        Carbon::setTestNow($startedAt->copy()->addMicroseconds(3_257_956));
+        $recorder->finish($runId, 'success', 'replied');
+    } finally {
+        Carbon::setTestNow();
+    }
+
+    expect(AiRun::query()->where('run_id', $runId)->value('duration_ms'))
+        ->toBe(3258);
 });
 
 test('ai usage page includes filtered ai runs', function () {

@@ -65,10 +65,13 @@ class AiRunRecorder
         }
 
         $endedAt = now();
+        $durationMs = $run->started_at
+            ? max(0, (int) round($run->started_at->diffInMilliseconds($endedAt)))
+            : null;
 
         $run->forceFill([
             'ended_at' => $endedAt,
-            'duration_ms' => $run->started_at ? $run->started_at->diffInMilliseconds($endedAt) : null,
+            'duration_ms' => $durationMs,
             'status' => $status,
             'outcome' => $outcome,
             'error_type' => $errorType,
