@@ -19,6 +19,11 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            backoffice?: {
+                path: string | null;
+                active_tenant?: { id: string; name: string } | null;
+                tenants?: { id: string; name: string }[];
+            };
             [key: string]: unknown;
         };
     }

@@ -10,7 +10,10 @@ class EnsureSuperAdmin
 {
     /**
      * Allow only platform super-admins through.
-     * Clears the active tenant context so cross-tenant queries are unscoped.
+     *
+     * The active tenant selection is deliberately preserved: the backoffice
+     * lets a super-admin act as a specific company, and clearing it here would
+     * drop that selection on every request.
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -23,8 +26,6 @@ class EnsureSuperAdmin
         if (! $user->is_super_admin) {
             abort(403);
         }
-
-        $request->session()->forget('active_tenant_id');
 
         return $next($request);
     }

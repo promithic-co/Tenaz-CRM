@@ -44,12 +44,26 @@ it('tenantless super-admin sees all leads across tenants', function () {
     expect(Lead::count())->toBe(2);
 });
 
-it('clears active_tenant_id from session on backoffice entry', function () {
+it('keeps the active tenant selection on backoffice entry', function () {
+    $admin = User::factory()->superAdmin()->create();
+    $admin->tenants()->detach();
+
+    $tenant = Tenant::create(['name' => 'Tenant A']);
+
+    $this->actingAs($admin)
+        ->withSession(['active_tenant_id' => (string) $tenant->id])
+        ->get(route('backoffice.templates.index'))
+        ->assertOk();
+
+    expect(session('active_tenant_id'))->toBe((string) $tenant->id);
+});
+
+it('drops a selection pointing at a tenant that no longer exists', function () {
     $admin = User::factory()->superAdmin()->create();
     $admin->tenants()->detach();
 
     $this->actingAs($admin)
-        ->withSession(['active_tenant_id' => 'stale-id'])
+        ->withSession(['active_tenant_id' => '999999'])
         ->get(route('backoffice.templates.index'))
         ->assertOk();
 

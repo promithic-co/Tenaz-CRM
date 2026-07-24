@@ -75,6 +75,34 @@ it('tenant row exposes name, users_count, agents_count and created_at', function
         ->and($orgB['agents_count'])->toBe(3);
 });
 
+it('keeps agent counts complete while acting as one company', function () {
+    $admin = User::factory()->superAdmin()->create();
+    $admin->tenants()->detach();
+
+    $orgA = Tenant::create(['name' => 'Org A']);
+    $orgB = Tenant::create(['name' => 'Org B']);
+
+    $userA = User::factory()->create();
+    $userB = User::factory()->create();
+
+    Agent::factory()->create(['tenant_id' => $orgA->id, 'user_id' => $userA->id]);
+    Agent::factory()->create(['tenant_id' => $orgB->id, 'user_id' => $userB->id]);
+    Agent::factory()->create(['tenant_id' => $orgB->id, 'user_id' => $userB->id]);
+
+    $captured = [];
+
+    $this->actingAs($admin)
+        ->withSession(['active_tenant_id' => (string) $orgA->id])
+        ->get(route('backoffice.tenants.index'))
+        ->assertOk()
+        ->assertInertia(function ($page) use (&$captured) {
+            $captured = $page->toArray()['props']['tenants'] ?? [];
+        });
+
+    expect(collect($captured)->firstWhere('name', 'Org A')['agents_count'])->toBe(1)
+        ->and(collect($captured)->firstWhere('name', 'Org B')['agents_count'])->toBe(2);
+});
+
 // ── SC4 read-only: no mutation routes exist ───────────────────────────────────
 
 it('no mutating tenant routes are registered', function () {

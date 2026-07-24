@@ -1,9 +1,15 @@
 <?php
 
 use App\Http\Middleware\AuthenticateApiKey;
+use App\Http\Middleware\AuthenticateUraApiKey;
+use App\Http\Middleware\EnsureOnboarded;
+use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\EnsureTenantRole;
 use App\Http\Middleware\FlushLangfuse;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ShareBackofficeContext;
+use App\Http\Middleware\ValidateTwilioSignature;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -31,11 +37,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'api.key' => AuthenticateApiKey::class,
-            'twilio.signature' => \App\Http\Middleware\ValidateTwilioSignature::class,
-            'ura.api_key' => \App\Http\Middleware\AuthenticateUraApiKey::class,
-            'role' => \App\Http\Middleware\EnsureTenantRole::class,
-            'super_admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
-            'onboarded' => \App\Http\Middleware\EnsureOnboarded::class,
+            'twilio.signature' => ValidateTwilioSignature::class,
+            'ura.api_key' => AuthenticateUraApiKey::class,
+            'role' => EnsureTenantRole::class,
+            'super_admin' => EnsureSuperAdmin::class,
+            'backoffice.context' => ShareBackofficeContext::class,
+            'onboarded' => EnsureOnboarded::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

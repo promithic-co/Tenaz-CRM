@@ -1,6 +1,20 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Bot, ChevronRight, FileText, Headphones, Kanban, LayoutGrid, Megaphone, MessageSquare, Microscope, Phone, Shield, Smartphone, Users } from 'lucide-vue-next';
+import {
+    Bot,
+    ChevronRight,
+    FileText,
+    Headphones,
+    Kanban,
+    LayoutGrid,
+    Megaphone,
+    MessageSquare,
+    Microscope,
+    Phone,
+    Shield,
+    Smartphone,
+    Users,
+} from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import CommandPalette from '@/components/CommandPalette.vue';
@@ -30,32 +44,33 @@ const canManageAdmin = computed(() => {
 
 // Agentes submenu is open when on any /agente/* or /agentes* route
 const agenteOpen = ref(
-    currentPath.value.startsWith('/agente') || currentPath.value.startsWith('/agentes'),
+    currentPath.value.startsWith('/agente') ||
+        currentPath.value.startsWith('/agentes'),
 );
 
 // Campanhas (plural) — D-01: renamed from "Disparos"
 const campanhasOpen = ref(
     currentPath.value === '/campanhas' ||
-    currentPath.value.startsWith('/campanhas/') ||
-    currentPath.value.startsWith('/campanhas-voz') ||
-    currentPath.value.startsWith('/voz') ||
-    currentPath.value.startsWith('/ura') ||
-    currentPath.value.startsWith('/listas-contato') ||
-    currentPath.value.startsWith('/templates'),
+        currentPath.value.startsWith('/campanhas/') ||
+        currentPath.value.startsWith('/campanhas-voz') ||
+        currentPath.value.startsWith('/voz') ||
+        currentPath.value.startsWith('/ura') ||
+        currentPath.value.startsWith('/listas-contato') ||
+        currentPath.value.startsWith('/templates'),
 );
 
 // WhatsApp sub-submenu (3rd level) — D-02: Oficial
 const whatsappSubOpen = ref(
     (currentPath.value === '/campanhas' ||
-     currentPath.value.startsWith('/campanhas/')) &&
-    !currentPath.value.startsWith('/campanhas-voz'),
+        currentPath.value.startsWith('/campanhas/')) &&
+        !currentPath.value.startsWith('/campanhas-voz'),
 );
 
 // Voz (IVR) submenu
 const vozOpen = ref(
     currentPath.value.startsWith('/voz') ||
-    currentPath.value.startsWith('/campanhas-voz') ||
-    currentPath.value.startsWith('/ura'),
+        currentPath.value.startsWith('/campanhas-voz') ||
+        currentPath.value.startsWith('/ura'),
 );
 
 const vozSubItems = [
@@ -64,19 +79,17 @@ const vozSubItems = [
     { title: 'Integrações URA', href: '/ura' },
 ];
 
-
 // Laboratory submenu
 const laboratoryOpen = ref(
-    currentPath.value.startsWith('/laboratory') || currentPath.value.startsWith('/playground'),
+    currentPath.value.startsWith('/laboratory') ||
+        currentPath.value.startsWith('/playground'),
 );
 
-// Backoffice submenu (super-admin only)
-const backofficeOpen = ref(currentPath.value.startsWith('/backoffice'));
-
-const backofficeSubItems = [
-    { title: 'Templates', href: '/backoffice/templates' },
-    { title: 'Tenants', href: '/backoffice/tenants' },
-];
+// Backoffice (super-admin only). The prefix is environment-configurable, so it
+// comes from the server at runtime instead of being hardcoded here.
+const backofficeBase = computed(
+    () => `/${page.props.backoffice?.path ?? 'backoffice'}`,
+);
 
 const laboratorySubItems = [
     { title: 'Dashboard', href: '/laboratory' },
@@ -147,10 +160,16 @@ const footerNavItems: NavItem[] = [];
             <div class="px-2 py-0">
                 <SidebarMenu>
                     <!-- Itens normais acima do Agente -->
-                    <SidebarMenuItem v-for="item in mainNavItems.slice(0, 4)" :key="item.title">
+                    <SidebarMenuItem
+                        v-for="item in mainNavItems.slice(0, 4)"
+                        :key="item.title"
+                    >
                         <SidebarMenuButton
                             as-child
-                            :is-active="currentPath === item.href || currentPath.startsWith(item.href + '/')"
+                            :is-active="
+                                currentPath === item.href ||
+                                currentPath.startsWith(item.href + '/')
+                            "
                             :tooltip="item.title"
                         >
                             <Link :href="item.href">
@@ -163,7 +182,10 @@ const footerNavItems: NavItem[] = [];
                     <!-- Agentes com submenu colapsável -->
                     <SidebarMenuItem>
                         <SidebarMenuButton
-                            :is-active="currentPath.startsWith('/agente') || currentPath.startsWith('/agentes')"
+                            :is-active="
+                                currentPath.startsWith('/agente') ||
+                                currentPath.startsWith('/agentes')
+                            "
                             tooltip="Agentes"
                             @click="agenteOpen = !agenteOpen"
                             class="cursor-pointer select-none"
@@ -178,12 +200,20 @@ const footerNavItems: NavItem[] = [];
                         </SidebarMenuButton>
 
                         <SidebarMenuSub v-if="agenteOpen">
-                            <SidebarMenuSubItem v-for="sub in agentSubItems" :key="sub.href">
+                            <SidebarMenuSubItem
+                                v-for="sub in agentSubItems"
+                                :key="sub.href"
+                            >
                                 <SidebarMenuSubButton
                                     as-child
-                                    :is-active="currentPath === sub.href || currentPath.startsWith(sub.href + '/')"
+                                    :is-active="
+                                        currentPath === sub.href ||
+                                        currentPath.startsWith(sub.href + '/')
+                                    "
                                 >
-                                    <Link :href="sub.href">{{ sub.title }}</Link>
+                                    <Link :href="sub.href">{{
+                                        sub.title
+                                    }}</Link>
                                 </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                         </SidebarMenuSub>
@@ -192,7 +222,15 @@ const footerNavItems: NavItem[] = [];
                     <!-- Campanhas com submenu colapsável (D-01: renamed from "Disparos") -->
                     <SidebarMenuItem v-if="canManageAdmin">
                         <SidebarMenuButton
-                            :is-active="currentPath === '/campanhas' || currentPath.startsWith('/campanhas/') || currentPath.startsWith('/campanhas-voz') || currentPath.startsWith('/voz') || currentPath.startsWith('/ura') || currentPath.startsWith('/listas-contato') || currentPath.startsWith('/templates')"
+                            :is-active="
+                                currentPath === '/campanhas' ||
+                                currentPath.startsWith('/campanhas/') ||
+                                currentPath.startsWith('/campanhas-voz') ||
+                                currentPath.startsWith('/voz') ||
+                                currentPath.startsWith('/ura') ||
+                                currentPath.startsWith('/listas-contato') ||
+                                currentPath.startsWith('/templates')
+                            "
                             tooltip="Campanhas"
                             @click="campanhasOpen = !campanhasOpen"
                             class="cursor-pointer select-none"
@@ -210,7 +248,15 @@ const footerNavItems: NavItem[] = [];
                             <!-- D-03.1: WhatsApp with 3rd-level submenu (D-02: Oficial) -->
                             <SidebarMenuSubItem>
                                 <SidebarMenuSubButton
-                                    :is-active="(currentPath === '/campanhas' || currentPath.startsWith('/campanhas/')) && !currentPath.startsWith('/campanhas-voz')"
+                                    :is-active="
+                                        (currentPath === '/campanhas' ||
+                                            currentPath.startsWith(
+                                                '/campanhas/',
+                                            )) &&
+                                        !currentPath.startsWith(
+                                            '/campanhas-voz',
+                                        )
+                                    "
                                     @click="whatsappSubOpen = !whatsappSubOpen"
                                     class="cursor-pointer select-none"
                                 >
@@ -219,18 +265,29 @@ const footerNavItems: NavItem[] = [];
                                     <ChevronRight
                                         class="ml-auto transition-transform duration-200"
                                         :size="12"
-                                        :class="whatsappSubOpen ? 'rotate-90' : ''"
+                                        :class="
+                                            whatsappSubOpen ? 'rotate-90' : ''
+                                        "
                                     />
                                 </SidebarMenuSubButton>
                                 <!-- 3rd level: plain div with Tailwind indent (no SidebarMenuSubSub exists) -->
-                                <div v-if="whatsappSubOpen" class="ml-3 flex flex-col gap-0.5 py-0.5 text-xs">
+                                <div
+                                    v-if="whatsappSubOpen"
+                                    class="ml-3 flex flex-col gap-0.5 py-0.5 text-xs"
+                                >
                                     <Link
                                         href="/campanhas"
                                         :class="[
                                             'block rounded px-3 py-1 transition-colors',
-                                            (currentPath === '/campanhas' || currentPath.startsWith('/campanhas/')) && !currentPath.startsWith('/campanhas-voz')
-                                                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                                                : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50'
+                                            (currentPath === '/campanhas' ||
+                                                currentPath.startsWith(
+                                                    '/campanhas/',
+                                                )) &&
+                                            !currentPath.startsWith(
+                                                '/campanhas-voz',
+                                            )
+                                                ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                                                : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground',
                                         ]"
                                     >
                                         Oficial
@@ -241,7 +298,13 @@ const footerNavItems: NavItem[] = [];
                             <!-- D-03.2: URA -->
                             <SidebarMenuSubItem>
                                 <SidebarMenuSubButton
-                                    :is-active="currentPath.startsWith('/voz') || currentPath.startsWith('/campanhas-voz') || currentPath.startsWith('/ura')"
+                                    :is-active="
+                                        currentPath.startsWith('/voz') ||
+                                        currentPath.startsWith(
+                                            '/campanhas-voz',
+                                        ) ||
+                                        currentPath.startsWith('/ura')
+                                    "
                                     @click="vozOpen = !vozOpen"
                                     class="cursor-pointer select-none"
                                 >
@@ -253,16 +316,22 @@ const footerNavItems: NavItem[] = [];
                                         :class="vozOpen ? 'rotate-90' : ''"
                                     />
                                 </SidebarMenuSubButton>
-                                <div v-if="vozOpen" class="ml-3 flex flex-col gap-0.5 py-0.5 text-xs">
+                                <div
+                                    v-if="vozOpen"
+                                    class="ml-3 flex flex-col gap-0.5 py-0.5 text-xs"
+                                >
                                     <Link
                                         v-for="sub in vozSubItems"
                                         :key="sub.href"
                                         :href="sub.href"
                                         :class="[
                                             'block rounded px-3 py-1 transition-colors',
-                                            currentPath === sub.href || currentPath.startsWith(sub.href + '/')
-                                                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                                                : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50'
+                                            currentPath === sub.href ||
+                                            currentPath.startsWith(
+                                                sub.href + '/',
+                                            )
+                                                ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                                                : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground',
                                         ]"
                                     >
                                         {{ sub.title }}
@@ -274,7 +343,12 @@ const footerNavItems: NavItem[] = [];
                             <SidebarMenuSubItem>
                                 <SidebarMenuSubButton
                                     as-child
-                                    :is-active="currentPath === '/listas-contato' || currentPath.startsWith('/listas-contato/')"
+                                    :is-active="
+                                        currentPath === '/listas-contato' ||
+                                        currentPath.startsWith(
+                                            '/listas-contato/',
+                                        )
+                                    "
                                 >
                                     <Link href="/listas-contato">
                                         <Users :size="14" />
@@ -287,7 +361,10 @@ const footerNavItems: NavItem[] = [];
                             <SidebarMenuSubItem>
                                 <SidebarMenuSubButton
                                     as-child
-                                    :is-active="currentPath === '/templates' || currentPath.startsWith('/templates/')"
+                                    :is-active="
+                                        currentPath === '/templates' ||
+                                        currentPath.startsWith('/templates/')
+                                    "
                                 >
                                     <Link href="/templates">
                                         <FileText :size="14" />
@@ -301,7 +378,10 @@ const footerNavItems: NavItem[] = [];
                     <!-- Laboratory com submenu -->
                     <SidebarMenuItem v-if="canManageAdmin">
                         <SidebarMenuButton
-                            :is-active="currentPath.startsWith('/laboratory') || currentPath.startsWith('/playground')"
+                            :is-active="
+                                currentPath.startsWith('/laboratory') ||
+                                currentPath.startsWith('/playground')
+                            "
                             tooltip="Laboratory"
                             @click="laboratoryOpen = !laboratoryOpen"
                             class="cursor-pointer select-none"
@@ -316,12 +396,20 @@ const footerNavItems: NavItem[] = [];
                         </SidebarMenuButton>
 
                         <SidebarMenuSub v-if="laboratoryOpen">
-                            <SidebarMenuSubItem v-for="sub in laboratorySubItems" :key="sub.href">
+                            <SidebarMenuSubItem
+                                v-for="sub in laboratorySubItems"
+                                :key="sub.href"
+                            >
                                 <SidebarMenuSubButton
                                     as-child
-                                    :is-active="currentPath === sub.href || currentPath.startsWith(sub.href + '/')"
+                                    :is-active="
+                                        currentPath === sub.href ||
+                                        currentPath.startsWith(sub.href + '/')
+                                    "
                                 >
-                                    <Link :href="sub.href">{{ sub.title }}</Link>
+                                    <Link :href="sub.href">{{
+                                        sub.title
+                                    }}</Link>
                                 </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                         </SidebarMenuSub>
@@ -330,37 +418,25 @@ const footerNavItems: NavItem[] = [];
                     <!-- Backoffice (super-admin only) -->
                     <SidebarMenuItem v-if="page.props.auth?.is_super_admin">
                         <SidebarMenuButton
-                            :is-active="currentPath.startsWith('/backoffice')"
+                            as-child
+                            :is-active="currentPath.startsWith(backofficeBase)"
                             tooltip="Backoffice"
-                            @click="backofficeOpen = !backofficeOpen"
-                            class="cursor-pointer select-none"
                         >
-                            <Shield />
-                            <span>Backoffice</span>
-                            <ChevronRight
-                                class="ml-auto transition-transform duration-200"
-                                :class="backofficeOpen ? 'rotate-90' : ''"
-                                :size="14"
-                            />
+                            <Link :href="backofficeBase">
+                                <Shield />
+                                <span>Backoffice</span>
+                            </Link>
                         </SidebarMenuButton>
-
-                        <SidebarMenuSub v-if="backofficeOpen">
-                            <SidebarMenuSubItem v-for="sub in backofficeSubItems" :key="sub.href">
-                                <SidebarMenuSubButton
-                                    as-child
-                                    :is-active="currentPath === sub.href || currentPath.startsWith(sub.href + '/')"
-                                >
-                                    <Link :href="sub.href">{{ sub.title }}</Link>
-                                </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                        </SidebarMenuSub>
                     </SidebarMenuItem>
 
                     <!-- WhatsApp -->
                     <SidebarMenuItem>
                         <SidebarMenuButton
                             as-child
-                            :is-active="currentPath === '/whatsapp' || currentPath.startsWith('/whatsapp/')"
+                            :is-active="
+                                currentPath === '/whatsapp' ||
+                                currentPath.startsWith('/whatsapp/')
+                            "
                             tooltip="WhatsApp"
                         >
                             <Link href="/whatsapp">
@@ -369,7 +445,6 @@ const footerNavItems: NavItem[] = [];
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
-
                 </SidebarMenu>
             </div>
         </SidebarContent>

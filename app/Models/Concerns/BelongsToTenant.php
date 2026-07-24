@@ -2,6 +2,7 @@
 
 namespace App\Models\Concerns;
 
+use App\Services\ActiveTenant;
 use Illuminate\Database\Eloquent\Builder;
 
 trait BelongsToTenant
@@ -14,9 +15,28 @@ trait BelongsToTenant
 
         static::addGlobalScope('tenant', function (Builder $builder): void {
             $user = auth()->user();
-            if ($user && ! $user->is_super_admin) {
-                $column = (new static)->getTenantColumn();
-                $builder->where($builder->qualifyColumn($column), $user->tenantId);
+
+            if (! $user) {
+                return;
+            }
+
+            $column = $builder->qualifyColumn((new static)->getTenantColumn());
+
+            if (! $user->is_super_admin) {
+                $builder->where($column, $user->tenantId);
+
+                return;
+            }
+
+            /**
+             * A super-admin acting as a specific tenant is scoped to it, so the
+             * whole app behaves exactly as that tenant sees it. With nothing
+             * selected the historical unscoped, cross-tenant view is kept.
+             */
+            $activeTenantId = app(ActiveTenant::class)->id();
+
+            if ($activeTenantId !== null) {
+                $builder->where($column, $activeTenantId);
             }
         });
     }

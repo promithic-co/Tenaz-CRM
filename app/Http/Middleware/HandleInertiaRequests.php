@@ -47,6 +47,14 @@ class HandleInertiaRequests extends Middleware
                 'currentRole' => fn () => $user?->currentRole()?->value,
                 'is_super_admin' => (bool) $user?->is_super_admin,
             ],
+            /**
+             * The backoffice prefix is configurable per environment and must be
+             * resolved at runtime, never baked into the JS bundle. Only exposed
+             * to super-admins so the path stays opaque to everyone else.
+             */
+            'backoffice' => [
+                'path' => $user?->is_super_admin ? config('backoffice.path') : null,
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'escalation_count' => fn () => auth()->check()
                 ? ServiceTicket::where('tenant_id', auth()->user()->tenantId)
