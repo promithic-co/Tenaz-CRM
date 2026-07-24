@@ -22,6 +22,8 @@ class PromptTemplate extends Model
         'slug',
         'type',
         'content',
+        'sections',
+        'editor_mode',
         'version',
         'is_active',
         'variables_schema',
@@ -33,6 +35,7 @@ class PromptTemplate extends Model
             'is_active' => 'boolean',
             'version' => 'integer',
             'variables_schema' => 'array',
+            'sections' => 'array',
         ];
     }
 

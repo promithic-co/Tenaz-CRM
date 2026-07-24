@@ -30,6 +30,7 @@ class AgentConfig extends Model
         'tenant_id',
         'agent_niche',
         'template_slug',
+        'tool_capabilities',
         'agent_name',
         'company_name',
         'agent_personality',
@@ -60,6 +61,7 @@ class AgentConfig extends Model
     ];
 
     protected $casts = [
+        'tool_capabilities' => 'array',
         'max_chars' => 'integer',
         'temperature' => 'float',
         'max_tokens' => 'integer',

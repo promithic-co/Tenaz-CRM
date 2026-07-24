@@ -52,7 +52,7 @@ class GenericAgent extends BaseCustomerServiceAgent
             $tools[] = new AtualizarStatusLeadTool($this->lead);
         }
 
-        return [...$tools, ...$this->loadWebhookTools()];
+        return $this->applyToolCapabilities([...$tools, ...$this->loadWebhookTools()]);
     }
 
     /**

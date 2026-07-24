@@ -191,7 +191,7 @@ class CredFlowBulkAgent extends BaseCustomerServiceAgent
             $tools[] = new AtualizarStatusLeadTool($this->lead);
         }
 
-        return $tools;
+        return $this->applyToolCapabilities($tools);
     }
 
     protected function maxConversationMessages(): int

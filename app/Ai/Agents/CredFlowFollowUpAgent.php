@@ -130,7 +130,7 @@ class CredFlowFollowUpAgent extends BaseCustomerServiceAgent
             $tools[] = new AtualizarStatusLeadTool($this->lead);
         }
 
-        return $tools;
+        return $this->applyToolCapabilities($tools);
     }
 
     public function middleware(): array

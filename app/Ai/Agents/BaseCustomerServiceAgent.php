@@ -10,6 +10,7 @@ use App\Ai\Tools\EscalarParaHumanoTool;
 use App\Ai\Tools\GenericWebhookTool;
 use App\Ai\Tools\RegistrarInformacaoContatoTool;
 use App\Ai\Tools\RegistrarLeadSemCreditoTool;
+use App\Enums\AgentToolCapability;
 use App\Models\Lead;
 use App\Models\PromptExperiment;
 use App\Models\PromptTemplate;
@@ -185,6 +186,49 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
     }
 
     /**
+     * The native tools the operator left enabled for this agent, or null when
+     * no selection was ever saved — in which case nothing is filtered out.
+     *
+     * @return list<string>|null
+     */
+    protected function enabledToolCapabilities(): ?array
+    {
+        $capabilities = $this->config()['tool_capabilities'] ?? null;
+
+        if (! is_array($capabilities)) {
+            return null;
+        }
+
+        return array_values(array_map(strval(...), $capabilities));
+    }
+
+    /**
+     * Drop the native tools disabled for this agent in the backoffice.
+     *
+     * Tools with no matching capability — webhook tools, and any tool added
+     * without an AgentToolCapability entry — always pass through: webhooks are
+     * governed by ToolDefinition::$is_active, and a new tool must never vanish
+     * from an existing toolset because nobody listed it yet.
+     *
+     * @param  list<object>  $tools
+     * @return list<object>
+     */
+    protected function applyToolCapabilities(array $tools): array
+    {
+        $enabled = $this->enabledToolCapabilities();
+
+        if ($enabled === null) {
+            return $tools;
+        }
+
+        return array_values(array_filter($tools, function (object $tool) use ($enabled): bool {
+            $capability = AgentToolCapability::fromToolClass($tool::class);
+
+            return $capability === null || in_array($capability->value, $enabled, true);
+        }));
+    }
+
+    /**
      * The niche credit-consultation tool registered first in the toolset.
      * Override in concrete agents (INSS, SIAPE, ...); null skips it.
      */
@@ -195,7 +239,8 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
 
     /**
      * Standard customer-service toolset: niche consultation tool plus the shared
-     * escalation, lead-registration and status tools, gated by lead status.
+     * escalation, lead-registration and status tools, gated by lead status and
+     * then by the operator's capability selection.
      * Specialized agents (bulk, follow-up) override this with their own toolset.
      */
     public function tools(): iterable
@@ -220,7 +265,7 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
             $tools[] = new AtualizarStatusLeadTool($this->lead);
         }
 
-        return $tools;
+        return $this->applyToolCapabilities($tools);
     }
 
     /**

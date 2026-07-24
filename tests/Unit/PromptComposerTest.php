@@ -94,6 +94,42 @@ test('closing section uses the runtime no-reply sentinel', function () {
         ->and($composed)->toContain('responda SOMENTE: '.AgentService::NO_REPLY_SENTINEL);
 });
 
+// --- Tool capabilities (backoffice switchboard) ---
+
+test('core sections keep every tool instruction when no capability selection was saved', function () {
+    $composed = composeFixture(['tool_capabilities' => null]);
+
+    expect($composed)->toContain('acione `escalar_para_humano`')
+        ->and($composed)->toContain('Passo 1 → acione `atualizar_status_lead`');
+});
+
+test('the prompt stops ordering a tool the operator disabled', function () {
+    $composed = composeFixture(['tool_capabilities' => ['registrar_informacao_contato']]);
+
+    expect($composed)->not->toContain('escalar_para_humano')
+        ->and($composed)->not->toContain('atualizar_status_lead')
+        ->and($composed)->toContain('a equipe vai retomar o contato')
+        ->and($composed)->toContain('responda SOMENTE: '.AgentService::NO_REPLY_SENTINEL);
+});
+
+test('each tool instruction is dropped independently', function () {
+    $withoutEscalation = composeFixture(['tool_capabilities' => ['atualizar_status_lead']]);
+    $withoutStatus = composeFixture(['tool_capabilities' => ['escalar_para_humano']]);
+
+    expect($withoutEscalation)->not->toContain('escalar_para_humano')
+        ->and($withoutEscalation)->toContain('Passo 1 → acione `atualizar_status_lead`')
+        ->and($withoutStatus)->toContain('acione `escalar_para_humano`')
+        ->and($withoutStatus)->not->toContain('atualizar_status_lead');
+});
+
+test('the closing protocol still ends the conversation without the status tool', function () {
+    $composed = composeFixture(['tool_capabilities' => []]);
+
+    expect($composed)->toContain('ENCERRAMENTO — '.AgentService::NO_REPLY_SENTINEL)
+        ->and($composed)->toContain('Sinais de desistência REAL')
+        ->and($composed)->not->toContain('Passo 1');
+});
+
 // --- Layer 2: niche sections ---
 
 test('niche sections are numbered sequentially between format and tool protocol', function () {
