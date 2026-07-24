@@ -9,6 +9,7 @@ use App\Http\Requests\BulkTransferRequest;
 use App\Http\Requests\InboxFilterRequest;
 use App\Http\Requests\SendConversationMessageRequest;
 use App\Http\Requests\UpdateLeadCollectedInformationRequest;
+use App\Jobs\SyncMetaTemplatesJob;
 use App\Models\Lead;
 use App\Models\User;
 use App\Services\AgentInteractionEventService;
@@ -316,5 +317,29 @@ class ConversasController extends Controller
             'message' => $result['message'],
             'outbox_id' => $result['outbox_id'],
         ]);
+    }
+
+    /**
+     * Queue a Meta template re-sync for the instance behind this conversation, so an operator who
+     * just had a template approved can pull it without leaving the panel. The tenant-wide sync
+     * endpoint requires an explicit instance id and admin rights; here the conversation itself
+     * names the instance, and anyone who can act on the lead can refresh it.
+     */
+    public function syncTemplates(Lead $lead): JsonResponse
+    {
+        $this->authorize('update', $lead);
+
+        $instance = $lead->whatsappInstance;
+
+        if ($instance === null || ($instance->provider?->value ?? null) !== 'meta_cloud' || empty($instance->meta_waba_id)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Esta conversa não está ligada a uma instância Meta Cloud com WABA configurado.',
+            ], 422);
+        }
+
+        SyncMetaTemplatesJob::dispatch($instance->id);
+
+        return response()->json(['status' => 'queued']);
     }
 }

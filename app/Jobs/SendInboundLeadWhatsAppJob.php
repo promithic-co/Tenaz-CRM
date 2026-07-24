@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\VoiceInstance;
 use App\Services\AgentInteractionEventService;
 use App\Services\ContactSyncService;
+use App\Services\WhatsApp\TemplateTimelineRecorder;
 use App\Services\WhatsAppService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -121,11 +122,21 @@ class SendInboundLeadWhatsAppJob implements ShouldQueue
             return;
         }
 
-        $whatsapp->sendTemplateViaInstance(
+        $providerMessageId = $whatsapp->sendTemplateViaInstance(
             $whatsappInstance,
             $normalizedPhone,
             (string) ($template->meta_template_name ?? $template->name),
             (string) ($template->language ?? 'pt_BR'),
+        );
+
+        // Mirror the template into the conversation so the operator sees what the customer is
+        // replying to. Best-effort — never fails a send that already reached the customer.
+        app(TemplateTimelineRecorder::class)->record(
+            lead: $lead,
+            template: $template,
+            source: 'ura_inbound',
+            interactionId: $interactionId,
+            providerMessageId: $providerMessageId,
         );
 
         Log::info('ura.inbound_whatsapp_sent', [

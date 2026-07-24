@@ -12,11 +12,18 @@ use App\Models\StatusMachine;
 use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
+use App\Services\WhatsApp\TemplateParameterResolver;
 use App\Services\WhatsApp\WhatsAppConversationWindowResolver;
 use App\Services\WhatsApp\WhatsappTemplateRenderer;
 
 class ConversationPanelPropsBuilder
 {
+    /**
+     * Meta seeds every new WABA with `hello_world`. It is never a real sales message, so it is
+     * kept out of the operator's picker instead of sitting at the top of the list as noise.
+     */
+    private const EXCLUDED_META_TEMPLATES = ['hello_world'];
+
     public function __construct(
         private readonly PauseService $pause,
         private readonly ConversationTimelineService $timeline,
@@ -26,6 +33,7 @@ class ConversationPanelPropsBuilder
         private readonly ConversationTransferTargetsBuilder $transferTargets,
         private readonly ContactCollectedInformationService $collectedInformation,
         private readonly WhatsappTemplateRenderer $templateRenderer,
+        private readonly TemplateParameterResolver $templateParameters,
         private readonly FollowUpStateSummarizer $followUpState,
     ) {}
 
@@ -154,8 +162,10 @@ class ConversationPanelPropsBuilder
     }
 
     /**
-     * Approved, sendable templates for the lead's Meta Cloud instance, each with the dynamic
-     * field manifest and a live preview so the frontend can render the parameter form.
+     * Approved, sendable templates for the lead's Meta Cloud instance. Each carries the dynamic
+     * field manifest — annotated with whatever the CRM could resolve from the lead itself — plus
+     * a preview already rendered with those values, so the picker shows the message the customer
+     * will receive and only asks the operator for what is genuinely missing.
      *
      * @return list<array<string, mixed>>
      */
@@ -171,12 +181,19 @@ class ConversationPanelPropsBuilder
                     $query->orWhere('meta_waba_id', $instance->meta_waba_id);
                 }
             })
+            ->whereNotIn('name', self::EXCLUDED_META_TEMPLATES)
+            // `meta_template_name` is nullable, and `NOT IN` is unknown against NULL — spell the
+            // null case out so locally created templates are not silently dropped from the picker.
+            ->where(function ($query): void {
+                $query->whereNull('meta_template_name')
+                    ->orWhereNotIn('meta_template_name', self::EXCLUDED_META_TEMPLATES);
+            })
             ->orderByDesc('last_synced_at')
             ->orderBy('name')
             ->get();
 
         return $templates
-            ->map(function (WhatsappTemplate $template): ?array {
+            ->map(function (WhatsappTemplate $template) use ($lead): ?array {
                 $components = is_array($template->components_json) ? $template->components_json : [];
                 $description = $this->templateRenderer->describe($components);
 
@@ -184,8 +201,10 @@ class ConversationPanelPropsBuilder
                     return null;
                 }
 
+                $resolution = $this->templateParameters->resolve($lead, $components);
+
                 try {
-                    $preview = $this->templateRenderer->preview($components)['text'];
+                    $preview = $this->templateRenderer->preview($components, $resolution['parameters'])['text'];
                 } catch (\Throwable) {
                     $preview = '';
                 }
@@ -195,7 +214,7 @@ class ConversationPanelPropsBuilder
                     'name' => $template->name,
                     'language' => $template->language,
                     'category' => $template->category,
-                    'fields' => $description['fields'],
+                    'fields' => $this->annotateResolvedFields($description['fields'], $resolution['parameters']),
                     'preview' => $preview,
                     'last_synced_at' => $template->last_synced_at?->toIso8601String(),
                 ];
@@ -203,5 +222,27 @@ class ConversationPanelPropsBuilder
             ->filter()
             ->values()
             ->all();
+    }
+
+    /**
+     * Tag each field with the value the CRM resolved for it, so the picker can hide the inputs it
+     * already answered and prompt only for the rest.
+     *
+     * @param  list<array<string, mixed>>  $fields
+     * @param  array<string, array<string, string>>  $resolved
+     * @return list<array<string, mixed>>
+     */
+    private function annotateResolvedFields(array $fields, array $resolved): array
+    {
+        return array_map(function (array $field) use ($resolved): array {
+            $path = (string) ($field['path'] ?? '');
+            $separator = strpos($path, '.');
+
+            $field['resolved'] = $separator === false
+                ? null
+                : ($resolved[substr($path, 0, $separator)][substr($path, $separator + 1)] ?? null);
+
+            return $field;
+        }, $fields);
     }
 }

@@ -83,7 +83,7 @@ store.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
  * @see app/Http/Controllers/ConversationSessionController.php:40
  * @route '/conversas/{lead}/sessions/{session}/close'
  */
-export const close = (args: { lead: number | { id: number }, session: string | number | { id: string | number } } | [lead: number | { id: number }, session: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+export const close = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: close.url(args, options),
     method: 'post',
 })
@@ -98,7 +98,7 @@ close.definition = {
  * @see app/Http/Controllers/ConversationSessionController.php:40
  * @route '/conversas/{lead}/sessions/{session}/close'
  */
-close.url = (args: { lead: number | { id: number }, session: string | number | { id: string | number } } | [lead: number | { id: number }, session: string | number | { id: string | number } ], options?: RouteQueryOptions) => {
+close.url = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions) => {
     if (Array.isArray(args)) {
         args = {
                     lead: args[0],
@@ -128,7 +128,7 @@ close.url = (args: { lead: number | { id: number }, session: string | number | {
  * @see app/Http/Controllers/ConversationSessionController.php:40
  * @route '/conversas/{lead}/sessions/{session}/close'
  */
-close.post = (args: { lead: number | { id: number }, session: string | number | { id: string | number } } | [lead: number | { id: number }, session: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+close.post = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: close.url(args, options),
     method: 'post',
 })
@@ -138,7 +138,7 @@ close.post = (args: { lead: number | { id: number }, session: string | number | 
  * @see app/Http/Controllers/ConversationSessionController.php:40
  * @route '/conversas/{lead}/sessions/{session}/close'
  */
-    const closeForm = (args: { lead: number | { id: number }, session: string | number | { id: string | number } } | [lead: number | { id: number }, session: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    const closeForm = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: close.url(args, options),
         method: 'post',
     })
@@ -148,7 +148,7 @@ close.post = (args: { lead: number | { id: number }, session: string | number | 
  * @see app/Http/Controllers/ConversationSessionController.php:40
  * @route '/conversas/{lead}/sessions/{session}/close'
  */
-        closeForm.post = (args: { lead: number | { id: number }, session: string | number | { id: string | number } } | [lead: number | { id: number }, session: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        closeForm.post = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: close.url(args, options),
             method: 'post',
         })

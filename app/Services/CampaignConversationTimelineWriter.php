@@ -7,6 +7,7 @@ use App\Models\CampaignMessage;
 use App\Models\ContactListEntry;
 use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
+use App\Services\WhatsApp\PhoneNumberValidator;
 use App\Services\WhatsApp\WhatsappTemplateRenderer;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -17,8 +18,8 @@ use Throwable;
  * this is the single place that bridges them back — for the two moments a lead is known:
  *
  *   - mirrorSentTemplate(): right after a send, when the recipient already has a Lead.
- *   - backfillForNewLead(): when a recipient replies for the first time and their Lead is
- *     created, we backfill the recent campaign templates that preceded the reply.
+ *   - backfillForLead(): when a recipient replies, we backfill the recent campaign templates
+ *     that preceded the reply and are not in the timeline yet.
  *
  * Never eagerly creates Leads (a 100k-contact fan-out must not flood /conversas), and never
  * throws into its callers — a mirror failure is logged, the send/inbound is unaffected.
@@ -50,7 +51,7 @@ class CampaignConversationTimelineWriter
         try {
             $lead = Lead::withoutGlobalScopes()
                 ->where('tenant_id', $campaign->tenant_id)
-                ->whereIn('whatsapp', array_values(array_unique([(string) $entry->phone, $destination])))
+                ->whereIn('whatsapp', $this->phoneCandidates((string) $entry->phone, $destination))
                 ->first();
 
             if (! $lead) {
@@ -88,22 +89,31 @@ class CampaignConversationTimelineWriter
     }
 
     /**
-     * Backfill the recent campaign templates that reached this phone before the lead was
-     * created by their first reply. Rows are stamped with their original sent_at so they sort
-     * into the timeline ahead of the reply. Idempotent on provider_message_id.
+     * Backfill the recent campaign templates that reached this phone but never made it into
+     * the timeline — either the lead did not exist when the campaign fired, or the mirror
+     * missed because the two rows disagreed about the 9th digit. Rows are stamped with their
+     * original sent_at so they sort ahead of the reply that triggered the backfill.
+     *
+     * Idempotent on provider_message_id, so running it on every inbound is safe; the caller
+     * throttles the scan rather than relying on a lead-was-just-created flag, which is what
+     * previously left returning leads without the template that reopened the conversation.
+     *
+     * The inbound path keeps the conservative defaults — it runs on the hot path and only
+     * needs the templates immediately preceding the reply. The one-off historical replay
+     * widens both bounds so it can reach sends that predate the mirror entirely.
      */
-    public function backfillForNewLead(Lead $lead): void
+    public function backfillForLead(Lead $lead, ?int $lookbackDays = null, ?int $limit = null): void
     {
         try {
             $messages = CampaignMessage::query()
                 ->whereNotNull('provider_message_id')
                 ->whereIn('status', ['sent', 'delivered', 'read'])
-                ->where('sent_at', '>=', now()->subDays(self::BACKFILL_LOOKBACK_DAYS))
-                ->whereHas('contactListEntry', fn ($q) => $q->where('phone', $lead->whatsapp))
+                ->where('sent_at', '>=', now()->subDays($lookbackDays ?? self::BACKFILL_LOOKBACK_DAYS))
+                ->whereHas('contactListEntry', fn ($q) => $q->whereIn('phone', $this->phoneCandidates((string) $lead->whatsapp)))
                 ->whereHas('campaign', fn ($q) => $q->where('tenant_id', $lead->tenant_id))
                 ->with(['campaign.whatsappTemplate'])
                 ->orderBy('sent_at')
-                ->limit(self::BACKFILL_LIMIT)
+                ->limit($limit ?? self::BACKFILL_LIMIT)
                 ->get();
 
             foreach ($messages as $message) {
@@ -135,6 +145,25 @@ class CampaignConversationTimelineWriter
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Every phone form worth matching a lead against. A campaign entry, the destination the
+     * provider actually dialled and the lead row are written by different code paths, so the
+     * same subscriber can be stored with or without the BR 9th digit — matching on one form
+     * alone is why campaign templates went missing from conversations.
+     *
+     * @return list<string>
+     */
+    private function phoneCandidates(string ...$phones): array
+    {
+        $candidates = [];
+
+        foreach ($phones as $phone) {
+            $candidates = [...$candidates, ...PhoneNumberValidator::variants($phone)];
+        }
+
+        return array_values(array_unique($candidates));
     }
 
     private function timelineRowExists(Lead $lead, string $providerMessageId): bool

@@ -186,10 +186,6 @@ class IncomingConversationPersister
             return null;
         }
 
-        // Captured before any refresh()/detect() so the campaign-template backfill only runs
-        // for a lead born on this very inbound (not a returning contact).
-        $leadWasCreated = $lead->wasRecentlyCreated;
-
         // CRM-first: link the inbound lead to its canonical Contact. Runs outside the
         // lead-create transaction (own cache lock + writes) and must never hide the
         // message — a sync failure is logged, not propagated.
@@ -322,11 +318,14 @@ class IncomingConversationPersister
             ];
         }
 
-        // Backfill the campaign templates that reached this phone before the lead existed, so a
-        // first-reply conversation opens already showing the message that started it. New leads
-        // only; ordered by original sent_at ahead of this inbound. Best-effort — never throws.
-        if ($leadWasCreated) {
-            $this->campaignTimeline->backfillForNewLead($lead);
+        // Backfill the campaign templates that reached this phone but never landed in the
+        // timeline, so the conversation opens showing the message that started it. This used
+        // to run for freshly created leads only, which left every returning lead — the ones a
+        // re-engagement campaign targets — with a reply and no visible trigger. The backfill
+        // is idempotent on provider_message_id; the cache claim just keeps a busy conversation
+        // from re-scanning campaign_messages on every single inbound.
+        if (Cache::add("campaign_backfill:{$lead->id}", 1, now()->addHour())) {
+            $this->campaignTimeline->backfillForLead($lead);
         }
 
         $this->events->recordForLead(

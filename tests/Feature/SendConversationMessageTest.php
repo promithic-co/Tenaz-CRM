@@ -14,10 +14,17 @@ beforeEach(function () {
         'name' => 'test-instance',
         'tenant_id' => $this->user->tenantId,
     ]);
+    // These cases exercise the free-form send path (text, media, ticket transitions), which
+    // sits behind Meta's 24h service-window guard. A factory lead has never messaged in, so
+    // without an inbound on record the window is closed and every send is rejected before
+    // reaching what the test is actually asserting. WindowClosed behaviour has its own cases
+    // in WhatsAppConversationWindowResolverTest.
     $this->lead = Lead::factory()->create([
         'tenant_id' => $this->user->tenantId,
         'whatsapp' => '5511999999999',
         'whatsapp_instance_id' => $instance->id,
+        'last_inbound_at' => now()->subHour(),
+        'service_window_expires_at' => now()->addHours(23),
     ]);
 });
 

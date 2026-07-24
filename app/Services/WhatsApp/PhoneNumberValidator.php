@@ -45,6 +45,77 @@ class PhoneNumberValidator
     }
 
     /**
+     * Every digit form the same subscriber may have been stored under.
+     *
+     * Brazilian mobiles gained a mandatory 9th digit in 2012 and the sources feeding this
+     * system disagree about it: provider echoes, CSV imports and inbound webhooks each pick
+     * a side. A lookup that matches one form silently misses rows written in the other, so
+     * any query that resolves a person by phone must span the whole set.
+     *
+     * Always includes the raw digit form, even when {@see normalize()} rejects it — a
+     * 9-less mobile is exactly the case this exists to reconcile.
+     *
+     * @return list<string> deduplicated; empty when the input carries no digits
+     */
+    public static function variants(?string $raw): array
+    {
+        $digits = preg_replace('/\D/', '', (string) $raw) ?? '';
+
+        if ($digits === '') {
+            return [];
+        }
+
+        $forms = [$digits];
+
+        $normalized = self::normalize($raw);
+        if ($normalized !== null) {
+            $forms[] = $normalized;
+        }
+
+        $siblings = [];
+        foreach ($forms as $form) {
+            $sibling = self::ninthDigitSibling($form);
+
+            if ($sibling !== null) {
+                $siblings[] = $sibling;
+            }
+        }
+
+        return array_values(array_unique([...$forms, ...$siblings]));
+    }
+
+    /**
+     * The same Brazilian mobile written with the opposite 9th-digit convention, or null
+     * when the number is not a BR mobile in either form (landlines never carry the 9).
+     */
+    private static function ninthDigitSibling(string $digits): ?string
+    {
+        if (! str_starts_with($digits, self::BR_DIAL_PREFIX)) {
+            return null;
+        }
+
+        $local = substr($digits, 2);
+        $ddd = substr($local, 0, 2);
+        $subscriber = substr($local, 2);
+
+        if ((int) $ddd < 11 || (int) $ddd > 99) {
+            return null;
+        }
+
+        // An 8-digit subscriber opening with 6-9 is a mobile that lost its 9th digit.
+        if (strlen($subscriber) === 8 && in_array($subscriber[0], ['6', '7', '8', '9'], true)) {
+            return self::BR_DIAL_PREFIX.$ddd.'9'.$subscriber;
+        }
+
+        // A 9-digit subscriber opening with 9 is the modern mobile form.
+        if (strlen($subscriber) === 9 && $subscriber[0] === '9') {
+            return self::BR_DIAL_PREFIX.$ddd.substr($subscriber, 1);
+        }
+
+        return null;
+    }
+
+    /**
      * Brazilian rules:
      *   - Mobile: 11 local digits = DDD(2) + 9 + 8-digit subscriber, total 13 with +55
      *   - Landline: 10 local digits = DDD(2) + 8-digit subscriber, total 12 with +55

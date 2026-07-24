@@ -74,6 +74,7 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::post('/conversas/{lead}/followup-reactivate', [LeadFollowUpController::class, 'reactivate'])->name('conversas.followup.reactivate');
     Route::post('/conversas/{lead}/clear-history', [ConversasController::class, 'clearHistory'])->name('conversas.clearHistory');
     Route::post('/conversas/{lead}/send', [ConversasController::class, 'sendMessage'])->name('conversas.send');
+    Route::post('/conversas/{lead}/templates/sync', [ConversasController::class, 'syncTemplates'])->name('conversas.templates.sync');
     Route::post('/conversas/{lead}/sessions', [ConversationSessionController::class, 'store'])->name('conversas.sessions.store');
     Route::post('/conversas/{lead}/sessions/{session}/close', [ConversationSessionController::class, 'close'])
         ->scopeBindings()

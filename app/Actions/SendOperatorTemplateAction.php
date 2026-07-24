@@ -10,6 +10,7 @@ use App\Services\AgentInteractionEventService;
 use App\Services\ConversationAutomationService;
 use App\Services\ConversationTimelineService;
 use App\Services\ServiceTicketLifecycleService;
+use App\Services\WhatsApp\TemplateParameterResolver;
 use App\Services\WhatsApp\WhatsappTemplateRenderer;
 use App\Services\WhatsappOutboxService;
 use Illuminate\Validation\ValidationException;
@@ -33,6 +34,7 @@ class SendOperatorTemplateAction
         private readonly AgentInteractionEventService $interactionEvents,
         private readonly ServiceTicketLifecycleService $ticketLifecycle,
         private readonly WhatsappTemplateRenderer $renderer,
+        private readonly TemplateParameterResolver $parameterResolver,
     ) {}
 
     /**
@@ -67,7 +69,7 @@ class SendOperatorTemplateAction
         $this->assertSendable($template, $instanceModel);
 
         $components = is_array($template->components_json) ? $template->components_json : [];
-        $sections = $this->normalizeParameters($parameters);
+        $sections = $this->withResolvedDefaults($lead, $components, $this->normalizeParameters($parameters));
 
         try {
             $rendered = $this->renderer->render($components, $sections);
@@ -204,6 +206,31 @@ class SendOperatorTemplateAction
 
             if ($normalized !== []) {
                 $sections[$section] = $normalized;
+            }
+        }
+
+        return $sections;
+    }
+
+    /**
+     * The picker only submits what the operator actually typed — everything the CRM already knows
+     * about the lead is filled in here rather than trusted from the browser, so a stale panel or a
+     * tampered request can never decide what goes into a customer-facing template. Operator input
+     * still wins on the fields it covers.
+     *
+     * @param  array<int, mixed>  $components
+     * @param  array<string, array<string, string>>  $sections
+     * @return array<string, array<string, string>>
+     */
+    private function withResolvedDefaults(Lead $lead, array $components, array $sections): array
+    {
+        $resolved = $this->parameterResolver->resolve($lead, $components)['parameters'];
+
+        foreach ($resolved as $section => $values) {
+            foreach ($values as $key => $value) {
+                if (trim($sections[$section][$key] ?? '') === '') {
+                    $sections[$section][$key] = $value;
+                }
             }
         }
 

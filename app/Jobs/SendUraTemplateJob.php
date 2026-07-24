@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\UraApiKey;
 use App\Services\AgentInteractionEventService;
 use App\Services\ContactSyncService;
+use App\Services\WhatsApp\TemplateTimelineRecorder;
 use App\Services\WhatsAppService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -165,12 +166,23 @@ class SendUraTemplateJob implements ShouldQueue
             return;
         }
 
-        $whatsapp->sendTemplateViaInstance(
+        $providerMessageId = $whatsapp->sendTemplateViaInstance(
             $whatsappInstance,
             $normalizedPhone,
             (string) ($template->meta_template_name ?? $template->name),
             (string) ($template->language ?? 'pt_BR'),
             $components,
+        );
+
+        // Mirror the template into the conversation so the operator sees what the customer is
+        // replying to. Best-effort — never fails a send that already reached the customer.
+        app(TemplateTimelineRecorder::class)->record(
+            lead: $lead,
+            template: $template,
+            variables: $this->variables,
+            source: 'ura',
+            interactionId: $interactionId,
+            providerMessageId: $providerMessageId,
         );
 
         Log::info('ura.trigger.sent', [
