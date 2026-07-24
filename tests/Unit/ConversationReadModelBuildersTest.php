@@ -65,12 +65,17 @@ test('inbox builder preserves the index prop envelope', function () {
 
     $props = app(ConversationInboxPropsBuilder::class)->build(readModelRequest($user));
 
-    expect($props)->toHaveKeys(['leads', 'filters', 'instances', 'transfer_targets', 'activeConversation'])
+    // leads ships wrapped in a MergeProp so the sidebar can scroll infinitely;
+    // invoking it yields the paginator underneath.
+    $leads = ($props['leads'])();
+
+    expect($props)->toHaveKeys(['leads', 'filters', 'group_counts', 'instances', 'transfer_targets', 'activeConversation'])
         ->and($props['activeConversation'])->toBeNull()
         ->and($props['filters']['sort'])->toBe('last_interaction_at')
-        ->and($props['leads']->total())->toBe(1)
-        ->and($props['leads']->items()[0]['id'])->toBe($lead->id)
-        ->and($props['leads']->items()[0]['effective_ai_mode'])->toBe(Lead::AI_MODE_ASSISTED)
+        ->and($props['group_counts'])->toHaveKeys(['fila', 'minhas', 'ia'])
+        ->and($leads->total())->toBe(1)
+        ->and($leads->items()[0]['id'])->toBe($lead->id)
+        ->and($leads->items()[0]['effective_ai_mode'])->toBe(Lead::AI_MODE_ASSISTED)
         ->and($props['instances']->first())->toMatchArray([
             'name' => 'builder-instance',
             'label' => 'Builder Instance',

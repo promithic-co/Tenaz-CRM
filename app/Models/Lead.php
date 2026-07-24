@@ -35,6 +35,21 @@ class Lead extends Model
         self::AI_MODE_QUALIFY_THEN_HANDOFF,
     ];
 
+    public const INBOX_GROUP_ALL = 'todas';
+
+    public const INBOX_GROUP_QUEUE = 'fila';
+
+    public const INBOX_GROUP_MINE = 'minhas';
+
+    public const INBOX_GROUP_AI = 'ia';
+
+    /** Countable inbox tabs, in display order. "todas" is the absence of a group filter. */
+    public const INBOX_GROUPS = [
+        self::INBOX_GROUP_QUEUE,
+        self::INBOX_GROUP_MINE,
+        self::INBOX_GROUP_AI,
+    ];
+
     public const STAGE_NEW_INBOUND = 'new_inbound';
 
     public const STAGE_AI_QUALIFYING = 'ai_qualifying';
@@ -190,7 +205,44 @@ class Lead extends Model
     }
 
     /**
-     * Apply the inbox filter set (status / ai_mode / operational_stage /
+     * Restrict the inbox to one triage group.
+     *
+     * The three groups are mutually exclusive by construction, so a lead never
+     * shows up under two tabs and the counters always sum to at most the total:
+     *
+     * - fila:   nobody owns it and an escalation ticket is still unclaimed
+     * - minhas: the actor owns it
+     * - ia:     nobody owns it and no escalation is active
+     *
+     * Everything else (owned by a teammate, or unowned with an escalation that
+     * is claimed but not yet resolved) stays reachable only through "todas".
+     *
+     * Deliberately expressed with columns and EXISTS subqueries only: the
+     * effective AI mode is resolved in PHP and the manual pause partly lives in
+     * the cache, so neither can back a tab counter without lying about it.
+     */
+    public function scopeInGroup($query, string $group, ?int $actorId): Builder
+    {
+        $activeEscalation = fn ($ticketQuery) => $ticketQuery
+            ->where('type', ServiceTicket::TYPE_ESCALATION)
+            ->whereIn('status', ServiceTicket::ACTIVE_STATUSES);
+
+        return match ($group) {
+            self::INBOX_GROUP_QUEUE => $query
+                ->whereNull('assigned_user_id')
+                ->whereHas('tickets', fn ($ticketQuery) => $ticketQuery
+                    ->where('type', ServiceTicket::TYPE_ESCALATION)
+                    ->where('status', ServiceTicket::STATUS_OPEN)),
+            self::INBOX_GROUP_MINE => $query->where('assigned_user_id', $actorId ?? 0),
+            self::INBOX_GROUP_AI => $query
+                ->whereNull('assigned_user_id')
+                ->whereDoesntHave('tickets', $activeEscalation),
+            default => $query,
+        };
+    }
+
+    /**
+     * Apply the inbox filter set (group / status / ai_mode / operational_stage /
      * assignment / free-text search) and the sort. The instance filter and
      * visibility restriction are applied by the caller; this scope owns only the
      * validated filter payload.
@@ -199,6 +251,8 @@ class Lead extends Model
      */
     public function scopeInboxFiltered($query, array $filters): Builder
     {
+        $query->inGroup($filters['group'] ?? self::INBOX_GROUP_ALL, auth()->id());
+
         if ($filters['status'] === 'followup') {
             $query->where('followup_status', 'active');
         } elseif ($filters['status'] !== 'todos') {

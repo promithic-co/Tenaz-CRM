@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useForm } from '@inertiajs/vue3';
 import {
     AlertCircle,
     ArrowLeft,
+    Bot,
     Clock,
     ExternalLink,
     FileText,
@@ -12,11 +14,14 @@ import {
     RefreshCw,
     Reply,
     Send,
+    UserCheck,
     X,
 } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import echo from '@/echo';
-import { send } from '@/routes/conversas';
+import { returnToAi } from '@/routes/atendimentos';
+import { claim, send } from '@/routes/conversas';
 import type {
     ActiveConversation,
     ConversationSessionOpenReason,
@@ -24,7 +29,7 @@ import type {
     Message,
     WhatsappTemplateOption,
 } from '../types';
-import TemplateSendDialog from './TemplateSendDialog.vue';
+import TemplatePickerPopover from './TemplatePickerPopover.vue';
 
 type Props = {
     conversation: ActiveConversation | null;
@@ -36,14 +41,14 @@ const emit = defineEmits<{
     details: [];
 }>();
 
-const templateDialogOpen = ref(false);
+const templatePickerOpen = ref(false);
 
 const availableTemplates = computed<WhatsappTemplateOption[]>(
     () => props.conversation?.whatsappTemplates ?? [],
 );
 
-function openTemplateDialog(): void {
-    templateDialogOpen.value = true;
+function toggleTemplatePicker(): void {
+    templatePickerOpen.value = !templatePickerOpen.value;
 }
 
 function onTemplateSent(message: Message): void {
@@ -176,6 +181,23 @@ function dividerReason(
         return null;
     }
     return sessionReasonLabels[item.session.open_reason] ?? null;
+}
+
+// Inbound stays neutral on the left; everything the tenant sent is accented on the right —
+// blue when a human wrote it, green when the AI did, so an operator can audit the agent's
+// replies without reading the author label.
+function bubbleClasses(msg: Message): string {
+    if (msg.role === 'user') {
+        return 'rounded-bl-sm bg-muted text-foreground';
+    }
+
+    return msg.role === 'operator'
+        ? 'rounded-br-sm bg-blue-600 text-white'
+        : 'rounded-br-sm bg-emerald-600/15 text-foreground';
+}
+
+function bubbleMetaClasses(msg: Message): string {
+    return msg.role === 'operator' ? 'text-blue-200' : 'text-muted-foreground';
 }
 const messageText = ref('');
 const selectedFile = ref<File | null>(null);
@@ -416,6 +438,96 @@ function dismissError(): void {
     sendError.value = null;
 }
 
+const claimForm = useForm({});
+const returnToAiForm = useForm({});
+
+const aiModeLabels: Record<string, string> = {
+    automatic: 'IA automatica',
+    manual: 'Manual',
+    assisted: 'IA assistida',
+    qualify_then_handoff: 'IA qualifica',
+};
+
+const handoffStateLabels: Record<string, string> = {
+    waiting_human: 'Aguardando atendimento',
+    human_active: 'Em atendimento',
+    waiting_customer: 'Aguardando cliente',
+    ai_active: 'IA ativa',
+    closed: 'Encerrado',
+};
+
+/**
+ * The one action the header offers. Taking an unowned conversation always comes
+ * first — that is the move an operator makes dozens of times a day. Handing it
+ * back to the AI only appears once the conversation is actually in human hands.
+ */
+const primaryAction = computed<'claim' | 'return_to_ai' | null>(() => {
+    if (!props.conversation) {
+        return null;
+    }
+
+    if (!props.conversation.lead.assigned_user_id) {
+        return 'claim';
+    }
+
+    return props.conversation.handoff_actions.includes('return_to_ai')
+        ? 'return_to_ai'
+        : null;
+});
+
+const aiLabel = computed<string>(() => {
+    const lead = props.conversation?.lead;
+
+    if (!lead) {
+        return '';
+    }
+
+    if (props.conversation?.pausado) {
+        return 'IA pausada';
+    }
+
+    return aiModeLabels[lead.effective_ai_mode] ?? lead.effective_ai_mode;
+});
+
+/** Time left on Meta's 24h service window, or null when there is nothing to count down. */
+const windowRemaining = computed<string | null>(() => {
+    if (serviceDeadline.value === null || windowClosed.value) {
+        return null;
+    }
+
+    const minutes = Math.floor((serviceDeadline.value - now.value) / 60_000);
+
+    if (minutes <= 0) {
+        return null;
+    }
+
+    const hours = Math.floor(minutes / 60);
+
+    return hours > 0 ? `${hours}h ${minutes % 60}min` : `${minutes}min`;
+});
+
+function submitPrimaryAction(): void {
+    if (!props.conversation) {
+        return;
+    }
+
+    if (primaryAction.value === 'claim') {
+        claimForm.post(claim.url({ lead: props.conversation.lead.id }), {
+            preserveScroll: true,
+        });
+
+        return;
+    }
+
+    const ticketId = props.conversation.active_handoff?.id;
+
+    if (primaryAction.value === 'return_to_ai' && ticketId) {
+        returnToAiForm.post(returnToAi.url({ ticket: ticketId }), {
+            preserveScroll: true,
+        });
+    }
+}
+
 function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
@@ -430,32 +542,106 @@ function onKeydown(event: KeyboardEvent): void {
         class="flex min-h-0 min-w-0 flex-col bg-background/40"
     >
         <header
-            class="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border/70 px-2 sm:h-16 sm:px-5 dark:border-sidebar-border"
+            class="shrink-0 border-b border-sidebar-border/70 px-2 sm:px-5 dark:border-sidebar-border"
         >
-            <button
-                type="button"
-                class="flex size-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
-                aria-label="Voltar para conversas"
-                @click="emit('back')"
-            >
-                <ArrowLeft class="size-5" />
-            </button>
-            <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-semibold text-foreground">
+            <div class="flex items-center gap-2 pt-2">
+                <button
+                    type="button"
+                    class="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
+                    aria-label="Voltar para conversas"
+                    @click="emit('back')"
+                >
+                    <ArrowLeft class="size-5" />
+                </button>
+                <p
+                    class="min-w-0 flex-1 truncate text-sm font-semibold text-foreground"
+                >
                     {{ conversation.lead.nome }}
                 </p>
-                <p class="truncate text-xs text-muted-foreground">
-                    {{ conversation.lead.whatsapp }}
-                </p>
+
+                <button
+                    v-if="primaryAction"
+                    type="button"
+                    :disabled="claimForm.processing || returnToAiForm.processing"
+                    :class="[
+                        'flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-white transition-colors disabled:opacity-50',
+                        primaryAction === 'claim'
+                            ? 'bg-blue-600 hover:bg-blue-700'
+                            : 'bg-sky-600 hover:bg-sky-700',
+                    ]"
+                    :title="
+                        primaryAction === 'claim'
+                            ? 'Assume a conversa e pausa a IA'
+                            : 'Encerra o atendimento humano e devolve o lead para a IA'
+                    "
+                    @click="submitPrimaryAction"
+                >
+                    <UserCheck
+                        v-if="primaryAction === 'claim'"
+                        class="h-3.5 w-3.5"
+                    />
+                    <Bot v-else class="h-3.5 w-3.5" />
+                    {{
+                        primaryAction === 'claim'
+                            ? 'Assumir'
+                            : 'Devolver para IA'
+                    }}
+                </button>
+
+                <button
+                    type="button"
+                    class="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Detalhes do contato"
+                    @click="emit('details')"
+                >
+                    <PanelRight class="size-5" />
+                </button>
             </div>
-            <button
-                type="button"
-                class="flex size-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground xl:hidden"
-                aria-label="Abrir detalhes do contato"
-                @click="emit('details')"
+
+            <div
+                class="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 pb-2 text-[11px] text-muted-foreground"
             >
-                <PanelRight class="size-5" />
-            </button>
+                <StatusBadge :status="conversation.lead.status" />
+                <span class="text-muted-foreground/40">·</span>
+                <span>{{
+                    handoffStateLabels[conversation.handoff_state] ??
+                    conversation.handoff_state
+                }}</span>
+                <span class="text-muted-foreground/40">·</span>
+                <span
+                    :class="
+                        conversation.lead.assigned_user_name
+                            ? 'text-foreground'
+                            : ''
+                    "
+                >
+                    {{
+                        conversation.lead.assigned_user_name ?? 'Sem atendente'
+                    }}
+                </span>
+                <span class="text-muted-foreground/40">·</span>
+                <span :class="conversation.pausado ? 'text-amber-500' : ''">{{
+                    aiLabel
+                }}</span>
+                <template v-if="windowRemaining">
+                    <span class="text-muted-foreground/40">·</span>
+                    <span
+                        class="flex items-center gap-1"
+                        title="Tempo restante da janela de 24h do WhatsApp"
+                    >
+                        <Clock class="h-3 w-3" />
+                        {{ windowRemaining }}
+                    </span>
+                </template>
+                <span
+                    v-else-if="windowClosed"
+                    class="flex items-center gap-1 text-amber-500"
+                    title="Janela de 24h fechada — so e possivel enviar template"
+                >
+                    <Clock class="h-3 w-3" />
+                    Janela fechada
+                </span>
+            </div>
         </header>
 
         <div
@@ -495,21 +681,23 @@ function onKeydown(event: KeyboardEvent): void {
                     <span class="h-px flex-1 bg-sidebar-border/70" />
                 </div>
 
+                <!-- Messaging convention: what the lead sent is inbound (left),
+                     everything the tenant sent — operator or AI — is outbound (right). -->
                 <div
                     v-else
                     :class="[
                         'flex',
                         item.msg.role === 'user'
-                            ? 'justify-end'
-                            : 'justify-start',
+                            ? 'justify-start'
+                            : 'justify-end',
                     ]"
                 >
                     <div
                         :class="[
                             'flex max-w-[88%] flex-col gap-1 sm:max-w-[76%]',
                             item.msg.role === 'user'
-                                ? 'items-end'
-                                : 'items-start',
+                                ? 'items-start'
+                                : 'items-end',
                         ]"
                     >
                         <span
@@ -544,11 +732,7 @@ function onKeydown(event: KeyboardEvent): void {
                         <div
                             :class="[
                                 'rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
-                                item.msg.role === 'user'
-                                    ? 'rounded-br-sm bg-primary text-primary-foreground'
-                                    : item.msg.role === 'operator'
-                                      ? 'rounded-bl-sm bg-blue-600 text-white'
-                                      : 'rounded-bl-sm bg-muted text-foreground',
+                                bubbleClasses(item.msg),
                             ]"
                         >
                             <template v-if="item.msg.template">
@@ -568,11 +752,7 @@ function onKeydown(event: KeyboardEvent): void {
                                     v-if="item.msg.template.footer"
                                     :class="[
                                         'mt-1 text-xs',
-                                        item.msg.role === 'user'
-                                            ? 'text-primary-foreground/60'
-                                            : item.msg.role === 'operator'
-                                              ? 'text-blue-200'
-                                              : 'text-muted-foreground',
+                                        bubbleMetaClasses(item.msg),
                                     ]"
                                 >
                                     {{ item.msg.template.footer }}
@@ -584,11 +764,7 @@ function onKeydown(event: KeyboardEvent): void {
                             <p
                                 :class="[
                                     'mt-1 text-xs',
-                                    item.msg.role === 'user'
-                                        ? 'text-primary-foreground/60'
-                                        : item.msg.role === 'operator'
-                                          ? 'text-blue-200'
-                                          : 'text-muted-foreground',
+                                    bubbleMetaClasses(item.msg),
                                 ]"
                             >
                                 {{ item.msg.hora }}
@@ -717,8 +893,9 @@ function onKeydown(event: KeyboardEvent): void {
             <button
                 v-if="templatesAvailable"
                 type="button"
+                data-template-picker-trigger
                 class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
-                @click="openTemplateDialog"
+                @click="toggleTemplatePicker"
             >
                 <FileText class="h-3.5 w-3.5" />
                 Enviar template
@@ -746,15 +923,34 @@ function onKeydown(event: KeyboardEvent): void {
                     @change="onFileSelect"
                 />
             </label>
-            <button
-                v-if="templatesAvailable && !windowClosed"
-                type="button"
-                class="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Enviar template"
-                @click="openTemplateDialog"
-            >
-                <FileText class="h-4 w-4" />
-            </button>
+            <!-- Anchor for the picker: the popover opens above this button, so it stays reachable
+                 whether the composer is live or locked behind a closed 24h window. -->
+            <div v-if="templatesAvailable" class="relative shrink-0">
+                <button
+                    type="button"
+                    data-template-picker-trigger
+                    :aria-expanded="templatePickerOpen"
+                    class="flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-muted hover:text-foreground"
+                    :class="
+                        templatePickerOpen
+                            ? 'bg-muted text-foreground'
+                            : 'text-muted-foreground'
+                    "
+                    aria-label="Enviar template"
+                    @click="toggleTemplatePicker"
+                >
+                    <FileText class="h-4 w-4" />
+                </button>
+
+                <TemplatePickerPopover
+                    v-if="conversation"
+                    :open="templatePickerOpen"
+                    :lead-id="conversation.lead.id"
+                    :templates="availableTemplates"
+                    @close="templatePickerOpen = false"
+                    @sent="onTemplateSent"
+                />
+            </div>
             <textarea
                 v-model="messageText"
                 rows="1"
@@ -780,15 +976,6 @@ function onKeydown(event: KeyboardEvent): void {
                 <Send class="h-4 w-4" />
             </button>
         </div>
-
-        <TemplateSendDialog
-            v-if="conversation"
-            :open="templateDialogOpen"
-            :lead-id="conversation.lead.id"
-            :templates="availableTemplates"
-            @close="templateDialogOpen = false"
-            @sent="onTemplateSent"
-        />
     </section>
 
     <section

@@ -12,6 +12,7 @@ import LeadDetailsPanel from './partials/LeadDetailsPanel.vue';
 import type {
     ActiveConversation,
     ConversationFilters,
+    InboxGroupCounts,
     LeadPaginator,
     TransferTarget,
 } from './types';
@@ -19,6 +20,7 @@ import type {
 type Props = {
     leads: LeadPaginator;
     filters: ConversationFilters;
+    group_counts: InboxGroupCounts;
     instances: Array<{ name: string; label: string }>;
     transfer_targets: TransferTarget[];
     activeConversation: ActiveConversation | null;
@@ -45,6 +47,36 @@ const pageTitle = computed(
 );
 const activeLeadId = computed(() => props.activeConversation?.lead.id ?? null);
 const showMobileDetails = ref(false);
+
+/**
+ * The details panel is a docked column from xl up and a sheet below it. Wide
+ * screens get a real collapse (remembered per browser) so an operator who lives
+ * in the thread can reclaim the width; narrow screens keep the sheet.
+ */
+const PANEL_STORAGE_KEY = 'conversas:details-panel-open';
+const DESKTOP_QUERY = '(min-width: 1280px)';
+
+const detailsPanelOpen = ref(true);
+const isDesktop = ref(false);
+let desktopQuery: MediaQueryList | null = null;
+
+function syncDesktop(event: MediaQueryList | MediaQueryListEvent): void {
+    isDesktop.value = event.matches;
+}
+
+function toggleDetails(): void {
+    if (!isDesktop.value) {
+        showMobileDetails.value = true;
+
+        return;
+    }
+
+    detailsPanelOpen.value = !detailsPanelOpen.value;
+    localStorage.setItem(
+        PANEL_STORAGE_KEY,
+        detailsPanelOpen.value ? 'open' : 'closed',
+    );
+}
 
 const page = usePage();
 const tenantId = computed(
@@ -110,6 +142,12 @@ function unsubscribeHandoffChannel(leadId: number | string): void {
 }
 
 onMounted(() => {
+    detailsPanelOpen.value =
+        localStorage.getItem(PANEL_STORAGE_KEY) !== 'closed';
+    desktopQuery = window.matchMedia(DESKTOP_QUERY);
+    syncDesktop(desktopQuery);
+    desktopQuery.addEventListener('change', syncDesktop);
+
     const tid = tenantId.value;
     if (tid) {
         echo.private(`conversations.${tid}`).listen(
@@ -134,6 +172,8 @@ watch(activeLeadId, (newId, oldId) => {
 });
 
 onUnmounted(() => {
+    desktopQuery?.removeEventListener('change', syncDesktop);
+
     const tid = tenantId.value;
     if (tid) {
         echo.leave(`conversations.${tid}`);
@@ -183,7 +223,12 @@ onUnmounted(() => {
             </div>
 
             <div
-                class="grid min-h-0 flex-1 overflow-hidden border-sidebar-border/70 bg-card sm:rounded-xl sm:border lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_22rem] dark:border-sidebar-border"
+                :class="[
+                    'grid min-h-0 flex-1 overflow-hidden border-sidebar-border/70 bg-card sm:rounded-xl sm:border lg:grid-cols-[20rem_minmax(0,1fr)] dark:border-sidebar-border',
+                    activeConversation && detailsPanelOpen
+                        ? 'xl:grid-cols-[20rem_minmax(0,1fr)_22rem]'
+                        : 'xl:grid-cols-[20rem_minmax(0,1fr)]',
+                ]"
             >
                 <div
                     class="min-h-0 [&>aside]:h-full"
@@ -192,6 +237,7 @@ onUnmounted(() => {
                     <ConversationSidebar
                         :leads="leads"
                         :filters="filters"
+                        :group-counts="group_counts"
                         :instances="instances"
                         :active-lead-id="activeLeadId"
                         :transfer-targets="transfer_targets"
@@ -212,12 +258,12 @@ onUnmounted(() => {
                                 { preserveState: true },
                             )
                         "
-                        @details="showMobileDetails = true"
+                        @details="toggleDetails"
                     />
                 </div>
 
                 <div
-                    v-if="activeConversation"
+                    v-if="activeConversation && detailsPanelOpen"
                     class="hidden min-h-0 xl:block [&>aside]:h-full"
                 >
                     <LeadDetailsPanel

@@ -1,12 +1,21 @@
 <script setup lang="ts">
-import { Link, router, useForm } from '@inertiajs/vue3';
-import { MessageSquare, Plus, Search } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
-import StatusBadge from '@/components/StatusBadge.vue';
+import { Link, router, useForm, WhenVisible } from '@inertiajs/vue3';
+import {
+    Check,
+    ChevronDown,
+    CornerUpRight,
+    MessageSquare,
+    PauseCircle,
+    Plus,
+    Search,
+} from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { bulkAction, index, show, store, transfer } from '@/routes/conversas';
 import type { QueryParams } from '@/wayfinder';
 import type {
     ConversationFilters,
+    InboxGroup,
+    InboxGroupCounts,
     LeadPaginator,
     InboxLead,
     TransferTarget,
@@ -15,6 +24,7 @@ import type {
 type Props = {
     leads: LeadPaginator;
     filters: ConversationFilters;
+    groupCounts: InboxGroupCounts;
     instances: Array<{ name: string; label: string }>;
     activeLeadId: number | null;
     transferTargets: TransferTarget[];
@@ -22,8 +32,19 @@ type Props = {
 
 const props = defineProps<Props>();
 
+const groupTabs: Array<{ key: InboxGroup; label: string; title: string }> = [
+    {
+        key: 'fila',
+        label: 'Fila',
+        title: 'Escalados aguardando alguem assumir',
+    },
+    { key: 'minhas', label: 'Minhas', title: 'Atribuidas a voce' },
+    { key: 'ia', label: 'IA', title: 'Sem atendente humano' },
+    { key: 'todas', label: 'Todas', title: 'Todas as conversas' },
+];
+
 const statusFilters = [
-    { key: 'todos', label: 'Todas' },
+    { key: 'todos', label: 'Todos os status' },
     { key: 'novo', label: 'Novos' },
     { key: 'qualificado', label: 'Qualificados' },
     { key: 'followup', label: 'Follow-up' },
@@ -44,6 +65,7 @@ const searchQuery = ref(props.filters.search ?? '');
 const showNewContactModal = ref(false);
 const selectedLeadIds = ref<Set<number>>(new Set());
 const bulkActionChoice = ref<string>('pause-ai');
+const openFilter = ref<'status' | 'instance' | null>(null);
 
 const newContactForm = useForm({
     nome: '',
@@ -92,8 +114,30 @@ watch(
 
 const selectedCount = computed(() => selectedLeadIds.value.size);
 
+const activeGroup = computed<InboxGroup>(() => props.filters.group ?? 'todas');
+
+const statusLabel = computed(
+    () =>
+        statusFilters.find((filter) => filter.key === props.filters.status)
+            ?.label ?? 'Todos os status',
+);
+
+const instanceLabel = computed(
+    () =>
+        props.instances.find(
+            (instance) => instance.name === props.filters.instance,
+        )?.label ?? 'Todas as instancias',
+);
+
+function groupCount(group: InboxGroup): number | null {
+    return group === 'todas'
+        ? null
+        : (props.groupCounts?.[group] ?? null);
+}
+
 function filterQuery(overrides: QueryParams = {}): QueryParams {
     return {
+        group: props.filters.group === 'todas' ? undefined : props.filters.group,
         status: props.filters.status,
         instance: props.filters.instance || undefined,
         search: searchQuery.value || undefined,
@@ -104,6 +148,8 @@ function filterQuery(overrides: QueryParams = {}): QueryParams {
 }
 
 function visitInbox(overrides: QueryParams = {}): void {
+    openFilter.value = null;
+
     router.get(index.url(), filterQuery(overrides), {
         preserveState: true,
         preserveScroll: true,
@@ -115,41 +161,70 @@ function filterHref(status: string): string {
     return index.url({ query: filterQuery({ status }) });
 }
 
+/**
+ * Switching tab drops sort/direction so the server can apply the ordering that
+ * tab deserves — the queue is oldest-first, every other tab newest-first.
+ */
+function groupHref(group: InboxGroup): string {
+    return index.url({
+        query: filterQuery({
+            group: group === 'todas' ? undefined : group,
+            sort: undefined,
+            direction: undefined,
+        }),
+    });
+}
+
 function leadHref(lead: InboxLead): string {
     return show.url({ lead: lead.id }, { query: filterQuery() });
 }
 
-function onInstanceChange(event: Event): void {
-    const target = event.target as HTMLSelectElement;
-    visitInbox({ instance: target.value || null });
+function toggleFilter(name: 'status' | 'instance'): void {
+    openFilter.value = openFilter.value === name ? null : name;
 }
 
-function automationLabel(lead: InboxLead): string | null {
-    if (lead.pausado) {
-        return 'Pausado';
+function closeFilterOnOutsideClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement | null;
+
+    if (target?.closest('[data-inbox-filter]')) {
+        return;
     }
 
-    if (lead.effective_ai_mode === 'manual') {
-        return 'Manual';
-    }
-
-    if (lead.effective_ai_mode === 'assisted') {
-        return 'Assistido';
-    }
-
-    if (lead.effective_ai_mode === 'qualify_then_handoff') {
-        return 'IA + humano';
-    }
-
-    if (lead.followup_status === 'active') {
-        return `Follow-up ${lead.followup_count}x`;
-    }
-
-    return null;
+    openFilter.value = null;
 }
+
+onMounted(() =>
+    document.addEventListener('mousedown', closeFilterOnOutsideClick),
+);
+onUnmounted(() =>
+    document.removeEventListener('mousedown', closeFilterOnOutsideClick),
+);
 
 function initials(name: string): string {
     return name.trim().charAt(0).toUpperCase() || '?';
+}
+
+/**
+ * Always two letters: first and last name, skipping everything in between, or
+ * the first two letters when the operator goes by a single name. Skipping the
+ * middle also disposes of the "da/de/dos" particles for free. A one-letter chip
+ * would collide between teammates (Juliana and Joao both becoming "J") and break
+ * the row's alignment.
+ */
+function assigneeInitials(name: string): string {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length === 0) {
+        return '?';
+    }
+
+    if (parts.length === 1) {
+        return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return (
+        parts[0].charAt(0) + parts[parts.length - 1].charAt(0)
+    ).toUpperCase();
 }
 
 function toggleLeadSelection(leadId: number, checked: boolean): void {
@@ -255,48 +330,122 @@ function openNewContactModal(): void {
             </div>
         </div>
 
-        <div
-            class="shrink-0 border-b border-sidebar-border/70 px-3 py-2 dark:border-sidebar-border"
-        >
-            <label
-                class="mb-1.5 block text-xs font-medium text-muted-foreground"
-                >Instancia</label
-            >
-            <select
-                class="h-9 w-full rounded-md border border-input bg-background px-2.5 text-xs text-foreground"
-                :value="filters.instance ?? ''"
-                @change="onInstanceChange"
-            >
-                <option value="">Todas</option>
-                <option
-                    v-for="instance in instances"
-                    :key="instance.name"
-                    :value="instance.name"
-                >
-                    {{ instance.label }}
-                </option>
-            </select>
-        </div>
-
         <nav
-            class="flex shrink-0 flex-wrap gap-1.5 border-b border-sidebar-border/70 px-3 py-2 dark:border-sidebar-border"
+            class="flex shrink-0 border-b border-sidebar-border/70 px-1 dark:border-sidebar-border"
         >
             <Link
-                v-for="filter in statusFilters"
-                :key="filter.key"
-                :href="filterHref(filter.key)"
+                v-for="tab in groupTabs"
+                :key="tab.key"
+                :href="groupHref(tab.key)"
+                :title="tab.title"
                 preserve-scroll
                 preserve-state
                 :class="[
-                    'shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-                    filters.status === filter.key
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+                    'flex flex-1 items-center justify-center gap-1.5 border-b-2 px-1 py-2 text-xs font-medium transition-colors',
+                    activeGroup === tab.key
+                        ? 'border-primary text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground',
                 ]"
             >
-                {{ filter.label }}
+                {{ tab.label }}
+                <span
+                    v-if="groupCount(tab.key)"
+                    :class="[
+                        'rounded-full px-1.5 py-px text-[10px] font-semibold tabular-nums',
+                        activeGroup === tab.key
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground',
+                    ]"
+                >
+                    {{ groupCount(tab.key) }}
+                </span>
             </Link>
         </nav>
+
+        <div
+            class="flex shrink-0 items-center gap-1.5 border-b border-sidebar-border/70 px-3 py-1.5 dark:border-sidebar-border"
+        >
+            <div class="relative min-w-0 flex-1" data-inbox-filter>
+                <button
+                    type="button"
+                    :class="[
+                        'flex h-7 w-full items-center justify-between gap-1 rounded-md border px-2 text-xs transition-colors',
+                        filters.status !== 'todos'
+                            ? 'border-primary/40 bg-primary/10 font-medium text-foreground'
+                            : 'border-input text-muted-foreground hover:text-foreground',
+                    ]"
+                    @click="toggleFilter('status')"
+                >
+                    <span class="truncate">{{ statusLabel }}</span>
+                    <ChevronDown class="h-3 w-3 shrink-0" />
+                </button>
+                <div
+                    v-if="openFilter === 'status'"
+                    class="absolute top-full left-0 z-30 mt-1 w-48 overflow-hidden rounded-md border border-sidebar-border/70 bg-popover py-1 shadow-lg dark:border-sidebar-border"
+                >
+                    <Link
+                        v-for="filter in statusFilters"
+                        :key="filter.key"
+                        :href="filterHref(filter.key)"
+                        preserve-scroll
+                        preserve-state
+                        class="flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-popover-foreground hover:bg-muted"
+                        @click="openFilter = null"
+                    >
+                        {{ filter.label }}
+                        <Check
+                            v-if="filters.status === filter.key"
+                            class="h-3 w-3 shrink-0 text-primary"
+                        />
+                    </Link>
+                </div>
+            </div>
+
+            <div class="relative min-w-0 flex-1" data-inbox-filter>
+                <button
+                    type="button"
+                    :class="[
+                        'flex h-7 w-full items-center justify-between gap-1 rounded-md border px-2 text-xs transition-colors',
+                        filters.instance
+                            ? 'border-primary/40 bg-primary/10 font-medium text-foreground'
+                            : 'border-input text-muted-foreground hover:text-foreground',
+                    ]"
+                    @click="toggleFilter('instance')"
+                >
+                    <span class="truncate">{{ instanceLabel }}</span>
+                    <ChevronDown class="h-3 w-3 shrink-0" />
+                </button>
+                <div
+                    v-if="openFilter === 'instance'"
+                    class="absolute top-full right-0 z-30 mt-1 max-h-64 w-52 overflow-y-auto rounded-md border border-sidebar-border/70 bg-popover py-1 shadow-lg dark:border-sidebar-border"
+                >
+                    <button
+                        type="button"
+                        class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-popover-foreground hover:bg-muted"
+                        @click="visitInbox({ instance: null })"
+                    >
+                        Todas as instancias
+                        <Check
+                            v-if="!filters.instance"
+                            class="h-3 w-3 shrink-0 text-primary"
+                        />
+                    </button>
+                    <button
+                        v-for="instance in instances"
+                        :key="instance.name"
+                        type="button"
+                        class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-popover-foreground hover:bg-muted"
+                        @click="visitInbox({ instance: instance.name })"
+                    >
+                        <span class="truncate">{{ instance.label }}</span>
+                        <Check
+                            v-if="filters.instance === instance.name"
+                            class="h-3 w-3 shrink-0 text-primary"
+                        />
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Bulk action bar -->
         <div
@@ -370,7 +519,10 @@ function openNewContactModal(): void {
                 v-for="lead in leads.data"
                 :key="lead.id"
                 :class="[
-                    'flex items-start gap-3 border-b border-sidebar-border/70 px-4 py-3 transition-colors dark:border-sidebar-border',
+                    'group flex items-center gap-2 border-b border-l-2 border-sidebar-border/70 py-2 pr-3 pl-1.5 transition-colors dark:border-sidebar-border',
+                    lead.awaiting_reply
+                        ? 'border-l-amber-500'
+                        : 'border-l-transparent',
                     activeLeadId === lead.id
                         ? 'bg-muted/80'
                         : 'hover:bg-muted/50',
@@ -378,7 +530,10 @@ function openNewContactModal(): void {
             >
                 <input
                     type="checkbox"
-                    class="mt-3 h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-input text-primary focus:ring-1 focus:ring-ring"
+                    :class="[
+                        'h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-input text-primary focus:ring-1 focus:ring-ring group-hover:visible',
+                        selectedCount > 0 ? 'visible' : 'invisible',
+                    ]"
                     :aria-label="`Selecionar ${lead.nome}`"
                     :checked="selectedLeadIds.has(lead.id)"
                     @change="
@@ -392,55 +547,89 @@ function openNewContactModal(): void {
                 <Link
                     :href="leadHref(lead)"
                     preserve-scroll
-                    class="flex min-w-0 flex-1 gap-3"
+                    class="flex min-w-0 flex-1 items-center gap-2.5"
                 >
                     <div
-                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600 dark:bg-blue-950 dark:text-blue-400"
                     >
                         {{ initials(lead.nome) }}
                     </div>
                     <div class="min-w-0 flex-1">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <p
-                                    class="truncate text-sm font-medium text-foreground"
-                                >
-                                    {{ lead.nome }}
-                                </p>
-                                <p
-                                    class="truncate text-xs text-muted-foreground"
-                                >
-                                    {{ lead.whatsapp }}
-                                </p>
-                            </div>
-                            <p class="shrink-0 text-xs text-muted-foreground">
+                        <div class="flex items-baseline justify-between gap-2">
+                            <p
+                                :class="[
+                                    'truncate text-sm text-foreground',
+                                    lead.awaiting_reply
+                                        ? 'font-semibold'
+                                        : 'font-medium',
+                                ]"
+                            >
+                                {{ lead.nome }}
+                            </p>
+                            <p
+                                class="shrink-0 text-[11px] text-muted-foreground"
+                            >
                                 {{ lead.ultima_interacao ?? 'Sem historico' }}
                             </p>
                         </div>
-                        <div class="mt-2 flex flex-wrap items-center gap-1.5">
-                            <StatusBadge :status="lead.status" />
+                        <div class="flex items-center gap-1.5">
+                            <CornerUpRight
+                                v-if="lead.last_message_direction === 'outbound'"
+                                class="h-3 w-3 shrink-0 text-muted-foreground"
+                            />
+                            <p
+                                class="min-w-0 flex-1 truncate text-xs text-muted-foreground"
+                            >
+                                {{ lead.last_message_body ?? lead.whatsapp }}
+                            </p>
+                            <PauseCircle
+                                v-if="lead.pausado"
+                                class="h-3 w-3 shrink-0 text-amber-500"
+                                aria-label="IA pausada"
+                            />
+                            <span
+                                v-if="lead.status === 'optou_sair'"
+                                class="shrink-0 rounded px-1 py-px text-[10px] font-semibold text-rose-500"
+                                title="Cliente pediu para nao receber mensagens"
+                            >
+                                OPT-OUT
+                            </span>
                             <span
                                 v-if="lead.is_returning"
-                                class="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-500 dark:text-violet-400"
-                            >
-                                Retornante
-                            </span>
-                            <span
-                                v-if="automationLabel(lead)"
-                                class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-                            >
-                                {{ automationLabel(lead) }}
-                            </span>
+                                class="h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500"
+                                title="Cliente retornante"
+                            />
                             <span
                                 v-if="lead.assigned_user_name"
-                                class="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400"
+                                class="shrink-0 rounded bg-blue-500/10 px-1 py-px text-[10px] font-semibold text-blue-500 dark:text-blue-400"
+                                :title="lead.assigned_user_name"
                             >
-                                {{ lead.assigned_user_name }}
+                                {{ assigneeInitials(lead.assigned_user_name) }}
                             </span>
                         </div>
                     </div>
                 </Link>
             </div>
+
+            <WhenVisible
+                v-if="leads.next_page_url"
+                always
+                :buffer="200"
+                :params="{
+                    data: { page: leads.current_page + 1 },
+                    only: ['leads'],
+                    preserveUrl: true,
+                }"
+            >
+                <div
+                    class="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground"
+                >
+                    <span
+                        class="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground"
+                    />
+                    Carregando mais...
+                </div>
+            </WhenVisible>
 
             <div
                 v-if="leads.data.length === 0"
@@ -454,31 +643,6 @@ function openNewContactModal(): void {
                     Ajuste a busca ou adicione um novo contato.
                 </p>
             </div>
-        </div>
-
-        <div
-            v-if="leads.links?.length > 3"
-            class="flex shrink-0 items-center gap-1 border-t border-sidebar-border/70 px-3 py-2 dark:border-sidebar-border"
-        >
-            <template v-for="link in leads.links" :key="link.label">
-                <Link
-                    v-if="link.url"
-                    :href="link.url"
-                    v-html="link.label"
-                    preserve-scroll
-                    :class="[
-                        'rounded px-2.5 py-1 text-xs',
-                        link.active
-                            ? 'bg-primary font-medium text-primary-foreground'
-                            : 'text-muted-foreground hover:bg-muted',
-                    ]"
-                />
-                <span
-                    v-else
-                    v-html="link.label"
-                    class="px-2.5 py-1 text-xs text-muted-foreground/40"
-                />
-            </template>
         </div>
 
         <!-- New contact modal -->

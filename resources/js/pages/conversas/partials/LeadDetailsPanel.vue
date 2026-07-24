@@ -11,7 +11,6 @@ import {
     Plus,
     RefreshCw,
     Trash2,
-    UserCheck,
     UserPlus,
     UserRound,
 } from 'lucide-vue-next';
@@ -33,7 +32,6 @@ import { show as showContact } from '@/routes/contatos';
 import {
     addToContacts,
     aiMode,
-    claim,
     clearHistory,
     destroy,
     pause,
@@ -57,6 +55,7 @@ import type {
     ConversationSessionOpenReason,
     ConversationSessionOutcome,
 } from '../types';
+import PanelSection from './PanelSection.vue';
 
 type Props = {
     conversation: ActiveConversation;
@@ -66,7 +65,6 @@ const props = defineProps<Props>();
 
 const pauseForm = useForm({});
 const resumeForm = useForm({});
-const claimForm = useForm({});
 const pauseFollowUpForm = useForm({});
 const resumeFollowUpForm = useForm({});
 const disableFollowUpForm = useForm({});
@@ -91,13 +89,6 @@ const closeSessionForm = useForm<{ outcome: ConversationSessionOutcome }>({
 const showClearConfirm = ref(false);
 const showDeleteConfirm = ref(false);
 const deleteConfirmText = ref('');
-
-const aiModeLabels: Record<string, string> = {
-    automatic: 'Automatico',
-    manual: 'Manual',
-    assisted: 'Assistido',
-    qualify_then_handoff: 'Qualifica e transfere',
-};
 
 const stageLabels: Record<string, string> = {
     new_inbound: 'Nova entrada',
@@ -277,12 +268,6 @@ function submitPrepareCampaign(): void {
     });
 }
 
-function submitClaim(): void {
-    claimForm.post(claim.url({ lead: lead.value.id }), {
-        preserveScroll: true,
-    });
-}
-
 function initials(name: string): string {
     return name.trim().slice(0, 2).toUpperCase() || '?';
 }
@@ -393,55 +378,25 @@ function formatEventDate(value: string): string {
                 compact
             />
 
+            <!-- Atendente and Modo IA are not repeated here: the thread header
+                 states them and offers the action, and the AI mode is editable
+                 under "Controle do Agente". -->
             <div
-                class="mt-3 space-y-3 border-t border-sidebar-border/70 pt-3 text-sm dark:border-sidebar-border"
+                class="mt-3 flex items-center justify-between gap-3 border-t border-sidebar-border/70 pt-3 text-sm dark:border-sidebar-border"
             >
-                <div class="flex items-center justify-between gap-3">
-                    <span class="text-muted-foreground">Atendente</span>
-                    <span class="truncate text-right text-xs text-foreground">{{
-                        lead.assigned_user_name ?? 'Sem atendente'
-                    }}</span>
-                </div>
-                <form
-                    v-if="!lead.assigned_user_id"
-                    @submit.prevent="submitClaim"
-                >
-                    <button
-                        type="submit"
-                        :disabled="claimForm.processing"
-                        class="flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-                    >
-                        <UserCheck class="h-4 w-4" />
-                        Assumir conversa
-                    </button>
-                </form>
-                <div class="flex items-center justify-between gap-3">
-                    <span class="text-muted-foreground">Modo IA</span>
-                    <span
-                        class="text-right text-xs font-medium text-foreground"
-                        >{{
-                            aiModeLabels[lead.effective_ai_mode] ??
-                            lead.effective_ai_mode
-                        }}</span
-                    >
-                </div>
-                <div class="flex items-center justify-between gap-3">
-                    <span class="text-muted-foreground">Etapa</span>
-                    <span class="text-right text-xs text-foreground">{{
-                        stageLabels[lead.operational_stage] ??
-                        lead.operational_stage
-                    }}</span>
-                </div>
+                <span class="text-muted-foreground">Etapa</span>
+                <span class="text-right text-xs text-foreground">{{
+                    stageLabels[lead.operational_stage] ??
+                    lead.operational_stage
+                }}</span>
             </div>
         </section>
 
-        <section
+        <PanelSection
             v-if="conversationWindow"
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
+            section-key="janela"
+            title="Janela WhatsApp"
         >
-            <p class="mb-2 text-xs font-semibold text-muted-foreground">
-                Janela WhatsApp
-            </p>
             <div class="flex flex-col gap-1.5 text-xs">
                 <div class="flex items-center justify-between gap-3">
                     <span class="text-muted-foreground">Sessão 24h</span>
@@ -544,30 +499,28 @@ function formatEventDate(value: string): string {
                     {{ conversationWindow.coexistence.note }}
                 </p>
             </div>
-        </section>
+        </PanelSection>
 
-        <section
+        <PanelSection
             v-if="lead.agent_niche !== 'generic'"
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
+            section-key="credito"
+            title="Credito"
+            default-open
         >
-            <p class="mb-2 text-xs font-semibold text-muted-foreground">
-                Credito
-            </p>
             <p class="text-xs leading-relaxed text-foreground">
                 {{ lead.resumo_credito ?? 'Sem resumo de credito' }}
             </p>
-        </section>
+        </PanelSection>
 
-        <section
+        <PanelSection
             v-if="
                 conversation.active_handoff ||
                 conversation.handoff_state !== 'ai_active'
             "
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
+            section-key="atendimento"
+            title="Atendimento"
+            default-open
         >
-            <p class="mb-2 text-xs font-semibold text-muted-foreground">
-                Atendimento
-            </p>
             <div class="space-y-3">
                 <div class="flex items-center justify-between gap-2">
                     <span class="text-xs text-muted-foreground">Estado</span>
@@ -706,17 +659,12 @@ function formatEventDate(value: string): string {
                     </form>
                 </div>
             </div>
-        </section>
+        </PanelSection>
 
-        <section
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
-        >
-            <div class="mb-2 flex items-center gap-2">
+        <PanelSection section-key="sessoes" title="Atendimentos">
+            <template #icon>
                 <History class="h-4 w-4 text-muted-foreground" />
-                <p class="text-xs font-semibold text-muted-foreground">
-                    Atendimentos
-                </p>
-            </div>
+            </template>
 
             <div
                 v-if="openSession"
@@ -812,17 +760,20 @@ function formatEventDate(value: string): string {
             <p v-else class="text-xs text-muted-foreground">
                 Nenhum atendimento registrado.
             </p>
-        </section>
+        </PanelSection>
 
-        <section
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
-        >
-            <div class="mb-2 flex items-center gap-2">
+        <PanelSection section-key="agente" title="Controle do Agente">
+            <template #icon>
                 <Bot class="h-4 w-4 text-muted-foreground" />
-                <p class="text-xs font-semibold text-muted-foreground">
-                    Controle do Agente
-                </p>
-            </div>
+            </template>
+            <template #meta>
+                <span
+                    v-if="conversation.pausado"
+                    class="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500"
+                >
+                    Pausada
+                </span>
+            </template>
             <select
                 v-model="aiModeForm.ai_mode"
                 class="mb-3 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
@@ -872,14 +823,9 @@ function formatEventDate(value: string): string {
                     Agente pausado - responda manualmente
                 </p>
             </form>
-        </section>
+        </PanelSection>
 
-        <section
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
-        >
-            <p class="mb-2 text-xs font-semibold text-muted-foreground">
-                Controle do Follow-up
-            </p>
+        <PanelSection section-key="followup" title="Controle do Follow-up">
             <p
                 v-if="followupStatus === 'paused'"
                 class="mb-2 text-center text-xs font-medium text-amber-600"
@@ -974,17 +920,15 @@ function formatEventDate(value: string): string {
             >
                 <FollowUpStateSummary :state="conversation.followupState" />
             </div>
-        </section>
+        </PanelSection>
 
-        <section
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
+        <PanelSection
+            section-key="followup-historico"
+            title="Historico de Follow-ups"
         >
-            <div class="mb-2 flex items-center gap-2">
+            <template #icon>
                 <UserRound class="h-4 w-4 text-muted-foreground" />
-                <p class="text-xs font-semibold text-muted-foreground">
-                    Historico de Follow-ups
-                </p>
-            </div>
+            </template>
             <div
                 v-if="conversation.followupHistory.length > 0"
                 class="space-y-3"
@@ -1010,15 +954,13 @@ function formatEventDate(value: string): string {
             <p v-else class="text-xs text-muted-foreground">
                 Sem historico de follow-up
             </p>
-        </section>
+        </PanelSection>
 
-        <section
+        <PanelSection
             v-if="conversation.recentEvents.length > 0"
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
+            section-key="eventos"
+            title="Eventos recentes"
         >
-            <p class="mb-3 text-xs font-semibold text-muted-foreground">
-                Eventos recentes
-            </p>
             <ul class="space-y-2 text-xs">
                 <li
                     v-for="(event, idx) in conversation.recentEvents"
@@ -1033,7 +975,7 @@ function formatEventDate(value: string): string {
                     }}</span>
                 </li>
             </ul>
-        </section>
+        </PanelSection>
 
         <section
             v-if="conversation.canStartCampaign"
@@ -1081,13 +1023,10 @@ function formatEventDate(value: string): string {
             </form>
         </section>
 
-        <section class="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3">
-            <div class="mb-2 flex items-center gap-2">
+        <PanelSection section-key="perigo" title="Zona de perigo" tone="danger">
+            <template #icon>
                 <AlertTriangle class="h-4 w-4 text-rose-500" />
-                <p class="text-xs font-semibold text-rose-500">
-                    Zona de perigo
-                </p>
-            </div>
+            </template>
 
             <button
                 type="button"
@@ -1105,7 +1044,7 @@ function formatEventDate(value: string): string {
                 <Trash2 class="h-4 w-4" />
                 Excluir lead
             </button>
-        </section>
+        </PanelSection>
 
         <!-- Clear history confirmation -->
         <Dialog

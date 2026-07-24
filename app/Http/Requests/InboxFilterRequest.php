@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Lead;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -18,6 +19,9 @@ class InboxFilterRequest extends FormRequest
     /** @var list<string> */
     public const SORT_COLUMNS = ['nome', 'status', 'followup_count', 'last_interaction_at', 'operational_stage'];
 
+    /** @var list<string> */
+    public const GROUPS = [Lead::INBOX_GROUP_ALL, ...Lead::INBOX_GROUPS];
+
     public function authorize(): bool
     {
         return $this->user() !== null;
@@ -32,8 +36,11 @@ class InboxFilterRequest extends FormRequest
         $sort = $this->query('sort');
         $direction = $this->query('direction');
         $instance = $this->query('instance');
+        $group = $this->query('group');
+        $group = in_array($group, self::GROUPS, true) ? $group : Lead::INBOX_GROUP_ALL;
 
         $this->merge([
+            'group' => $group,
             'status' => $this->query('status', 'todos'),
             'instance' => is_string($instance) ? $instance : '',
             'search' => $this->query('search', ''),
@@ -41,8 +48,22 @@ class InboxFilterRequest extends FormRequest
             'stage' => $this->query('stage', 'todos'),
             'assigned' => $this->query('assigned', 'todos'),
             'sort' => in_array($sort, self::SORT_COLUMNS, true) ? $sort : 'last_interaction_at',
-            'direction' => $direction === 'asc' ? 'asc' : 'desc',
+            'direction' => $this->defaultDirectionFor($group, is_string($direction) ? $direction : null),
         ]);
+    }
+
+    /**
+     * The queue tab is a work queue, not a feed: the oldest unclaimed escalation
+     * has waited the longest and must be picked up first. Any other tab keeps the
+     * newest-first inbox order. An explicit ?direction always wins.
+     */
+    private function defaultDirectionFor(string $group, ?string $direction): string
+    {
+        if ($direction === 'asc' || $direction === 'desc') {
+            return $direction;
+        }
+
+        return $group === Lead::INBOX_GROUP_QUEUE ? 'asc' : 'desc';
     }
 
     /**
@@ -51,6 +72,7 @@ class InboxFilterRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'group' => ['required', 'string', 'in:'.implode(',', self::GROUPS)],
             'status' => ['required', 'string'],
             'instance' => ['present', 'string'],
             'search' => ['present', 'string'],
@@ -67,6 +89,7 @@ class InboxFilterRequest extends FormRequest
      * inbox props envelope.
      *
      * @return array{
+     *     group: string,
      *     status: string,
      *     instance: string,
      *     search: string,
@@ -79,7 +102,7 @@ class InboxFilterRequest extends FormRequest
      */
     public function filters(): array
     {
-        /** @var array{status: string, instance: string, search: string, ai_mode: string, stage: string, assigned: string, sort: string, direction: string} $validated */
+        /** @var array{group: string, status: string, instance: string, search: string, ai_mode: string, stage: string, assigned: string, sort: string, direction: string} $validated */
         $validated = $this->validated();
 
         return $validated;

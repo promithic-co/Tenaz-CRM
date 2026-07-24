@@ -80,7 +80,15 @@ export type InboxLead = {
     pausado: boolean;
     evolution_instance: string | null;
     is_returning: boolean;
+    last_message_body: string | null;
+    last_message_direction: string | null;
+    /** The customer spoke last — nobody has answered yet. */
+    awaiting_reply: boolean;
 };
+
+export type InboxGroup = 'todas' | 'fila' | 'minhas' | 'ia';
+
+export type InboxGroupCounts = Record<Exclude<InboxGroup, 'todas'>, number>;
 
 export type ConversationLead = {
     id: number;
@@ -154,6 +162,8 @@ export type WhatsappTemplateField = {
     label: string;
     example: string | null;
     required: boolean;
+    /** Value the server resolved from the lead; when set, the operator is not asked for it. */
+    resolved: string | null;
 };
 
 export type WhatsappTemplateOption = {
@@ -213,6 +223,7 @@ export type ActiveConversation = {
 };
 
 export type ConversationFilters = {
+    group: InboxGroup;
     status: string;
     instance: string;
     search: string;
@@ -226,5 +237,7 @@ export type ConversationFilters = {
 export type LeadPaginator = {
     data: InboxLead[];
     total: number;
+    current_page: number;
+    next_page_url: string | null;
     links: Array<{ url: string | null; label: string; active: boolean }>;
 };
