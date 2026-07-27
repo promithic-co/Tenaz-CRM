@@ -113,7 +113,11 @@ class DashboardMetricsService
      * many are live now, and — over the last 7 days — how many closed, the outcome
      * breakdown, and the average minutes from open to close.
      *
-     * @return array{opened_today: int, reengaged_today: int, open_now: int, closed_7d: int, avg_close_minutes: float, outcomes_7d: array<string, int>}
+     * Two money lines join them: the amount sitting in open atendimentos (the forecast) and
+     * the amount on the ones closed as `converted` in the window (what was actually won).
+     * Both in cents, so the payload never carries a float that the client has to re-round.
+     *
+     * @return array{opened_today: int, reengaged_today: int, open_now: int, open_value_cents: int, closed_7d: int, won_value_7d_cents: int, avg_close_minutes: float, outcomes_7d: array<string, int>}
      */
     private function sessionCounters(string $tenantId): array
     {
@@ -128,10 +132,14 @@ class DashboardMetricsService
 
         $openNow = (clone $base())->where('status', ConversationSession::STATUS_OPEN)->count();
 
+        $openValueCents = (int) (clone $base())
+            ->where('status', ConversationSession::STATUS_OPEN)
+            ->sum('value_cents');
+
         $closedLast7d = (clone $base())
             ->where('status', ConversationSession::STATUS_CLOSED)
             ->where('closed_at', '>=', now()->subDays(7))
-            ->get(['outcome', 'opened_at', 'closed_at']);
+            ->get(['outcome', 'value_cents', 'opened_at', 'closed_at']);
 
         $outcomes = $closedLast7d
             ->groupBy(fn (ConversationSession $s): string => (string) ($s->outcome ?? 'unknown'))
@@ -146,11 +154,17 @@ class DashboardMetricsService
 
         $avgCloseMinutes = $durations->isEmpty() ? 0.0 : round((float) $durations->avg(), 1);
 
+        $wonValue7dCents = (int) $closedLast7d
+            ->where('outcome', ConversationSession::OUTCOME_CONVERTED)
+            ->sum('value_cents');
+
         return [
             'opened_today' => $openedToday,
             'reengaged_today' => $reengagedToday,
             'open_now' => $openNow,
+            'open_value_cents' => $openValueCents,
             'closed_7d' => $closedLast7d->count(),
+            'won_value_7d_cents' => $wonValue7dCents,
             'avg_close_minutes' => $avgCloseMinutes,
             'outcomes_7d' => $outcomes,
         ];

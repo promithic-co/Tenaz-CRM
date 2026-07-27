@@ -61,6 +61,8 @@ class ConversationSession extends Model
         'status',
         'open_reason',
         'outcome',
+        'value_cents',
+        'expected_close_at',
         'opened_at',
         'closed_at',
         'last_message_at',
@@ -71,6 +73,8 @@ class ConversationSession extends Model
     {
         return [
             'number' => 'integer',
+            'value_cents' => 'integer',
+            'expected_close_at' => 'date',
             'opened_at' => 'datetime',
             'closed_at' => 'datetime',
             'last_message_at' => 'datetime',

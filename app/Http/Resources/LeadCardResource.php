@@ -17,7 +17,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  *   new LeadCardResource($lead, $automationState, $sourceLabel)
  *
- * Expects `$lead->tags` to be loaded for the tag sub-array.
+ * Expects `$lead->tags` to be loaded for the tag sub-array, and `$lead->openSession` for the
+ * amount. Both are read through the loaded-relation guard so a caller that skips the eager
+ * load gets a null field instead of an N+1 that only shows up under production row counts.
  *
  * @property-read Lead $resource
  */
@@ -48,6 +50,9 @@ class LeadCardResource extends JsonResource
             'last_message' => mb_substr((string) ($this->resource->last_message_preview ?? ''), 0, 60),
             'last_interaction_at' => $this->resource->last_interaction_at?->toIso8601String(),
             'sla_due_at' => $this->resource->sla_due_at?->toIso8601String() ?? null,
+            'value_cents' => $this->resource->relationLoaded('openSession')
+                ? $this->resource->openSession?->value_cents
+                : null,
             'tags' => $this->resource->tags?->map(fn ($tag): array => [
                 'id' => $tag->id,
                 'name' => $tag->name,

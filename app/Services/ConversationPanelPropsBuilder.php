@@ -148,7 +148,7 @@ class ConversationPanelPropsBuilder
      * The lead's atendimentos (service cycles), newest first, so the panel can render
      * session dividers, the returning badge, and the close/new-atendimento controls.
      *
-     * @return list<array{id: int, number: int, status: string, open_reason: string, outcome: string|null, opened_at: string|null, closed_at: string|null, last_message_at: string|null, is_returning: bool}>
+     * @return list<array{id: int, number: int, status: string, open_reason: string, outcome: string|null, value_cents: int|null, expected_close_at: string|null, opened_at: string|null, closed_at: string|null, last_message_at: string|null, is_returning: bool}>
      */
     private function buildSessions(Lead $lead): array
     {
@@ -161,6 +161,10 @@ class ConversationPanelPropsBuilder
                 'status' => $session->status,
                 'open_reason' => $session->open_reason,
                 'outcome' => $session->outcome,
+                'value_cents' => $session->value_cents,
+                // Date-only: a forecast is a day, not an instant, and an ISO8601 timestamp
+                // would shift it across the date line for anyone outside UTC.
+                'expected_close_at' => $session->expected_close_at?->toDateString(),
                 'opened_at' => $session->opened_at?->toIso8601String(),
                 'closed_at' => $session->closed_at?->toIso8601String(),
                 'last_message_at' => $session->last_message_at?->toIso8601String(),

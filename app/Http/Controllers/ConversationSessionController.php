@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CloseConversationSessionRequest;
 use App\Http\Requests\StoreConversationSessionRequest;
+use App\Http\Requests\UpdateConversationSessionValueRequest;
 use App\Models\ConversationSession;
 use App\Models\Lead;
 use App\Services\ConversationSessionLifecycleService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Manual atendimento (ConversationSession) controls exposed to operators.
@@ -45,5 +47,31 @@ class ConversationSessionController extends Controller
         $this->sessions->close($session, $request->string('outcome')->toString(), $request->user());
 
         return back()->with('flash', 'Atendimento encerrado.');
+    }
+
+    /**
+     * Price the atendimento: negotiated amount and forecast close date.
+     *
+     * Only while the cycle is open. A closed atendimento has already been counted into the
+     * dashboard's won/lost totals, so editing its amount afterwards would silently restate a
+     * historical figure with no trail of who changed it or when.
+     */
+    public function updateValue(
+        UpdateConversationSessionValueRequest $request,
+        Lead $lead,
+        ConversationSession $session,
+    ): RedirectResponse {
+        if (! $session->isOpen()) {
+            throw ValidationException::withMessages([
+                'value_cents' => 'Este atendimento já foi encerrado e não pode mais ser alterado.',
+            ]);
+        }
+
+        $session->update([
+            'value_cents' => $request->input('value_cents'),
+            'expected_close_at' => $request->input('expected_close_at'),
+        ]);
+
+        return back()->with('flash', 'Valor do atendimento atualizado.');
     }
 }

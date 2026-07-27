@@ -30,6 +30,8 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import {
+    formatCents,
+    parseCents,
     SELECTABLE_SESSION_OUTCOMES,
     SESSION_OUTCOME_LABELS,
     SESSION_REASON_LABELS,
@@ -59,6 +61,7 @@ import {
     close as closeSession,
     store as storeSession,
 } from '@/routes/conversas/sessions';
+import { update as updateSessionValue } from '@/routes/conversas/sessions/value';
 import { store as autoTagStore } from '@/routes/leads/auto-tag';
 import { store as storeListEntry } from '@/routes/listas-contato/entries';
 import type {
@@ -315,6 +318,86 @@ function submitCloseSession(): void {
             session: openSession.value.id,
         }),
         { preserveScroll: true },
+    );
+}
+
+/**
+ * Amount and forecast on the open atendimento. The text field holds whatever the operator
+ * typed; only `parseCents` output crosses the wire, so the server never guesses a locale.
+ */
+const valueInput = ref(
+    openSession.value?.value_cents != null
+        ? (openSession.value.value_cents / 100).toFixed(2).replace('.', ',')
+        : '',
+);
+const valueForm = useForm<{
+    value_cents: number | null;
+    expected_close_at: string | null;
+}>({
+    value_cents: openSession.value?.value_cents ?? null,
+    expected_close_at: openSession.value?.expected_close_at ?? null,
+});
+const valueSaved = ref(false);
+
+/**
+ * A close (or a new atendimento) swaps the session under the form. Reset from the incoming
+ * row unless the operator has unsaved edits — their typing outranks a background refresh.
+ */
+watch(
+    () => openSession.value?.id,
+    () => {
+        if (valueForm.isDirty) {
+            return;
+        }
+        const cents = openSession.value?.value_cents ?? null;
+        valueInput.value =
+            cents != null ? (cents / 100).toFixed(2).replace('.', ',') : '';
+        valueForm.defaults({
+            value_cents: cents,
+            expected_close_at: openSession.value?.expected_close_at ?? null,
+        });
+        valueForm.reset();
+    },
+);
+
+function onValueInput(): void {
+    valueForm.value_cents = parseCents(valueInput.value);
+}
+
+/** Reformat to pt-BR on blur so the field shows the number that was actually stored. */
+function onValueBlur(): void {
+    valueInput.value =
+        valueForm.value_cents != null
+            ? (valueForm.value_cents / 100).toFixed(2).replace('.', ',')
+            : '';
+}
+
+function submitSessionValue(): void {
+    if (!openSession.value) {
+        return;
+    }
+    valueSaved.value = false;
+
+    valueForm.patch(
+        updateSessionValue.url({
+            lead: lead.value.id,
+            session: openSession.value.id,
+        }),
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                // Spread: `defaults()` merges shallowly, and handing over the live form
+                // object would make isDirty blind to every later edit.
+                valueForm.defaults({
+                    value_cents: valueForm.value_cents,
+                    expected_close_at: valueForm.expected_close_at,
+                });
+                valueSaved.value = true;
+                setTimeout(() => {
+                    valueSaved.value = false;
+                }, 2500);
+            },
+        },
     );
 }
 
@@ -1054,6 +1137,71 @@ function initials(name: string): string {
                     {{ SESSION_REASON_LABELS[openSession.open_reason] }} ·
                     {{ formatShortDateTime(openSession.opened_at) }}
                 </p>
+
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <label class="space-y-1">
+                        <span
+                            class="text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
+                            >Valor</span
+                        >
+                        <div class="relative">
+                            <span
+                                class="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs text-muted-foreground"
+                                >R$</span
+                            >
+                            <input
+                                v-model="valueInput"
+                                type="text"
+                                inputmode="decimal"
+                                placeholder="0,00"
+                                class="h-8 w-full rounded-md border border-input bg-background pr-2 pl-7 text-xs text-foreground"
+                                :disabled="valueForm.processing"
+                                @input="onValueInput"
+                                @blur="onValueBlur"
+                            />
+                        </div>
+                    </label>
+                    <label class="space-y-1">
+                        <span
+                            class="text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
+                            >Previsão</span
+                        >
+                        <input
+                            v-model="valueForm.expected_close_at"
+                            type="date"
+                            class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                            :disabled="valueForm.processing"
+                        />
+                    </label>
+                </div>
+                <p
+                    v-if="valueForm.errors.value_cents"
+                    class="text-[11px] text-rose-500"
+                >
+                    {{ valueForm.errors.value_cents }}
+                </p>
+                <p
+                    v-else-if="valueForm.errors.expected_close_at"
+                    class="text-[11px] text-rose-500"
+                >
+                    {{ valueForm.errors.expected_close_at }}
+                </p>
+                <div class="flex items-center justify-end gap-2">
+                    <span
+                        v-if="valueSaved"
+                        class="text-[11px] text-emerald-600 dark:text-emerald-400"
+                        >Salvo</span
+                    >
+                    <button
+                        type="button"
+                        :disabled="valueForm.processing || !valueForm.isDirty"
+                        class="h-7 rounded-md border border-input px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                        @click="submitSessionValue"
+                    >
+                        Salvar valor
+                    </button>
+                </div>
+
                 <div class="flex items-center gap-2 pt-1">
                     <select
                         v-model="closeSessionForm.outcome"
@@ -1100,18 +1248,27 @@ function initials(name: string): string {
                         <span class="text-xs font-medium text-foreground"
                             >#{{ session.number }}</span
                         >
-                        <span
-                            :class="[
-                                'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                                session.status === 'open'
-                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                    : 'bg-muted text-muted-foreground',
-                            ]"
-                        >
-                            {{
-                                session.status === 'open' ? 'Aberto' : 'Fechado'
-                            }}
-                        </span>
+                        <div class="flex items-center gap-1.5">
+                            <span
+                                v-if="session.value_cents !== null"
+                                class="text-[11px] font-medium text-foreground tabular-nums"
+                                >{{ formatCents(session.value_cents) }}</span
+                            >
+                            <span
+                                :class="[
+                                    'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                                    session.status === 'open'
+                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                        : 'bg-muted text-muted-foreground',
+                                ]"
+                            >
+                                {{
+                                    session.status === 'open'
+                                        ? 'Aberto'
+                                        : 'Fechado'
+                                }}
+                            </span>
+                        </div>
                     </div>
                     <p class="mt-0.5 text-[11px] text-muted-foreground">
                         {{ SESSION_REASON_LABELS[session.open_reason] }}

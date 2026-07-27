@@ -84,6 +84,9 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::post('/conversas/{lead}/sessions/{session}/close', [ConversationSessionController::class, 'close'])
         ->scopeBindings()
         ->name('conversas.sessions.close');
+    Route::patch('/conversas/{lead}/sessions/{session}/valor', [ConversationSessionController::class, 'updateValue'])
+        ->scopeBindings()
+        ->name('conversas.sessions.value.update');
     Route::post('/conversas/{lead}/prepare-campaign', [LeadManagementController::class, 'prepareCampaign'])->name('conversas.prepare-campaign');
     Route::post('/conversas/{lead}/add-to-contacts', [LeadManagementController::class, 'addToContacts'])->name('conversas.add-to-contacts');
     Route::post('/leads/{lead}/status', [LeadStatusController::class, 'update'])->name('leads.status.update');

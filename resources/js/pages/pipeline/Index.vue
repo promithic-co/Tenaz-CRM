@@ -5,6 +5,7 @@ import type { SortableEvent } from 'sortablejs';
 import { computed, ref, watch } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { formatCents } from '@/lib/conversation-session';
 import { show as showContact } from '@/routes/contatos';
 import { move } from '@/routes/pipeline';
 import type { BreadcrumbItem } from '@/types';
@@ -36,6 +37,8 @@ type LeadCard = {
     last_message: string;
     last_interaction_at: string | null;
     sla_due_at: string | null;
+    /** Amount on the lead's open atendimento, in cents. Null when unpriced. */
+    value_cents: number | null;
     tags: LeadTag[];
 };
 
@@ -43,6 +46,8 @@ type PipelineColumn = {
     data: LeadCard[];
     next_cursor: string | null;
     count: number;
+    /** Sum over every matching lead in the column, not only the loaded page. */
+    value_cents: number;
 };
 
 type Props = {
@@ -274,6 +279,18 @@ function formatPhone(value: string | null): string {
                                 <p class="text-xs text-muted-foreground">
                                     {{ columns[status.slug]?.count ?? 0 }} no
                                     total
+                                    <span
+                                        v-if="columns[status.slug]?.value_cents"
+                                        class="font-medium text-foreground tabular-nums"
+                                    >
+                                        ·
+                                        {{
+                                            formatCents(
+                                                columns[status.slug]
+                                                    .value_cents,
+                                            )
+                                        }}
+                                    </span>
                                 </p>
                             </div>
 
@@ -346,10 +363,26 @@ function formatPhone(value: string | null): string {
                                                     </span>
                                                 </div>
                                             </div>
-                                            <span
-                                                class="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
-                                                >#{{ lead.id }}</span
+                                            <div
+                                                class="flex shrink-0 flex-col items-end gap-0.5"
                                             >
+                                                <span
+                                                    class="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                                                    >#{{ lead.id }}</span
+                                                >
+                                                <span
+                                                    v-if="
+                                                        lead.value_cents !==
+                                                        null
+                                                    "
+                                                    class="text-[11px] font-semibold text-emerald-600 tabular-nums dark:text-emerald-400"
+                                                    >{{
+                                                        formatCents(
+                                                            lead.value_cents,
+                                                        )
+                                                    }}</span
+                                                >
+                                            </div>
                                         </div>
 
                                         <div

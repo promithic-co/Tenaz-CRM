@@ -60,6 +60,10 @@ export type ConversationSessionSummary = {
     status: ConversationSessionStatus;
     open_reason: ConversationSessionOpenReason;
     outcome: ConversationSessionOutcome | null;
+    /** Negotiated amount in cents — never a float, and never pre-formatted by the server. */
+    value_cents: number | null;
+    /** Forecast close, date-only (YYYY-MM-DD). */
+    expected_close_at: string | null;
     opened_at: string | null;
     closed_at: string | null;
     last_message_at: string | null;
