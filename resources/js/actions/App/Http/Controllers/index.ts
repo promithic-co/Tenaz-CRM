@@ -14,6 +14,7 @@ import LeadFollowUpController from './LeadFollowUpController'
 import ConversationSessionController from './ConversationSessionController'
 import LeadStatusController from './LeadStatusController'
 import ContactController from './ContactController'
+import ContactListEntryController from './ContactListEntryController'
 import TagController from './TagController'
 import LeadTagController from './LeadTagController'
 import LeadAutoTagController from './LeadAutoTagController'
@@ -28,12 +29,12 @@ import AgentFollowUpController from './AgentFollowUpController'
 import RegrasOperacionaisController from './RegrasOperacionaisController'
 import ConfiguracoesController from './ConfiguracoesController'
 import StatusPipelineController from './StatusPipelineController'
+import CustomFieldController from './CustomFieldController'
 import LaboratoryController from './LaboratoryController'
 import StressTestController from './StressTestController'
 import WhatsappTemplateController from './WhatsappTemplateController'
 import CampaignController from './CampaignController'
 import ContactListController from './ContactListController'
-import ContactListEntryController from './ContactListEntryController'
 import VoiceInstanceController from './VoiceInstanceController'
 import VoiceCampaignController from './VoiceCampaignController'
 import UraApiKeyController from './UraApiKeyController'
@@ -59,6 +60,7 @@ LeadFollowUpController: Object.assign(LeadFollowUpController, LeadFollowUpContro
 ConversationSessionController: Object.assign(ConversationSessionController, ConversationSessionController),
 LeadStatusController: Object.assign(LeadStatusController, LeadStatusController),
 ContactController: Object.assign(ContactController, ContactController),
+ContactListEntryController: Object.assign(ContactListEntryController, ContactListEntryController),
 TagController: Object.assign(TagController, TagController),
 LeadTagController: Object.assign(LeadTagController, LeadTagController),
 LeadAutoTagController: Object.assign(LeadAutoTagController, LeadAutoTagController),
@@ -73,12 +75,12 @@ AgentFollowUpController: Object.assign(AgentFollowUpController, AgentFollowUpCon
 RegrasOperacionaisController: Object.assign(RegrasOperacionaisController, RegrasOperacionaisController),
 ConfiguracoesController: Object.assign(ConfiguracoesController, ConfiguracoesController),
 StatusPipelineController: Object.assign(StatusPipelineController, StatusPipelineController),
+CustomFieldController: Object.assign(CustomFieldController, CustomFieldController),
 LaboratoryController: Object.assign(LaboratoryController, LaboratoryController),
 StressTestController: Object.assign(StressTestController, StressTestController),
 WhatsappTemplateController: Object.assign(WhatsappTemplateController, WhatsappTemplateController),
 CampaignController: Object.assign(CampaignController, CampaignController),
 ContactListController: Object.assign(ContactListController, ContactListController),
-ContactListEntryController: Object.assign(ContactListEntryController, ContactListEntryController),
 VoiceInstanceController: Object.assign(VoiceInstanceController, VoiceInstanceController),
 VoiceCampaignController: Object.assign(VoiceCampaignController, VoiceCampaignController),
 UraApiKeyController: Object.assign(UraApiKeyController, UraApiKeyController),

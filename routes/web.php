@@ -11,6 +11,7 @@ use App\Http\Controllers\ContactListController;
 use App\Http\Controllers\ContactListEntryController;
 use App\Http\Controllers\ConversasController;
 use App\Http\Controllers\ConversationSessionController;
+use App\Http\Controllers\CustomFieldController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeRedirectController;
 use App\Http\Controllers\InvitationController;
@@ -67,6 +68,10 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::patch('/conversas/{lead}/ai-mode', [ConversasController::class, 'updateAiMode'])->name('conversas.ai-mode');
     Route::patch('/conversas/{lead}/informacoes-coletadas', [ConversasController::class, 'updateCollectedInformation'])
         ->name('conversas.collected-information.update');
+    Route::patch('/conversas/{lead}/notas', [ConversasController::class, 'updateNotes'])
+        ->name('conversas.notes.update');
+    Route::patch('/conversas/{lead}/campos', [ConversasController::class, 'updateCustomFields'])
+        ->name('conversas.custom-fields.update');
     Route::post('/conversas/{lead}/assume', [ConversasController::class, 'assume'])->name('conversas.assume');
     Route::post('/conversas/{lead}/followup-pause', [LeadFollowUpController::class, 'pause'])->name('conversas.followup.pause');
     Route::post('/conversas/{lead}/followup-resume', [LeadFollowUpController::class, 'resume'])->name('conversas.followup.resume');
@@ -95,6 +100,17 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
         Route::delete('/contatos/{contact}', [ContactController::class, 'destroy'])->name('contatos.destroy');
         Route::post('/listas-contato/{list}/contatos', [ContactController::class, 'addToList'])->name('listas-contato.add-contacts');
     });
+
+    /**
+     * Filing a contact into a list is an inbox action, not list administration, so
+     * it sits outside the admin group — the conversation panel offers it to every
+     * member. ContactListPolicy::addEntry keeps it tenant-scoped. Removing an entry
+     * stays admin-only, next to the rest of the list management routes.
+     */
+    Route::resource('listas-contato.entries', ContactListEntryController::class)
+        ->only(['store'])
+        ->shallow()
+        ->parameters(['listas-contato' => 'list']);
 
     // Tags (tenant-scoped polymorphic) — index/search accessible to all auth users; mutations restricted to owners/admins.
     Route::get('/tags', [TagController::class, 'index'])->name('tags.index');
@@ -187,6 +203,16 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
         Route::post('/reset', [StatusPipelineController::class, 'reset'])->name('reset');
     });
 
+    // Campos adicionais do lead (admin/owner only). Operators fill the values in
+    // from the conversation panel; only admins define which fields exist.
+    Route::middleware('role:owner,administrator')->prefix('configuracoes/campos')->name('configuracoes.campos.')->group(function () {
+        Route::get('/', [CustomFieldController::class, 'index'])->name('index');
+        Route::post('/', [CustomFieldController::class, 'store'])->name('store');
+        Route::post('/reorder', [CustomFieldController::class, 'reorder'])->name('reorder');
+        Route::patch('/{customField}', [CustomFieldController::class, 'update'])->name('update');
+        Route::delete('/{customField}', [CustomFieldController::class, 'destroy'])->name('destroy');
+    });
+
     // Laboratory (observability & retry engine dashboard)
     Route::get('/laboratory', [LaboratoryController::class, 'index'])->name('laboratory');
     Route::get('/laboratory/datasets-page', [LaboratoryController::class, 'datasets'])->name('laboratory.datasets');
@@ -219,6 +245,13 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
         Route::post('campanhas/{campanha}/start', [CampaignController::class, 'start'])->name('campanhas.start');
         Route::post('campanhas/{campanha}/pause', [CampaignController::class, 'pause'])->name('campanhas.pause');
         Route::post('campanhas/{campanha}/resume', [CampaignController::class, 'resume'])->name('campanhas.resume');
+        Route::post('campanhas/{campanha}/cancel', [CampaignController::class, 'cancel'])->name('campanhas.cancel');
+        Route::post('campanhas/{campanha}/duplicate', [CampaignController::class, 'duplicate'])->name('campanhas.duplicate');
+        Route::patch('campanhas/{campanha}/throttle', [CampaignController::class, 'updateThrottle'])->name('campanhas.throttle');
+        Route::post('campanhas/{campanha}/reprocess-failures', [CampaignController::class, 'reprocessFailures'])->name('campanhas.reprocess-failures');
+        Route::post('campanhas/{campanha}/messages/{message}/retry', [CampaignController::class, 'retryMessage'])->name('campanhas.messages.retry');
+        Route::post('campanhas/{campanha}/remove-recipients', [CampaignController::class, 'removeRecipients'])->name('campanhas.remove-recipients');
+        Route::get('campanhas/{campanha}/export', [CampaignController::class, 'export'])->name('campanhas.export');
         Route::post('campanhas/{campanha}/quality-risk/keep-paused', [CampaignController::class, 'keepPausedForQualityRisk'])
             ->name('campanhas.quality-risk.keep-paused');
         Route::post('campanhas/{campanha}/quality-risk/continue', [CampaignController::class, 'continueWithQualityRisk'])
@@ -228,7 +261,7 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
         Route::get('listas-contato/create', [ContactListController::class, 'create'])->name('listas-contato.create');
         Route::resource('listas-contato', ContactListController::class)->only(['index', 'store', 'show', 'destroy'])->parameters(['listas-contato' => 'list']);
         Route::post('listas-contato/{list}/import-csv', [ContactListController::class, 'importCsv'])->name('listas-contato.import-csv');
-        Route::resource('listas-contato.entries', ContactListEntryController::class)->only(['store', 'destroy'])->shallow()->parameters(['listas-contato' => 'list']);
+        Route::resource('listas-contato.entries', ContactListEntryController::class)->only(['destroy'])->shallow()->parameters(['listas-contato' => 'list']);
         Route::patch('listas-contato/{list}/filters', [ContactListController::class, 'updateFilters'])->name('listas-contato.update-filters');
         Route::post('listas-contato/{list}/refresh', [ContactListController::class, 'refresh'])->name('listas-contato.refresh');
         Route::post('listas-contato/{list}/freeze', [ContactListController::class, 'freeze'])->name('listas-contato.freeze');

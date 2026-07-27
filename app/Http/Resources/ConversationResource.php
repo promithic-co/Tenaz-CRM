@@ -18,7 +18,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  *   new ConversationResource($lead, $availableTransitions, $effectiveAiMode, $collectedInformation)
  *
- * Requires `whatsappInstance`, `tags` (with the source / ai_confidence
+ * Requires `contact`, `whatsappInstance`, `tags` (with the source / ai_confidence
  * pivot) and `agent.config` eager-loaded. Emits `cpf` (preserved from legacy). Drops the pivot
  * `ai_evidence` / `ai_evaluated_at` columns (legacy drops them — kept dropped).
  *
@@ -67,6 +67,7 @@ class ConversationResource extends JsonResource
             'agent_niche' => $lead->agent?->config?->agent_niche ?? 'inss',
             'resumo_credito' => $lead->credito_json['resumoGeral']['textoResumo'] ?? null,
             'collected_information' => $this->collectedInformation,
+            'notes' => $lead->contact?->notes,
             'tags' => $lead->tags->map(fn ($t) => [
                 'id' => $t->id,
                 'name' => $t->name,

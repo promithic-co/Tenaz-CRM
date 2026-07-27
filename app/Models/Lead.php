@@ -456,17 +456,9 @@ class Lead extends Model
             return;
         }
 
-        $column = match ($field->type) {
-            'number' => 'value_number',
-            'json' => 'value_json',
-            'date' => 'value_date',
-            'boolean' => 'value_boolean',
-            default => 'value_text',
-        };
-
         CustomFieldValue::updateOrCreate(
             ['custom_field_id' => $field->id, 'entity_type' => 'lead', 'entity_id' => $this->id],
-            [$column => $value]
+            [$field->valueColumn() => $value]
         );
     }
 }

@@ -1,6 +1,8 @@
+import type { LeadCustomField } from '@/lib/custom-fields';
 import type { CollectedInformationItem, FollowupState } from '@/types/models';
 
 export type { FollowupState };
+export type { LeadCustomField };
 
 export type MediaAttachment = {
     type: 'audio' | 'image' | 'document' | 'video' | 'sticker' | 'unknown';
@@ -112,6 +114,8 @@ export type ConversationLead = {
     agent_niche: string;
     resumo_credito: string | null;
     collected_information: CollectedInformationItem[];
+    /** Free-text operator notes, stored on the linked Contact. */
+    notes: string | null;
     tags?: Array<{
         id: number;
         name: string;
@@ -122,18 +126,27 @@ export type ConversationLead = {
     }>;
 };
 
-export type FollowupHistoryItem = {
-    attempt: number;
-    message_text: string;
-    tone: string | null;
-    sent_at: string;
+/**
+ * One line of the merged conversation history. Labels and details are composed
+ * server-side by ConversationHistoryBuilder, so the panel only has to render and
+ * colour them — the whitelist of visible event types and its wording live in one
+ * place instead of being split across PHP and Vue.
+ */
+export type HistoryEntry = {
+    id: string;
+    kind: 'event' | 'session' | 'ticket' | 'followup';
+    type: string;
+    label: string;
+    detail: string | null;
+    severity: 'info' | 'warning' | 'error' | 'success';
+    at: string;
 };
 
-export type AuditEvent = {
-    event_type: string;
-    created_at: string;
-    severity: string;
-    payload_json: Record<string, unknown> | null;
+export type ConversationHistory = {
+    entries: HistoryEntry[];
+    truncated: boolean;
+    /** Agent events are pruned after this many days; lifecycle entries are not. */
+    event_retention_days: number;
 };
 
 export type ConversationWindowStatus = {
@@ -197,6 +210,13 @@ export type TransferTarget = {
     name: string;
 };
 
+/** A static contact list the conversation can be added to. Dynamic lists are excluded. */
+export type ContactListOption = {
+    id: number;
+    name: string;
+    entries_count: number;
+};
+
 export type ActiveConversation = {
     lead: ConversationLead;
     mensagens: Message[];
@@ -204,8 +224,7 @@ export type ActiveConversation = {
     pausado: boolean;
     followupStatus: string;
     followupState: FollowupState;
-    followupHistory: FollowupHistoryItem[];
-    recentEvents: AuditEvent[];
+    history: ConversationHistory;
     canStartCampaign: boolean;
     conversationWindow?: ConversationWindowStatus | null;
     whatsappTemplatesEnabled?: boolean;
@@ -220,6 +239,9 @@ export type ActiveConversation = {
         | 'closed';
     handoff_actions: string[];
     transfer_targets: TransferTarget[];
+    contact_lists: ContactListOption[];
+    /** The tenant's extra lead fields, each with this lead's current value. */
+    custom_fields: LeadCustomField[];
 };
 
 export type ConversationFilters = {

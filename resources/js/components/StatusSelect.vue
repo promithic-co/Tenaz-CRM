@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { statusLabel, statusClasses } from '@/lib/lead-status';
 
 const props = defineProps<{
@@ -48,7 +54,10 @@ function onUpdate(next: string | number | boolean | null) {
             },
             onError: (errors) => {
                 selected.value = previous;
-                error.value = typeof errors?.status === 'string' ? errors.status : 'Não foi possível alterar o status.';
+                error.value =
+                    typeof errors?.status === 'string'
+                        ? errors.status
+                        : 'Não foi possível alterar o status.';
             },
             onFinish: () => {
                 saving.value = false;
@@ -60,10 +69,17 @@ function onUpdate(next: string | number | boolean | null) {
 
 <template>
     <div class="flex flex-col items-stretch gap-1">
-        <Select :model-value="selected" :disabled="saving" @update:model-value="(v) => onUpdate(v as string)">
+        <Select
+            :model-value="selected"
+            :disabled="saving"
+            @update:model-value="(v) => onUpdate(v as string)"
+        >
+            <!-- justify-center overrides the trigger's default justify-between (tailwind-merge
+                 keeps the later class): the pill is narrower than its container, so label and
+                 chevron read better grouped in the middle than pinned to opposite edges. -->
             <SelectTrigger
                 :class="[
-                    'h-8 w-full justify-between gap-2 rounded-full border px-3 py-0.5 text-xs font-medium whitespace-nowrap focus:ring-0',
+                    'h-8 w-full justify-center gap-1.5 rounded-full border px-3 py-0.5 text-xs font-medium whitespace-nowrap focus:ring-0',
                     statusClasses(selected),
                     saving ? 'opacity-60' : '',
                 ]"

@@ -9,6 +9,8 @@ use App\Http\Requests\BulkTransferRequest;
 use App\Http\Requests\InboxFilterRequest;
 use App\Http\Requests\SendConversationMessageRequest;
 use App\Http\Requests\UpdateLeadCollectedInformationRequest;
+use App\Http\Requests\UpdateLeadCustomFieldsRequest;
+use App\Http\Requests\UpdateLeadNotesRequest;
 use App\Jobs\SyncMetaTemplatesJob;
 use App\Models\Lead;
 use App\Models\User;
@@ -18,6 +20,7 @@ use App\Services\ConversationAutomationService;
 use App\Services\ConversationInboxPropsBuilder;
 use App\Services\ConversationTimelineService;
 use App\Services\ConversationTransferService;
+use App\Services\CustomFieldService;
 use App\Services\PauseService;
 use App\Services\ServiceTicketLifecycleService;
 use Illuminate\Http\JsonResponse;
@@ -250,6 +253,48 @@ class ConversasController extends Controller
         $information->applyManual($contact, $request->validated());
 
         return back()->with('flash', 'Informações do contato atualizadas.');
+    }
+
+    /**
+     * Free-text operator notes about the person. Stored on the Contact so the note
+     * survives the lead being recycled into a new atendimento, and so the CRM
+     * contact page and the conversation panel read from the same field.
+     *
+     * Distinct from collected information: that is what the agent extracted from the
+     * conversation, this is what the human wants remembered.
+     */
+    public function updateNotes(
+        UpdateLeadNotesRequest $request,
+        Lead $lead,
+        ContactCollectedInformationService $information,
+    ): RedirectResponse {
+        $contact = $information->resolveForLead($lead);
+
+        if ($contact === null) {
+            throw ValidationException::withMessages([
+                'notes' => 'Não foi possível vincular este lead a um contato.',
+            ]);
+        }
+
+        $contact->update(['notes' => $request->validated('notes')]);
+
+        return back()->with('flash', 'Notas atualizadas.');
+    }
+
+    /**
+     * Values for the tenant's extra lead fields (Campos adicionais).
+     *
+     * The definitions are administered in configuracoes/campos; here the operator
+     * only fills them in for the person they are talking to.
+     */
+    public function updateCustomFields(
+        UpdateLeadCustomFieldsRequest $request,
+        Lead $lead,
+        CustomFieldService $customFields,
+    ): RedirectResponse {
+        $customFields->writeForLead($lead, $request->submittedValues());
+
+        return back()->with('flash', 'Campos adicionais atualizados.');
     }
 
     /**

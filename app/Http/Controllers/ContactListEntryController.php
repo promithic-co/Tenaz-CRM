@@ -15,7 +15,7 @@ class ContactListEntryController extends Controller
 
     public function store(StoreContactListEntryRequest $request, ContactList $list): RedirectResponse
     {
-        $this->authorize('update', $list);
+        $this->authorize('addEntry', $list);
 
         $entry = ContactListEntry::firstOrCreate(
             ['contact_list_id' => $list->id, 'phone' => $request->validated('phone')],

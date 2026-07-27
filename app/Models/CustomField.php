@@ -36,6 +36,29 @@ class CustomField extends Model
         return $this->hasMany(CustomFieldValue::class);
     }
 
+    /**
+     * The `custom_field_values` column that stores this field's type.
+     *
+     * Values are typed per column rather than serialized into one, so the mapping
+     * lives here — on the model that owns `type` — instead of being restated by
+     * every reader and writer.
+     */
+    public function valueColumn(): string
+    {
+        return self::valueColumnFor((string) $this->type);
+    }
+
+    public static function valueColumnFor(string $type): string
+    {
+        return match ($type) {
+            'number' => 'value_number',
+            'json' => 'value_json',
+            'date' => 'value_date',
+            'boolean' => 'value_boolean',
+            default => 'value_text',
+        };
+    }
+
     public function scopeForTenant(Builder $query, string $tenantId): Builder
     {
         return $query->where('tenant_id', $tenantId);

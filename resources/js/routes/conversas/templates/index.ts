@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\ConversasController::sync
- * @see app/Http/Controllers/ConversasController.php:328
+ * @see app/Http/Controllers/ConversasController.php:373
  * @route '/conversas/{lead}/templates/sync'
  */
 export const sync = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ sync.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversasController::sync
- * @see app/Http/Controllers/ConversasController.php:328
+ * @see app/Http/Controllers/ConversasController.php:373
  * @route '/conversas/{lead}/templates/sync'
  */
 sync.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ sync.url = (args: { lead: number | { id: number } } | [lead: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\ConversasController::sync
- * @see app/Http/Controllers/ConversasController.php:328
+ * @see app/Http/Controllers/ConversasController.php:373
  * @route '/conversas/{lead}/templates/sync'
  */
 sync.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -59,7 +59,7 @@ sync.post = (args: { lead: number | { id: number } } | [lead: number | { id: num
 
     /**
 * @see \App\Http\Controllers\ConversasController::sync
- * @see app/Http/Controllers/ConversasController.php:328
+ * @see app/Http/Controllers/ConversasController.php:373
  * @route '/conversas/{lead}/templates/sync'
  */
     const syncForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -69,7 +69,7 @@ sync.post = (args: { lead: number | { id: number } } | [lead: number | { id: num
 
             /**
 * @see \App\Http\Controllers\ConversasController::sync
- * @see app/Http/Controllers/ConversasController.php:328
+ * @see app/Http/Controllers/ConversasController.php:373
  * @route '/conversas/{lead}/templates/sync'
  */
         syncForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

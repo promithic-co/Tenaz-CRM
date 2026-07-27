@@ -1,5 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
 import pipeline from './pipeline'
+import campos from './campos'
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
  * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
@@ -191,6 +192,7 @@ index.options = (options?: RouteQueryOptions): RouteDefinition<'options'> => ({
 const configuracoes = {
     index: Object.assign(index, index),
 pipeline: Object.assign(pipeline, pipeline),
+campos: Object.assign(campos, campos),
 }
 
 export default configuracoes

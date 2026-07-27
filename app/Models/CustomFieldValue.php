@@ -39,13 +39,6 @@ class CustomFieldValue extends Model
     /** Get the typed value based on the field's type. */
     public function getValue(): mixed
     {
-        return match ($this->customField->type ?? 'text') {
-            'text', 'select' => $this->value_text,
-            'number' => $this->value_number,
-            'json' => $this->value_json,
-            'date' => $this->value_date,
-            'boolean' => $this->value_boolean,
-            default => $this->value_text,
-        };
+        return $this->{$this->customField?->valueColumn() ?? 'value_text'};
     }
 }

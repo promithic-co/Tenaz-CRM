@@ -11,6 +11,7 @@ import {
     MessageSquare,
     Microscope,
     Phone,
+    Settings,
     Shield,
     Smartphone,
     Users,
@@ -98,6 +99,15 @@ const laboratorySubItems = [
     { title: 'AI Usage', href: '/laboratory/ai-usage' },
     { title: 'Health', href: '/laboratory/health' },
     { title: 'Playground', href: '/playground' },
+];
+
+// Configurações submenu. The pipeline editor shipped without a nav entry and was
+// reachable by URL only; the extra-fields CRUD gives it a home worth having.
+const configuracoesOpen = ref(currentPath.value.startsWith('/configuracoes'));
+
+const configuracoesSubItems = [
+    { title: 'Pipeline de status', href: '/configuracoes/pipeline' },
+    { title: 'Campos adicionais', href: '/configuracoes/campos' },
 ];
 
 const agentSubItems = [
@@ -398,6 +408,45 @@ const footerNavItems: NavItem[] = [];
                         <SidebarMenuSub v-if="laboratoryOpen">
                             <SidebarMenuSubItem
                                 v-for="sub in laboratorySubItems"
+                                :key="sub.href"
+                            >
+                                <SidebarMenuSubButton
+                                    as-child
+                                    :is-active="
+                                        currentPath === sub.href ||
+                                        currentPath.startsWith(sub.href + '/')
+                                    "
+                                >
+                                    <Link :href="sub.href">{{
+                                        sub.title
+                                    }}</Link>
+                                </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                        </SidebarMenuSub>
+                    </SidebarMenuItem>
+
+                    <!-- Configurações com submenu -->
+                    <SidebarMenuItem v-if="canManageAdmin">
+                        <SidebarMenuButton
+                            :is-active="
+                                currentPath.startsWith('/configuracoes')
+                            "
+                            tooltip="Configurações"
+                            @click="configuracoesOpen = !configuracoesOpen"
+                            class="cursor-pointer select-none"
+                        >
+                            <Settings />
+                            <span>Configurações</span>
+                            <ChevronRight
+                                class="ml-auto transition-transform duration-200"
+                                :class="configuracoesOpen ? 'rotate-90' : ''"
+                                :size="14"
+                            />
+                        </SidebarMenuButton>
+
+                        <SidebarMenuSub v-if="configuracoesOpen">
+                            <SidebarMenuSubItem
+                                v-for="sub in configuracoesSubItems"
                                 :key="sub.href"
                             >
                                 <SidebarMenuSubButton

@@ -4,6 +4,7 @@ import {
     AlertCircle,
     ArrowLeft,
     Bot,
+    CheckCircle2,
     Clock,
     ExternalLink,
     FileText,
@@ -20,11 +21,17 @@ import {
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import echo from '@/echo';
+import {
+    SELECTABLE_SESSION_OUTCOMES,
+    SESSION_OUTCOME_LABELS,
+    SESSION_REASON_LABELS,
+} from '@/lib/conversation-session';
 import { returnToAi } from '@/routes/atendimentos';
 import { claim, send } from '@/routes/conversas';
+import { close as closeSession } from '@/routes/conversas/sessions';
 import type {
     ActiveConversation,
-    ConversationSessionOpenReason,
+    ConversationSessionOutcome,
     ConversationSessionSummary,
     Message,
     WhatsappTemplateOption,
@@ -115,14 +122,6 @@ const messages = ref<Message[]>(
     props.conversation ? [...props.conversation.mensagens] : [],
 );
 
-const sessionReasonLabels: Record<ConversationSessionOpenReason, string> = {
-    first_contact: 'Primeiro contato',
-    reengagement_after_terminal: 'Retorno após conclusão',
-    reengagement_after_inactivity: 'Retorno após inatividade',
-    campaign: 'Campanha',
-    manual: 'Atendimento manual',
-};
-
 // Index sessions by id so a divider can label each atendimento with its number/reason.
 const sessionMap = computed<Map<number, ConversationSessionSummary>>(() => {
     const map = new Map<number, ConversationSessionSummary>();
@@ -180,7 +179,7 @@ function dividerReason(
     if (!item.session) {
         return null;
     }
-    return sessionReasonLabels[item.session.open_reason] ?? null;
+    return SESSION_REASON_LABELS[item.session.open_reason] ?? null;
 }
 
 // Inbound stays neutral on the left; everything the tenant sent is accented on the right —
@@ -225,6 +224,8 @@ onMounted(() => {
         now.value = Date.now();
     }, 30_000);
 
+    document.addEventListener('mousedown', closeOutcomeMenuOnOutsideClick);
+
     if (!props.conversation) {
         return;
     }
@@ -239,6 +240,8 @@ onMounted(() => {
 
 onUnmounted(() => {
     clearFile();
+
+    document.removeEventListener('mousedown', closeOutcomeMenuOnOutsideClick);
 
     if (clockTimer) {
         clearInterval(clockTimer);
@@ -441,6 +444,53 @@ function dismissError(): void {
 const claimForm = useForm({});
 const returnToAiForm = useForm({});
 
+/**
+ * Closing the atendimento is the move that ends a service cycle, so it belongs in the
+ * header next to claiming it — not buried in the details panel. Our model requires an
+ * outcome, so the button opens a short menu instead of closing blind.
+ */
+const closeSessionForm = useForm<{ outcome: ConversationSessionOutcome }>({
+    outcome: 'manual_close',
+});
+const outcomeMenuOpen = ref(false);
+
+const openSession = computed<ConversationSessionSummary | null>(
+    () =>
+        props.conversation?.sessions.find(
+            (session) => session.status === 'open',
+        ) ?? null,
+);
+
+function closeWithOutcome(outcome: ConversationSessionOutcome): void {
+    const session = openSession.value;
+
+    if (!props.conversation || !session) {
+        return;
+    }
+
+    closeSessionForm.outcome = outcome;
+    closeSessionForm.post(
+        closeSession.url({
+            lead: props.conversation.lead.id,
+            session: session.id,
+        }),
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                outcomeMenuOpen.value = false;
+            },
+        },
+    );
+}
+
+function closeOutcomeMenuOnOutsideClick(event: MouseEvent): void {
+    if ((event.target as HTMLElement | null)?.closest('[data-outcome-menu]')) {
+        return;
+    }
+
+    outcomeMenuOpen.value = false;
+}
+
 const aiModeLabels: Record<string, string> = {
     automatic: 'IA automatica',
     manual: 'Manual',
@@ -562,7 +612,9 @@ function onKeydown(event: KeyboardEvent): void {
                 <button
                     v-if="primaryAction"
                     type="button"
-                    :disabled="claimForm.processing || returnToAiForm.processing"
+                    :disabled="
+                        claimForm.processing || returnToAiForm.processing
+                    "
                     :class="[
                         'flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-white transition-colors disabled:opacity-50',
                         primaryAction === 'claim'
@@ -587,6 +639,45 @@ function onKeydown(event: KeyboardEvent): void {
                             : 'Devolver para IA'
                     }}
                 </button>
+
+                <div
+                    v-if="openSession"
+                    class="relative shrink-0"
+                    data-outcome-menu
+                >
+                    <button
+                        type="button"
+                        :disabled="closeSessionForm.processing"
+                        :aria-expanded="outcomeMenuOpen"
+                        class="flex h-8 items-center gap-1.5 rounded-lg border border-emerald-600/50 px-3 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-600/10 disabled:opacity-50 dark:text-emerald-400"
+                        :title="`Encerra o atendimento #${openSession.number}`"
+                        @click="outcomeMenuOpen = !outcomeMenuOpen"
+                    >
+                        <CheckCircle2 class="h-3.5 w-3.5" />
+                        Finalizar
+                    </button>
+
+                    <div
+                        v-if="outcomeMenuOpen"
+                        class="absolute top-full right-0 z-30 mt-1 w-48 overflow-hidden rounded-lg border border-sidebar-border/70 bg-popover py-1 shadow-lg dark:border-sidebar-border"
+                    >
+                        <p
+                            class="px-3 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase"
+                        >
+                            Resultado
+                        </p>
+                        <button
+                            v-for="outcome in SELECTABLE_SESSION_OUTCOMES"
+                            :key="outcome"
+                            type="button"
+                            :disabled="closeSessionForm.processing"
+                            class="block w-full px-3 py-1.5 text-left text-xs text-popover-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                            @click="closeWithOutcome(outcome)"
+                        >
+                            {{ SESSION_OUTCOME_LABELS[outcome] }}
+                        </button>
+                    </div>
+                </div>
 
                 <button
                     type="button"

@@ -5,20 +5,22 @@ import {
     Bot,
     ExternalLink,
     History,
+    ListPlus,
     Megaphone,
     Phone,
     Play,
     Plus,
     RefreshCw,
+    SlidersHorizontal,
+    StickyNote,
     Trash2,
     UserPlus,
     UserRound,
 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import CollectedInformationEditor from '@/components/CollectedInformationEditor.vue';
 import FollowUpStateSummary from '@/components/FollowUpStateSummary.vue';
 import StatusSelect from '@/components/StatusSelect.vue';
-import TagChip from '@/components/TagChip.vue';
 import TagInput from '@/components/TagInput.vue';
 import {
     Dialog,
@@ -27,6 +29,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    SELECTABLE_SESSION_OUTCOMES,
+    SESSION_OUTCOME_LABELS,
+    SESSION_REASON_LABELS,
+} from '@/lib/conversation-session';
+import type { LeadCustomField } from '@/lib/custom-fields';
 import { keepManual, returnToAi } from '@/routes/atendimentos';
 import { show as showContact } from '@/routes/contatos';
 import {
@@ -39,20 +47,23 @@ import {
     resume,
 } from '@/routes/conversas';
 import { update as updateCollectedInformation } from '@/routes/conversas/collected-information';
+import { update as updateCustomFields } from '@/routes/conversas/custom-fields';
 import {
     disable as disableFollowup,
     pause as pauseFollowup,
     reactivate as reactivateFollowup,
     resume as resumeFollowup,
 } from '@/routes/conversas/followup';
+import { update as updateNotes } from '@/routes/conversas/notes';
 import {
     close as closeSession,
     store as storeSession,
 } from '@/routes/conversas/sessions';
 import { store as autoTagStore } from '@/routes/leads/auto-tag';
+import { store as storeListEntry } from '@/routes/listas-contato/entries';
 import type {
     ActiveConversation,
-    ConversationSessionOpenReason,
+    ConversationHistory,
     ConversationSessionOutcome,
 } from '../types';
 import PanelSection from './PanelSection.vue';
@@ -104,14 +115,23 @@ const stageLabels: Record<string, string> = {
     lost: 'Perdido',
 };
 
-const eventLabels: Record<string, string> = {
-    ai_paused_manual: 'IA pausada',
-    ai_resumed_manual: 'IA retomada',
-    history_cleared_manual: 'Histórico limpo',
-    lead_created_manual: 'Lead criado',
-    lead_deleted_manual: 'Lead removido',
-    lead_bulk_action: 'Ação em lote',
-    followup_skipped: 'Follow-up ignorado',
+/**
+ * History entries arrive already labelled by ConversationHistoryBuilder, so the
+ * panel only picks the colour. Keeping the wording server-side is what lets the
+ * whitelist of visible event types and its labels be the same table.
+ */
+const HISTORY_SEVERITY_DOT: Record<string, string> = {
+    info: 'bg-muted-foreground/40',
+    success: 'bg-emerald-500',
+    warning: 'bg-amber-500',
+    error: 'bg-rose-500',
+};
+
+const HISTORY_SEVERITY_TEXT: Record<string, string> = {
+    info: 'text-foreground',
+    success: 'text-emerald-600 dark:text-emerald-400',
+    warning: 'text-amber-600 dark:text-amber-400',
+    error: 'text-rose-600 dark:text-rose-400',
 };
 
 const lead = computed(() => props.conversation.lead);
@@ -125,29 +145,159 @@ const openSession = computed(
     () => sessions.value.find((session) => session.status === 'open') ?? null,
 );
 
-const sessionReasonLabels: Record<ConversationSessionOpenReason, string> = {
-    first_contact: 'Primeiro contato',
-    reengagement_after_terminal: 'Retorno após conclusão',
-    reengagement_after_inactivity: 'Retorno após inatividade',
-    campaign: 'Campanha',
-    manual: 'Manual',
-};
+const history = computed<ConversationHistory>(
+    () =>
+        props.conversation.history ?? {
+            entries: [],
+            truncated: false,
+            event_retention_days: 0,
+        },
+);
+const historyEntries = computed(() => history.value.entries);
 
-const sessionOutcomeLabels: Record<ConversationSessionOutcome, string> = {
-    converted: 'Convertido',
-    lost: 'Perdido',
-    no_response: 'Sem resposta',
-    abandoned: 'Abandonado',
-    manual_close: 'Encerrado manual',
-};
+const notesForm = useForm({ notes: props.conversation.lead.notes ?? '' });
+const notesSaved = ref(false);
 
-// Outcomes an operator may pick when closing by hand (mirrors CloseConversationSessionRequest).
-const selectableOutcomes: ConversationSessionOutcome[] = [
-    'converted',
-    'lost',
-    'no_response',
-    'manual_close',
-];
+/**
+ * The panel is keyed by lead id, so switching conversations already builds a fresh
+ * component. This watch only matters when the same conversation reloads: the textarea
+ * must pick up a note saved elsewhere, but an operator mid-sentence must not have
+ * their draft yanked out from under them.
+ */
+watch(
+    () => props.conversation.lead.notes,
+    (next) => {
+        if (!notesForm.isDirty) {
+            notesForm.defaults({ notes: next ?? '' });
+            notesForm.reset();
+        }
+    },
+);
+
+function submitNotes(): void {
+    notesSaved.value = false;
+
+    notesForm.patch(updateNotes.url({ lead: lead.value.id }), {
+        preserveScroll: true,
+        onSuccess: () => {
+            notesForm.defaults({ notes: notesForm.notes });
+            notesSaved.value = true;
+            setTimeout(() => {
+                notesSaved.value = false;
+            }, 2500);
+        },
+    });
+}
+
+// Static lists only; empty when the tenant has none, and the section hides itself.
+const contactLists = computed(() => props.conversation.contact_lists ?? []);
+const selectedListId = ref<number | null>(null);
+const listEntryForm = useForm({
+    phone: props.conversation.lead.whatsapp,
+    name: props.conversation.lead.nome,
+});
+
+/**
+ * Extra lead fields defined by the tenant in configuracoes/campos. The section
+ * hides itself when the tenant defined none, so the panel doesn't grow an empty
+ * box for the majority who never touch the feature.
+ */
+const customFields = computed<LeadCustomField[]>(
+    () => props.conversation.custom_fields ?? [],
+);
+const editableCustomFields = computed(() =>
+    customFields.value.filter((field) => field.editable),
+);
+const readOnlyCustomFields = computed(() =>
+    customFields.value.filter(
+        (field) => !field.editable && field.value !== null,
+    ),
+);
+
+/**
+ * `json` fields are excluded from the form: agent tools own them, and a textarea
+ * of raw JSON is not a thing to hand an atendente mid-conversation.
+ */
+function customFieldFormValues(): Record<string, string | boolean | null> {
+    return Object.fromEntries(
+        editableCustomFields.value.map((field) => [
+            field.slug,
+            field.type === 'boolean'
+                ? field.value === true
+                : field.value === null || field.value === undefined
+                  ? ''
+                  : String(field.value),
+        ]),
+    );
+}
+
+const customFieldsForm = useForm<{
+    values: Record<string, string | boolean | null>;
+}>({
+    values: customFieldFormValues(),
+});
+const customFieldsSaved = ref(false);
+
+/**
+ * Same contract as the notes textarea: pick up values written elsewhere, but never
+ * discard what the operator is halfway through typing.
+ */
+watch(
+    () => props.conversation.custom_fields,
+    () => {
+        if (!customFieldsForm.isDirty) {
+            customFieldsForm.defaults({ values: customFieldFormValues() });
+            customFieldsForm.reset();
+        }
+    },
+);
+
+function submitCustomFields(): void {
+    customFieldsSaved.value = false;
+
+    customFieldsForm.patch(updateCustomFields.url({ lead: lead.value.id }), {
+        preserveScroll: true,
+        onSuccess: () => {
+            // Spread, don't hand over the live object: `defaults()` merges shallowly,
+            // so sharing the reference would make every later edit invisible to isDirty.
+            customFieldsForm.defaults({
+                values: { ...customFieldsForm.values },
+            });
+            customFieldsSaved.value = true;
+            setTimeout(() => {
+                customFieldsSaved.value = false;
+            }, 2500);
+        },
+    });
+}
+
+function customFieldError(slug: string): string | undefined {
+    return (customFieldsForm.errors as Record<string, string | undefined>)[
+        `values.${slug}`
+    ];
+}
+
+function readOnlyCustomFieldText(field: LeadCustomField): string {
+    return typeof field.value === 'object' && field.value !== null
+        ? JSON.stringify(field.value, null, 2)
+        : String(field.value);
+}
+
+function submitAddToList(): void {
+    if (!selectedListId.value) {
+        return;
+    }
+
+    listEntryForm.phone = lead.value.whatsapp;
+    listEntryForm.name = lead.value.nome;
+
+    listEntryForm.post(storeListEntry.url({ list: selectedListId.value }), {
+        preserveScroll: true,
+        onSuccess: () => {
+            selectedListId.value = null;
+        },
+    });
+}
 
 function submitNewSession(): void {
     newSessionForm.post(storeSession.url({ lead: lead.value.id }), {
@@ -168,10 +318,12 @@ function submitCloseSession(): void {
     );
 }
 
-function formatSessionDate(value: string | null): string {
+/** Shared by the atendimento list and the history: dd/mm hh:mm, no year. */
+function formatShortDateTime(value: string | null): string {
     if (!value) {
         return '—';
     }
+
     return new Date(value).toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
@@ -271,24 +423,6 @@ function submitPrepareCampaign(): void {
 function initials(name: string): string {
     return name.trim().slice(0, 2).toUpperCase() || '?';
 }
-
-function formatFollowupDate(value: string): string {
-    return new Date(value).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-}
-
-function formatEventDate(value: string): string {
-    return new Date(value).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-}
 </script>
 
 <template>
@@ -298,24 +432,27 @@ function formatEventDate(value: string): string {
         <section
             class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
         >
-            <div class="flex flex-col items-center text-center">
+            <!-- Identity row. Kept to two lines: the panel is a working surface, so
+                 vertical space here is space taken from the sections below. The tag
+                 chips are not repeated above the input — TagInput renders them itself. -->
+            <div class="flex items-center gap-2.5">
                 <div
-                    class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-base font-semibold text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600 dark:bg-blue-950 dark:text-blue-400"
                 >
                     {{ initials(lead.nome) }}
                 </div>
-                <h2
-                    class="mt-2 max-w-full truncate text-sm font-semibold text-foreground"
-                >
-                    {{ lead.nome }}
-                </h2>
-                <div
-                    class="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"
-                >
-                    <Phone class="h-3.5 w-3.5" />
-                    <span>{{ lead.whatsapp }}</span>
+                <div class="min-w-0 flex-1">
+                    <h2 class="truncate text-sm font-semibold text-foreground">
+                        {{ lead.nome }}
+                    </h2>
+                    <div
+                        class="flex items-center gap-1 text-xs text-muted-foreground"
+                    >
+                        <Phone class="h-3 w-3 shrink-0" />
+                        <span class="truncate">{{ lead.whatsapp }}</span>
+                    </div>
                 </div>
-                <div class="mt-3">
+                <div class="w-28 shrink-0">
                     <StatusSelect
                         :current-status="lead.status"
                         :available-transitions="
@@ -324,29 +461,19 @@ function formatEventDate(value: string): string {
                         :lead-id="lead.id"
                     />
                 </div>
-                <div
-                    v-if="leadTags.length > 0"
-                    class="mt-3 flex flex-wrap items-center justify-center gap-1"
-                >
-                    <TagChip v-for="t in leadTags" :key="t.id" :tag="t" />
-                </div>
             </div>
 
-            <div class="mt-4">
-                <p
-                    class="mb-1.5 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase"
-                >
-                    Tags
-                </p>
-                <TagInput
-                    :model-value="leadTags"
-                    :disabled="tagsSyncing"
-                    placeholder="Adicionar tag…"
-                    @update:model-value="onLeadTagsUpdate"
-                    @create="onLeadTagCreate"
-                />
+            <div class="mt-2.5 flex items-start gap-2">
+                <div class="min-w-0 flex-1">
+                    <TagInput
+                        :model-value="leadTags"
+                        :disabled="tagsSyncing"
+                        placeholder="Adicionar tag…"
+                        @update:model-value="onLeadTagsUpdate"
+                        @create="onLeadTagCreate"
+                    />
+                </div>
                 <form
-                    class="mt-2"
                     @submit.prevent="
                         autoTagForm.post(autoTagStore.url({ lead: lead.id }), {
                             preserveScroll: true,
@@ -356,13 +483,14 @@ function formatEventDate(value: string): string {
                     <button
                         type="submit"
                         :disabled="autoTagForm.processing"
-                        class="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                        title="Reavaliar as tags deste lead com IA"
+                        aria-label="Reavaliar tags com IA"
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-dashed border-primary/40 bg-primary/5 text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
                     >
                         <RefreshCw
                             class="h-3.5 w-3.5"
                             :class="{ 'animate-spin': autoTagForm.processing }"
                         />
-                        Reavaliar com IA
                     </button>
                 </form>
             </div>
@@ -391,6 +519,248 @@ function formatEventDate(value: string): string {
                 }}</span>
             </div>
         </section>
+
+        <PanelSection section-key="notas" title="Notas" default-open>
+            <template #icon>
+                <StickyNote class="h-4 w-4 text-muted-foreground" />
+            </template>
+            <template #meta>
+                <span
+                    v-if="notesSaved"
+                    class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                >
+                    Salvo
+                </span>
+                <span
+                    v-else-if="notesForm.isDirty"
+                    class="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500"
+                >
+                    Não salvo
+                </span>
+            </template>
+
+            <form @submit.prevent="submitNotes">
+                <textarea
+                    v-model="notesForm.notes"
+                    rows="4"
+                    maxlength="5000"
+                    placeholder="Anotações da equipe sobre este contato…"
+                    class="w-full resize-y rounded-md border border-input bg-background px-2.5 py-2 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
+                />
+                <p
+                    v-if="notesForm.errors.notes"
+                    class="mt-1 text-xs text-rose-500"
+                >
+                    {{ notesForm.errors.notes }}
+                </p>
+                <div class="mt-2 flex items-center gap-2">
+                    <button
+                        type="submit"
+                        :disabled="notesForm.processing || !notesForm.isDirty"
+                        class="h-8 flex-1 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
+                    >
+                        {{
+                            notesForm.processing ? 'Salvando…' : 'Salvar notas'
+                        }}
+                    </button>
+                    <button
+                        v-if="notesForm.isDirty"
+                        type="button"
+                        class="h-8 rounded-lg border border-input px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                        @click="notesForm.reset()"
+                    >
+                        Descartar
+                    </button>
+                </div>
+            </form>
+        </PanelSection>
+
+        <PanelSection
+            v-if="customFields.length > 0"
+            section-key="campos-adicionais"
+            title="Campos adicionais"
+            default-open
+        >
+            <template #icon>
+                <SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
+            </template>
+            <template #meta>
+                <span
+                    v-if="customFieldsSaved"
+                    class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                >
+                    Salvo
+                </span>
+                <span
+                    v-else-if="customFieldsForm.isDirty"
+                    class="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500"
+                >
+                    Não salvo
+                </span>
+            </template>
+
+            <form class="space-y-2.5" @submit.prevent="submitCustomFields">
+                <div
+                    v-for="field in editableCustomFields"
+                    :key="field.id"
+                    class="space-y-1"
+                >
+                    <label
+                        :for="`custom-field-${field.id}`"
+                        class="flex items-center gap-1 text-[11px] text-muted-foreground"
+                    >
+                        {{ field.label }}
+                        <span v-if="field.is_required" class="text-amber-500"
+                            >*</span
+                        >
+                    </label>
+
+                    <label
+                        v-if="field.type === 'boolean'"
+                        class="flex cursor-pointer items-center gap-2 text-xs text-foreground"
+                    >
+                        <input
+                            :id="`custom-field-${field.id}`"
+                            v-model="customFieldsForm.values[field.slug]"
+                            type="checkbox"
+                            class="h-3.5 w-3.5 rounded border-input"
+                        />
+                        {{
+                            customFieldsForm.values[field.slug] ? 'Sim' : 'Não'
+                        }}
+                    </label>
+
+                    <select
+                        v-else-if="field.type === 'select'"
+                        :id="`custom-field-${field.id}`"
+                        v-model="customFieldsForm.values[field.slug]"
+                        class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
+                    >
+                        <option value="">—</option>
+                        <option
+                            v-for="option in field.options"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </option>
+                    </select>
+
+                    <input
+                        v-else
+                        :id="`custom-field-${field.id}`"
+                        v-model="customFieldsForm.values[field.slug]"
+                        :type="
+                            field.type === 'number'
+                                ? 'number'
+                                : field.type === 'date'
+                                  ? 'date'
+                                  : 'text'
+                        "
+                        :step="field.type === 'number' ? 'any' : undefined"
+                        class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
+                    />
+
+                    <p
+                        v-if="customFieldError(field.slug)"
+                        class="text-xs text-rose-500"
+                    >
+                        {{ customFieldError(field.slug) }}
+                    </p>
+                </div>
+
+                <div
+                    v-if="editableCustomFields.length > 0"
+                    class="flex items-center gap-2 pt-0.5"
+                >
+                    <button
+                        type="submit"
+                        :disabled="
+                            customFieldsForm.processing ||
+                            !customFieldsForm.isDirty
+                        "
+                        class="h-8 flex-1 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
+                    >
+                        {{
+                            customFieldsForm.processing
+                                ? 'Salvando…'
+                                : 'Salvar campos'
+                        }}
+                    </button>
+                    <button
+                        v-if="customFieldsForm.isDirty"
+                        type="button"
+                        class="h-8 rounded-lg border border-input px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                        @click="customFieldsForm.reset()"
+                    >
+                        Descartar
+                    </button>
+                </div>
+            </form>
+
+            <!-- Fields the agent's own tools fill in. Shown for context, not edited. -->
+            <div
+                v-if="readOnlyCustomFields.length > 0"
+                class="mt-3 space-y-1.5 border-t border-border pt-2.5"
+            >
+                <div v-for="field in readOnlyCustomFields" :key="field.id">
+                    <p class="text-[11px] text-muted-foreground">
+                        {{ field.label }}
+                    </p>
+                    <pre
+                        class="mt-0.5 max-h-32 overflow-auto rounded-md bg-muted/40 p-2 font-mono text-[10px] leading-relaxed text-foreground"
+                        >{{ readOnlyCustomFieldText(field) }}</pre
+                    >
+                </div>
+            </div>
+        </PanelSection>
+
+        <PanelSection
+            v-if="contactLists.length > 0"
+            section-key="listas"
+            title="Listas de contato"
+        >
+            <template #icon>
+                <ListPlus class="h-4 w-4 text-muted-foreground" />
+            </template>
+
+            <form
+                class="flex items-center gap-2"
+                @submit.prevent="submitAddToList"
+            >
+                <select
+                    v-model="selectedListId"
+                    class="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                    :disabled="listEntryForm.processing"
+                >
+                    <option :value="null" disabled>Adicionar à lista…</option>
+                    <option
+                        v-for="list in contactLists"
+                        :key="list.id"
+                        :value="list.id"
+                    >
+                        {{ list.name }} ({{ list.entries_count }})
+                    </option>
+                </select>
+                <button
+                    type="submit"
+                    :disabled="listEntryForm.processing || !selectedListId"
+                    class="h-8 shrink-0 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
+                >
+                    Adicionar
+                </button>
+            </form>
+            <p
+                v-if="listEntryForm.errors.phone"
+                class="mt-1 text-xs text-rose-500"
+            >
+                {{ listEntryForm.errors.phone }}
+            </p>
+            <p class="mt-2 text-[11px] text-muted-foreground">
+                Somente listas estáticas. Listas dinâmicas são recalculadas
+                pelos filtros.
+            </p>
+        </PanelSection>
 
         <PanelSection
             v-if="conversationWindow"
@@ -663,7 +1033,7 @@ function formatEventDate(value: string): string {
 
         <PanelSection section-key="sessoes" title="Atendimentos">
             <template #icon>
-                <History class="h-4 w-4 text-muted-foreground" />
+                <UserRound class="h-4 w-4 text-muted-foreground" />
             </template>
 
             <div
@@ -681,8 +1051,8 @@ function formatEventDate(value: string): string {
                     >
                 </div>
                 <p class="text-[11px] text-muted-foreground">
-                    {{ sessionReasonLabels[openSession.open_reason] }} ·
-                    {{ formatSessionDate(openSession.opened_at) }}
+                    {{ SESSION_REASON_LABELS[openSession.open_reason] }} ·
+                    {{ formatShortDateTime(openSession.opened_at) }}
                 </p>
                 <div class="flex items-center gap-2 pt-1">
                     <select
@@ -691,11 +1061,11 @@ function formatEventDate(value: string): string {
                         :disabled="closeSessionForm.processing"
                     >
                         <option
-                            v-for="outcome in selectableOutcomes"
+                            v-for="outcome in SELECTABLE_SESSION_OUTCOMES"
                             :key="outcome"
                             :value="outcome"
                         >
-                            {{ sessionOutcomeLabels[outcome] }}
+                            {{ SESSION_OUTCOME_LABELS[outcome] }}
                         </option>
                     </select>
                     <button
@@ -744,15 +1114,16 @@ function formatEventDate(value: string): string {
                         </span>
                     </div>
                     <p class="mt-0.5 text-[11px] text-muted-foreground">
-                        {{ sessionReasonLabels[session.open_reason] }}
+                        {{ SESSION_REASON_LABELS[session.open_reason] }}
                         <span v-if="session.outcome">
-                            · {{ sessionOutcomeLabels[session.outcome] }}</span
+                            ·
+                            {{ SESSION_OUTCOME_LABELS[session.outcome] }}</span
                         >
                     </p>
                     <p class="text-[11px] text-muted-foreground/70">
-                        {{ formatSessionDate(session.opened_at) }}
+                        {{ formatShortDateTime(session.opened_at) }}
                         <span v-if="session.closed_at">
-                            → {{ formatSessionDate(session.closed_at) }}</span
+                            → {{ formatShortDateTime(session.closed_at) }}</span
                         >
                     </p>
                 </div>
@@ -922,59 +1293,73 @@ function formatEventDate(value: string): string {
             </div>
         </PanelSection>
 
-        <PanelSection
-            section-key="followup-historico"
-            title="Historico de Follow-ups"
-        >
+        <!-- One timeline instead of three boxes: agent events, atendimento cycles,
+             human tickets and follow-ups all land here in the order they happened. -->
+        <PanelSection section-key="historico" title="Histórico">
             <template #icon>
-                <UserRound class="h-4 w-4 text-muted-foreground" />
+                <History class="h-4 w-4 text-muted-foreground" />
             </template>
-            <div
-                v-if="conversation.followupHistory.length > 0"
-                class="space-y-3"
-            >
-                <div
-                    v-for="item in conversation.followupHistory"
-                    :key="item.attempt"
-                    class="border-l-2 border-muted pl-3"
+            <template #meta>
+                <span
+                    v-if="historyEntries.length > 0"
+                    class="text-[10px] text-muted-foreground"
                 >
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-xs font-medium text-foreground"
-                            >#{{ item.attempt }}</span
-                        >
-                        <span class="text-xs text-muted-foreground">{{
-                            formatFollowupDate(item.sent_at)
-                        }}</span>
-                    </div>
-                    <p class="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {{ item.message_text }}
-                    </p>
-                </div>
-            </div>
-            <p v-else class="text-xs text-muted-foreground">
-                Sem historico de follow-up
-            </p>
-        </PanelSection>
+                    {{ historyEntries.length
+                    }}{{ history.truncated ? '+' : '' }}
+                </span>
+            </template>
 
-        <PanelSection
-            v-if="conversation.recentEvents.length > 0"
-            section-key="eventos"
-            title="Eventos recentes"
-        >
-            <ul class="space-y-2 text-xs">
+            <ol v-if="historyEntries.length > 0" class="space-y-2">
                 <li
-                    v-for="(event, idx) in conversation.recentEvents"
-                    :key="idx"
-                    class="flex items-center justify-between gap-2"
+                    v-for="entry in historyEntries"
+                    :key="entry.id"
+                    class="flex gap-2"
                 >
-                    <span class="text-foreground">{{
-                        eventLabels[event.event_type] ?? event.event_type
-                    }}</span>
-                    <span class="text-muted-foreground">{{
-                        formatEventDate(event.created_at)
-                    }}</span>
+                    <span
+                        :class="[
+                            'mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full',
+                            HISTORY_SEVERITY_DOT[entry.severity],
+                        ]"
+                    />
+                    <div class="min-w-0 flex-1">
+                        <div
+                            class="flex items-baseline justify-between gap-2 text-xs"
+                        >
+                            <span
+                                :class="[
+                                    'min-w-0 truncate',
+                                    HISTORY_SEVERITY_TEXT[entry.severity],
+                                ]"
+                            >
+                                {{ entry.label }}
+                            </span>
+                            <span
+                                class="shrink-0 text-[10px] text-muted-foreground"
+                            >
+                                {{ formatShortDateTime(entry.at) }}
+                            </span>
+                        </div>
+                        <p
+                            v-if="entry.detail"
+                            class="line-clamp-2 text-[11px] text-muted-foreground"
+                        >
+                            {{ entry.detail }}
+                        </p>
+                    </div>
                 </li>
-            </ul>
+            </ol>
+            <p v-else class="text-xs text-muted-foreground">
+                Nada registrado ainda.
+            </p>
+
+            <p
+                v-if="history.event_retention_days > 0"
+                class="mt-2.5 border-t border-border pt-2 text-[10px] text-muted-foreground"
+            >
+                Eventos do agente ficam
+                {{ history.event_retention_days }} dias. Atendimentos,
+                escalações e follow-ups não expiram.
+            </p>
         </PanelSection>
 
         <section

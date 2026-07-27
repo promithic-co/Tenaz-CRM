@@ -3,6 +3,7 @@
 use App\Http\Resources\ConversationResource;
 use App\Models\Agent;
 use App\Models\AgentConfig;
+use App\Models\Contact;
 use App\Models\Lead;
 use App\Models\Tag;
 use App\Models\WhatsappInstance;
@@ -15,6 +16,10 @@ uses(RefreshDatabase::class);
  * ConversasController::conversationProps (lead sub-object only) — the parity
  * baseline. The two service-derived fields are injected, matching the resource
  * contract.
+ *
+ * Deliberately frozen at the legacy shape: fields added after the port (`notes`)
+ * are layered on by the individual tests, so this stays a record of what the
+ * legacy controller emitted rather than drifting into a copy of the resource.
  *
  * @param  array<int, string>  $availableTransitions
  */
@@ -101,6 +106,7 @@ it('matches the legacy $leadData lead sub-object', function () {
 
     $expected = legacyLeadData($lead, $transitions, $effectiveAiMode);
     $expected['collected_information'] = $collectedInformation;
+    $expected['notes'] = null;
 
     expect($resource)->toEqual($expected);
     expect($resource)->toHaveKey('cpf');
@@ -127,11 +133,38 @@ it('falls back to whatsapp for nome and emits null credit summary when absent', 
 
     $resource = (new ConversationResource($lead, [], 'manual', []))->toArray(request());
 
-    expect($resource)->toEqual(legacyLeadData($lead, [], 'manual'));
+    expect($resource)->toEqual(legacyLeadData($lead, [], 'manual') + ['notes' => null]);
     expect($resource['nome'])->toBe('5511955554444');
     expect($resource['resumo_credito'])->toBeNull();
     expect($resource['available_transitions'])->toBe([]);
     expect($resource['tags'])->toBe([]);
+});
+
+it('emits the operator notes from the linked contact', function () {
+    $contact = Contact::factory()->create(['notes' => 'Só atende de manhã.']);
+    $lead = Lead::factory()->create([
+        'tenant_id' => $contact->tenant_id,
+        'contact_id' => $contact->id,
+    ]);
+    $lead->load([
+        'contact',
+        'whatsappInstance',
+        'tags' => fn ($q) => $q->withPivot('source', 'ai_confidence', 'ai_evidence', 'ai_evaluated_at'),
+    ]);
+
+    $withContact = (new ConversationResource($lead, [], 'manual', []))->toArray(request());
+
+    $orphan = Lead::factory()->create(['contact_id' => null]);
+    $orphan->load([
+        'contact',
+        'whatsappInstance',
+        'tags' => fn ($q) => $q->withPivot('source', 'ai_confidence', 'ai_evidence', 'ai_evaluated_at'),
+    ]);
+
+    $withoutContact = (new ConversationResource($orphan, [], 'manual', []))->toArray(request());
+
+    expect($withContact['notes'])->toBe('Só atende de manhã.')
+        ->and($withoutContact['notes'])->toBeNull();
 });
 
 it('emits the agent niche from the agent config, defaulting to inss', function () {

@@ -2,9 +2,8 @@
 
 namespace App\Services;
 
-use App\Http\Resources\AgentInteractionEventResource;
 use App\Http\Resources\ConversationResource;
-use App\Models\AgentInteractionEvent;
+use App\Models\ContactList;
 use App\Models\ConversationSession;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
@@ -35,6 +34,8 @@ class ConversationPanelPropsBuilder
         private readonly WhatsappTemplateRenderer $templateRenderer,
         private readonly TemplateParameterResolver $templateParameters,
         private readonly FollowUpStateSummarizer $followUpState,
+        private readonly CustomFieldService $customFields,
+        private readonly ConversationHistoryBuilder $history,
     ) {}
 
     /**
@@ -45,14 +46,15 @@ class ConversationPanelPropsBuilder
      *     pausado: bool,
      *     followupStatus: string|null,
      *     followupState: array<string, mixed>,
-     *     followupHistory: mixed,
      *     conversationWindow: array<string, mixed>,
-     *     recentEvents: mixed,
+     *     history: array{entries: list<array<string, mixed>>, truncated: bool, event_retention_days: int},
      *     canStartCampaign: bool,
      *     active_handoff: array<string, mixed>|null,
      *     handoff_state: array<string, mixed>,
      *     handoff_actions: array<string, mixed>,
-     *     transfer_targets: list<array{type: string, id: int, name: string}>
+     *     transfer_targets: list<array{type: string, id: int, name: string}>,
+     *     contact_lists: list<array{id: int, name: string, entries_count: int}>,
+     *     custom_fields: list<array<string, mixed>>
      * }
      */
     public function build(Lead $lead, User $actor): array
@@ -81,28 +83,6 @@ class ConversationPanelPropsBuilder
         $leadData = (new ConversationResource($lead, $availableTransitions, $effectiveAiMode, $contactInformation))
             ->resolve(request());
 
-        $followupHistory = $lead->followupMessages()
-            ->orderByDesc('sent_at')
-            ->limit(10)
-            ->get(['attempt', 'message_text', 'tone', 'sent_at']);
-
-        $recentEvents = AgentInteractionEventResource::collection(
-            AgentInteractionEvent::query()
-                ->where('lead_id', $lead->id)
-                ->whereIn('event_type', [
-                    'ai_paused_manual',
-                    'ai_resumed_manual',
-                    'history_cleared_manual',
-                    'lead_created_manual',
-                    'lead_deleted_manual',
-                    'lead_bulk_action',
-                    'followup_skipped',
-                ])
-                ->orderByDesc('created_at')
-                ->limit(5)
-                ->get(['event_type', 'created_at', 'severity', 'payload_json'])
-        );
-
         $activeTicket = ServiceTicket::query()->activeEscalation($lead->id)->with('assignedUser')->latest()->first();
         $activeHandoff = $activeTicket ? $this->handoffState->activeHandoffPayload($lead) : null;
 
@@ -119,14 +99,15 @@ class ConversationPanelPropsBuilder
             'pausado' => $this->pause->isPaused($lead->whatsapp, $lead->tenant_id),
             'followupStatus' => $lead->followup_status,
             'followupState' => $this->followUpState->forLead($lead),
-            'followupHistory' => $followupHistory,
             'conversationWindow' => $this->conversationWindow->resolve($lead),
-            'recentEvents' => $recentEvents,
+            'history' => $this->history->forLead($lead),
             'canStartCampaign' => $actor->isOwnerOrAdmin(),
             'active_handoff' => $activeHandoff,
             'handoff_state' => $this->handoffState->deriveState($lead, $activeTicket),
             'handoff_actions' => $this->handoffState->handoffActions($activeTicket),
             'transfer_targets' => $this->transferTargets->forTenant((string) $lead->tenant_id, $actor),
+            'contact_lists' => $this->buildContactLists($lead),
+            'custom_fields' => $this->customFields->forLead($lead),
             'whatsappTemplatesEnabled' => $templatesEnabled,
             'whatsappTemplates' => $templates,
             'templateSync' => [
@@ -134,6 +115,33 @@ class ConversationPanelPropsBuilder
                 'synced_at' => $templates === [] ? null : ($templates[0]['last_synced_at'] ?? null),
             ],
         ];
+    }
+
+    /**
+     * Static contact lists the operator may drop this conversation into.
+     *
+     * Offered to every member of the tenant, matching ContactListPolicy::addEntry —
+     * filing the person you are talking to is inbox work, not list administration.
+     *
+     * Dynamic lists are excluded on purpose: their membership is recomputed from
+     * `filters_json`, so a hand-added entry would be silently dropped on the next
+     * refresh.
+     *
+     * @return list<array{id: int, name: string, entries_count: int}>
+     */
+    private function buildContactLists(Lead $lead): array
+    {
+        return ContactList::query()
+            ->forTenant((string) $lead->tenant_id)
+            ->where('is_dynamic', false)
+            ->orderBy('name')
+            ->get(['id', 'name', 'entries_count'])
+            ->map(fn (ContactList $list): array => [
+                'id' => $list->id,
+                'name' => $list->name,
+                'entries_count' => (int) $list->entries_count,
+            ])
+            ->all();
     }
 
     /**

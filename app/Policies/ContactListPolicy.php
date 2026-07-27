@@ -27,6 +27,19 @@ class ContactListPolicy
         return $this->authorizeFor($user, $contactList);
     }
 
+    /**
+     * Dropping a contact into a list is open to every member of the tenant.
+     *
+     * Deliberately weaker than `update`: an atendente working the inbox needs to
+     * file the person they are talking to, which is additive and reversible.
+     * Renaming, refiltering, freezing or deleting the list itself stays with
+     * owners and administrators.
+     */
+    public function addEntry(User $user, ContactList $contactList): bool
+    {
+        return (string) $contactList->tenant_id === (string) $user->tenantId;
+    }
+
     private function authorizeFor(User $user, ContactList $contactList): bool
     {
         return (string) $contactList->tenant_id === (string) $user->tenantId

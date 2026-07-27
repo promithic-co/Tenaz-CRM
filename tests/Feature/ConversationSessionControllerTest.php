@@ -52,6 +52,42 @@ test('close ends the atendimento with the selected outcome', function () {
         ->and($session->fresh()->outcome)->toBe(ConversationSession::OUTCOME_CONVERTED);
 });
 
+/**
+ * The thread header renders its "Finalizar" control off the open session in the
+ * panel payload, so closing must leave no session with `status: open` behind —
+ * otherwise the button keeps offering to close an already-closed atendimento.
+ */
+test('closing from the header leaves no open session in the panel payload', function () {
+    $user = User::factory()->create();
+    $agent = Agent::factory()->create(['user_id' => $user->id, 'is_default' => true]);
+    $lead = Lead::factory()->forAgent($agent)->create();
+    $session = ConversationSession::factory()->forLead($lead)->open()->create(['number' => 1]);
+
+    $this->actingAs($user)
+        ->get(route('conversas.show', $lead))
+        ->assertInertia(fn ($page) => $page
+            ->where('activeConversation.sessions.0.status', ConversationSession::STATUS_OPEN)
+        );
+
+    $this->actingAs($user)
+        ->post(route('conversas.sessions.close', [$lead, $session]), [
+            'outcome' => ConversationSession::OUTCOME_NO_RESPONSE,
+        ])
+        ->assertRedirect();
+
+    $this->actingAs($user)
+        ->get(route('conversas.show', $lead))
+        ->assertInertia(fn ($page) => $page
+            ->where('activeConversation.sessions.0.status', ConversationSession::STATUS_CLOSED)
+            ->where('activeConversation.sessions.0.outcome', ConversationSession::OUTCOME_NO_RESPONSE)
+            ->where(
+                'activeConversation.sessions',
+                fn ($sessions) => collect($sessions)
+                    ->every(fn ($session) => $session['status'] !== ConversationSession::STATUS_OPEN),
+            )
+        );
+});
+
 test('close rejects an invalid outcome', function () {
     $user = User::factory()->create();
     $agent = Agent::factory()->create(['user_id' => $user->id, 'is_default' => true]);

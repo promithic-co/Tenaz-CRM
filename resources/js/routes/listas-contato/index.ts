@@ -864,6 +864,7 @@ freeze.post = (args: { list: number | { id: number } } | [list: number | { id: n
     freeze.form = freezeForm
 const listasContato = {
     addContacts: Object.assign(addContacts, addContacts),
+entries: Object.assign(entries, entries),
 preview: Object.assign(preview, preview),
 create: Object.assign(create, create),
 index: Object.assign(index, index),
@@ -871,7 +872,6 @@ store: Object.assign(store, store),
 show: Object.assign(show, show),
 destroy: Object.assign(destroy, destroy),
 importCsv: Object.assign(importCsv, importCsv),
-entries: Object.assign(entries, entries),
 updateFilters: Object.assign(updateFilters, updateFilters),
 refresh: Object.assign(refresh, refresh),
 freeze: Object.assign(freeze, freeze),
