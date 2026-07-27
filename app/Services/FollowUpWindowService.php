@@ -122,14 +122,10 @@ class FollowUpWindowService
     }
 
     /**
-     * `$effectiveAiMode` is the pre-resolved mode (raw ai_mode with the instance
-     * default_ai_mode fallback — see ConversationAutomationService::resolveInstanceDefaultedModes);
-     * when null, the raw `$lead->ai_mode` column is used, preserving legacy behavior.
-     *
      * @param  array<string, mixed>  $settings
      * @return array{eligible: bool, reason: string, due_at: ?string, window_expires_at: ?string, remaining_minutes: int}
      */
-    public function evaluate(Lead $lead, array $settings, ?CarbonInterface $now = null, ?PauseService $pause = null, ?string $effectiveAiMode = null): array
+    public function evaluate(Lead $lead, array $settings, ?CarbonInterface $now = null, ?PauseService $pause = null): array
     {
         $now ??= now();
         $windowClosesAt = $this->freeFormWindowClosesAt($lead, $now);
@@ -169,9 +165,9 @@ class FollowUpWindowService
             return [...$base, 'reason' => 'no_open_session'];
         }
 
-        $aiMode = $effectiveAiMode ?? $lead->ai_mode;
-
-        if ($aiMode === Lead::AI_MODE_MANUAL || in_array($lead->operational_stage, Lead::HUMAN_HANDOFF_STAGES, true)) {
+        // The follow-up engine has its own enabled/status controls. A manual
+        // conversational AI mode must not pause it; an actual human handoff must.
+        if (in_array($lead->operational_stage, Lead::HUMAN_HANDOFF_STAGES, true)) {
             return [...$base, 'reason' => 'human_paused'];
         }
 

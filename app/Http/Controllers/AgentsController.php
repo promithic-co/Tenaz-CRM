@@ -108,6 +108,7 @@ class AgentsController extends Controller
             description: $request->validated('description'),
             whatsappInstanceId: $request->validated('whatsapp_instance_id'),
             variables: $request->validated('variables') ?? [],
+            followUp: $request->validated('followup') ?? [],
         );
 
         return redirect()->route('agentes.config', $agent)->with('success', 'Agente criado com sucesso.');

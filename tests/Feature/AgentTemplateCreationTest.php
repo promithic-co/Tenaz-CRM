@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AgentConfig;
+use App\Models\AgentFollowUpSetting;
 use App\Models\Lead;
 use App\Models\NicheTemplate;
 use App\Models\PromptTemplate;
@@ -124,6 +125,99 @@ test('company_name submitted at creation is saved to agent_config', function () 
     $config = AgentConfig::query()->where('tenant_id', $user->tenantId)->first();
 
     expect($config->company_name)->toBe('Banco Pan');
+});
+
+test('agent creation persists explicit follow-up settings independently', function () {
+    $user = userWithTenant();
+    $instance = WhatsappInstance::factory()->for($user)->create();
+
+    $this->actingAs($user)
+        ->post(route('agentes.store'), createAgentPayload([
+            'whatsapp_instance_id' => $instance->id,
+            'followup' => [
+                'enabled' => true,
+                'first_delay_minutes' => 25,
+                'min_interval_minutes' => 120,
+                'max_count' => 3,
+                'followup_window_start' => '09:00',
+                'followup_window_end' => '19:00',
+                'message_type' => 'reengajamento',
+                'tone' => 'direto',
+                'persuasion_intensity' => 3,
+                'custom_instructions' => 'Retome a objeção mais recente sem repetir a oferta.',
+            ],
+        ]))
+        ->assertRedirect();
+
+    $agentId = AgentConfig::query()
+        ->where('tenant_id', $user->tenantId)
+        ->valueOrFail('agent_id');
+    $settings = AgentFollowUpSetting::withoutGlobalScope('tenant')
+        ->where('agent_id', $agentId)
+        ->firstOrFail();
+
+    expect($settings->enabled)->toBeTrue()
+        ->and($settings->first_delay_minutes)->toBe(25)
+        ->and($settings->min_interval_minutes)->toBe(120)
+        ->and($settings->max_attempts_within_window)->toBe(3)
+        ->and($settings->business_window_start)->toBe('09:00')
+        ->and($settings->business_window_end)->toBe('19:00')
+        ->and($settings->message_type)->toBe('reengajamento')
+        ->and($settings->tone)->toBe('direto')
+        ->and($settings->persuasion_intensity)->toBe(3)
+        ->and($settings->custom_instructions)->toBe('Retome a objeção mais recente sem repetir a oferta.');
+});
+
+test('agent creation persists default follow-up settings when the payload omits them', function () {
+    $user = userWithTenant();
+
+    $this->actingAs($user)
+        ->post(route('agentes.store'), createAgentPayload())
+        ->assertRedirect();
+
+    $agentId = AgentConfig::query()
+        ->where('tenant_id', $user->tenantId)
+        ->valueOrFail('agent_id');
+    $settings = AgentFollowUpSetting::withoutGlobalScope('tenant')
+        ->where('agent_id', $agentId)
+        ->firstOrFail();
+
+    expect($settings->enabled)->toBeTrue()
+        ->and($settings->first_delay_minutes)->toBe(10)
+        ->and($settings->min_interval_minutes)->toBe(60)
+        ->and($settings->max_attempts_within_window)->toBe(2)
+        ->and($settings->business_window_start)->toBe('08:00')
+        ->and($settings->business_window_end)->toBe('20:00');
+});
+
+test('agent creation validates nested follow-up settings', function () {
+    $user = userWithTenant();
+
+    $this->actingAs($user)
+        ->post(route('agentes.store'), createAgentPayload([
+            'followup' => [
+                'enabled' => true,
+                'first_delay_minutes' => 0,
+                'min_interval_minutes' => 15,
+                'max_count' => 8,
+                'followup_window_start' => '25:00',
+                'followup_window_end' => '20:00',
+                'message_type' => 'inexistente',
+                'tone' => 'agressivo',
+                'persuasion_intensity' => 9,
+                'custom_instructions' => str_repeat('x', 1001),
+            ],
+        ]))
+        ->assertSessionHasErrors([
+            'followup.first_delay_minutes',
+            'followup.min_interval_minutes',
+            'followup.max_count',
+            'followup.followup_window_start',
+            'followup.message_type',
+            'followup.tone',
+            'followup.persuasion_intensity',
+            'followup.custom_instructions',
+        ]);
 });
 
 // --- Niche is a template attribute, never user input ---

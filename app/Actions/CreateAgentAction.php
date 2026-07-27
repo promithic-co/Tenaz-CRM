@@ -4,14 +4,18 @@ namespace App\Actions;
 
 use App\Models\Agent;
 use App\Models\AgentConfig;
+use App\Models\AgentFollowUpSetting;
 use App\Models\NicheTemplate;
 use App\Models\WhatsappInstance;
 use App\Services\AgentTemplateService;
+use App\Services\FollowUpSettingsResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CreateAgentAction
 {
+    public function __construct(private readonly FollowUpSettingsResolver $followUpSettingsResolver) {}
+
     /**
      * Template variables (variables_schema keys) that may customize AgentConfig
      * columns at creation. Keys are variable names, values are config columns.
@@ -43,6 +47,7 @@ class CreateAgentAction
      * no exception is thrown — the caller decides messaging.
      *
      * @param  array<string, mixed>  $variables  Wizard answers keyed by variables_schema key
+     * @param  array<string, mixed>  $followUp  Independent follow-up settings from the wizard
      */
     public function execute(
         int $userId,
@@ -53,6 +58,7 @@ class CreateAgentAction
         ?string $description = null,
         ?int $whatsappInstanceId = null,
         array $variables = [],
+        array $followUp = [],
     ): Agent {
         return DB::transaction(function () use (
             $userId,
@@ -63,6 +69,7 @@ class CreateAgentAction
             $description,
             $whatsappInstanceId,
             $variables,
+            $followUp,
         ) {
             $slug = Str::slug($name).'-'.$userId.'-'.Str::lower(Str::random(6));
 
@@ -89,6 +96,8 @@ class CreateAgentAction
                     'agent_niche' => $templateDefaults['agent_niche'] ?? 'generic',
                 ])
             );
+
+            AgentFollowUpSetting::create($this->followUpPayload($agent, $tenantId, $followUp));
 
             NicheTemplate::query()
                 ->active()
@@ -137,5 +146,30 @@ class CreateAgentAction
         }
 
         return $overrides;
+    }
+
+    /**
+     * @param  array<string, mixed>  $followUp
+     * @return array<string, mixed>
+     */
+    private function followUpPayload(Agent $agent, string $tenantId, array $followUp): array
+    {
+        $settings = array_merge($this->followUpSettingsResolver->defaults(), $followUp);
+
+        return [
+            'agent_id' => $agent->id,
+            'tenant_id' => $tenantId,
+            'enabled' => (bool) $settings['enabled'],
+            'first_delay_minutes' => (int) $settings['first_delay_minutes'],
+            'min_interval_minutes' => (int) $settings['min_interval_minutes'],
+            'max_attempts_within_window' => (int) ($settings['max_count'] ?? $settings['max_attempts_within_window']),
+            'business_window_start' => (string) ($settings['followup_window_start'] ?? $settings['business_window_start']),
+            'business_window_end' => (string) ($settings['followup_window_end'] ?? $settings['business_window_end']),
+            'timezone' => (string) $settings['timezone'],
+            'message_type' => (string) $settings['message_type'],
+            'tone' => (string) $settings['tone'],
+            'persuasion_intensity' => (int) $settings['persuasion_intensity'],
+            'custom_instructions' => (string) $settings['custom_instructions'],
+        ];
     }
 }

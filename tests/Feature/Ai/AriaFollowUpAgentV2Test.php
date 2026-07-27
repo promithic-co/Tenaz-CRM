@@ -12,6 +12,7 @@ use App\Models\Lead;
 use App\Models\PromptTemplate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Ai\Tools\Request;
 
 uses(RefreshDatabase::class);
 
@@ -64,6 +65,19 @@ test('CredFlowFollowUpAgent registers AtualizarStatusLeadTool when lead is not o
     $toolClasses = collect($agent->tools())->map(fn ($t) => get_class($t))->all();
 
     expect($toolClasses)->toContain(AtualizarStatusLeadTool::class);
+});
+
+test('CredFlowFollowUpAgent restricts status updates to opt-out protection', function () {
+    $lead = makeFollowUpLead(['status' => 'qualificado']);
+    $tool = collect((new CredFlowFollowUpAgent($lead))->tools())
+        ->first(fn ($tool): bool => $tool instanceof AtualizarStatusLeadTool);
+
+    $result = $tool->handle(new Request(['status' => 'convertido']));
+
+    expect(json_decode((string) $result, true))
+        ->status->toBe('blocked')
+        ->and($lead->fresh()->status)->toBe('qualificado')
+        ->and($tool->description())->toContain('optou_sair');
 });
 
 test('CredFlowFollowUpAgent omits AtualizarStatusLeadTool when lead already opted out', function () {

@@ -258,7 +258,7 @@ describe('CheckFollowUpsCommand', function () {
         expect($lead->fresh()->followup_status)->toBe('inactive');
     });
 
-    test('does not dispatch when instance default mode is manual and lead ai_mode is unset', function () {
+    test('dispatches when conversation ai is manual and follow-up remains active', function () {
         Queue::fake();
 
         $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
@@ -279,8 +279,8 @@ describe('CheckFollowUpsCommand', function () {
 
         $this->artisan('credflow:check-followups');
 
-        Queue::assertNotPushed(ProcessLeadFollowUpJob::class);
-        expect($lead->fresh()->followup_status)->toBe('paused');
+        Queue::assertPushed(ProcessLeadFollowUpJob::class, fn ($job): bool => $job->lead->id === $lead->id);
+        expect($lead->fresh()->followup_status)->toBe('active');
     });
 
     test('still dispatches when instance default mode is automatic and lead ai_mode is unset', function () {
@@ -305,6 +305,56 @@ describe('CheckFollowUpsCommand', function () {
         $this->artisan('credflow:check-followups');
 
         Queue::assertPushed(ProcessLeadFollowUpJob::class);
+    });
+
+    test('dispatches for an inactive conversational agent with follow-up enabled', function () {
+        Queue::fake();
+
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+
+        $agent = Agent::factory()->create(['is_active' => false]);
+        AgentFollowUpSetting::factory()->create([
+            'agent_id' => $agent->id,
+            'tenant_id' => $agent->tenant_id,
+            'enabled' => true,
+        ]);
+
+        $lead = Lead::factory()->create([
+            'tenant_id' => $agent->tenant_id,
+            'agent_id' => $agent->id,
+            'is_sandbox' => false,
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subMinutes(30),
+            'last_inbound_at' => now()->subMinutes(30),
+        ]);
+
+        $this->artisan('credflow:check-followups');
+
+        Queue::assertPushed(ProcessLeadFollowUpJob::class, fn ($job): bool => $job->lead->id === $lead->id);
+    });
+
+    test('does not dispatch for an archived agent', function () {
+        Queue::fake();
+
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+
+        $agent = Agent::factory()->create(['is_active' => false]);
+        $lead = Lead::factory()->create([
+            'tenant_id' => $agent->tenant_id,
+            'agent_id' => $agent->id,
+            'is_sandbox' => false,
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subMinutes(30),
+            'last_inbound_at' => now()->subMinutes(30),
+        ]);
+        $agent->delete();
+
+        $this->artisan('credflow:check-followups');
+
+        Queue::assertNotPushed(ProcessLeadFollowUpJob::class);
+        expect($lead->fresh()->followup_status)->toBe('active');
     });
 
     test('ignores inactive leads', function () {
@@ -370,7 +420,7 @@ describe('ProcessLeadFollowUpJob', function () {
         expect(FollowupMessage::where('lead_id', $lead->id)->count())->toBe(0);
     });
 
-    test('skips execution when lead is in manual human mode', function () {
+    test('skips execution when a human is actively handling the lead', function () {
         $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
         CredFlowFollowUpAgent::fake(['unused']);
 
@@ -394,6 +444,36 @@ describe('ProcessLeadFollowUpJob', function () {
         CredFlowFollowUpAgent::assertNeverPrompted();
         expect($lead->fresh()->followup_status)->toBe('paused')
             ->and($lead->fresh()->followup_count)->toBe(0);
+    });
+
+    test('executes when conversation ai is manual without an active human handoff', function () {
+        $this->travelTo(Carbon::create(2026, 3, 20, 15, 0, 0, 'UTC'));
+        CredFlowFollowUpAgent::fake(['Mensagem contextual de follow-up']);
+        $instance = WhatsappInstance::factory()->create([
+            'tenant_id' => 'default',
+            'name' => 'manual-conversation-instance',
+        ]);
+
+        $lead = Lead::factory()->create([
+            'ai_mode' => Lead::AI_MODE_MANUAL,
+            'operational_stage' => Lead::STAGE_AI_FOLLOWUP,
+            'followup_status' => 'active',
+            'followup_count' => 0,
+            'last_interaction_at' => now()->subHours(2),
+            'last_inbound_at' => now()->subHours(2),
+            'whatsapp_instance_id' => $instance->id,
+        ]);
+
+        $job = new ProcessLeadFollowUpJob($lead);
+        $job->handle(
+            app(WhatsappOutboxService::class),
+            app(FollowUpSettingsResolver::class),
+            app(FollowUpWindowService::class),
+            app(PauseService::class),
+        );
+
+        expect($lead->fresh()->followup_count)->toBe(1)
+            ->and($lead->fresh()->followup_status)->toBe('active');
     });
 
     test('does not skip when only last_interaction_at is fresh from scheduler pre-stamp', function () {

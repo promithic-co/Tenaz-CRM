@@ -56,6 +56,20 @@ class StoreAgentRequest extends FormRequest
                         ->whereNull('agent_id');
                 }),
             ],
+            'followup' => [
+                'sometimes',
+                'array:enabled,first_delay_minutes,min_interval_minutes,max_count,followup_window_start,followup_window_end,message_type,tone,persuasion_intensity,custom_instructions',
+            ],
+            'followup.enabled' => ['required_with:followup', 'boolean'],
+            'followup.first_delay_minutes' => ['required_with:followup', 'integer', 'min:1', 'max:1440'],
+            'followup.min_interval_minutes' => ['required_with:followup', 'integer', Rule::in([30, 60, 120, 240, 480, 720, 1440])],
+            'followup.max_count' => ['required_with:followup', 'integer', 'min:1', 'max:5'],
+            'followup.followup_window_start' => ['required_with:followup', 'date_format:H:i'],
+            'followup.followup_window_end' => ['required_with:followup', 'date_format:H:i'],
+            'followup.message_type' => ['required_with:followup', 'string', Rule::in(['contextual', 'reengajamento', 'urgencia', 'duvida', 'encerramento', 'proposta'])],
+            'followup.tone' => ['required_with:followup', 'string', Rule::in(['consultivo', 'acolhedor', 'direto', 'descontraido', 'premium'])],
+            'followup.persuasion_intensity' => ['required_with:followup', 'integer', 'min:1', 'max:5'],
+            'followup.custom_instructions' => ['nullable', 'string', 'max:1000'],
         ], $this->variableRules());
     }
 
@@ -114,6 +128,19 @@ class StoreAgentRequest extends FormRequest
             }
         }
 
+        $attributes += [
+            'followup.enabled' => 'follow-up automático',
+            'followup.first_delay_minutes' => 'espera do primeiro follow-up',
+            'followup.min_interval_minutes' => 'intervalo entre follow-ups',
+            'followup.max_count' => 'máximo de follow-ups',
+            'followup.followup_window_start' => 'início da janela de follow-up',
+            'followup.followup_window_end' => 'fim da janela de follow-up',
+            'followup.message_type' => 'tipo da mensagem de follow-up',
+            'followup.tone' => 'tom do follow-up',
+            'followup.persuasion_intensity' => 'intensidade de persuasão',
+            'followup.custom_instructions' => 'instruções adicionais do follow-up',
+        ];
+
         return $attributes;
     }
 
@@ -128,6 +155,7 @@ class StoreAgentRequest extends FormRequest
             'company_name.required' => 'Informe o nome da empresa que este agente vai atender.',
             'name.unique' => 'Você já possui um agente com esse nome.',
             'whatsapp_instance_id.exists' => 'Selecione uma instância disponível que ainda não esteja vinculada a outro agente.',
+            'followup.*.required_with' => 'Preencha todas as configurações obrigatórias do follow-up.',
         ];
     }
 }

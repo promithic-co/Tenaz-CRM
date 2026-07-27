@@ -5,6 +5,7 @@ namespace App\Ai\Tools;
 use App\Ai\Support\ToolResult;
 use App\Models\Lead;
 use App\Models\StatusMachine;
+use App\Services\FollowUpWindowService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Contracts\Tool;
@@ -13,10 +14,20 @@ use Stringable;
 
 class AtualizarStatusLeadTool implements Tool
 {
-    public function __construct(private readonly Lead $lead) {}
+    /**
+     * @param  list<string>|null  $allowedStatuses
+     */
+    public function __construct(
+        private readonly Lead $lead,
+        private readonly ?array $allowedStatuses = null,
+    ) {}
 
     public function description(): Stringable|string
     {
+        if ($this->allowedStatuses !== null) {
+            return 'Atualiza o status do lead somente para: '.implode(', ', $this->allowedStatuses).'.';
+        }
+
         return 'Atualiza status do lead: qualificado, sem_credito, desqualificado, optou_sair, convertido, escalado.';
     }
 
@@ -27,7 +38,14 @@ class AtualizarStatusLeadTool implements Tool
         $machine = StatusMachine::forTenant($this->lead->tenant_id ?? 'default');
         $validStatuses = $machine->getStatuses()->pluck('slug')->all();
 
-        if (! in_array($status, $validStatuses)) {
+        if ($this->allowedStatuses !== null && ! in_array($status, $this->allowedStatuses, true)) {
+            return ToolResult::blocked(
+                "Status '{$status}' não permitido neste contexto.",
+                'Use somente: '.implode(', ', $this->allowedStatuses).'.'
+            );
+        }
+
+        if (! in_array($status, $validStatuses, true)) {
             return ToolResult::blocked(
                 "Status '{$status}' não existe.",
                 'Use um dos valores válidos: '.implode(', ', $validStatuses).'.'
@@ -50,7 +68,7 @@ class AtualizarStatusLeadTool implements Tool
         $updateData = ['status' => $status];
 
         if ($status === 'qualificado') {
-            $updateData['followup_status'] = app(\App\Services\FollowUpWindowService::class)
+            $updateData['followup_status'] = app(FollowUpWindowService::class)
                 ->canSendFreeFormMessage($this->lead) ? 'active' : 'inactive';
             $updateData['followup_count'] = 0;
             $updateData['last_interaction_at'] = now();
@@ -65,9 +83,12 @@ class AtualizarStatusLeadTool implements Tool
 
     public function schema(JsonSchema $schema): array
     {
+        $statuses = $this->allowedStatuses
+            ?? ['qualificado', 'sem_credito', 'desqualificado', 'optou_sair', 'convertido', 'escalado'];
+
         return [
             'status' => $schema->string()
-                ->description('qualificado|sem_credito|desqualificado|optou_sair|convertido|escalado')
+                ->description(implode('|', $statuses))
                 ->required(),
         ];
     }

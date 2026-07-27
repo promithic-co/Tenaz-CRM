@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Jobs\ProcessLeadFollowUpJob;
 use App\Models\Lead;
 use App\Services\AlertService;
-use App\Services\ConversationAutomationService;
 use App\Services\FollowUpSettingsResolver;
 use App\Services\FollowUpWindowService;
 use App\Services\PauseService;
@@ -38,7 +37,6 @@ class CheckFollowUpsCommand extends Command
         $settingsResolver = app(FollowUpSettingsResolver::class);
         $window = app(FollowUpWindowService::class);
         $pause = app(PauseService::class);
-        $automation = app(ConversationAutomationService::class);
         $jitter = (int) config('credflow.jobs.cron_dispatch_jitter_seconds', 0);
 
         $windowHours = FollowUpWindowService::CUSTOMER_SERVICE_WINDOW_HOURS;
@@ -92,18 +90,19 @@ class CheckFollowUpsCommand extends Command
                     ->orWhere('free_entry_point_expires_at', '>', $now);
             })
             ->where(function ($query): void {
-                $query->whereHas('agent', fn ($q) => $q->where('is_active', true))
+                // Follow-up has its own enabled flag and remains independent from
+                // the conversational agent's is_active state. Archived/missing
+                // agents are excluded; legacy leads without an agent keep working.
+                $query->whereHas('agent')
                     ->orWhereNull('agent_id');
             })
             // Eager-load the open session so evaluate()'s no_open_session guard stays
             // N+1-free across the chunk (one query per chunk, not per lead).
             ->with('openSession')
-            ->chunkById((int) config('credflow.followup.check_chunk_size', 200), function ($leads) use ($now, &$dispatchedCount, $settingsResolver, $window, $pause, $automation, $jitter): void {
-                $effectiveModes = $automation->resolveInstanceDefaultedModes($leads);
-
+            ->chunkById((int) config('credflow.followup.check_chunk_size', 200), function ($leads) use ($now, &$dispatchedCount, $settingsResolver, $window, $pause, $jitter): void {
                 foreach ($leads as $lead) {
                     $settings = $settingsResolver->forLead($lead);
-                    $evaluation = $window->evaluate($lead, $settings, $now, $pause, $effectiveModes[$lead->id] ?? null);
+                    $evaluation = $window->evaluate($lead, $settings, $now, $pause);
 
                     if ($evaluation['eligible']) {
                         // Dedup handled by ProcessLeadFollowUpJob::ShouldBeUnique (uniqueId = lead_id).

@@ -9,7 +9,6 @@ use App\Models\WhatsappInstance;
 use App\Services\AgentInteractionContext;
 use App\Services\AgentInteractionEventService;
 use App\Services\AgentService;
-use App\Services\ConversationAutomationService;
 use App\Services\ConversationContextSynchronizer;
 use App\Services\ConversationTimelineService;
 use App\Services\Dashboard\DashboardMetricsService;
@@ -91,9 +90,7 @@ class ProcessLeadFollowUpJob implements ShouldBeUniqueUntilProcessing, ShouldQue
         }
 
         $settings = $settingsResolver->forLead($this->lead);
-        $effectiveAiMode = app(ConversationAutomationService::class)
-            ->resolveInstanceDefaultedModes(collect([$this->lead]))[$this->lead->id];
-        $evaluation = $window->evaluate($this->lead, $settings, now(), $pause, $effectiveAiMode);
+        $evaluation = $window->evaluate($this->lead, $settings, now(), $pause);
 
         if (! $evaluation['eligible']) {
             Log::info('ProcessLeadFollowUpJob: skipped (not eligible)', [

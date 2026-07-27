@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import {
     ArrowLeft,
     Building2,
+    CalendarClock,
     HeartHandshake,
     Megaphone,
     Search,
@@ -10,9 +11,8 @@ import {
     Stethoscope,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
-import TemplateVariablesForm, {
-    type TemplateVariableField,
-} from '@/components/TemplateVariablesForm.vue';
+import TemplateVariablesForm from '@/components/TemplateVariablesForm.vue';
+import type { TemplateVariableField } from '@/components/TemplateVariablesForm.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 
@@ -94,7 +94,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 const steps = [
     { number: 1, title: 'Modelo' },
     { number: 2, title: 'Personalização' },
-    { number: 3, title: 'WhatsApp' },
+    { number: 3, title: 'WhatsApp e follow-up' },
 ];
 
 const currentStep = ref(1);
@@ -111,7 +111,23 @@ const form = useForm({
     description: '',
     variables: {} as Record<string, string>,
     whatsapp_instance_id: null as number | null,
+    followup: {
+        enabled: true,
+        first_delay_minutes: 10,
+        min_interval_minutes: 60,
+        max_count: 2,
+        followup_window_start: '08:00',
+        followup_window_end: '20:00',
+        message_type: 'contextual',
+        tone: 'consultivo',
+        persuasion_intensity: 2,
+        custom_instructions: '',
+    },
 });
+
+const followUpErrors = computed<Record<string, string>>(
+    () => form.errors as Record<string, string>,
+);
 
 const selectedTemplate = computed(
     () => props.templates.find((t) => t.slug === form.template_slug) ?? null,
@@ -479,6 +495,261 @@ function submit(): void {
                         </p>
                     </div>
 
+                    <div
+                        class="rounded-xl border border-sidebar-border/70 bg-muted/20 p-4 dark:border-sidebar-border"
+                    >
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex min-w-0 items-start gap-3">
+                                <div
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+                                >
+                                    <CalendarClock class="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h2
+                                        class="text-sm font-semibold text-foreground"
+                                    >
+                                        Follow-up automático
+                                    </h2>
+                                    <p
+                                        class="mt-1 text-xs leading-relaxed text-muted-foreground"
+                                    >
+                                        Reengaja o lead usando o contexto da
+                                        conversa. Funciona mesmo com as
+                                        respostas automáticas desligadas e pausa
+                                        durante atendimento humano.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                :aria-checked="form.followup.enabled"
+                                aria-label="Ativar follow-up automático"
+                                @click="
+                                    form.followup.enabled =
+                                        !form.followup.enabled
+                                "
+                                :class="[
+                                    'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:ring-2 focus:ring-ring focus:outline-none',
+                                    form.followup.enabled
+                                        ? 'bg-primary'
+                                        : 'bg-muted',
+                                ]"
+                            >
+                                <span
+                                    :class="[
+                                        'inline-block h-5 w-5 rounded-full bg-white shadow transition-transform',
+                                        form.followup.enabled
+                                            ? 'translate-x-5'
+                                            : 'translate-x-0.5',
+                                    ]"
+                                />
+                            </button>
+                        </div>
+
+                        <p
+                            v-if="followUpErrors['followup.enabled']"
+                            class="mt-2 text-xs text-red-500"
+                        >
+                            {{ followUpErrors['followup.enabled'] }}
+                        </p>
+
+                        <div
+                            class="mt-4 space-y-4 border-t border-border pt-4 transition-opacity"
+                            :class="{ 'opacity-50': !form.followup.enabled }"
+                        >
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label
+                                        class="mb-1.5 block text-xs font-medium text-foreground"
+                                    >
+                                        Primeira tentativa após
+                                    </label>
+                                    <div class="flex items-center gap-2">
+                                        <input
+                                            v-model.number="
+                                                form.followup
+                                                    .first_delay_minutes
+                                            "
+                                            :disabled="!form.followup.enabled"
+                                            type="number"
+                                            min="1"
+                                            max="1440"
+                                            class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 focus:outline-none disabled:cursor-not-allowed"
+                                        />
+                                        <span
+                                            class="shrink-0 text-xs text-muted-foreground"
+                                            >minutos</span
+                                        >
+                                    </div>
+                                    <p
+                                        v-if="
+                                            followUpErrors[
+                                                'followup.first_delay_minutes'
+                                            ]
+                                        "
+                                        class="mt-1 text-xs text-red-500"
+                                    >
+                                        {{
+                                            followUpErrors[
+                                                'followup.first_delay_minutes'
+                                            ]
+                                        }}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label
+                                        class="mb-1.5 block text-xs font-medium text-foreground"
+                                    >
+                                        Máximo de tentativas
+                                    </label>
+                                    <select
+                                        v-model.number="form.followup.max_count"
+                                        :disabled="!form.followup.enabled"
+                                        class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 focus:outline-none disabled:cursor-not-allowed"
+                                    >
+                                        <option
+                                            v-for="count in 5"
+                                            :key="count"
+                                            :value="count"
+                                        >
+                                            {{ count }}
+                                        </option>
+                                    </select>
+                                    <p
+                                        v-if="
+                                            followUpErrors['followup.max_count']
+                                        "
+                                        class="mt-1 text-xs text-red-500"
+                                    >
+                                        {{
+                                            followUpErrors['followup.max_count']
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-4 sm:grid-cols-3">
+                                <div>
+                                    <label
+                                        class="mb-1.5 block text-xs font-medium text-foreground"
+                                        >Início</label
+                                    >
+                                    <input
+                                        v-model="
+                                            form.followup.followup_window_start
+                                        "
+                                        :disabled="!form.followup.enabled"
+                                        type="time"
+                                        class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 focus:outline-none disabled:cursor-not-allowed"
+                                    />
+                                </div>
+                                <div>
+                                    <label
+                                        class="mb-1.5 block text-xs font-medium text-foreground"
+                                        >Fim</label
+                                    >
+                                    <input
+                                        v-model="
+                                            form.followup.followup_window_end
+                                        "
+                                        :disabled="!form.followup.enabled"
+                                        type="time"
+                                        class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 focus:outline-none disabled:cursor-not-allowed"
+                                    />
+                                </div>
+                                <div>
+                                    <label
+                                        class="mb-1.5 block text-xs font-medium text-foreground"
+                                        >Tom</label
+                                    >
+                                    <select
+                                        v-model="form.followup.tone"
+                                        :disabled="!form.followup.enabled"
+                                        class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 focus:outline-none disabled:cursor-not-allowed"
+                                    >
+                                        <option value="consultivo">
+                                            Consultivo
+                                        </option>
+                                        <option value="acolhedor">
+                                            Acolhedor
+                                        </option>
+                                        <option value="direto">Direto</option>
+                                        <option value="descontraido">
+                                            Descontraído
+                                        </option>
+                                        <option value="premium">Premium</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="
+                                    followUpErrors[
+                                        'followup.followup_window_start'
+                                    ] ||
+                                    followUpErrors[
+                                        'followup.followup_window_end'
+                                    ] ||
+                                    followUpErrors['followup.tone']
+                                "
+                                class="text-xs text-red-500"
+                            >
+                                {{
+                                    followUpErrors[
+                                        'followup.followup_window_start'
+                                    ] ||
+                                    followUpErrors[
+                                        'followup.followup_window_end'
+                                    ] ||
+                                    followUpErrors['followup.tone']
+                                }}
+                            </div>
+
+                            <div>
+                                <label
+                                    class="mb-1.5 block text-xs font-medium text-foreground"
+                                >
+                                    Instrução adicional
+                                    <span
+                                        class="font-normal text-muted-foreground"
+                                        >(opcional)</span
+                                    >
+                                </label>
+                                <textarea
+                                    v-model="form.followup.custom_instructions"
+                                    :disabled="!form.followup.enabled"
+                                    rows="2"
+                                    maxlength="1000"
+                                    placeholder="Ex.: retome a objeção mais recente sem repetir a oferta."
+                                    class="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/50 focus:outline-none disabled:cursor-not-allowed"
+                                />
+                                <p
+                                    v-if="
+                                        followUpErrors[
+                                            'followup.custom_instructions'
+                                        ]
+                                    "
+                                    class="mt-1 text-xs text-red-500"
+                                >
+                                    {{
+                                        followUpErrors[
+                                            'followup.custom_instructions'
+                                        ]
+                                    }}
+                                </p>
+                            </div>
+
+                            <p class="text-[11px] text-muted-foreground">
+                                Intervalo padrão entre tentativas: 1 hora. Você
+                                poderá ajustar todos os detalhes após criar o
+                                agente.
+                            </p>
+                        </div>
+                    </div>
+
                     <div class="flex items-center justify-between gap-2 pt-2">
                         <button
                             type="button"
@@ -500,11 +771,7 @@ function submit(): void {
                 </div>
 
                 <!-- Step 3: WhatsApp instance -->
-                <form
-                    v-else
-                    class="mt-6 space-y-4"
-                    @submit.prevent="submit"
-                >
+                <form v-else class="mt-6 space-y-4" @submit.prevent="submit">
                     <!-- Hint para modo bulk -->
                     <div
                         v-if="isBulkMode"

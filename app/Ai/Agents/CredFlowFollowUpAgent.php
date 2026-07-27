@@ -127,7 +127,7 @@ class CredFlowFollowUpAgent extends BaseCustomerServiceAgent
 
         // Permite registrar opt-out quando cliente recusa durante o follow-up
         if (! in_array($this->lead->status, ['convertido', 'optou_sair'])) {
-            $tools[] = new AtualizarStatusLeadTool($this->lead);
+            $tools[] = new AtualizarStatusLeadTool($this->lead, ['optou_sair']);
         }
 
         return $this->applyToolCapabilities($tools);
