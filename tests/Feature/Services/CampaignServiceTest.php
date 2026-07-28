@@ -213,6 +213,142 @@ test('checkDailyLimit returns false when at daily limit', function () {
     expect($service->checkDailyLimit($campaign))->toBeFalse();
 });
 
+test('reprocessFailures revives never-sent failed rows and reopens a paused campaign', function () {
+    Queue::fake();
+    $campaign = Campaign::factory()->paused()->create();
+
+    $failed = CampaignMessage::factory()->failed()->count(2)->create(['campaign_id' => $campaign->id]);
+
+    $service = app(CampaignService::class);
+    $revived = $service->reprocessFailures($campaign);
+
+    expect($revived)->toBe(2);
+    expect($campaign->fresh()->status)->toBe('sending');
+    foreach ($failed as $message) {
+        $fresh = $message->fresh();
+        expect($fresh->status)->toBe('pending');
+        expect($fresh->error_code)->toBeNull();
+        expect($fresh->failed_at)->toBeNull();
+    }
+    Queue::assertPushed(DispatchCampaignJob::class);
+});
+
+test('reprocessFailures never re-sends a failed row that already carries sent_at (webhook delivery failure)', function () {
+    Queue::fake();
+    $campaign = Campaign::factory()->paused()->create();
+
+    // Post-delivery webhook failure: status failed BUT the send already reached the contact.
+    $postSendFailure = CampaignMessage::factory()->failed()->create([
+        'campaign_id' => $campaign->id,
+        'sent_at' => now()->subMinutes(10),
+    ]);
+
+    $service = app(CampaignService::class);
+    $revived = $service->reprocessFailures($campaign);
+
+    expect($revived)->toBe(0);
+    expect($postSendFailure->fresh()->status)->toBe('failed');
+    expect($campaign->fresh()->status)->toBe('paused');
+    Queue::assertNotPushed(DispatchCampaignJob::class);
+});
+
+test('reprocessFailures leaves in_doubt rows untouched', function () {
+    Queue::fake();
+    $campaign = Campaign::factory()->paused()->create();
+
+    $inDoubt = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'in_doubt',
+        'error_code' => 'IN_DOUBT',
+    ]);
+
+    $revived = app(CampaignService::class)->reprocessFailures($campaign);
+
+    expect($revived)->toBe(0);
+    expect($inDoubt->fresh()->status)->toBe('in_doubt');
+});
+
+test('retryMessage revives a single failed row and dispatches', function () {
+    Queue::fake();
+    $campaign = Campaign::factory()->sending()->create();
+
+    $failed = CampaignMessage::factory()->failed()->create(['campaign_id' => $campaign->id]);
+    $otherFailed = CampaignMessage::factory()->failed()->create(['campaign_id' => $campaign->id]);
+
+    $retried = app(CampaignService::class)->retryMessage($campaign, $failed);
+
+    expect($retried)->toBeTrue();
+    expect($failed->fresh()->status)->toBe('pending');
+    expect($otherFailed->fresh()->status)->toBe('failed');
+    Queue::assertPushed(DispatchCampaignJob::class);
+});
+
+test('removeRecipients marks pending and queued rows as skipped but spares provider-attempted rows', function () {
+    $campaign = Campaign::factory()->sending()->create();
+
+    $pending = CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'status' => 'pending']);
+    $queued = CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'status' => 'queued']);
+    $inFlight = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'queued',
+        'provider_attempted_at' => now(),
+    ]);
+
+    $removed = app(CampaignService::class)->removeRecipients($campaign, [
+        $pending->id,
+        $queued->id,
+        $inFlight->id,
+    ]);
+
+    expect($removed)->toBe(2);
+    expect($pending->fresh()->status)->toBe('skipped');
+    expect($pending->fresh()->error_code)->toBe('REMOVED_MANUAL');
+    expect($queued->fresh()->status)->toBe('skipped');
+    expect($inFlight->fresh()->status)->toBe('queued');
+});
+
+test('duplicate creates a fresh draft copy with the same config and no history', function () {
+    $campaign = Campaign::factory()->completed()->create([
+        'daily_limit' => 500,
+        'delay_between_ms' => 1500,
+        'error_threshold_percent' => 15,
+    ]);
+    CampaignMessage::factory()->sent()->count(3)->create(['campaign_id' => $campaign->id]);
+
+    $copy = app(CampaignService::class)->duplicate($campaign);
+
+    expect($copy->id)->not->toBe($campaign->id);
+    expect($copy->status)->toBe('draft');
+    expect($copy->contact_list_id)->toBe($campaign->contact_list_id);
+    expect($copy->whatsapp_template_id)->toBe($campaign->whatsapp_template_id);
+    expect($copy->daily_limit)->toBe(500);
+    expect($copy->delay_between_ms)->toBe(1500);
+    expect($copy->error_threshold_percent)->toBe(15);
+    expect($copy->name)->toContain('(cópia)');
+    expect($copy->messages()->count())->toBe(0);
+});
+
+test('updateThrottle updates limits on a paused campaign but rejects a completed one', function () {
+    $paused = Campaign::factory()->paused()->create(['daily_limit' => 100]);
+
+    app(CampaignService::class)->updateThrottle($paused, [
+        'daily_limit' => 2500,
+        'delay_between_ms' => 800,
+        'error_threshold_percent' => 20,
+    ]);
+
+    expect($paused->fresh()->daily_limit)->toBe(2500);
+    expect($paused->fresh()->delay_between_ms)->toBe(800);
+
+    $completed = Campaign::factory()->completed()->create();
+
+    expect(fn () => app(CampaignService::class)->updateThrottle($completed, [
+        'daily_limit' => 10,
+        'delay_between_ms' => 0,
+        'error_threshold_percent' => 5,
+    ]))->toThrow(RuntimeException::class);
+});
+
 test('checkDailyLimit counts only messages sent today (SCALE-6)', function () {
     $campaign = Campaign::factory()->sending()->create(['daily_limit' => 2]);
 

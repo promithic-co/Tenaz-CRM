@@ -1,6 +1,17 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { AlertTriangle } from 'lucide-vue-next';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import {
+    AlertTriangle,
+    Ban,
+    Copy,
+    Download,
+    RotateCcw,
+    Search,
+    Send,
+    SlidersHorizontal,
+    Trash2,
+    X,
+} from 'lucide-vue-next';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import CampaignController from '@/actions/App/Http/Controllers/CampaignController';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -57,6 +68,13 @@ type CampaignMessage = {
     contact_list_entry: { id: number; name: string; phone: string } | null;
 };
 
+type StatusCounts = Record<string, number>;
+type DailyBudget = {
+    sent_today: number;
+    daily_limit: number;
+    remaining: number;
+};
+
 type Props = {
     campaign: Campaign;
     messages: {
@@ -65,6 +83,9 @@ type Props = {
         links: Array<{ url: string | null; label: string; active: boolean }>;
     };
     repliedCount: number;
+    statusCounts: StatusCounts;
+    dailyBudget: DailyBudget;
+    filters: { status: string | null; search: string | null };
 };
 
 const props = defineProps<Props>();
@@ -77,71 +98,227 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // Polling
 let pollInterval: ReturnType<typeof setInterval> | null = null;
+const pollKeys = [
+    'campaign',
+    'messages',
+    'statusCounts',
+    'dailyBudget',
+    'repliedCount',
+];
+
+function startPolling(): void {
+    if (pollInterval) {
+        return;
+    }
+    pollInterval = setInterval(() => {
+        router.reload({ only: pollKeys });
+    }, 5000);
+}
+
+function stopPolling(): void {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+    }
+}
 
 onMounted(() => {
     if (props.campaign.status === 'sending') {
-        pollInterval = setInterval(() => {
-            router.reload({ only: ['campaign', 'messages'] });
-        }, 5000);
+        startPolling();
     }
 });
 
-onUnmounted(() => {
-    if (pollInterval) {
-        clearInterval(pollInterval);
-    }
-});
+onUnmounted(stopPolling);
 
 watch(
     () => props.campaign.status,
     (newStatus) => {
-        if (newStatus !== 'sending' && pollInterval) {
-            clearInterval(pollInterval);
-            pollInterval = null;
+        if (newStatus === 'sending') {
+            startPolling();
+        } else {
+            stopPolling();
         }
     },
 );
 
-// Actions
+// Lifecycle control actions
+function post(url: string): void {
+    router.post(url, {}, { preserveScroll: true });
+}
+
 function startCampaign(): void {
-    router.post(
-        CampaignController.start(props.campaign.id).url,
-        {},
-        { preserveScroll: true },
-    );
+    post(CampaignController.start(props.campaign.id).url);
 }
-
 function pauseCampaign(): void {
-    router.post(
-        CampaignController.pause(props.campaign.id).url,
-        {},
-        { preserveScroll: true },
-    );
+    post(CampaignController.pause(props.campaign.id).url);
 }
-
 function resumeCampaign(): void {
-    router.post(
-        CampaignController.resume(props.campaign.id).url,
-        {},
-        { preserveScroll: true },
-    );
+    post(CampaignController.resume(props.campaign.id).url);
 }
-
+function cancelCampaign(): void {
+    if (
+        !confirm(
+            'Cancelar esta campanha? Os envios pendentes não serão realizados.',
+        )
+    ) {
+        return;
+    }
+    post(CampaignController.cancel(props.campaign.id).url);
+}
+function duplicateCampaign(): void {
+    router.post(CampaignController.duplicate(props.campaign.id).url);
+}
+function reprocessFailures(): void {
+    if (
+        !confirm('Reprocessar as mensagens com falha? Elas serão reenviadas.')
+    ) {
+        return;
+    }
+    post(CampaignController.reprocessFailures(props.campaign.id).url);
+}
 function keepPausedForQualityRisk(): void {
+    post(CampaignController.keepPausedForQualityRisk(props.campaign.id).url);
+}
+function continueWithQualityRisk(): void {
+    post(CampaignController.continueWithQualityRisk(props.campaign.id).url);
+}
+
+function retryMessage(id: number): void {
     router.post(
-        CampaignController.keepPausedForQualityRisk(props.campaign.id).url,
+        CampaignController.retryMessage([props.campaign.id, id]).url,
         {},
         { preserveScroll: true },
     );
 }
 
-function continueWithQualityRisk(): void {
-    router.post(
-        CampaignController.continueWithQualityRisk(props.campaign.id).url,
-        {},
-        { preserveScroll: true },
+// Throttle editor
+const throttleOpen = ref(false);
+const throttleForm = useForm({
+    daily_limit: props.campaign.daily_limit,
+    delay_between_ms: props.campaign.delay_between_ms,
+    error_threshold_percent: props.campaign.error_threshold_percent,
+});
+const throttleEditable = computed(
+    () => !['completed', 'cancelled'].includes(props.campaign.status),
+);
+
+function saveThrottle(): void {
+    throttleForm.patch(
+        CampaignController.updateThrottle(props.campaign.id).url,
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                throttleOpen.value = false;
+            },
+        },
     );
 }
+
+// Selection + bulk remove
+const selected = ref<Set<number>>(new Set());
+
+function isSelectable(msg: CampaignMessage): boolean {
+    return msg.status === 'pending' || msg.status === 'queued';
+}
+
+const selectablePageIds = computed(() =>
+    props.messages.data.filter(isSelectable).map((m) => m.id),
+);
+const allPageSelected = computed(
+    () =>
+        selectablePageIds.value.length > 0 &&
+        selectablePageIds.value.every((id) => selected.value.has(id)),
+);
+
+function toggleRow(id: number): void {
+    const next = new Set(selected.value);
+    if (next.has(id)) {
+        next.delete(id);
+    } else {
+        next.add(id);
+    }
+    selected.value = next;
+}
+
+function toggleAllPage(): void {
+    const next = new Set(selected.value);
+    if (allPageSelected.value) {
+        selectablePageIds.value.forEach((id) => next.delete(id));
+    } else {
+        selectablePageIds.value.forEach((id) => next.add(id));
+    }
+    selected.value = next;
+}
+
+function clearSelection(): void {
+    selected.value = new Set();
+}
+
+function removeSelected(): void {
+    const ids = Array.from(selected.value);
+    if (ids.length === 0) {
+        return;
+    }
+    if (
+        !confirm(
+            `Remover ${ids.length} destinatário(s) pendente(s) do disparo?`,
+        )
+    ) {
+        return;
+    }
+    router.post(
+        CampaignController.removeRecipients(props.campaign.id).url,
+        { message_ids: ids },
+        {
+            preserveScroll: true,
+            onSuccess: clearSelection,
+        },
+    );
+}
+
+// Filtering + search
+const statusFilter = ref(props.filters.status ?? '');
+const searchTerm = ref(props.filters.search ?? '');
+let searchDebounce: ReturnType<typeof setTimeout> | null = null;
+
+function reloadMessages(): void {
+    const query: Record<string, string> = {};
+    if (statusFilter.value) {
+        query.status = statusFilter.value;
+    }
+    if (searchTerm.value.trim()) {
+        query.search = searchTerm.value.trim();
+    }
+    router.get(CampaignController.show(props.campaign.id).url, query, {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['messages', 'filters'],
+        onSuccess: clearSelection,
+    });
+}
+
+function setStatus(value: string): void {
+    statusFilter.value = value;
+    reloadMessages();
+}
+
+watch(searchTerm, () => {
+    if (searchDebounce) {
+        clearTimeout(searchDebounce);
+    }
+    searchDebounce = setTimeout(reloadMessages, 350);
+});
+
+const exportUrl = computed(() => {
+    const query: Record<string, string> = {};
+    if (statusFilter.value) {
+        query.status = statusFilter.value;
+    }
+    if (searchTerm.value.trim()) {
+        query.search = searchTerm.value.trim();
+    }
+    return CampaignController.export(props.campaign.id, { query }).url;
+});
 
 // Status helpers
 function statusBadgeClass(status: string): string {
@@ -182,6 +359,8 @@ function msgStatusBadgeClass(status: string): string {
         pending:
             'rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground',
         queued: 'rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+        in_doubt:
+            'rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
         sent: 'rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-medium text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
         delivered:
             'rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400',
@@ -196,10 +375,17 @@ function msgStatusBadgeClass(status: string): string {
     );
 }
 
-function msgStatusLabel(status: string): string {
+function msgStatusLabel(
+    status: string,
+    errorCode: string | null = null,
+): string {
+    if (status === 'skipped' && errorCode === 'REMOVED_MANUAL') {
+        return 'Removido';
+    }
     const map: Record<string, string> = {
         pending: 'Pendente',
         queued: 'Na fila',
+        in_doubt: 'Em dúvida',
         sent: 'Enviado',
         delivered: 'Entregue',
         read: 'Lido',
@@ -260,19 +446,70 @@ const funnelBars = computed(() => [
     { label: 'Responderam', count: props.repliedCount, color: 'bg-orange-500' },
 ]);
 
+// Derived control-availability flags
+const failedCount = computed(() => props.statusCounts.failed ?? 0);
+const pendingCount = computed(
+    () => (props.statusCounts.pending ?? 0) + (props.statusCounts.queued ?? 0),
+);
+const canReprocess = computed(
+    () =>
+        failedCount.value > 0 &&
+        ['sending', 'paused', 'completed'].includes(props.campaign.status),
+);
+const canCancel = computed(() =>
+    ['sending', 'paused'].includes(props.campaign.status),
+);
+
+const budgetPercent = computed(() =>
+    safePercent(props.dailyBudget.sent_today, props.dailyBudget.daily_limit),
+);
+const etaMinutes = computed(() => {
+    if (props.campaign.delay_between_ms <= 0 || pendingCount.value === 0) {
+        return 0;
+    }
+    return Math.ceil(
+        (pendingCount.value * props.campaign.delay_between_ms) / 60000,
+    );
+});
+
+// Clickable status chips (counts from statusCounts)
+const totalRecipientsCount = computed(() =>
+    Object.values(props.statusCounts).reduce((sum, n) => sum + n, 0),
+);
+const statusChips = computed(() => [
+    { value: '', label: 'Todos', count: totalRecipientsCount.value },
+    {
+        value: 'pending',
+        label: 'Pendente',
+        count: props.statusCounts.pending ?? 0,
+    },
+    {
+        value: 'queued',
+        label: 'Na fila',
+        count: props.statusCounts.queued ?? 0,
+    },
+    { value: 'sent', label: 'Enviado', count: props.statusCounts.sent ?? 0 },
+    {
+        value: 'delivered',
+        label: 'Entregue',
+        count: props.statusCounts.delivered ?? 0,
+    },
+    { value: 'read', label: 'Lido', count: props.statusCounts.read ?? 0 },
+    {
+        value: 'in_doubt',
+        label: 'Em dúvida',
+        count: props.statusCounts.in_doubt ?? 0,
+    },
+    { value: 'failed', label: 'Falha', count: props.statusCounts.failed ?? 0 },
+    {
+        value: 'skipped',
+        label: 'Ignorado',
+        count: props.statusCounts.skipped ?? 0,
+    },
+]);
+
 // Template preview collapsible
 const templateExpanded = ref(false);
-
-// Filter
-const statusFilter = ref('');
-
-function applyFilter(): void {
-    router.get(
-        CampaignController.show(props.campaign.id).url,
-        statusFilter.value ? { status: statusFilter.value } : {},
-        { preserveScroll: true, preserveState: true, only: ['messages'] },
-    );
-}
 </script>
 
 <template>
@@ -308,10 +545,10 @@ function applyFilter(): void {
                                 campaign.status === 'draft' ||
                                 campaign.status === 'scheduled'
                             "
-                            class="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700"
+                            class="inline-flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700"
                             @click="startCampaign"
                         >
-                            Iniciar Envio
+                            <Send class="h-3.5 w-3.5" /> Iniciar Envio
                         </button>
                         <button
                             v-if="campaign.status === 'sending'"
@@ -326,6 +563,27 @@ function applyFilter(): void {
                             @click="resumeCampaign"
                         >
                             Retomar
+                        </button>
+                        <button
+                            v-if="canReprocess"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                            @click="reprocessFailures"
+                        >
+                            <RotateCcw class="h-3.5 w-3.5" />
+                            Reprocessar falhas ({{ failedCount }})
+                        </button>
+                        <button
+                            v-if="canCancel"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-red-300 bg-background px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
+                            @click="cancelCampaign"
+                        >
+                            <Ban class="h-3.5 w-3.5" /> Cancelar
+                        </button>
+                        <button
+                            class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                            @click="duplicateCampaign"
+                        >
+                            <Copy class="h-3.5 w-3.5" /> Duplicar
                         </button>
                     </div>
                 </div>
@@ -362,7 +620,11 @@ function applyFilter(): void {
                                     class="mt-1 text-xs text-red-700 dark:text-red-300"
                                 >
                                     Risco confirmado em
-                                    {{ formatDateTime(campaign.risk_acknowledged_at) }}.
+                                    {{
+                                        formatDateTime(
+                                            campaign.risk_acknowledged_at,
+                                        )
+                                    }}.
                                 </p>
                             </div>
                         </div>
@@ -431,14 +693,102 @@ function applyFilter(): void {
                         </p>
                     </div>
                     <div>
-                        <p class="text-xs text-muted-foreground">
-                            Limite Diário / Atraso
-                        </p>
+                        <div class="flex items-center gap-2">
+                            <p class="text-xs text-muted-foreground">
+                                Limite Diário / Atraso
+                            </p>
+                            <button
+                                v-if="throttleEditable"
+                                type="button"
+                                class="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                                @click="throttleOpen = !throttleOpen"
+                            >
+                                <SlidersHorizontal class="h-3 w-3" /> Editar
+                            </button>
+                        </div>
                         <p class="text-sm font-medium text-foreground">
                             {{ campaign.daily_limit }} msgs /
                             {{ campaign.delay_between_ms }}ms
                         </p>
                     </div>
+                </div>
+
+                <!-- Throttle editor -->
+                <div
+                    v-if="throttleOpen && throttleEditable"
+                    class="border-t border-sidebar-border/70 bg-muted/30 px-4 py-3 dark:border-sidebar-border"
+                >
+                    <div class="flex flex-wrap items-end gap-3">
+                        <label class="flex flex-col gap-1">
+                            <span class="text-xs text-muted-foreground"
+                                >Limite diário (msgs)</span
+                            >
+                            <input
+                                v-model.number="throttleForm.daily_limit"
+                                type="number"
+                                min="1"
+                                max="100000"
+                                class="w-32 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
+                            />
+                        </label>
+                        <label class="flex flex-col gap-1">
+                            <span class="text-xs text-muted-foreground"
+                                >Atraso entre envios (ms)</span
+                            >
+                            <input
+                                v-model.number="throttleForm.delay_between_ms"
+                                type="number"
+                                min="0"
+                                max="60000"
+                                class="w-32 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
+                            />
+                        </label>
+                        <label class="flex flex-col gap-1">
+                            <span class="text-xs text-muted-foreground"
+                                >Limiar de falhas (%)</span
+                            >
+                            <input
+                                v-model.number="
+                                    throttleForm.error_threshold_percent
+                                "
+                                type="number"
+                                min="1"
+                                max="100"
+                                class="w-32 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
+                            />
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <button
+                                type="button"
+                                :disabled="throttleForm.processing"
+                                class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                                @click="saveThrottle"
+                            >
+                                Salvar
+                            </button>
+                            <button
+                                type="button"
+                                class="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                                @click="throttleOpen = false"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                    <p
+                        v-if="
+                            throttleForm.errors.daily_limit ||
+                            throttleForm.errors.delay_between_ms ||
+                            throttleForm.errors.error_threshold_percent
+                        "
+                        class="mt-2 text-xs text-red-600 dark:text-red-400"
+                    >
+                        {{
+                            throttleForm.errors.daily_limit ||
+                            throttleForm.errors.delay_between_ms ||
+                            throttleForm.errors.error_threshold_percent
+                        }}
+                    </p>
                 </div>
             </div>
 
@@ -573,6 +923,33 @@ function applyFilter(): void {
                 </div>
             </div>
 
+            <!-- Daily budget -->
+            <div
+                class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card px-4 py-3 dark:border-sidebar-border"
+            >
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span
+                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                        >Orçamento de hoje</span
+                    >
+                    <span class="text-xs text-muted-foreground">
+                        {{ dailyBudget.sent_today }} /
+                        {{ dailyBudget.daily_limit }} enviados hoje ·
+                        {{ dailyBudget.remaining }} restantes
+                        <template v-if="pendingCount > 0 && etaMinutes > 0">
+                            · ~{{ etaMinutes }}min para {{ pendingCount }} na
+                            fila
+                        </template>
+                    </span>
+                </div>
+                <div class="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                        class="h-full rounded-full bg-primary transition-all"
+                        :style="{ width: `${budgetPercent}%` }"
+                    />
+                </div>
+            </div>
+
             <!-- Delivery Funnel -->
             <div
                 class="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border"
@@ -650,129 +1027,249 @@ function applyFilter(): void {
 
             <!-- Per-recipient table -->
             <div
-                class="overflow-x-auto rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border"
+                class="rounded-xl border border-sidebar-border/70 bg-card dark:border-sidebar-border"
             >
+                <!-- Toolbar -->
                 <div
-                    class="flex items-center justify-between border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border"
+                    class="flex flex-col gap-3 border-b border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border"
                 >
-                    <span
-                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-2"
                     >
-                        Destinatários ({{ messages.total }})
-                    </span>
-                    <select
-                        v-model="statusFilter"
-                        class="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
-                        @change="applyFilter"
-                    >
-                        <option value="">Todos</option>
-                        <option value="pending">Pendente</option>
-                        <option value="queued">Na fila</option>
-                        <option value="sent">Enviado</option>
-                        <option value="delivered">Entregue</option>
-                        <option value="read">Lido</option>
-                        <option value="failed">Falha</option>
-                        <option value="skipped">Ignorado (opt-out)</option>
-                    </select>
+                        <span
+                            class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                        >
+                            Destinatários ({{ messages.total }})
+                        </span>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div class="relative">
+                                <Search
+                                    class="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                                />
+                                <input
+                                    v-model="searchTerm"
+                                    type="search"
+                                    placeholder="Buscar nome ou telefone"
+                                    class="w-56 rounded-md border border-input bg-background py-1 pr-2 pl-7 text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
+                                />
+                            </div>
+                            <a
+                                :href="exportUrl"
+                                class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                            >
+                                <Download class="h-3.5 w-3.5" /> Exportar CSV
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Status filter chips -->
+                    <div class="flex flex-wrap gap-1.5">
+                        <button
+                            v-for="chip in statusChips"
+                            :key="chip.value || 'all'"
+                            type="button"
+                            :class="[
+                                'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+                                statusFilter === chip.value
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                            ]"
+                            @click="setStatus(chip.value)"
+                        >
+                            {{ chip.label }}
+                            <span
+                                :class="[
+                                    'rounded-full px-1.5 text-[10px]',
+                                    statusFilter === chip.value
+                                        ? 'bg-primary-foreground/20'
+                                        : 'bg-background/60',
+                                ]"
+                                >{{ chip.count }}</span
+                            >
+                        </button>
+                    </div>
                 </div>
 
-                <table class="w-full min-w-[50rem] text-sm">
-                    <thead
-                        class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border"
-                    >
-                        <tr>
-                            <th
-                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
-                            >
-                                Nome
-                            </th>
-                            <th
-                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
-                            >
-                                Telefone
-                            </th>
-                            <th
-                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
-                            >
-                                Status
-                            </th>
-                            <th
-                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
-                            >
-                                Enviado em
-                            </th>
-                            <th
-                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
-                            >
-                                Entregue em
-                            </th>
-                            <th
-                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
-                            >
-                                Lido em
-                            </th>
-                            <th
-                                class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
-                            >
-                                Erro
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody
-                        class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border"
-                    >
-                        <tr
-                            v-for="msg in messages.data"
-                            :key="msg.id"
-                            class="transition-colors hover:bg-muted/40"
+                <!-- Bulk action bar -->
+                <div
+                    v-if="selected.size > 0"
+                    class="flex flex-wrap items-center justify-between gap-2 border-b border-sidebar-border/70 bg-primary/5 px-4 py-2 dark:border-sidebar-border"
+                >
+                    <span class="text-xs font-medium text-foreground">
+                        {{ selected.size }} selecionado(s)
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                            @click="removeSelected"
                         >
-                            <td
-                                class="px-4 py-3 text-sm font-medium text-foreground"
+                            <Trash2 class="h-3.5 w-3.5" /> Remover do disparo
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                            @click="clearSelection"
+                        >
+                            <X class="h-3.5 w-3.5" /> Limpar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[52rem] text-sm">
+                        <thead
+                            class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border"
+                        >
+                            <tr>
+                                <th class="w-10 px-4 py-3 text-left">
+                                    <input
+                                        type="checkbox"
+                                        :checked="allPageSelected"
+                                        :disabled="
+                                            selectablePageIds.length === 0
+                                        "
+                                        class="h-3.5 w-3.5 rounded border-input"
+                                        @change="toggleAllPage"
+                                    />
+                                </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                                >
+                                    Nome
+                                </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                                >
+                                    Telefone
+                                </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                                >
+                                    Status
+                                </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                                >
+                                    Enviado em
+                                </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                                >
+                                    Entregue em
+                                </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                                >
+                                    Lido em
+                                </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                                >
+                                    Erro
+                                </th>
+                                <th class="px-4 py-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody
+                            class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border"
+                        >
+                            <tr
+                                v-for="msg in messages.data"
+                                :key="msg.id"
+                                class="transition-colors hover:bg-muted/40"
+                                :class="
+                                    selected.has(msg.id) ? 'bg-primary/5' : ''
+                                "
                             >
-                                {{ msg.contact_list_entry?.name ?? '—' }}
-                            </td>
-                            <td class="px-4 py-3 text-xs text-muted-foreground">
-                                {{ msg.contact_list_entry?.phone ?? '—' }}
-                            </td>
-                            <td class="px-4 py-3">
-                                <span
-                                    :class="msgStatusBadgeClass(msg.status)"
-                                    >{{ msgStatusLabel(msg.status) }}</span
+                                <td class="px-4 py-3">
+                                    <input
+                                        v-if="isSelectable(msg)"
+                                        type="checkbox"
+                                        :checked="selected.has(msg.id)"
+                                        class="h-3.5 w-3.5 rounded border-input"
+                                        @change="toggleRow(msg.id)"
+                                    />
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-sm font-medium text-foreground"
                                 >
-                            </td>
-                            <td class="px-4 py-3 text-xs text-muted-foreground">
-                                {{ formatDateTime(msg.sent_at) ?? '—' }}
-                            </td>
-                            <td class="px-4 py-3 text-xs text-muted-foreground">
-                                {{ formatDateTime(msg.delivered_at) ?? '—' }}
-                            </td>
-                            <td class="px-4 py-3 text-xs text-muted-foreground">
-                                {{ formatDateTime(msg.read_at) ?? '—' }}
-                            </td>
-                            <td class="px-4 py-3 text-xs text-muted-foreground">
-                                <span
-                                    v-if="msg.error_code"
-                                    :title="msg.error_message ?? undefined"
-                                    class="cursor-help"
+                                    {{ msg.contact_list_entry?.name ?? '—' }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-xs text-muted-foreground"
                                 >
-                                    {{ msg.error_code }}:
+                                    {{ msg.contact_list_entry?.phone ?? '—' }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span
+                                        :class="msgStatusBadgeClass(msg.status)"
+                                        >{{
+                                            msgStatusLabel(
+                                                msg.status,
+                                                msg.error_code,
+                                            )
+                                        }}</span
+                                    >
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-xs text-muted-foreground"
+                                >
+                                    {{ formatDateTime(msg.sent_at) ?? '—' }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-xs text-muted-foreground"
+                                >
                                     {{
-                                        msg.error_message
-                                            ? msg.error_message.substring(
-                                                  0,
-                                                  30,
-                                              ) +
-                                              (msg.error_message.length > 30
-                                                  ? '...'
-                                                  : '')
-                                            : ''
+                                        formatDateTime(msg.delivered_at) ?? '—'
                                     }}
-                                </span>
-                                <span v-else>—</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-xs text-muted-foreground"
+                                >
+                                    {{ formatDateTime(msg.read_at) ?? '—' }}
+                                </td>
+                                <td
+                                    class="px-4 py-3 text-xs text-muted-foreground"
+                                >
+                                    <span
+                                        v-if="msg.error_code"
+                                        :title="msg.error_message ?? undefined"
+                                        class="cursor-help"
+                                    >
+                                        {{ msg.error_code }}:
+                                        {{
+                                            msg.error_message
+                                                ? msg.error_message.substring(
+                                                      0,
+                                                      30,
+                                                  ) +
+                                                  (msg.error_message.length > 30
+                                                      ? '...'
+                                                      : '')
+                                                : ''
+                                        }}
+                                    </span>
+                                    <span v-else>—</span>
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <button
+                                        v-if="
+                                            msg.status === 'failed' &&
+                                            !msg.sent_at &&
+                                            canReprocess
+                                        "
+                                        type="button"
+                                        class="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                                        @click="retryMessage(msg.id)"
+                                    >
+                                        <RotateCcw class="h-3 w-3" /> Reenviar
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
                 <div
                     v-if="messages.data.length === 0"
@@ -787,17 +1284,19 @@ function applyFilter(): void {
                     class="flex min-w-max items-center gap-1 border-t border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border"
                 >
                     <template v-for="link in messages.links" :key="link.label">
-                        <a
+                        <Link
                             v-if="link.url"
                             :href="link.url"
-                            v-html="link.label"
+                            preserve-scroll
                             :class="[
                                 'rounded px-3 py-1 text-sm',
                                 link.active
                                     ? 'bg-primary font-medium text-primary-foreground'
                                     : 'text-muted-foreground hover:bg-muted',
                             ]"
-                        />
+                        >
+                            <span v-html="link.label" />
+                        </Link>
                         <span
                             v-else
                             v-html="link.label"

@@ -4,11 +4,13 @@ namespace App\Services;
 
 use App\Enums\TemplateKind;
 use App\Models\Campaign;
+use App\Models\CampaignMessage;
 use App\Models\ContactList;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -52,7 +54,14 @@ class CampaignPagePropsBuilder
     }
 
     /**
-     * @return array{campaign: Campaign, messages: mixed, repliedCount: int}
+     * @return array{
+     *     campaign: Campaign,
+     *     messages: mixed,
+     *     repliedCount: int,
+     *     statusCounts: array<string, int>,
+     *     dailyBudget: array{sent_today: int, daily_limit: int, remaining: int},
+     *     filters: array{status: string|null, search: string|null}
+     * }
      */
     public function show(Campaign $campaign, Request $request): array
     {
@@ -62,16 +71,92 @@ class CampaignPagePropsBuilder
             'whatsappInstance:id,name,display_name,meta_quality_rating',
         ]);
 
-        $messagesQuery = $campaign->messages()->with(['contactListEntry:id,name,phone']);
-
-        if ($request->input('status')) {
-            $messagesQuery->where('status', $request->input('status'));
-        }
-
         return [
             'campaign' => $campaign,
-            'messages' => $messagesQuery->orderByDesc('sent_at')->paginate(25),
+            'messages' => $this->messagesQuery($campaign, $request)
+                ->orderByDesc('sent_at')
+                ->orderByDesc('id')
+                ->paginate(25)
+                ->withQueryString(),
             'repliedCount' => Lead::where('campaign_id', $campaign->id)->count(),
+            'statusCounts' => $this->statusCounts($campaign),
+            'dailyBudget' => $this->dailyBudget($campaign),
+            'filters' => [
+                'status' => $request->input('status'),
+                'search' => $request->input('search'),
+            ],
+        ];
+    }
+
+    /**
+     * Filtered recipient query shared by the Show table and the CSV export, so both honour
+     * the same status + free-text (name/phone) filters. Eager-loads the entry the views read.
+     *
+     * @return HasMany<CampaignMessage, Campaign>
+     */
+    public function messagesQuery(Campaign $campaign, Request $request): HasMany
+    {
+        $query = $campaign->messages()->with(['contactListEntry:id,name,phone']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('search')) {
+            $term = trim((string) $request->input('search'));
+            $digits = preg_replace('/\D+/', '', $term);
+
+            $query->whereHas('contactListEntry', function (Builder $entry) use ($term, $digits): void {
+                $entry->where('name', 'like', "%{$term}%");
+
+                if ($digits !== '' && $digits !== null) {
+                    $entry->orWhere('phone', 'like', "%{$digits}%");
+                }
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * Per-status recipient counts backing the clickable status cards. Every known status is
+     * present (zero-filled) so the frontend never has to guess which keys exist.
+     *
+     * @return array<string, int>
+     */
+    private function statusCounts(Campaign $campaign): array
+    {
+        $counts = $campaign->messages()
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $statuses = ['pending', 'queued', 'in_doubt', 'sent', 'delivered', 'read', 'failed', 'skipped'];
+
+        $result = [];
+
+        foreach ($statuses as $status) {
+            $result[$status] = (int) ($counts[$status] ?? 0);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Today's send budget: how many sends the campaign has spent today against its daily_limit.
+     *
+     * @return array{sent_today: int, daily_limit: int, remaining: int}
+     */
+    private function dailyBudget(Campaign $campaign): array
+    {
+        $sentToday = $campaign->messages()
+            ->whereBetween('sent_at', [today()->startOfDay(), today()->endOfDay()])
+            ->count();
+
+        return [
+            'sent_today' => $sentToday,
+            'daily_limit' => (int) $campaign->daily_limit,
+            'remaining' => max(0, (int) $campaign->daily_limit - $sentToday),
         ];
     }
 

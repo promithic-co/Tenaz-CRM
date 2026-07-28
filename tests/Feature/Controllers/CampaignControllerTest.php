@@ -2,6 +2,7 @@
 
 use App\Enums\TenantRole;
 use App\Models\Campaign;
+use App\Models\CampaignMessage;
 use App\Models\ContactList;
 use App\Models\User;
 use App\Models\WhatsappInstance;
@@ -240,4 +241,134 @@ test('start pause and resume are forbidden for another tenant', function () {
     $campaign = Campaign::factory()->sending()->create(['tenant_id' => $user->tenantId]);
 
     $this->actingAs($other)->post("/campanhas/{$campaign->id}/pause")->assertNotFound();
+});
+
+test('cancel action transitions a sending campaign to cancelled', function () {
+    $user = makeCampaignUser();
+    $campaign = Campaign::factory()->sending()->create(['tenant_id' => $user->tenantId]);
+
+    $this->actingAs($user)->post("/campanhas/{$campaign->id}/cancel");
+
+    expect($campaign->fresh()->status)->toBe('cancelled');
+});
+
+test('duplicate action creates a draft copy and redirects to it', function () {
+    $user = makeCampaignUser();
+    $campaign = Campaign::factory()->completed()->create(['tenant_id' => $user->tenantId]);
+
+    $response = $this->actingAs($user)->post("/campanhas/{$campaign->id}/duplicate");
+
+    $copy = Campaign::where('tenant_id', $user->tenantId)
+        ->where('id', '!=', $campaign->id)
+        ->first();
+
+    expect($copy)->not->toBeNull();
+    expect($copy->status)->toBe('draft');
+    $response->assertRedirect(route('campanhas.show', $copy));
+});
+
+test('updateThrottle action updates the limits of a paused campaign', function () {
+    $user = makeCampaignUser();
+    $campaign = Campaign::factory()->paused()->create([
+        'tenant_id' => $user->tenantId,
+        'daily_limit' => 100,
+    ]);
+
+    $this->actingAs($user)->patch("/campanhas/{$campaign->id}/throttle", [
+        'daily_limit' => 3000,
+        'delay_between_ms' => 500,
+        'error_threshold_percent' => 12,
+    ]);
+
+    $fresh = $campaign->fresh();
+    expect($fresh->daily_limit)->toBe(3000);
+    expect($fresh->delay_between_ms)->toBe(500);
+    expect($fresh->error_threshold_percent)->toBe(12);
+});
+
+test('updateThrottle action validates the limit range', function () {
+    $user = makeCampaignUser();
+    $campaign = Campaign::factory()->paused()->create(['tenant_id' => $user->tenantId]);
+
+    $this->actingAs($user)->patch("/campanhas/{$campaign->id}/throttle", [
+        'daily_limit' => 0,
+        'delay_between_ms' => 500,
+        'error_threshold_percent' => 12,
+    ])->assertSessionHasErrors('daily_limit');
+});
+
+test('reprocessFailures action revives failed recipients', function () {
+    Queue::fake();
+    $user = makeCampaignUser();
+    $campaign = Campaign::factory()->paused()->create(['tenant_id' => $user->tenantId]);
+    $failed = CampaignMessage::factory()->failed()->create(['campaign_id' => $campaign->id]);
+
+    $this->actingAs($user)->post("/campanhas/{$campaign->id}/reprocess-failures");
+
+    expect($failed->fresh()->status)->toBe('pending');
+    expect($campaign->fresh()->status)->toBe('sending');
+});
+
+test('retryMessage action reenqueues a single failed recipient', function () {
+    Queue::fake();
+    $user = makeCampaignUser();
+    $campaign = Campaign::factory()->sending()->create(['tenant_id' => $user->tenantId]);
+    $failed = CampaignMessage::factory()->failed()->create(['campaign_id' => $campaign->id]);
+
+    $this->actingAs($user)->post("/campanhas/{$campaign->id}/messages/{$failed->id}/retry");
+
+    expect($failed->fresh()->status)->toBe('pending');
+});
+
+test('retryMessage action 404s for a message from another campaign', function () {
+    $user = makeCampaignUser();
+    $campaign = Campaign::factory()->sending()->create(['tenant_id' => $user->tenantId]);
+    $otherCampaign = Campaign::factory()->sending()->create(['tenant_id' => $user->tenantId]);
+    $foreign = CampaignMessage::factory()->failed()->create(['campaign_id' => $otherCampaign->id]);
+
+    $this->actingAs($user)->post("/campanhas/{$campaign->id}/messages/{$foreign->id}/retry")
+        ->assertNotFound();
+});
+
+test('removeRecipients action skips selected pending rows', function () {
+    $user = makeCampaignUser();
+    $campaign = Campaign::factory()->sending()->create(['tenant_id' => $user->tenantId]);
+    $pending = CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'status' => 'pending']);
+
+    $this->actingAs($user)->post("/campanhas/{$campaign->id}/remove-recipients", [
+        'message_ids' => [$pending->id],
+    ]);
+
+    expect($pending->fresh()->status)->toBe('skipped');
+    expect($pending->fresh()->error_code)->toBe('REMOVED_MANUAL');
+});
+
+test('removeRecipients action requires at least one recipient', function () {
+    $user = makeCampaignUser();
+    $campaign = Campaign::factory()->sending()->create(['tenant_id' => $user->tenantId]);
+
+    $this->actingAs($user)->post("/campanhas/{$campaign->id}/remove-recipients", [
+        'message_ids' => [],
+    ])->assertSessionHasErrors('message_ids');
+});
+
+test('export action streams a csv of recipients', function () {
+    $user = makeCampaignUser();
+    $campaign = Campaign::factory()->sending()->create(['tenant_id' => $user->tenantId]);
+    CampaignMessage::factory()->sent()->create(['campaign_id' => $campaign->id]);
+
+    $response = $this->actingAs($user)->get("/campanhas/{$campaign->id}/export");
+
+    $response->assertOk();
+    expect($response->headers->get('content-type'))->toContain('text/csv');
+});
+
+test('new control actions are forbidden for another tenant', function () {
+    $user = makeCampaignUser();
+    $other = makeCampaignUser();
+    $campaign = Campaign::factory()->sending()->create(['tenant_id' => $user->tenantId]);
+
+    $this->actingAs($other)->post("/campanhas/{$campaign->id}/cancel")->assertNotFound();
+    $this->actingAs($other)->post("/campanhas/{$campaign->id}/duplicate")->assertNotFound();
+    $this->actingAs($other)->post("/campanhas/{$campaign->id}/reprocess-failures")->assertNotFound();
 });

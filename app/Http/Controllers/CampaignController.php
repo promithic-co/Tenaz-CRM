@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RemoveCampaignRecipientsRequest;
 use App\Http\Requests\StoreCampaignRequest;
 use App\Http\Requests\UpdateCampaignRequest;
+use App\Http\Requests\UpdateCampaignThrottleRequest;
 use App\Models\Campaign;
+use App\Models\CampaignMessage;
 use App\Services\CampaignPagePropsBuilder;
 use App\Services\CampaignService;
 use App\Services\MetaQualityRiskService;
@@ -12,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CampaignController extends Controller
 {
@@ -143,6 +147,123 @@ class CampaignController extends Controller
         }
 
         return back()->with('success', 'Campanha retomada.');
+    }
+
+    public function cancel(Campaign $campanha, CampaignService $service): RedirectResponse
+    {
+        $this->authorize('update', $campanha);
+
+        try {
+            $service->cancel($campanha);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['campaign' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Campanha cancelada.');
+    }
+
+    public function duplicate(Campaign $campanha, CampaignService $service): RedirectResponse
+    {
+        $this->authorize('create', Campaign::class);
+        $this->authorize('view', $campanha);
+
+        $copy = $service->duplicate($campanha);
+
+        return redirect()->route('campanhas.show', $copy)
+            ->with('success', 'Campanha duplicada. Revise e inicie o envio.');
+    }
+
+    public function updateThrottle(UpdateCampaignThrottleRequest $request, Campaign $campanha, CampaignService $service): RedirectResponse
+    {
+        $this->authorize('update', $campanha);
+
+        try {
+            $service->updateThrottle($campanha, $request->validated());
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['campaign' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Limites atualizados.');
+    }
+
+    public function reprocessFailures(Campaign $campanha, CampaignService $service): RedirectResponse
+    {
+        $this->authorize('update', $campanha);
+
+        try {
+            $revived = $service->reprocessFailures($campanha);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['campaign' => $e->getMessage()]);
+        }
+
+        if ($revived === 0) {
+            return back()->with('info', 'Nenhuma falha reprocessável encontrada.');
+        }
+
+        return back()->with('success', "{$revived} destinatário(s) reprocessado(s).");
+    }
+
+    public function retryMessage(Campaign $campanha, CampaignMessage $message, CampaignService $service): RedirectResponse
+    {
+        $this->authorize('update', $campanha);
+
+        if ($message->campaign_id !== $campanha->id) {
+            abort(404);
+        }
+
+        try {
+            $retried = $service->retryMessage($campanha, $message);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['campaign' => $e->getMessage()]);
+        }
+
+        if (! $retried) {
+            return back()->with('info', 'Mensagem não pôde ser reenviada.');
+        }
+
+        return back()->with('success', 'Mensagem reenviada.');
+    }
+
+    public function removeRecipients(RemoveCampaignRecipientsRequest $request, Campaign $campanha, CampaignService $service): RedirectResponse
+    {
+        $this->authorize('update', $campanha);
+
+        $removed = $service->removeRecipients($campanha, $request->validated('message_ids'));
+
+        if ($removed === 0) {
+            return back()->with('info', 'Nenhum destinatário pendente removido.');
+        }
+
+        return back()->with('success', "{$removed} destinatário(s) removido(s) do disparo.");
+    }
+
+    public function export(Request $request, Campaign $campanha, CampaignPagePropsBuilder $pageProps): StreamedResponse
+    {
+        $this->authorize('view', $campanha);
+
+        $filename = 'campanha-'.$campanha->id.'-destinatarios-'.now()->format('Ymd-His').'.csv';
+
+        return response()->streamDownload(function () use ($campanha, $request, $pageProps): void {
+            $handle = fopen('php://output', 'wb');
+            fputcsv($handle, ['Nome', 'Telefone', 'Status', 'Enviado em', 'Entregue em', 'Lido em', 'Erro']);
+
+            $pageProps->messagesQuery($campanha, $request)
+                ->chunk(500, function ($messages) use ($handle): void {
+                    foreach ($messages as $message) {
+                        fputcsv($handle, [
+                            $message->contactListEntry?->name ?? '',
+                            $message->contactListEntry?->phone ?? '',
+                            $message->status,
+                            $message->sent_at?->toDateTimeString() ?? '',
+                            $message->delivered_at?->toDateTimeString() ?? '',
+                            $message->read_at?->toDateTimeString() ?? '',
+                            $message->error_code ? $message->error_code.': '.$message->error_message : '',
+                        ]);
+                    }
+                });
+
+            fclose($handle);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function keepPausedForQualityRisk(Campaign $campanha, MetaQualityRiskService $riskService): RedirectResponse

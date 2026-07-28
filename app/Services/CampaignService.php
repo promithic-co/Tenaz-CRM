@@ -12,6 +12,7 @@ use App\Models\WhatsappTemplate;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CampaignService
 {
@@ -222,6 +223,203 @@ class CampaignService
 
             return true;
         });
+    }
+
+    /**
+     * Create a fresh draft copy of a campaign, carrying over the audience, template,
+     * instance and throttle configuration but none of the send history or counters.
+     * Lets a user re-run a finished (or any) campaign without rebuilding it by hand.
+     */
+    public function duplicate(Campaign $campaign): Campaign
+    {
+        return Campaign::create([
+            'tenant_id' => $campaign->tenant_id,
+            'whatsapp_instance_id' => $campaign->whatsapp_instance_id,
+            'contact_list_id' => $campaign->contact_list_id,
+            'whatsapp_template_id' => $campaign->whatsapp_template_id,
+            'name' => Str::limit($campaign->name, 240, '').' (cópia)',
+            'template_params_mapping' => $campaign->template_params_mapping,
+            'daily_limit' => $campaign->daily_limit,
+            'delay_between_ms' => $campaign->delay_between_ms,
+            'error_threshold_percent' => $campaign->error_threshold_percent,
+            'status' => 'draft',
+        ]);
+    }
+
+    /**
+     * Update the live throttle knobs of a campaign. Editable in any pre-terminal state
+     * (draft/scheduled/paused/sending) so an operator can slow down or widen a running
+     * or paused campaign without recreating it. Immutable references (list/template/
+     * instance) are intentionally out of scope — those go through the guarded update path.
+     *
+     * @param  array{daily_limit: int, delay_between_ms: int, error_threshold_percent: int}  $attributes
+     */
+    public function updateThrottle(Campaign $campaign, array $attributes): void
+    {
+        if (in_array($campaign->status, ['completed', 'cancelled'], true)) {
+            throw new \RuntimeException("Campanha '{$campaign->name}' não permite editar limites (status: {$campaign->status}).");
+        }
+
+        $campaign->update([
+            'daily_limit' => $attributes['daily_limit'],
+            'delay_between_ms' => $attributes['delay_between_ms'],
+            'error_threshold_percent' => $attributes['error_threshold_percent'],
+        ]);
+
+        Log::info('CampaignService.update_throttle', ['campaign_id' => $campaign->id]);
+    }
+
+    /**
+     * Reprocess every failed recipient of a campaign: reset the failed rows back to a
+     * fresh 'pending' state and re-dispatch. A paused or completed campaign is reopened
+     * to 'sending' so the revived rows actually send. Returns the number of rows revived.
+     *
+     * Only rows with no sent_at are eligible: a 'failed' row that DOES carry sent_at is a
+     * post-delivery webhook failure (the send already reached the contact), so re-sending
+     * it would duplicate. in_doubt rows are also excluded — they are ambiguous by design
+     * (may have reached the contact) and are owned by the reconciliation timeout.
+     */
+    public function reprocessFailures(Campaign $campaign): int
+    {
+        $reset = DB::transaction(function () use ($campaign): int {
+            $locked = Campaign::query()->whereKey($campaign->getKey())->lockForUpdate()->first();
+
+            if (! $locked || ! in_array($locked->status, ['sending', 'paused', 'completed'], true)) {
+                throw new \RuntimeException("Campanha '{$campaign->name}' não pode reprocessar falhas (status: {$campaign->status}).");
+            }
+
+            $count = $this->reviveFailedMessages($locked, null);
+
+            $this->reopenForRevival($locked, $count);
+
+            $campaign->setRawAttributes($locked->getAttributes());
+
+            return $count;
+        });
+
+        if ($reset > 0) {
+            Log::info('CampaignService.reprocess_failures', ['campaign_id' => $campaign->id, 'revived' => $reset]);
+
+            DispatchCampaignJob::dispatch($campaign);
+        }
+
+        return $reset;
+    }
+
+    /**
+     * Retry a single failed recipient. Same safety envelope as reprocessFailures but scoped
+     * to one message. Returns true when the row was revived and a dispatch was queued.
+     */
+    public function retryMessage(Campaign $campaign, CampaignMessage $message): bool
+    {
+        if ($message->campaign_id !== $campaign->id) {
+            return false;
+        }
+
+        $reset = DB::transaction(function () use ($campaign, $message): int {
+            $locked = Campaign::query()->whereKey($campaign->getKey())->lockForUpdate()->first();
+
+            if (! $locked || ! in_array($locked->status, ['sending', 'paused', 'completed'], true)) {
+                throw new \RuntimeException("Campanha '{$campaign->name}' não pode reenviar mensagens (status: {$campaign->status}).");
+            }
+
+            $count = $this->reviveFailedMessages($locked, $message->getKey());
+
+            $this->reopenForRevival($locked, $count);
+
+            $campaign->setRawAttributes($locked->getAttributes());
+
+            return $count;
+        });
+
+        if ($reset > 0) {
+            Log::info('CampaignService.retry_message', ['campaign_id' => $campaign->id, 'message_id' => $message->id]);
+
+            DispatchCampaignJob::dispatch($campaign);
+        }
+
+        return $reset > 0;
+    }
+
+    /**
+     * Remove recipients from the disparo before they send. Marks the selected still-pending
+     * rows as 'skipped' (terminal, consent-neutral) with a distinct REMOVED_MANUAL code, so
+     * the fan-out and any live queue job stop sending to them. Rows already claimed by the
+     * provider (provider_attempted_at set) are left untouched to preserve the in-doubt guard.
+     *
+     * @param  list<int>  $messageIds
+     */
+    public function removeRecipients(Campaign $campaign, array $messageIds): int
+    {
+        if ($messageIds === []) {
+            return 0;
+        }
+
+        $removed = CampaignMessage::where('campaign_id', $campaign->id)
+            ->whereIn('id', $messageIds)
+            ->whereIn('status', ['pending', 'queued'])
+            ->whereNull('provider_attempted_at')
+            ->update([
+                'status' => 'skipped',
+                'error_code' => 'REMOVED_MANUAL',
+                'error_message' => 'Removido do disparo manualmente.',
+                'provider_attempt_token' => null,
+                'provider_attempt_lease_expires_at' => null,
+                'provider_retry_not_before' => null,
+            ]);
+
+        if ($removed > 0) {
+            Log::info('CampaignService.remove_recipients', ['campaign_id' => $campaign->id, 'removed' => $removed]);
+        }
+
+        return $removed;
+    }
+
+    /**
+     * Reset failed (never-sent) message rows to a clean pending state, ready for re-dispatch.
+     */
+    private function reviveFailedMessages(Campaign $campaign, ?int $onlyMessageId): int
+    {
+        $query = CampaignMessage::where('campaign_id', $campaign->id)
+            ->where('status', 'failed')
+            ->whereNull('sent_at');
+
+        if ($onlyMessageId !== null) {
+            $query->whereKey($onlyMessageId);
+        }
+
+        return $query->update([
+            'status' => 'pending',
+            'provider_attempted_at' => null,
+            'provider_attempt_token' => null,
+            'provider_attempt_lease_expires_at' => null,
+            'provider_retry_not_before' => null,
+            'error_code' => null,
+            'error_subcode' => null,
+            'provider_error_code' => null,
+            'provider_http_status' => null,
+            'provider_error_type' => null,
+            'provider_error_trace_id' => null,
+            'error_message' => null,
+            'failed_at' => null,
+        ]);
+    }
+
+    /**
+     * Reopen a paused/completed campaign to 'sending' when a revival actually reset rows.
+     */
+    private function reopenForRevival(Campaign $locked, int $revivedCount): void
+    {
+        if ($revivedCount > 0 && in_array($locked->status, ['paused', 'completed'], true)) {
+            $locked->update([
+                'status' => 'sending',
+                'paused_at' => null,
+                'completed_at' => null,
+                'failure_reason' => null,
+                'pause_reason_code' => null,
+                'paused_from_status' => null,
+            ]);
+        }
     }
 
     /**
