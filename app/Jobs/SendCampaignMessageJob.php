@@ -22,6 +22,7 @@ use App\Services\BroadcastDebouncer;
 use App\Services\CampaignConversationTimelineWriter;
 use App\Services\CampaignService;
 use App\Services\Dashboard\DashboardMetricsService;
+use App\Services\WhatsApp\MetaAccountErrorTaxonomy;
 use App\Services\WhatsApp\PhoneNumberValidator;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Illuminate\Contracts\Bus\Dispatcher;
@@ -664,7 +665,16 @@ class SendCampaignMessageJob implements ShouldQueue
         MetaCampaignConfigurationException $exception,
         string $attemptToken,
     ): bool {
-        $paused = DB::transaction(function () use ($campaign, $message, $exception, $attemptToken): bool {
+        // An account-level rejection (locked business, payment problem) is fatal for every
+        // send on this WABA, not just this one — surface it under its own reason code so the
+        // UI can say "conta Meta bloqueada" instead of a generic configuration rejection.
+        $accountPauseReason = MetaAccountErrorTaxonomy::pauseReasonCode($exception->getCode());
+        $reasonCode = $accountPauseReason
+            ?? ($exception->getCode() !== 0 ? 'META_'.$exception->getCode() : 'META_CONFIGURATION_REJECTED');
+        $failureReason = MetaAccountErrorTaxonomy::failureReason($exception->getCode())
+            ?? 'Meta rejected the campaign send configuration.';
+
+        $paused = DB::transaction(function () use ($campaign, $message, $exception, $attemptToken, $reasonCode, $failureReason): bool {
             $lockedCampaign = Campaign::query()->whereKey($campaign->getKey())->lockForUpdate()->first();
             $lockedMessage = CampaignMessage::query()->whereKey($message->getKey())->lockForUpdate()->first();
 
@@ -678,14 +688,12 @@ class SendCampaignMessageJob implements ShouldQueue
             $message->setRawAttributes($lockedMessage->getAttributes());
 
             if ($lockedCampaign->isSending()) {
-                $reasonCode = $exception->getCode() !== 0 ? 'META_'.$exception->getCode() : 'META_CONFIGURATION_REJECTED';
-
                 $lockedCampaign->update([
                     'status' => 'paused',
                     'paused_at' => now(),
                     'paused_from_status' => 'sending',
                     'pause_reason_code' => $reasonCode,
-                    'failure_reason' => 'Meta rejected the campaign send configuration.',
+                    'failure_reason' => $failureReason,
                 ]);
                 $campaign->setRawAttributes($lockedCampaign->getAttributes());
             }
@@ -702,6 +710,8 @@ class SendCampaignMessageJob implements ShouldQueue
             'message_id' => $message->id,
             'error_code' => $exception->getCode(),
             'provider_http_status' => $exception->httpStatus,
+            'pause_reason_code' => $reasonCode,
+            'account_level' => $accountPauseReason !== null,
         ]);
 
         return true;

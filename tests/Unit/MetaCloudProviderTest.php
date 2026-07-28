@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\MetaAccountBlockedException;
 use App\Exceptions\MetaAmbiguousSendException;
 use App\Exceptions\MetaApiException;
 use App\Exceptions\MetaCampaignConfigurationException;
@@ -7,6 +8,7 @@ use App\Exceptions\MetaInvalidNumberException;
 use App\Exceptions\MetaNoWhatsAppException;
 use App\Exceptions\MetaRateLimitException;
 use App\Exceptions\MetaRetryableException;
+use App\Services\WhatsApp\MetaAccountErrorTaxonomy;
 use App\Services\WhatsApp\Providers\MetaCloudProvider;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
@@ -132,6 +134,15 @@ it('maps template and auth rejections to campaign configuration errors', functio
     expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
         ->toThrow(MetaCampaignConfigurationException::class);
 })->with([132001, 190, 200]);
+
+it('maps account-level codes to a blocked-account error, not a recipient rejection', function (int $code): void {
+    Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['code' => $code, 'message' => 'Business Account locked']], 400)]);
+
+    expect(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->toThrow(MetaAccountBlockedException::class)
+        ->and(fn () => makeProvider()->sendText('5511999999999', 'test'))
+        ->not->toThrow(MetaNoWhatsAppException::class);
+})->with(MetaAccountErrorTaxonomy::codes());
 
 it('carries sanitized explicit response metadata on confirmed 4xx rejections', function (): void {
     Log::spy();

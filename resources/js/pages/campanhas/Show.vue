@@ -418,6 +418,23 @@ const failureRate = computed(() =>
 const hasMetaQualityRisk = computed(
     () => props.campaign.pause_reason_code === 'meta_quality_red_auto_pause',
 );
+// Account-level Meta blocks (MetaAccountErrorTaxonomy): fatal for the whole WABA, so they
+// get their own banner instead of reading as a generic high-failure-rate pause.
+const hasMetaAccountBlock = computed(() =>
+    ['meta_account_blocked', 'meta_account_payment_issue'].includes(
+        props.campaign.pause_reason_code ?? '',
+    ),
+);
+const metaAccountBlockTitle = computed(() =>
+    props.campaign.pause_reason_code === 'meta_account_payment_issue'
+        ? 'Pagamento da conta Meta com problema'
+        : 'Conta Meta bloqueada',
+);
+const metaAccountBlockDetail = computed(() =>
+    props.campaign.pause_reason_code === 'meta_account_payment_issue'
+        ? 'A Meta recusou os envios por um problema no metodo de pagamento da conta. A campanha foi pausada; regularize o pagamento no Gerenciador de Negocios antes de retomar.'
+        : 'A Meta bloqueou ou restringiu a conta business (verificacao pendente ou acao de politica). A campanha foi pausada; regularize a conta no Gerenciador de Negocios antes de retomar.',
+);
 const qualityRiskNeedsDecision = computed(
     () =>
         hasMetaQualityRisk.value &&
@@ -650,9 +667,29 @@ const templateExpanded = ref(false);
                     </div>
                 </div>
 
+                <!-- Meta account-level block alert -->
+                <div
+                    v-if="hasMetaAccountBlock"
+                    class="mx-4 mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200"
+                >
+                    <div class="flex min-w-0 gap-3">
+                        <AlertTriangle
+                            class="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-300"
+                        />
+                        <div>
+                            <p class="font-semibold">
+                                {{ metaAccountBlockTitle }}
+                            </p>
+                            <p class="mt-1 leading-5">
+                                {{ metaAccountBlockDetail }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Failure reason alert -->
                 <div
-                    v-if="campaign.failure_reason"
+                    v-if="campaign.failure_reason && !hasMetaAccountBlock"
                     class="mx-4 mb-3 rounded-lg bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300"
                 >
                     <strong>Motivo da falha:</strong>

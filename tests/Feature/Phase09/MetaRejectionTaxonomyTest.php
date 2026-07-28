@@ -1,6 +1,7 @@
 <?php
 
 use App\Contracts\WhatsApp\WhatsAppProviderInterface;
+use App\Exceptions\MetaAccountBlockedException;
 use App\Exceptions\MetaAmbiguousSendException;
 use App\Exceptions\MetaApiException;
 use App\Exceptions\MetaCampaignConfigurationException;
@@ -16,6 +17,7 @@ use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use App\Services\BroadcastDebouncer;
 use App\Services\CampaignService;
+use App\Services\WhatsApp\MetaAccountErrorTaxonomy;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -107,6 +109,86 @@ test('132001 fails one message, pauses the campaign, persists metadata, and is t
         ->not->toContain('5511999990001')
         ->not->toContain('destination')
         ->not->toContain('raw_phone');
+});
+
+test('an account-level provider rejection pauses the campaign under its own reason code', function (int $code, string $reasonCode, string $failureReason): void {
+    $message = makeTaxonomyCampaignMessage();
+    $interactionId = '10000000-0000-4000-8000-000000000031';
+    $provider = Mockery::mock(WhatsAppProviderInterface::class);
+    $provider->shouldReceive('sendTemplate')->once()->andThrow(new MetaAccountBlockedException(
+        message: 'Business Account locked for 5511999990001',
+        code: $code,
+        httpStatus: 400,
+        errorType: 'OAuthException',
+        fbtraceId: 'TRACE-ACCOUNT',
+    ));
+
+    runTaxonomyJob($message, $provider, $interactionId);
+
+    $fresh = $message->fresh();
+    $campaign = $fresh->campaign->fresh();
+
+    expect($fresh->status)->toBe('failed')
+        ->and($fresh->error_code)->toBe((string) $code)
+        ->and($fresh->error_message)->not->toContain('5511999990001')
+        ->and($campaign->status)->toBe('paused')
+        ->and($campaign->paused_from_status)->toBe('sending')
+        ->and($campaign->pause_reason_code)->toBe($reasonCode)
+        ->and($campaign->failure_reason)->toBe($failureReason);
+})->with([
+    [131031, MetaAccountErrorTaxonomy::PAUSE_REASON_ACCOUNT_BLOCKED, MetaAccountErrorTaxonomy::FAILURE_REASON_ACCOUNT_BLOCKED],
+    [131042, MetaAccountErrorTaxonomy::PAUSE_REASON_ACCOUNT_PAYMENT, MetaAccountErrorTaxonomy::FAILURE_REASON_ACCOUNT_PAYMENT],
+]);
+
+test('an account-level rejection pauses on the first message instead of burning the failure-rate threshold', function (): void {
+    $first = makeTaxonomyCampaignMessage();
+    $campaign = $first->campaign;
+    $secondEntry = ContactListEntry::factory()->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'opt_in_status' => 'opted_in',
+        'phone' => '5511999990002',
+    ]);
+    $second = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $secondEntry->id,
+        'status' => 'pending',
+    ]);
+
+    $provider = Mockery::mock(WhatsAppProviderInterface::class);
+    $provider->shouldReceive('sendTemplate')->once()->andThrow(new MetaAccountBlockedException(
+        message: 'Business Account locked',
+        code: 131031,
+        httpStatus: 400,
+    ));
+
+    runTaxonomyJob($first, $provider, '10000000-0000-4000-8000-000000000032');
+
+    // The campaign is already paused, so the next message never reaches the provider and is
+    // parked back to pending rather than counted as another burnt failure.
+    $blockedProvider = Mockery::mock(WhatsAppProviderInterface::class);
+    $blockedProvider->shouldNotReceive('sendTemplate');
+    runTaxonomyJob($second, $blockedProvider, '10000000-0000-4000-8000-000000000033');
+
+    expect($campaign->fresh()->status)->toBe('paused')
+        ->and($campaign->fresh()->pause_reason_code)->toBe(MetaAccountErrorTaxonomy::PAUSE_REASON_ACCOUNT_BLOCKED)
+        ->and($second->fresh()->status)->toBe('pending')
+        ->and($campaign->fresh()->total_failed)->toBe(1);
+});
+
+test('a non-account configuration rejection keeps the legacy META_ reason code', function (): void {
+    $message = makeTaxonomyCampaignMessage();
+    $provider = Mockery::mock(WhatsAppProviderInterface::class);
+    $provider->shouldReceive('sendTemplate')->once()->andThrow(new MetaCampaignConfigurationException(
+        message: 'Template rejected',
+        code: 132001,
+        httpStatus: 400,
+    ));
+
+    runTaxonomyJob($message, $provider, '10000000-0000-4000-8000-000000000034');
+
+    expect($message->fresh()->campaign->fresh()->pause_reason_code)->toBe('META_132001')
+        ->and($message->fresh()->campaign->fresh()->failure_reason)
+        ->toBe('Meta rejected the campaign send configuration.');
 });
 
 test('recipient rejection fails only the message and never pauses the campaign', function (): void {

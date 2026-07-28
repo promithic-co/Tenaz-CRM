@@ -5,6 +5,7 @@ use App\Models\Campaign;
 use App\Models\CampaignMessage;
 use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
+use App\Services\WhatsApp\MetaAccountErrorTaxonomy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -156,4 +157,68 @@ test('ProcessCampaignDeliveryEventJob saves Meta delivery error details', functi
     expect($fresh->error_code)->toBe('131026');
     expect($fresh->error_subcode)->toBe('2494010');
     expect($fresh->error_message)->toBe('Recipient is not a WhatsApp user');
+});
+
+test('ProcessCampaignDeliveryEventJob pauses the campaign on an account-level delivery failure', function (int $code, string $reasonCode, string $failureReason) {
+    $campaign = Campaign::factory()->sending()->create();
+    $message = CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'provider_message_id' => 'gs-account-'.$code,
+    ]);
+
+    $job = new ProcessCampaignDeliveryEventJob('gs-account-'.$code, 'failed', [[
+        'code' => $code,
+        'title' => 'Business Account locked',
+        'details' => 'The WhatsApp Business Account is restricted.',
+    ]]);
+    $job->handle();
+
+    $fresh = $campaign->fresh();
+    expect($message->fresh()->status)->toBe('failed')
+        ->and($message->fresh()->error_code)->toBe((string) $code)
+        ->and($fresh->status)->toBe('paused')
+        ->and($fresh->paused_at)->not->toBeNull()
+        ->and($fresh->paused_from_status)->toBe('sending')
+        ->and($fresh->pause_reason_code)->toBe($reasonCode)
+        ->and($fresh->failure_reason)->toBe($failureReason);
+})->with([
+    [131031, MetaAccountErrorTaxonomy::PAUSE_REASON_ACCOUNT_BLOCKED, MetaAccountErrorTaxonomy::FAILURE_REASON_ACCOUNT_BLOCKED],
+    [131042, MetaAccountErrorTaxonomy::PAUSE_REASON_ACCOUNT_PAYMENT, MetaAccountErrorTaxonomy::FAILURE_REASON_ACCOUNT_PAYMENT],
+]);
+
+test('ProcessCampaignDeliveryEventJob leaves the campaign sending on a per-recipient delivery failure', function () {
+    $campaign = Campaign::factory()->sending()->create();
+    $message = CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'provider_message_id' => 'gs-recipient-131026',
+    ]);
+
+    $job = new ProcessCampaignDeliveryEventJob('gs-recipient-131026', 'failed', [[
+        'code' => 131026,
+        'title' => 'Message Undeliverable',
+    ]]);
+    $job->handle();
+
+    expect($message->fresh()->status)->toBe('failed')
+        ->and($campaign->fresh()->status)->toBe('sending')
+        ->and($campaign->fresh()->pause_reason_code)->toBeNull();
+});
+
+test('ProcessCampaignDeliveryEventJob does not re-pause a campaign that already left sending', function () {
+    $campaign = Campaign::factory()->sending()->create();
+    $message = CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'provider_message_id' => 'gs-account-cancelled',
+    ]);
+    $campaign->update(['status' => 'cancelled']);
+
+    $job = new ProcessCampaignDeliveryEventJob('gs-account-cancelled', 'failed', [[
+        'code' => 131031,
+        'title' => 'Business Account locked',
+    ]]);
+    $job->handle();
+
+    expect($message->fresh()->status)->toBe('failed')
+        ->and($campaign->fresh()->status)->toBe('cancelled')
+        ->and($campaign->fresh()->pause_reason_code)->toBeNull();
 });

@@ -2,10 +2,12 @@
 
 namespace App\Jobs;
 
+use App\Models\Campaign;
 use App\Models\CampaignMessage;
 use App\Models\ConversationTimelineMessage;
 use App\Models\WhatsappOutboxMessage;
 use App\Services\ConversationTimelineService;
+use App\Services\WhatsApp\MetaAccountErrorTaxonomy;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Queue\Queueable;
@@ -261,14 +263,60 @@ class ProcessCampaignDeliveryEventJob implements ShouldQueue
 
     private function handleFailed(CampaignMessage $message): void
     {
-        if ($message->canTransitionTo('failed')) {
-            $error = is_array($this->errors[0] ?? null) ? $this->errors[0] : [];
-            $code = (string) ($error['code'] ?? 'DELIVERY_FAILED');
-            $subcode = isset($error['error_subcode']) ? (string) $error['error_subcode'] : null;
-            $messageText = (string) ($error['details'] ?? $error['title'] ?? 'Message delivery failed via webhook event');
-
-            $message->markFailed($code, $messageText);
-            $message->update(['error_subcode' => $subcode]);
+        if (! $message->canTransitionTo('failed')) {
+            return;
         }
+
+        $error = is_array($this->errors[0] ?? null) ? $this->errors[0] : [];
+        $code = (string) ($error['code'] ?? 'DELIVERY_FAILED');
+        $subcode = isset($error['error_subcode']) ? (string) $error['error_subcode'] : null;
+        $messageText = (string) ($error['details'] ?? $error['title'] ?? 'Message delivery failed via webhook event');
+
+        $message->markFailed($code, $messageText);
+        $message->update(['error_subcode' => $subcode]);
+
+        $this->pauseCampaignForAccountLevelFailure($message, $code);
+    }
+
+    /**
+     * Account-level Meta failures (locked business account, payment problem) reach us only
+     * through the delivery-status webhook when the POST itself was accepted — there is no
+     * provider HTTP status to classify, so the code is the whole signal. They are fatal for
+     * every remaining send on the same WABA, so pause here instead of waiting for the
+     * percentage failure-rate auto-pause to trip after dozens of burnt dispatches.
+     *
+     * Uses a conditional UPDATE rather than lockForUpdate: this runs with the message row
+     * already locked, and taking a campaign lock second would invert the campaign→message
+     * lock order used by SendCampaignMessageJob's configuration pause.
+     */
+    private function pauseCampaignForAccountLevelFailure(CampaignMessage $message, string $code): void
+    {
+        $reasonCode = MetaAccountErrorTaxonomy::pauseReasonCode($code);
+
+        if ($reasonCode === null) {
+            return;
+        }
+
+        $paused = Campaign::withoutGlobalScope('tenant')
+            ->whereKey($message->campaign_id)
+            ->where('status', 'sending')
+            ->update([
+                'status' => 'paused',
+                'paused_at' => now(),
+                'paused_from_status' => 'sending',
+                'pause_reason_code' => $reasonCode,
+                'failure_reason' => MetaAccountErrorTaxonomy::failureReason($code),
+            ]);
+
+        if ($paused === 0) {
+            return;
+        }
+
+        Log::warning('ProcessCampaignDeliveryEventJob: account-level Meta failure, campaign paused', [
+            'campaign_id' => $message->campaign_id,
+            'message_id' => $message->id,
+            'error_code' => $code,
+            'pause_reason_code' => $reasonCode,
+        ]);
     }
 }

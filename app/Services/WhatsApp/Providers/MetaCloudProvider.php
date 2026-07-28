@@ -6,12 +6,14 @@ use App\Ai\DTOs\MediaContext;
 use App\Contracts\WhatsApp\WhatsAppProviderInterface;
 use App\DTOs\WhatsApp\IncomingMessageDTO;
 use App\Enums\MediaType;
+use App\Exceptions\MetaAccountBlockedException;
 use App\Exceptions\MetaAmbiguousSendException;
 use App\Exceptions\MetaApiException;
 use App\Exceptions\MetaCampaignConfigurationException;
 use App\Exceptions\MetaNoWhatsAppException;
 use App\Exceptions\MetaRateLimitException;
 use App\Exceptions\MetaRetryableException;
+use App\Services\WhatsApp\MetaAccountErrorTaxonomy;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
@@ -367,6 +369,9 @@ class MetaCloudProvider implements WhatsAppProviderInterface
         // number); 131049/130472 are per-user marketing delivery limits; 131026 is the
         // "undeliverable" bucket. All of these are permanent for a given send and must
         // not be retried. 130429/131048/80007 are throttle signals and are retriable.
+        // MetaAccountErrorTaxonomy codes (131031/131042) are account-wide, not per
+        // recipient — every following send fails the same way, so they are escalated
+        // ahead of the per-recipient buckets and pause the campaign.
         $metadata = [
             'message' => $message,
             'code' => $code,
@@ -378,6 +383,7 @@ class MetaCloudProvider implements WhatsAppProviderInterface
 
         match (true) {
             in_array($code, [130429, 131048, 80007], true) => throw new MetaRateLimitException(...$metadata),
+            MetaAccountErrorTaxonomy::isAccountLevel($code) => throw new MetaAccountBlockedException(...$metadata),
             in_array($code, [131026, 131047, 131049, 130472], true) => throw new MetaNoWhatsAppException(...$metadata),
             $code === 132001 => throw new MetaCampaignConfigurationException(...$metadata),
             in_array($code, [10, 190, 200, 294, 299], true) => throw new MetaCampaignConfigurationException(...$metadata),
