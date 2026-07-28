@@ -54,7 +54,9 @@ it('manual status transition pauses AI for 24 hours', function (): void {
     }
 });
 
-it('rejects unreachable transitions with 422', function (): void {
+it('allows a transition the graph does not contain', function (): void {
+    // 'novo' → 'convertido' is not an edge in the default machine. Manual moves
+    // deliberately ignore the graph — it only constrains automation.
     $user = userWithTenant();
     $tenantId = (string) $user->tenantId;
     app(StatusMachineService::class)->getOrCreateForTenant($tenantId);
@@ -67,10 +69,70 @@ it('rejects unreachable transitions with 422', function (): void {
     $this->actingAs($user)
         ->from('/conversas')
         ->post("/leads/{$lead->id}/status", ['status' => 'convertido'])
-        ->assertStatus(302) // redirect-back with session error
+        ->assertSessionHasNoErrors();
+
+    expect($lead->fresh()->status)->toBe('convertido');
+});
+
+it('allows reverting out of a terminal status', function (string $from, string $to): void {
+    // The regression this feature exists for: 'optou_sair' and 'convertido' have no
+    // outgoing edges at all, so the operator could not undo either one.
+    $user = userWithTenant();
+    $tenantId = (string) $user->tenantId;
+    app(StatusMachineService::class)->getOrCreateForTenant($tenantId);
+
+    $lead = Lead::factory()->create([
+        'tenant_id' => $tenantId,
+        'status' => $from,
+    ]);
+
+    $this->actingAs($user)
+        ->from('/conversas')
+        ->post("/leads/{$lead->id}/status", ['status' => $to])
+        ->assertSessionHasNoErrors();
+
+    expect($lead->fresh()->status)->toBe($to);
+})->with([
+    ['optou_sair', 'novo'],
+    ['optou_sair', 'qualificado'],
+    ['convertido', 'qualificado'],
+    ['desqualificado', 'novo'],
+    ['escalado', 'novo'],
+]);
+
+it('rejects a status slug that is not in the tenant pipeline', function (): void {
+    $user = userWithTenant();
+    $tenantId = (string) $user->tenantId;
+    app(StatusMachineService::class)->getOrCreateForTenant($tenantId);
+
+    $lead = Lead::factory()->create([
+        'tenant_id' => $tenantId,
+        'status' => 'novo',
+    ]);
+
+    $this->actingAs($user)
+        ->from('/conversas')
+        ->post("/leads/{$lead->id}/status", ['status' => 'status_inventado'])
+        ->assertStatus(302)
         ->assertSessionHasErrors('status');
 
     expect($lead->fresh()->status)->toBe('novo');
+});
+
+it('keeps the transition graph in force for automation', function (): void {
+    // Lead::canTransitionTo is what the AI tools and lifecycle services call. The
+    // manual path getting looser must not loosen this one.
+    $user = userWithTenant();
+    $tenantId = (string) $user->tenantId;
+    app(StatusMachineService::class)->getOrCreateForTenant($tenantId);
+
+    $lead = Lead::factory()->create([
+        'tenant_id' => $tenantId,
+        'status' => 'optou_sair',
+    ]);
+
+    expect($lead->canTransitionTo('qualificado'))->toBeFalse()
+        ->and($lead->canTransitionTo('novo'))->toBeFalse();
 });
 
 it('same-status post is a no-op (idempotent)', function (): void {

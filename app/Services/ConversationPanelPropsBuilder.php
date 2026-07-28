@@ -72,8 +72,10 @@ class ConversationPanelPropsBuilder
             'tags' => fn ($query) => $query->withPivot('source', 'ai_confidence', 'ai_evidence', 'ai_evaluated_at'),
         ]);
 
+        // Manual, not graph-driven: the operator picking a status in the panel is a human
+        // decision (including reverting a terminal status), so every status is offered.
         $availableTransitions = StatusMachine::forTenant((string) $lead->tenant_id)
-            ->getAvailableTransitions((string) $lead->status);
+            ->getManualTransitions((string) $lead->status);
         $effectiveAiMode = $this->automation->resolveModesByInstanceId(collect([$lead]))[$lead->id];
 
         $contactInformation = $lead->contact === null

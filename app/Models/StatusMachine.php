@@ -153,11 +153,36 @@ class StatusMachine extends Model
             ->all();
     }
 
+    /**
+     * Transitions the automation layer may take: the configured graph only.
+     *
+     * AI tools and lifecycle services go through here (via Lead::canTransitionTo)
+     * so the graph keeps governing what the agent is allowed to do on its own.
+     */
     public function getAvailableTransitions(string $currentStatus): array
     {
         return collect($this->transitions)
             ->where('from', $currentStatus)
             ->pluck('to')
+            ->all();
+    }
+
+    /**
+     * Transitions a human operator may take: every status except the current one.
+     *
+     * Deliberately ignores the transition graph. An operator correcting or reverting
+     * a lead — pulling someone back out of `optou_sair` or `convertido` — is a decision
+     * the product leaves to the user, and the Kanban (PipelineController::move) already
+     * behaves this way. The graph stays in force for automation only.
+     *
+     * @return list<string>
+     */
+    public function getManualTransitions(string $currentStatus): array
+    {
+        return $this->getStatuses()
+            ->pluck('slug')
+            ->reject(fn (string $slug): bool => $slug === $currentStatus)
+            ->values()
             ->all();
     }
 }
