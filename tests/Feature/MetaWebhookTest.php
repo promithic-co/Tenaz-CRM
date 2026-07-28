@@ -4,8 +4,10 @@ use App\Jobs\AggregateDebouncedMessageJob;
 use App\Jobs\DownloadIncomingMediaJob;
 use App\Jobs\ProcessCampaignDeliveryEventJob;
 use App\Jobs\ProcessIncomingWhatsAppMessageJob;
+use App\Models\Agent;
 use App\Models\AgentInteractionEvent;
 use App\Models\Campaign;
+use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use App\Services\DebounceService;
@@ -166,11 +168,19 @@ it('POST dispatches DownloadIncomingMediaJob and records interaction for a media
         ->exists())->toBeTrue();
 });
 
-it('POST dispatches ProcessIncomingWhatsAppMessageJob for known instance with text message', function (): void {
+it('POST dispatches ProcessIncomingWhatsAppMessageJob with the known instance agent context', function (): void {
     Queue::fake();
     config()->set('services.meta.app_secret', 'test-secret');
 
+    $user = User::factory()->create();
+    $agent = Agent::factory()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenantId,
+    ]);
     $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $user->id,
+        'tenant_id' => $user->tenantId,
+        'agent_id' => $agent->id,
         'meta_phone_number_id' => '888777',
     ]);
 
@@ -188,7 +198,7 @@ it('POST dispatches ProcessIncomingWhatsAppMessageJob for known instance with te
         $body
     );
 
-    Queue::assertPushed(ProcessIncomingWhatsAppMessageJob::class, fn (ProcessIncomingWhatsAppMessageJob $job): bool => $job->agentId === null
+    Queue::assertPushed(ProcessIncomingWhatsAppMessageJob::class, fn (ProcessIncomingWhatsAppMessageJob $job): bool => $job->agentId === $agent->id
         && $job->tenantId === (string) $instance->tenant_id
         && $job->instanceName === $instance->name
         && $job->providerMessageId === 'wamid.TEST');
