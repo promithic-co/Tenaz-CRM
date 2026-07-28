@@ -43,11 +43,19 @@ class Lead extends Model
 
     public const INBOX_GROUP_AI = 'ia';
 
+    /**
+     * Leads created by a campaign send that have never replied. Segregated from every
+     * other tab — a 50k fan-out would otherwise bury the atendente's real queue — and
+     * a lead leaves this group on its own the moment last_inbound_at is stamped.
+     */
+    public const INBOX_GROUP_BROADCASTS = 'disparos';
+
     /** Countable inbox tabs, in display order. "todas" is the absence of a group filter. */
     public const INBOX_GROUPS = [
         self::INBOX_GROUP_QUEUE,
         self::INBOX_GROUP_MINE,
         self::INBOX_GROUP_AI,
+        self::INBOX_GROUP_BROADCASTS,
     ];
 
     public const STAGE_NEW_INBOUND = 'new_inbound';
@@ -207,8 +215,8 @@ class Lead extends Model
     /**
      * Restrict the inbox to one triage group.
      *
-     * The three groups are mutually exclusive by construction, so a lead never
-     * shows up under two tabs and the counters always sum to at most the total:
+     * The three triage groups are mutually exclusive by construction, so a lead
+     * never shows up under two tabs and the counters always sum to at most the total:
      *
      * - fila:   nobody owns it and an escalation ticket is still unclaimed
      * - minhas: the actor owns it
@@ -216,6 +224,10 @@ class Lead extends Model
      *
      * Everything else (owned by a teammate, or unowned with an escalation that
      * is claimed but not yet resolved) stays reachable only through "todas".
+     *
+     * "disparos" sits outside that triage entirely: it holds campaign sends nobody
+     * has answered, which scopeInboxFiltered subtracts from every other tab. It is
+     * a record of what went out, not work waiting to be picked up.
      *
      * Deliberately expressed with columns and EXISTS subqueries only: the
      * effective AI mode is resolved in PHP and the manual pause partly lives in
@@ -237,8 +249,33 @@ class Lead extends Model
             self::INBOX_GROUP_AI => $query
                 ->whereNull('assigned_user_id')
                 ->whereDoesntHave('tickets', $activeEscalation),
+            self::INBOX_GROUP_BROADCASTS => $query->whereSilentCampaignSend(),
             default => $query,
         };
+    }
+
+    /**
+     * A lead a campaign created that has never sent anything back.
+     *
+     * last_inbound_at is the discriminator rather than a dedicated flag: it is already
+     * stamped on the first inbound message, so a lead crosses out of this set by itself
+     * the moment the recipient replies — nothing has to remember to clear a marker.
+     */
+    public function scopeWhereSilentCampaignSend($query): Builder
+    {
+        return $query->whereNull('last_inbound_at')->whereNotNull('campaign_id');
+    }
+
+    /**
+     * Drop campaign sends nobody answered from a lead population.
+     *
+     * For any metric that reads leads as demand — how many arrived, what share converted —
+     * counting them lies twice: the total inflates by the size of the fan-out, and every
+     * rate computed against it collapses by dilution without anything having got worse.
+     */
+    public function scopeWithoutSilentCampaignSends($query): Builder
+    {
+        return $query->where(fn ($q) => $q->whereNotNull('last_inbound_at')->orWhereNull('campaign_id'));
     }
 
     /**
@@ -251,7 +288,16 @@ class Lead extends Model
      */
     public function scopeInboxFiltered($query, array $filters): Builder
     {
-        $query->inGroup($filters['group'] ?? self::INBOX_GROUP_ALL, auth()->id());
+        $group = $filters['group'] ?? self::INBOX_GROUP_ALL;
+
+        $query->inGroup($group, auth()->id());
+
+        // Load-bearing: without this an unanswered campaign send still satisfies "todas"
+        // and "ia" (unassigned, no escalation), so a large fan-out buries the real queue
+        // and the segregation buys nothing. Every tab but "disparos" subtracts them.
+        if ($group !== self::INBOX_GROUP_BROADCASTS) {
+            $query->withoutSilentCampaignSends();
+        }
 
         if ($filters['status'] === 'followup') {
             $query->where('followup_status', 'active');

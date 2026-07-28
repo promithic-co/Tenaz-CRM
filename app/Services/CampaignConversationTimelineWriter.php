@@ -15,14 +15,18 @@ use Throwable;
 /**
  * Mirrors campaign template sends into the conversation timeline so a real conversation
  * shows the message that (re)started it. Campaigns bypass the outbox/timeline for scale, so
- * this is the single place that bridges them back — for the two moments a lead is known:
+ * this is the single place that bridges them back:
  *
- *   - mirrorSentTemplate(): right after a send, when the recipient already has a Lead.
+ *   - mirrorSentTemplate(): right after a send, creating the Lead when the recipient has none.
  *   - backfillForLead(): when a recipient replies, we backfill the recent campaign templates
  *     that preceded the reply and are not in the timeline yet.
  *
- * Never eagerly creates Leads (a 100k-contact fan-out must not flood /conversas), and never
- * throws into its callers — a mirror failure is logged, the send/inbound is unaffected.
+ * Creating the Lead eagerly is what makes an unanswered send visible at all; the operator
+ * could otherwise not tell a campaign from a silent failure. The flood that argued against
+ * it is handled downstream instead: the new leads carry no last_inbound_at, which confines
+ * them to the "disparos" tab and subtracts them from every other one.
+ *
+ * Never throws into its callers — a mirror failure is logged, the send/inbound is unaffected.
  */
 class CampaignConversationTimelineWriter
 {
@@ -53,6 +57,8 @@ class CampaignConversationTimelineWriter
                 ->where('tenant_id', $campaign->tenant_id)
                 ->whereIn('whatsapp', $this->phoneCandidates((string) $entry->phone, $destination))
                 ->first();
+
+            $lead ??= $this->createSilentLead($campaign, $entry, $destination);
 
             if (! $lead) {
                 return;
@@ -145,6 +151,43 @@ class CampaignConversationTimelineWriter
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Create the Lead a campaign send needs to be visible in /conversas.
+     *
+     * last_inbound_at is left null on purpose — that is what puts the lead in the
+     * "disparos" tab and keeps it out of every other one (Lead::scopeInboxFiltered),
+     * so a 50k fan-out is a record of what went out rather than 50k rows of fake work.
+     * The recipient's first reply stamps the column and the lead joins the real queue
+     * on its own.
+     *
+     * firstOrCreate, not create: two staggered sends can reach the same subscriber, and
+     * a duplicate lead would split the conversation in two.
+     */
+    private function createSilentLead(Campaign $campaign, ContactListEntry $entry, string $destination): ?Lead
+    {
+        $lead = Lead::withoutGlobalScopes()->firstOrCreate(
+            [
+                'tenant_id' => $campaign->tenant_id,
+                'whatsapp' => $destination,
+            ],
+            [
+                'nome' => $entry->name ?: null,
+                'contact_id' => $entry->contact_id,
+                'campaign_id' => $campaign->id,
+                'whatsapp_instance_id' => $campaign->whatsapp_instance_id,
+                'modo' => 'ativo',
+            ],
+        );
+
+        // Durable link so later sends and the reply path find this lead by id rather than
+        // re-deriving it from phone variants.
+        if ($entry->lead_id === null) {
+            $entry->update(['lead_id' => $lead->id]);
+        }
+
+        return $lead;
     }
 
     /**

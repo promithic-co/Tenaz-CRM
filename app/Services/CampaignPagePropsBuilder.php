@@ -9,13 +9,19 @@ use App\Models\ContactList;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
+use App\Services\WhatsApp\WhatsappTemplateRenderer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Throwable;
 
 class CampaignPagePropsBuilder
 {
+    public function __construct(
+        private readonly WhatsappTemplateRenderer $renderer,
+    ) {}
+
     /**
      * FE-02: the create page only ever reads filters_json / template body for the
      * single row the user selects, yet they are the heaviest fields and grow with
@@ -67,7 +73,8 @@ class CampaignPagePropsBuilder
     {
         $campaign->load([
             'contactList:id,name',
-            'whatsappTemplate:id,name,body,variables_count',
+            // components_json backs the per-recipient message preview below.
+            'whatsappTemplate:id,name,body,variables_count,components_json',
             'whatsappInstance:id,name,display_name,meta_quality_rating',
         ]);
 
@@ -77,8 +84,14 @@ class CampaignPagePropsBuilder
                 ->orderByDesc('sent_at')
                 ->orderByDesc('id')
                 ->paginate(25)
-                ->withQueryString(),
-            'repliedCount' => Lead::where('campaign_id', $campaign->id)->count(),
+                ->withQueryString()
+                ->through(fn (CampaignMessage $message) => $this->withRenderedBody($message, $campaign)),
+            // whereNotNull('last_inbound_at') is what keeps this a reply count: every
+            // recipient now gets a Lead stamped with campaign_id at send time, so the
+            // foreign key alone would report the whole list as having answered.
+            'repliedCount' => Lead::where('campaign_id', $campaign->id)
+                ->whereNotNull('last_inbound_at')
+                ->count(),
             'statusCounts' => $this->statusCounts($campaign),
             'dailyBudget' => $this->dailyBudget($campaign),
             'filters' => [
@@ -86,6 +99,42 @@ class CampaignPagePropsBuilder
                 'search' => $request->input('search'),
             ],
         ];
+    }
+
+    /**
+     * Attach the message text this specific recipient received.
+     *
+     * The recipients table could previously report that a send was delivered without ever
+     * showing what was delivered — and with a parameterised template every row differs, so
+     * reading the template itself does not answer it either.
+     *
+     * Rendered per row rather than stored: template_params_resolved is the durable record,
+     * and re-deriving keeps this in step with the renderer the send path uses. Null when the
+     * template carries no structured components or the renderer rejects them; the operator
+     * still gets the raw resolved values below.
+     */
+    private function withRenderedBody(CampaignMessage $message, Campaign $campaign): CampaignMessage
+    {
+        $components = $campaign->whatsappTemplate?->components_json;
+        $resolved = is_array($message->template_params_resolved) ? $message->template_params_resolved : [];
+
+        $text = null;
+
+        if (is_array($components) && $components !== []) {
+            try {
+                $text = $this->renderer->preview($components, [
+                    'header' => $resolved,
+                    'body' => $resolved,
+                    'buttons' => $resolved,
+                ])['text'];
+            } catch (Throwable) {
+                $text = null;
+            }
+        }
+
+        $message->setAttribute('rendered_message', $text ?? (trim(implode(' ', $resolved)) ?: null));
+
+        return $message;
     }
 
     /**
