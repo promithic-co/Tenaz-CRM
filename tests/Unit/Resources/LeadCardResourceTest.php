@@ -12,6 +12,10 @@ uses(RefreshDatabase::class);
  * Verbatim replica of PipelineController::toCardShape — the parity baseline.
  * The two injected values (automation_state, source_label) are computed here
  * the same way the controller does, then handed to the resource.
+ *
+ * Deliberately frozen at the legacy shape: fields added after the port
+ * (`value_cents`) are layered on by the individual tests, so this stays a
+ * record of what the controller emitted rather than a copy of the resource.
  */
 function legacyCardShape(Lead $lead, string $automationState, string $sourceLabel): array
 {
@@ -63,7 +67,9 @@ it('matches the legacy toCardShape output for a tagged lead', function () {
     $resource = (new LeadCardResource($lead, $automationState, $sourceLabel))
         ->toArray(request());
 
-    expect($resource)->toEqual(legacyCardShape($lead, $automationState, $sourceLabel));
+    // value_cents is guarded on relationLoaded('openSession'): unloaded means null
+    // rather than a lazy query, so the board never N+1s over the column.
+    expect($resource)->toEqual(legacyCardShape($lead, $automationState, $sourceLabel) + ['value_cents' => null]);
     expect($resource)->toHaveKey('whatsapp');
     expect($resource)->not->toHaveKey('cpf');
     expect($resource['tags'][0]['is_hot'])->toBeTrue();
@@ -78,7 +84,7 @@ it('matches the legacy output for a lead with no tags and empty preview', functi
     $resource = (new LeadCardResource($lead, 'manual', 'Sem origem'))
         ->toArray(request());
 
-    expect($resource)->toEqual(legacyCardShape($lead, 'manual', 'Sem origem'));
+    expect($resource)->toEqual(legacyCardShape($lead, 'manual', 'Sem origem') + ['value_cents' => null]);
     expect($resource['last_message'])->toBe('');
     expect($resource['tags'])->toBe([]);
     expect($resource['last_interaction_at'])->toBeNull();
