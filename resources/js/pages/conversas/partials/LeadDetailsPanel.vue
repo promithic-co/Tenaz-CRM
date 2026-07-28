@@ -535,7 +535,10 @@ function initials(name: string): string {
                         <span class="truncate">{{ lead.whatsapp }}</span>
                     </div>
                 </div>
-                <div class="w-28 shrink-0">
+                <!-- No fixed width: 'Desqualificado' / 'Optou por Sair' are wider than the
+                     old w-28 and were being clipped mid-word. The pill sizes to its label and
+                     the name column (min-w-0 flex-1, truncate) absorbs the difference. -->
+                <div class="shrink-0">
                     <StatusSelect
                         :current-status="lead.status"
                         :available-transitions="

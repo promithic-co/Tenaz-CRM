@@ -74,12 +74,13 @@ function onUpdate(next: string | number | boolean | null) {
             :disabled="saving"
             @update:model-value="(v) => onUpdate(v as string)"
         >
-            <!-- justify-center overrides the trigger's default justify-between (tailwind-merge
-                 keeps the later class): the pill is narrower than its container, so label and
-                 chevron read better grouped in the middle than pinned to opposite edges. -->
+            <!-- w-fit (the trigger's own default, restated for intent): the pill hugs its
+                 label so no status is clipped. justify-center is then only a tie-breaker for
+                 the label/chevron pair; it overrides the default justify-between because
+                 tailwind-merge keeps the later class. -->
             <SelectTrigger
                 :class="[
-                    'h-8 w-full justify-center gap-1.5 rounded-full border px-3 py-0.5 text-xs font-medium whitespace-nowrap focus:ring-0',
+                    'h-8 w-fit max-w-full justify-center gap-1.5 rounded-full border px-3 py-0.5 text-xs font-medium whitespace-nowrap focus:ring-0',
                     statusClasses(selected),
                     saving ? 'opacity-60' : '',
                 ]"
