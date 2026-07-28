@@ -168,7 +168,7 @@ class ConversationInboxPropsBuilder
         // The group goes through $filters rather than a second inGroup() on top of an
         // "todas" query: scopeInboxFiltered decides per group whether to subtract the
         // silent campaign sends, and stacking the two produced a self-contradicting
-        // query for "disparos" (excluded by the base, required by the group) that
+        // query for "envios" (excluded by the base, required by the group) that
         // counted zero no matter how many had been sent.
         foreach (Lead::INBOX_GROUPS as $group) {
             $counts[$group] = $this->buildInboxQuery(

@@ -40,7 +40,7 @@ describe('Tag eager loading — N+1 prevention', function () {
         // bounded number — session/auth + paginated leads select + a single
         // eager-loaded tags select + ancillary lookups.
         //
-        // Raised from 40 when the "disparos" tab was added: the sidebar runs one count
+        // Raised from 40 when the "envios" tab was added: the sidebar runs one count
         // per tab, and each rebuilds the visibility scope. The count itself is one query;
         // the other three are User::getTenantIdAttribute re-running tenants()->first()
         // on every access, which already accounts for roughly 30 of the queries below

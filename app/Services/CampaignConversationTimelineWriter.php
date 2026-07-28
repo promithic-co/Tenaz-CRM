@@ -24,7 +24,7 @@ use Throwable;
  * Creating the Lead eagerly is what makes an unanswered send visible at all; the operator
  * could otherwise not tell a campaign from a silent failure. The flood that argued against
  * it is handled downstream instead: the new leads carry no last_inbound_at, which confines
- * them to the "disparos" tab and subtracts them from every other one.
+ * them to the "envios" tab and subtracts them from every other one.
  *
  * Never throws into its callers — a mirror failure is logged, the send/inbound is unaffected.
  */
@@ -157,7 +157,7 @@ class CampaignConversationTimelineWriter
      * Create the Lead a campaign send needs to be visible in /conversas.
      *
      * last_inbound_at is left null on purpose — that is what puts the lead in the
-     * "disparos" tab and keeps it out of every other one (Lead::scopeInboxFiltered),
+     * "envios" tab and keeps it out of every other one (Lead::scopeInboxFiltered),
      * so a 50k fan-out is a record of what went out rather than 50k rows of fake work.
      * The recipient's first reply stamps the column and the lead joins the real queue
      * on its own.

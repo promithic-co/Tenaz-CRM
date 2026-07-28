@@ -100,7 +100,7 @@ it('creates a silent lead so a send to a stranger is still visible', function ()
     $lead = Lead::withoutGlobalScopes()->where('whatsapp', $entry->phone)->sole();
 
     // last_inbound_at null + campaign_id set is what confines this lead to the
-    // "disparos" tab; if either drifts it lands in the atendente's real queue.
+    // "envios" tab; if either drifts it lands in the atendente's real queue.
     expect($lead->campaign_id)->toBe($campaign->id)
         ->and($lead->last_inbound_at)->toBeNull()
         ->and(ConversationTimelineMessage::where('lead_id', $lead->id)->count())->toBe(1)

@@ -92,7 +92,7 @@ export type InboxLead = {
     awaiting_reply: boolean;
 };
 
-export type InboxGroup = 'todas' | 'fila' | 'minhas' | 'ia' | 'disparos';
+export type InboxGroup = 'todas' | 'fila' | 'minhas' | 'ia' | 'envios';
 
 export type InboxGroupCounts = Record<Exclude<InboxGroup, 'todas'>, number>;
 

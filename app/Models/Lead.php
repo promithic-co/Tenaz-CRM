@@ -48,14 +48,14 @@ class Lead extends Model
      * other tab — a 50k fan-out would otherwise bury the atendente's real queue — and
      * a lead leaves this group on its own the moment last_inbound_at is stamped.
      */
-    public const INBOX_GROUP_BROADCASTS = 'disparos';
+    public const INBOX_GROUP_SENDS = 'envios';
 
     /** Countable inbox tabs, in display order. "todas" is the absence of a group filter. */
     public const INBOX_GROUPS = [
         self::INBOX_GROUP_QUEUE,
         self::INBOX_GROUP_MINE,
         self::INBOX_GROUP_AI,
-        self::INBOX_GROUP_BROADCASTS,
+        self::INBOX_GROUP_SENDS,
     ];
 
     public const STAGE_NEW_INBOUND = 'new_inbound';
@@ -225,7 +225,7 @@ class Lead extends Model
      * Everything else (owned by a teammate, or unowned with an escalation that
      * is claimed but not yet resolved) stays reachable only through "todas".
      *
-     * "disparos" sits outside that triage entirely: it holds campaign sends nobody
+     * "envios" sits outside that triage entirely: it holds campaign sends nobody
      * has answered, which scopeInboxFiltered subtracts from every other tab. It is
      * a record of what went out, not work waiting to be picked up.
      *
@@ -249,7 +249,7 @@ class Lead extends Model
             self::INBOX_GROUP_AI => $query
                 ->whereNull('assigned_user_id')
                 ->whereDoesntHave('tickets', $activeEscalation),
-            self::INBOX_GROUP_BROADCASTS => $query->whereSilentCampaignSend(),
+            self::INBOX_GROUP_SENDS => $query->whereSilentCampaignSend(),
             default => $query,
         };
     }
@@ -294,8 +294,8 @@ class Lead extends Model
 
         // Load-bearing: without this an unanswered campaign send still satisfies "todas"
         // and "ia" (unassigned, no escalation), so a large fan-out buries the real queue
-        // and the segregation buys nothing. Every tab but "disparos" subtracts them.
-        if ($group !== self::INBOX_GROUP_BROADCASTS) {
+        // and the segregation buys nothing. Every tab but "envios" subtracts them.
+        if ($group !== self::INBOX_GROUP_SENDS) {
             $query->withoutSilentCampaignSends();
         }
 

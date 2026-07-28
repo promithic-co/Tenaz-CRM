@@ -293,11 +293,11 @@ function timelineMessage(Lead $lead, string $direction, string $body, $createdAt
 }
 
 /**
- * The "disparos" tab: campaign sends nobody has answered. They exist as Leads so the
+ * The "envios" tab: campaign sends nobody has answered. They exist as Leads so the
  * operator can see what went out, and are subtracted from every other tab so a large
  * fan-out cannot bury the queue that represents real work.
  */
-test('an unanswered campaign send is confined to the disparos tab', function () {
+test('an unanswered campaign send is confined to the envios tab', function () {
     [$tenant, $owner] = groupTenant();
     $agent = Agent::factory()->create(['user_id' => $owner->id, 'tenant_id' => $tenant->id]);
     $campaign = Campaign::factory()->sending()->create(['tenant_id' => (string) $tenant->id]);
@@ -314,7 +314,7 @@ test('an unanswered campaign send is confined to the disparos tab', function () 
         'campaign_id' => null,
     ]);
 
-    expect(inboxNames($owner, ['group' => 'disparos']))->toBe(['Disparo Sem Resposta'])
+    expect(inboxNames($owner, ['group' => 'envios']))->toBe(['Disparo Sem Resposta'])
         ->and(inboxNames($owner, ['group' => 'todas']))->toBe(['Conversa Real'])
         ->and(inboxNames($owner, ['group' => 'ia']))->toBe(['Conversa Real']);
 });
@@ -337,10 +337,10 @@ test('a campaign lead rejoins the normal tabs once it replies', function () {
     $lead->update(['last_inbound_at' => now()]);
 
     expect(inboxNames($owner, ['group' => 'todas']))->toBe(['Respondeu Depois'])
-        ->and(inboxNames($owner, ['group' => 'disparos']))->toBe([]);
+        ->and(inboxNames($owner, ['group' => 'envios']))->toBe([]);
 });
 
-test('the disparos counter reports the sends rather than always zero', function () {
+test('the envios counter reports the sends rather than always zero', function () {
     [$tenant, $owner] = groupTenant();
     $agent = Agent::factory()->create(['user_id' => $owner->id, 'tenant_id' => $tenant->id]);
     $campaign = Campaign::factory()->sending()->create(['tenant_id' => (string) $tenant->id]);
@@ -356,6 +356,6 @@ test('the disparos counter reports the sends rather than always zero', function 
     $response = test()->actingAs($owner)->get(route('conversas.index'))->assertOk();
     $counts = $response->viewData('page')['props']['group_counts'];
 
-    expect($counts['disparos'])->toBe(3)
+    expect($counts['envios'])->toBe(3)
         ->and($counts['ia'])->toBe(0);
 });
