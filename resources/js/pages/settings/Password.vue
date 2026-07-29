@@ -61,11 +61,15 @@ const breadcrumbItems: BreadcrumbItem[] = [
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="password">New password</Label>
+                        <Label for="password">
+                            New password (minimum 15 characters)
+                        </Label>
                         <Input
                             id="password"
                             name="password"
                             type="password"
+                            required
+                            minlength="15"
                             class="mt-1 block w-full"
                             autocomplete="new-password"
                             placeholder="New password"
@@ -81,6 +85,8 @@ const breadcrumbItems: BreadcrumbItem[] = [
                             id="password_confirmation"
                             name="password_confirmation"
                             type="password"
+                            required
+                            minlength="15"
                             class="mt-1 block w-full"
                             autocomplete="new-password"
                             placeholder="Confirm password"

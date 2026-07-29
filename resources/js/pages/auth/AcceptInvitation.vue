@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { Form, Head, router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import AuthBase from '@/layouts/AuthLayout.vue';
 
 const props = defineProps<{
@@ -38,16 +37,15 @@ function submit(event: Event) {
 <template>
     <AuthBase
         :title="`Entrar em ${invitation.tenant_name ?? 'sua equipe'}`"
-        :description="invitation.invited_by
-            ? `${invitation.invited_by} convidou você como ${invitation.role_label}`
-            : `Você foi convidado como ${invitation.role_label}`"
+        :description="
+            invitation.invited_by
+                ? `${invitation.invited_by} convidou você como ${invitation.role_label}`
+                : `Você foi convidado como ${invitation.role_label}`
+        "
     >
         <Head title="Aceitar convite" />
 
-        <form
-            @submit="submit"
-            class="flex flex-col gap-6"
-        >
+        <form @submit="submit" class="flex flex-col gap-6">
             <div class="grid gap-2">
                 <Label for="email">Email</Label>
                 <Input
@@ -74,23 +72,39 @@ function submit(event: Event) {
                     :disabled="existing_user"
                 />
                 <p v-if="existing_user" class="text-xs text-muted-foreground">
-                    Detectamos que você já tem uma conta. Use sua senha atual para entrar.
+                    Detectamos que você já tem uma conta. Use sua senha atual
+                    para entrar.
                 </p>
-                <InputError :message="($page.props.errors as Record<string, string>).name" />
+                <InputError
+                    :message="
+                        ($page.props.errors as Record<string, string>).name
+                    "
+                />
             </div>
 
             <div class="grid gap-2">
                 <Label for="password">
-                    {{ existing_user ? 'Sua senha atual' : 'Crie uma senha' }}
+                    {{
+                        existing_user
+                            ? 'Sua senha atual'
+                            : 'Crie uma senha (mínimo de 15 caracteres)'
+                    }}
                 </Label>
                 <Input
                     id="password"
                     type="password"
                     name="password"
                     required
-                    autocomplete="new-password"
+                    :minlength="existing_user ? undefined : 15"
+                    :autocomplete="
+                        existing_user ? 'current-password' : 'new-password'
+                    "
                 />
-                <InputError :message="($page.props.errors as Record<string, string>).password" />
+                <InputError
+                    :message="
+                        ($page.props.errors as Record<string, string>).password
+                    "
+                />
             </div>
 
             <div v-if="!existing_user" class="grid gap-2">
@@ -100,7 +114,14 @@ function submit(event: Event) {
                     type="password"
                     name="password_confirmation"
                     required
+                    minlength="15"
                     autocomplete="new-password"
+                />
+                <InputError
+                    :message="
+                        ($page.props.errors as Record<string, string>)
+                            .password_confirmation
+                    "
                 />
             </div>
 

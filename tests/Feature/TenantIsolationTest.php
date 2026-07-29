@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Fortify\CreateNewUser;
 use App\Enums\TenantRole;
 use App\Models\Agent;
 use App\Models\AgentConfig;
@@ -11,6 +12,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Creates a user with their own tenant attached (owner role).
@@ -120,18 +122,35 @@ it('whatsapp instance is isolated per tenant', function () {
 });
 
 it('CreateNewUser action creates user with a tenant attached as owner', function () {
-    $action = new \App\Actions\Fortify\CreateNewUser;
+    $action = new CreateNewUser;
 
     $user = $action->create([
         'name' => 'New User',
+        'company_name' => 'New Company',
         'email' => 'new@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
+        'password' => 'a-secure-password',
+        'password_confirmation' => 'a-secure-password',
     ]);
 
     expect($user)->not->toBeNull();
     expect($user->tenants()->count())->toBe(1);
+    expect($user->tenants()->first()->name)->toBe('New Company');
     expect($user->tenants()->first()->pivot->role)->toBe(TenantRole::Owner->value);
+});
+
+it('CreateNewUser rejects passwords shorter than fifteen characters atomically', function () {
+    $action = new CreateNewUser;
+
+    expect(fn () => $action->create([
+        'name' => 'New User',
+        'company_name' => 'New Company',
+        'email' => 'new@example.com',
+        'password' => 'short-password',
+        'password_confirmation' => 'short-password',
+    ]))->toThrow(ValidationException::class);
+
+    expect(User::where('email', 'new@example.com')->exists())->toBeFalse()
+        ->and(Tenant::where('name', 'New Company')->exists())->toBeFalse();
 });
 
 it('user tenantId returns null instead of user id when no tenant exists', function () {

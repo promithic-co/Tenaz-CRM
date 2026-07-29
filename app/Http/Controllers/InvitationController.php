@@ -8,6 +8,9 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,6 +26,18 @@ class InvitationController extends Controller
         }
 
         $invitation->loadMissing('tenant', 'invitedBy');
+        $existingUser = User::query()
+            ->whereRaw('LOWER(email) = ?', [Str::lower($invitation->email)])
+            ->first();
+
+        if ($existingUser && ! Auth::check()) {
+            return redirect()->guest(route('login'));
+        }
+
+        if ($existingUser && ! Auth::user()?->is($existingUser)) {
+            return redirect()->route('dashboard')
+                ->withErrors(['invitation' => 'Este convite pertence a outra conta.']);
+        }
 
         return Inertia::render('auth/AcceptInvitation', [
             'token' => $token,
@@ -34,7 +49,7 @@ class InvitationController extends Controller
                 'invited_by' => $invitation->invitedBy?->name,
                 'expires_at' => $invitation->expires_at?->toIso8601String(),
             ],
-            'existing_user' => User::where('email', $invitation->email)->exists(),
+            'existing_user' => $existingUser !== null,
         ]);
     }
 
@@ -47,27 +62,55 @@ class InvitationController extends Controller
                 ->withErrors(['invitation' => 'Este convite é inválido ou já expirou.']);
         }
 
-        $user = DB::transaction(function () use ($invitation, $request) {
-            $user = User::firstOrNew(['email' => $invitation->email]);
+        [$user, $tenantId] = DB::transaction(function () use ($invitation, $request): array {
+            $lockedInvitation = TenantInvitation::query()
+                ->whereKey($invitation->id)
+                ->lockForUpdate()
+                ->first();
 
-            if (! $user->exists) {
-                $user->name = $request->string('name');
-                $user->password = $request->string('password');
-                $user->save();
+            if (! $lockedInvitation || ! $lockedInvitation->isPending()) {
+                throw ValidationException::withMessages([
+                    'invitation' => 'Este convite é inválido ou já expirou.',
+                ]);
+            }
+
+            $email = Str::lower($lockedInvitation->email);
+            $password = (string) $request->input('password');
+
+            $user = User::query()
+                ->whereRaw('LOWER(email) = ?', [$email])
+                ->lockForUpdate()
+                ->first();
+
+            if ($user) {
+                if (! Hash::check($password, $user->password)) {
+                    throw ValidationException::withMessages([
+                        'password' => 'A senha atual está incorreta.',
+                    ]);
+                }
+            } else {
+                $user = User::create([
+                    'name' => (string) $request->string('name'),
+                    'email' => $email,
+                    'password' => $password,
+                ]);
             }
 
             $user->tenants()->syncWithoutDetaching([
-                $invitation->tenant_id => ['role' => $invitation->role->value],
+                $lockedInvitation->tenant_id => ['role' => $lockedInvitation->role->value],
             ]);
 
-            $invitation->markAccepted();
+            $lockedInvitation->markAccepted();
 
-            return $user;
+            return [$user, $lockedInvitation->tenant_id];
         });
 
-        Auth::login($user);
+        if (! Auth::check()) {
+            Auth::login($user);
+        }
+
         $request->session()->regenerate();
-        $request->session()->put('active_tenant_id', $invitation->tenant_id);
+        $request->session()->put('active_tenant_id', $tenantId);
 
         return redirect()->route('dashboard')
             ->with('success', 'Convite aceito. Bem-vindo(a)!');

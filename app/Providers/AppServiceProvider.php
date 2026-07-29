@@ -2,12 +2,18 @@
 
 namespace App\Providers;
 
+use App\Ai\Support\ToolCallTracker;
+use App\Contracts\AgentServiceInterface;
+use App\Services\AgentInteractionContext;
+use App\Services\AgentService;
+use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -18,10 +24,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(\App\Services\WhatsApp\WhatsAppProviderFactory::class);
-        $this->app->scoped(\App\Ai\Support\ToolCallTracker::class);
-        $this->app->scoped(\App\Services\AgentInteractionContext::class);
-        $this->app->bind(\App\Contracts\AgentServiceInterface::class, \App\Services\AgentService::class);
+        $this->app->singleton(WhatsAppProviderFactory::class);
+        $this->app->scoped(ToolCallTracker::class);
+        $this->app->scoped(AgentInteractionContext::class);
+        $this->app->bind(AgentServiceInterface::class, AgentService::class);
     }
 
     /**
@@ -30,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if (app()->isProduction()) {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
+            URL::forceScheme('https');
         }
 
         $this->configureDefaults();
@@ -85,15 +91,7 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
-        );
+        Password::defaults(fn (): Password => Password::min(15));
     }
 
     /**

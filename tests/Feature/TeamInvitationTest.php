@@ -35,6 +35,21 @@ it('owner can send invitation and mail is queued', function () {
     Mail::assertQueued(TenantInvitationMail::class);
 });
 
+it('normalizes invitation email before storing it', function () {
+    Mail::fake();
+    [$owner, $tenant] = makeTenantMember(TenantRole::Owner->value);
+
+    $this->actingAs($owner)
+        ->withSession(['active_tenant_id' => $tenant->id])
+        ->post('/settings/team/invitations', [
+            'email' => '  NEW@EXAMPLE.COM  ',
+            'role' => TenantRole::User->value,
+        ])
+        ->assertRedirect();
+
+    expect(TenantInvitation::where('email', 'new@example.com')->exists())->toBeTrue();
+});
+
 it('administrator can see team index and list pending invitations', function () {
     [$admin, $tenant] = makeTenantMember(TenantRole::Administrator->value);
     TenantInvitation::factory()->create([
