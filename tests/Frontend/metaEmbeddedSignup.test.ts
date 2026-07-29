@@ -35,12 +35,12 @@ test('coexistence uses its own configuration', () => {
     );
 });
 
-test('only coexistence sends the WhatsApp Business app feature marker', () => {
-    assert.equal('featureType' in embeddedSignupExtras('new_cloud_api'), false);
-    assert.equal(
-        'featureType' in embeddedSignupExtras('existing_cloud_api'),
-        false,
-    );
+test('standard Cloud API modes use the empty v4 extras payload', () => {
+    assert.deepEqual(embeddedSignupExtras('new_cloud_api'), {});
+    assert.deepEqual(embeddedSignupExtras('existing_cloud_api'), {});
+});
+
+test('coexistence sends the WhatsApp Business app feature marker', () => {
     assert.equal(
         embeddedSignupExtras('coexistence').featureType,
         'whatsapp_business_app_onboarding',

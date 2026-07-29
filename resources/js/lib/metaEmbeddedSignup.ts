@@ -4,8 +4,8 @@ export type MetaOnboardingMode =
     | 'coexistence';
 
 type MetaEmbeddedSignupExtras = {
-    setup: Record<string, never>;
-    sessionInfoVersion: '3';
+    setup?: Record<string, never>;
+    sessionInfoVersion?: '3';
     featureType?: 'whatsapp_business_app_onboarding';
 };
 
@@ -28,8 +28,5 @@ export function embeddedSignupExtras(
         };
     }
 
-    return {
-        setup: {},
-        sessionInfoVersion: '3',
-    };
+    return {};
 }
