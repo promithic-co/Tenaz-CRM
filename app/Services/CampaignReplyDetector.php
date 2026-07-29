@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Campaign;
 use App\Models\ContactListEntry;
 use App\Models\Lead;
+use App\Services\WhatsApp\PhoneNumberValidator;
 use Illuminate\Support\Facades\Log;
 
 class CampaignReplyDetector
@@ -25,8 +26,13 @@ class CampaignReplyDetector
             }
         }
 
-        // Look for a ContactListEntry with this phone in an active campaign's contact list
-        $entry = ContactListEntry::where('phone', $phone)
+        // Look for a ContactListEntry with this phone in an active campaign's contact list.
+        // Matched across every 9th-digit form: the lead's phone comes from the inbound
+        // webhook and the entry from a CSV import, and the two routinely disagree about it
+        // — an exact match silently drops the reply, leaving the recipient unlinked from
+        // the campaign that reached them. Same reconciliation CampaignConversationTimelineWriter
+        // already applies to the outbound mirror.
+        $entry = ContactListEntry::whereIn('phone', PhoneNumberValidator::variants($phone))
             ->whereHas('contactList.campaigns', function ($query) use ($tenantId): void {
                 $query->where('tenant_id', $tenantId)
                     ->whereIn('status', ['sending', 'paused']);

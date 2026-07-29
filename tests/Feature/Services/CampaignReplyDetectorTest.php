@@ -97,6 +97,87 @@ test('detect returns existing campaign when already linked and still active', fu
     expect($result->id)->toBe($campaign->id);
 });
 
+test('detect links the reply when the entry carries the BR 9th digit and the lead does not', function () {
+    $user = User::factory()->create();
+    $list = ContactList::factory()->create(['tenant_id' => $user->tenantId]);
+    $campaign = Campaign::factory()->sending()->create([
+        'tenant_id' => $user->tenantId,
+        'contact_list_id' => $list->id,
+    ]);
+
+    // Imported with the 9th digit; the inbound webhook reports it without.
+    ContactListEntry::factory()->create([
+        'contact_list_id' => $list->id,
+        'phone' => '5567998601348',
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    $lead = Lead::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp' => '556798601348',
+        'campaign_id' => null,
+    ]);
+
+    $result = (new CampaignReplyDetector)->detect($lead, '556798601348', $user->tenantId);
+
+    expect($result)->not->toBeNull()
+        ->and($result->id)->toBe($campaign->id)
+        ->and($lead->fresh()->campaign_id)->toBe($campaign->id);
+});
+
+test('detect links the reply when the lead carries the BR 9th digit and the entry does not', function () {
+    $user = User::factory()->create();
+    $list = ContactList::factory()->create(['tenant_id' => $user->tenantId]);
+    $campaign = Campaign::factory()->sending()->create([
+        'tenant_id' => $user->tenantId,
+        'contact_list_id' => $list->id,
+    ]);
+
+    ContactListEntry::factory()->create([
+        'contact_list_id' => $list->id,
+        'phone' => '556796161342',
+        'opt_in_status' => 'opted_in',
+    ]);
+
+    $lead = Lead::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp' => '5567996161342',
+        'campaign_id' => null,
+    ]);
+
+    $result = (new CampaignReplyDetector)->detect($lead, '5567996161342', $user->tenantId);
+
+    expect($result)->not->toBeNull()
+        ->and($result->id)->toBe($campaign->id);
+});
+
+test('detect does not fold a landline onto a different subscriber', function () {
+    $user = User::factory()->create();
+    $list = ContactList::factory()->create(['tenant_id' => $user->tenantId]);
+    Campaign::factory()->sending()->create([
+        'tenant_id' => $user->tenantId,
+        'contact_list_id' => $list->id,
+    ]);
+
+    // 8-digit subscriber opening with 3 is a landline — it has no 9th-digit sibling,
+    // so it must never match the mobile that happens to share the trailing digits.
+    ContactListEntry::factory()->create([
+        'contact_list_id' => $list->id,
+        'phone' => '5511933334444',
+    ]);
+
+    $lead = Lead::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp' => '551133334444',
+        'campaign_id' => null,
+    ]);
+
+    $result = (new CampaignReplyDetector)->detect($lead, '551133334444', $user->tenantId);
+
+    expect($result)->toBeNull()
+        ->and($lead->fresh()->campaign_id)->toBeNull();
+});
+
 test('detect returns null when phone not in any contact list', function () {
     $user = User::factory()->create();
 
