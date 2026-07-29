@@ -9,11 +9,6 @@ use Illuminate\Support\Facades\Cache;
 uses(RefreshDatabase::class);
 
 test('snapshot exposes per-session atendimento counters', function () {
-    // The counters below bucket by UTC day and the fixtures reach two hours back,
-    // so an unpinned clock makes this fail whenever the suite runs within two
-    // hours of UTC midnight. Anchor at midday so every fixture lands on one day.
-    $this->travelTo(today()->addHours(12));
-
     $tenantId = 'tenant-metrics';
 
     $reengaged = Lead::factory()->create(['tenant_id' => $tenantId]);
