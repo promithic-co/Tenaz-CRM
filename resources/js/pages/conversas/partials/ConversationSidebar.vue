@@ -41,6 +41,17 @@ const groupTabs: Array<{ key: InboxGroup; label: string; title: string }> = [
     { key: 'minhas', label: 'Minhas', title: 'Atribuidas a voce' },
     { key: 'ia', label: 'IA', title: 'Sem atendente humano' },
     { key: 'todas', label: 'Todas', title: 'Todas as conversas' },
+    // Last on purpose: a send nobody answered is a record of what went out, not work
+    // waiting to be picked up, and it is excluded from every tab to its left.
+    //
+    // "Envios", not "Disparos": the tabs are flex-1, so at five of them a label longer
+    // than "Minhas" wraps mid-word. "Disparos" is also already the sidebar's name for
+    // the campaigns section, so the shorter label disambiguates as well as fits.
+    {
+        key: 'envios',
+        label: 'Envios',
+        title: 'Campanhas enviadas que ainda nao tiveram resposta',
+    },
 ];
 
 const statusFilters = [

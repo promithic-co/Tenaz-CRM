@@ -43,9 +43,13 @@ describe('Tag eager loading — N+1 prevention', function () {
         // bounded number — session/auth + paginated leads select + a single
         // eager-loaded tags select + ancillary lookups.
         //
-        // The bound also guards the User tenancy memos: this route used to issue
-        // 39 queries, 20 of them the first-tenant pivot select re-run on every
-        // visibility-scope evaluation and 7 more the per-check role lookup.
-        expect(count($queries))->toBeLessThan(16);
+        // The bound also guards the User tenancy memos. Adding the "envios" tab had
+        // pushed this to 46, because the sidebar runs one count per tab and each
+        // rebuilt the visibility scope, re-running tenants()->first() and the role
+        // lookup on every access — roughly 30 of the 43 queries were those two.
+        // Both are memoized per instance now, so a tab costs its own count query and
+        // nothing else, and the bound is back to guarding what it was meant to:
+        // that the cost does not scale with lead count.
+        expect(count($queries))->toBeLessThan(18);
     });
 });

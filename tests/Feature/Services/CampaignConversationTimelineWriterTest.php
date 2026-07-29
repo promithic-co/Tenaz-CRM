@@ -84,7 +84,7 @@ it('stores the rendered snapshot with buttons for a campaign template', function
         ->and($row->body)->toContain('[Botão] Sim, sou eu');
 });
 
-it('does not mirror or create a lead when the recipient has no conversation', function () {
+it('creates a silent lead so a send to a stranger is still visible', function () {
     $campaign = Campaign::factory()->sending()->create();
     $entry = ContactListEntry::factory()->create();
 
@@ -97,8 +97,32 @@ it('does not mirror or create a lead when the recipient has no conversation', fu
         templateComponents(),
     );
 
-    expect(ConversationTimelineMessage::count())->toBe(0)
-        ->and(Lead::where('whatsapp', $entry->phone)->count())->toBe(0);
+    $lead = Lead::withoutGlobalScopes()->where('whatsapp', $entry->phone)->sole();
+
+    // last_inbound_at null + campaign_id set is what confines this lead to the
+    // "envios" tab; if either drifts it lands in the atendente's real queue.
+    expect($lead->campaign_id)->toBe($campaign->id)
+        ->and($lead->last_inbound_at)->toBeNull()
+        ->and(ConversationTimelineMessage::where('lead_id', $lead->id)->count())->toBe(1)
+        ->and($entry->fresh()->lead_id)->toBe($lead->id);
+});
+
+it('reuses the silent lead instead of duplicating it across sends', function () {
+    $campaign = Campaign::factory()->sending()->create();
+    $entry = ContactListEntry::factory()->create();
+
+    foreach (['wamid-dup-1', 'wamid-dup-2'] as $providerMessageId) {
+        writer()->mirrorSentTemplate(
+            $campaign,
+            $entry,
+            (string) $entry->phone,
+            $providerMessageId,
+            ['1' => 'João', '2' => '#42'],
+            templateComponents(),
+        );
+    }
+
+    expect(Lead::withoutGlobalScopes()->where('whatsapp', $entry->phone)->count())->toBe(1);
 });
 
 it('does not duplicate the mirrored row on a repeated send event', function () {
@@ -209,7 +233,7 @@ it('backfills across the BR 9th digit mismatch', function () {
 it('does not mirror a landline onto a different subscriber', function () {
     $campaign = Campaign::factory()->sending()->create();
     $entry = ContactListEntry::factory()->create(['phone' => '551133334444']);
-    Lead::factory()->forTenant((string) $campaign->tenant_id)->create(['whatsapp' => '5511933334444']);
+    $mobile = Lead::factory()->forTenant((string) $campaign->tenant_id)->create(['whatsapp' => '5511933334444']);
 
     writer()->mirrorSentTemplate(
         $campaign,
@@ -220,7 +244,11 @@ it('does not mirror a landline onto a different subscriber', function () {
         templateComponents(),
     );
 
-    expect(ConversationTimelineMessage::count())->toBe(0);
+    // The landline gets its own lead — what must never happen is the 8-digit number
+    // being folded into the 9-digit mobile, putting one subscriber's message in
+    // another's conversation.
+    expect(ConversationTimelineMessage::where('lead_id', $mobile->id)->count())->toBe(0)
+        ->and(Lead::withoutGlobalScopes()->where('whatsapp', '551133334444')->count())->toBe(1);
 });
 
 it('honours a widened lookback and limit for the historical replay', function () {

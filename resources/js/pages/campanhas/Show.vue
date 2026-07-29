@@ -65,6 +65,8 @@ type CampaignMessage = {
     sent_at: string | null;
     delivered_at: string | null;
     read_at: string | null;
+    /** Template rendered with this recipient's own parameters; null when it could not be rendered. */
+    rendered_message: string | null;
     contact_list_entry: { id: number; name: string; phone: string } | null;
 };
 
@@ -1183,6 +1185,11 @@ const templateExpanded = ref(false);
                                 <th
                                     class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
                                 >
+                                    Mensagem
+                                </th>
+                                <th
+                                    class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase"
+                                >
                                     Status
                                 </th>
                                 <th
@@ -1237,6 +1244,20 @@ const templateExpanded = ref(false);
                                     class="px-4 py-3 text-xs text-muted-foreground"
                                 >
                                     {{ msg.contact_list_entry?.phone ?? '—' }}
+                                </td>
+                                <!-- Clamped, full text on hover: a template body is far too
+                                     long for a table cell, but with per-recipient parameters
+                                     this is the only place the exact text sent is readable. -->
+                                <td class="max-w-xs px-4 py-3">
+                                    <span
+                                        v-if="msg.rendered_message"
+                                        :title="msg.rendered_message"
+                                        class="line-clamp-2 text-xs whitespace-pre-line text-muted-foreground"
+                                        >{{ msg.rendered_message }}</span
+                                    >
+                                    <span v-else class="text-xs text-muted-foreground"
+                                        >—</span
+                                    >
                                 </td>
                                 <td class="px-4 py-3">
                                     <span

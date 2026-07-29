@@ -2,6 +2,7 @@
 
 use App\Enums\TenantRole;
 use App\Models\Agent;
+use App\Models\Campaign;
 use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
@@ -295,3 +296,71 @@ function timelineMessage(Lead $lead, string $direction, string $body, $createdAt
 
     return $message;
 }
+
+/**
+ * The "envios" tab: campaign sends nobody has answered. They exist as Leads so the
+ * operator can see what went out, and are subtracted from every other tab so a large
+ * fan-out cannot bury the queue that represents real work.
+ */
+test('an unanswered campaign send is confined to the envios tab', function () {
+    [$tenant, $owner] = groupTenant();
+    $agent = Agent::factory()->create(['user_id' => $owner->id, 'tenant_id' => $tenant->id]);
+    $campaign = Campaign::factory()->sending()->create(['tenant_id' => (string) $tenant->id]);
+
+    Lead::factory()->forAgent($agent)->create([
+        'tenant_id' => (string) $tenant->id,
+        'nome' => 'Disparo Sem Resposta',
+        'campaign_id' => $campaign->id,
+        'last_inbound_at' => null,
+    ]);
+    Lead::factory()->forAgent($agent)->create([
+        'tenant_id' => (string) $tenant->id,
+        'nome' => 'Conversa Real',
+        'campaign_id' => null,
+    ]);
+
+    expect(inboxNames($owner, ['group' => 'envios']))->toBe(['Disparo Sem Resposta'])
+        ->and(inboxNames($owner, ['group' => 'todas']))->toBe(['Conversa Real'])
+        ->and(inboxNames($owner, ['group' => 'ia']))->toBe(['Conversa Real']);
+});
+
+test('a campaign lead rejoins the normal tabs once it replies', function () {
+    [$tenant, $owner] = groupTenant();
+    $agent = Agent::factory()->create(['user_id' => $owner->id, 'tenant_id' => $tenant->id]);
+    $campaign = Campaign::factory()->sending()->create(['tenant_id' => (string) $tenant->id]);
+
+    $lead = Lead::factory()->forAgent($agent)->create([
+        'tenant_id' => (string) $tenant->id,
+        'nome' => 'Respondeu Depois',
+        'campaign_id' => $campaign->id,
+        'last_inbound_at' => null,
+    ]);
+
+    expect(inboxNames($owner, ['group' => 'todas']))->toBe([]);
+
+    // No migration step: stamping last_inbound_at is all the inbound path already does.
+    $lead->update(['last_inbound_at' => now()]);
+
+    expect(inboxNames($owner, ['group' => 'todas']))->toBe(['Respondeu Depois'])
+        ->and(inboxNames($owner, ['group' => 'envios']))->toBe([]);
+});
+
+test('the envios counter reports the sends rather than always zero', function () {
+    [$tenant, $owner] = groupTenant();
+    $agent = Agent::factory()->create(['user_id' => $owner->id, 'tenant_id' => $tenant->id]);
+    $campaign = Campaign::factory()->sending()->create(['tenant_id' => (string) $tenant->id]);
+
+    Lead::factory()->count(3)->forAgent($agent)->create([
+        'tenant_id' => (string) $tenant->id,
+        'campaign_id' => $campaign->id,
+        'last_inbound_at' => null,
+    ]);
+
+    // Regression: groupCountsFor used to force group=todas and layer inGroup() on top,
+    // which subtracted the silent sends before requiring them and always counted zero.
+    $response = test()->actingAs($owner)->get(route('conversas.index'))->assertOk();
+    $counts = $response->viewData('page')['props']['group_counts'];
+
+    expect($counts['envios'])->toBe(3)
+        ->and($counts['ia'])->toBe(0);
+});

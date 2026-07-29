@@ -24,11 +24,15 @@ class DashboardMetricsService
     public function snapshot(string $tenantId): array
     {
         return Cache::remember("dashboard:snapshot:{$tenantId}", 5, function () use ($tenantId) {
-            $leadsToday = Lead::forTenant($tenantId)->production()
+            // withoutSilentCampaignSends throughout: a campaign now creates a Lead per
+            // recipient so the send is visible in /conversas, but an unanswered blast is
+            // not a lead that arrived. Counting it would inflate every total here and sink
+            // the conversion rate below by pure dilution.
+            $leadsToday = Lead::forTenant($tenantId)->production()->withoutSilentCampaignSends()
                 ->whereDate('created_at', today())
                 ->count();
 
-            $leadsNewThisWeek = Lead::forTenant($tenantId)->production()
+            $leadsNewThisWeek = Lead::forTenant($tenantId)->production()->withoutSilentCampaignSends()
                 ->where('created_at', '>=', now()->startOfWeek())
                 ->count();
 
@@ -55,7 +59,7 @@ class DashboardMetricsService
                 ->count();
 
             // Conversion rate: escalados in last 7 days / leads created in last 7 days
-            $leadsLast7d = Lead::forTenant($tenantId)->production()
+            $leadsLast7d = Lead::forTenant($tenantId)->production()->withoutSilentCampaignSends()
                 ->where('created_at', '>=', now()->subDays(7))
                 ->count();
 

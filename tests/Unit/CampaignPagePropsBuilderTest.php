@@ -172,9 +172,18 @@ test('show props preserve campaign detail contract and status filter', function 
         'campaign_id' => $campaign->id,
         'contact_list_entry_id' => $failedEntry->id,
     ]);
+    // Answered: last_inbound_at is what makes this count as a reply. The campaign also
+    // creates a lead for every recipient at send time, so the foreign key alone no
+    // longer distinguishes "was sent to" from "wrote back".
     Lead::factory()->create([
         'tenant_id' => $user->tenantId,
         'campaign_id' => $campaign->id,
+        'last_inbound_at' => now(),
+    ]);
+    Lead::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'campaign_id' => $campaign->id,
+        'last_inbound_at' => null,
     ]);
 
     $request = Request::create('/campanhas/'.$campaign->id, 'GET', ['status' => 'failed']);
