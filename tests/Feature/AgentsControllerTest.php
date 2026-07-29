@@ -359,10 +359,10 @@ test('test_conversion_rate_is_zero_when_no_leads', function () {
 test('agents index query count does not scale with agent count', function () {
     $user = User::factory()->create();
 
-    // User::tenantId memoizes its pivot lookup per model instance and the same
-    // instance backs both measured requests, so resolve it up front instead of
-    // charging that one-time query to whichever request runs first.
-    $user->tenantId;
+    // The tenant and role memos live on the model instance and the same instance
+    // backs both measured requests, so resolve them up front instead of charging
+    // those one-time queries to whichever request runs first.
+    $user->currentRole();
 
     $measure = function () use ($user): int {
         DB::flushQueryLog();

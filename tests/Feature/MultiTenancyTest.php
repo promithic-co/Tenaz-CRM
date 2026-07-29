@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TenantRole;
 use App\Models\Agent;
 use App\Models\AppSetting;
 use App\Models\Lead;
@@ -81,6 +82,112 @@ test('user tenantId follows the active tenant switched mid-request', function ()
     request()->session()->forget('active_tenant_id');
 
     expect($user->tenantId)->toBe((string) $user->id);
+});
+
+// ─── User roleFor ────────────────────────────────────────────────────────────
+
+test('the first tenant role is seeded by the tenant id lookup', function () {
+    $user = User::factory()->create();
+
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    $tenantId = $user->tenantId;
+    $role = $user->currentRole();
+
+    $pivotQueries = collect(DB::getQueryLog())
+        ->filter(fn (array $query): bool => str_contains($query['query'], 'tenant_user'));
+    DB::disableQueryLog();
+
+    // The tenant lookup already selects the pivot row, so the role must come
+    // out of it rather than costing a second select.
+    expect($tenantId)->toBe((string) $user->id)
+        ->and($role)->toBe(TenantRole::Owner)
+        ->and($pivotQueries)->toHaveCount(1);
+});
+
+test('roleFor resolves each tenant with a single query', function () {
+    $user = User::factory()->create();
+    $secondTenant = Tenant::create(['name' => 'Org B']);
+    $user->tenants()->attach($secondTenant->id, ['role' => TenantRole::Administrator->value]);
+
+    $firstTenantId = $user->tenantId;
+    $user->forgetTenantMemo();
+
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    $roles = [
+        $user->roleFor($firstTenantId),
+        $user->roleFor($firstTenantId),
+        $user->roleFor((string) $secondTenant->id),
+        $user->roleFor((string) $secondTenant->id),
+    ];
+
+    $pivotQueries = collect(DB::getQueryLog())
+        ->filter(fn (array $query): bool => str_contains($query['query'], 'tenant_user'));
+    DB::disableQueryLog();
+
+    expect($roles)->toBe([
+        TenantRole::Owner,
+        TenantRole::Owner,
+        TenantRole::Administrator,
+        TenantRole::Administrator,
+    ])->and($pivotQueries)->toHaveCount(2);
+});
+
+test('roleFor caches a non-membership so repeated permission checks cost one query', function () {
+    $user = User::factory()->create();
+    $foreignTenant = Tenant::create(['name' => 'Org B']);
+
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    // What a super-admin acting as a company they do not belong to hits on
+    // every isOwnerOrAdmin()/isRestrictedUser() check across a request.
+    $roles = [
+        $user->roleFor((string) $foreignTenant->id),
+        $user->roleFor((string) $foreignTenant->id),
+        $user->roleFor((string) $foreignTenant->id),
+    ];
+
+    $pivotQueries = collect(DB::getQueryLog())
+        ->filter(fn (array $query): bool => str_contains($query['query'], 'tenant_user'));
+    DB::disableQueryLog();
+
+    expect($roles)->toBe([null, null, null])
+        ->and($pivotQueries)->toHaveCount(1);
+});
+
+test('a role change on the pivot invalidates the memo on the same instance', function () {
+    $user = User::factory()->create();
+    $tenantId = $user->tenantId;
+
+    expect($user->isOwnerOrAdmin())->toBeTrue();
+
+    // Note the argument is the value that just warmed the memo — the pattern that
+    // makes caller-side invalidation unworkable. A stale role here would let a
+    // demoted user keep passing owner/admin permission checks.
+    $user->tenants()->updateExistingPivot($tenantId, ['role' => TenantRole::User->value]);
+
+    expect($user->currentRole())->toBe(TenantRole::User)
+        ->and($user->isOwnerOrAdmin())->toBeFalse()
+        ->and($user->isRestrictedUser())->toBeTrue();
+});
+
+test('detaching and re-attaching on the same instance resolves the new tenant', function () {
+    $user = User::factory()->create();
+    $originalTenantId = $user->tenantId;
+
+    expect($user->currentRole())->toBe(TenantRole::Owner);
+
+    $newTenant = Tenant::create(['name' => 'Org B']);
+    $user->tenants()->detach($originalTenantId);
+    $user->tenants()->attach($newTenant->id, ['role' => TenantRole::Administrator->value]);
+
+    // A stale tenant id would scope every query to the tenant the user just left.
+    expect($user->tenantId)->toBe((string) $newTenant->id)
+        ->and($user->currentRole())->toBe(TenantRole::Administrator);
 });
 
 // ─── Lead scoping ────────────────────────────────────────────────────────────

@@ -28,7 +28,10 @@ describe('Tag eager loading — N+1 prevention', function () {
         DB::enableQueryLog();
         DB::flushQueryLog();
 
-        $this->actingAs($user)
+        // Act as a freshly hydrated instance: the setup above already read
+        // tenantId, and reusing that instance would hide the one-time tenant and
+        // role lookups behind a warm memo, undercounting what production pays.
+        $this->actingAs(User::findOrFail($user->id))
             ->get('/conversas')
             ->assertOk();
 
@@ -40,9 +43,9 @@ describe('Tag eager loading — N+1 prevention', function () {
         // bounded number — session/auth + paginated leads select + a single
         // eager-loaded tags select + ancillary lookups.
         //
-        // The bound also guards User::tenantId memoization: before it, the
-        // first-tenant pivot select ran on every visibility-scope evaluation
-        // and accounted for 20 of the 39 queries this route used to issue.
-        expect(count($queries))->toBeLessThan(24);
+        // The bound also guards the User tenancy memos: this route used to issue
+        // 39 queries, 20 of them the first-tenant pivot select re-run on every
+        // visibility-scope evaluation and 7 more the per-check role lookup.
+        expect(count($queries))->toBeLessThan(16);
     });
 });
