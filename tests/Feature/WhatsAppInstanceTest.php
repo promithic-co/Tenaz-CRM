@@ -109,6 +109,7 @@ test('coexistence creation skips registration and schedules the initial app data
         'waba_id' => 'waba-coexistence',
         'phone_number_id' => 'phone-coexistence',
         'coexistence' => true,
+        'onboarding_mode' => 'coexistence',
     ], now()->addMinutes(30));
 
     $this->actingAs($user)
@@ -124,6 +125,44 @@ test('coexistence creation skips registration and schedules the initial app data
     expect($instance->meta_coexistence)->toBeTrue();
     Queue::assertPushed(SyncMetaCoexistenceDataJob::class, fn (SyncMetaCoexistenceDataJob $job): bool => $job->instanceId === $instance->id);
     Http::assertNotSent(fn ($request): bool => str_ends_with($request->url(), '/register'));
+});
+
+test('already registered Cloud API creation skips registration and webhook subscription', function () {
+    Queue::fake();
+    Http::fake([
+        'graph.facebook.com/*/register' => Http::response([], 200),
+        'graph.facebook.com/*/subscribed_apps' => Http::response(['success' => true], 200),
+    ]);
+
+    $user = User::factory()->create();
+    $token = str_repeat('f', 64);
+
+    Cache::put("meta_signup:{$token}", [
+        'access_token' => 'test-token',
+        'system_user_id' => null,
+        'permanent' => true,
+        'business_id' => 'business-existing',
+        'waba_id' => 'waba-existing',
+        'phone_number_id' => 'phone-existing',
+        'coexistence' => false,
+        'onboarding_mode' => 'existing_cloud_api',
+    ], now()->addMinutes(30));
+
+    $this->actingAs($user)
+        ->post(route('whatsapp.store'), [
+            'display_name' => 'Campanhas',
+            'name' => 'campanhas',
+            'provider' => 'meta_cloud',
+            'meta_signup_token' => $token,
+        ])
+        ->assertRedirect();
+
+    $instance = WhatsappInstance::where('name', 'campanhas')->firstOrFail();
+    expect($instance->meta_coexistence)->toBeFalse();
+
+    Http::assertNotSent(fn ($request): bool => str_ends_with($request->url(), '/register')
+        || str_ends_with($request->url(), '/subscribed_apps'));
+    Queue::assertNotPushed(SyncMetaCoexistenceDataJob::class);
 });
 
 test('meta cloud signup does not create instance when phone registration fails', function () {
