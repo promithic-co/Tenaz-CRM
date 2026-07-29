@@ -39,6 +39,10 @@ describe('Tag eager loading — N+1 prevention', function () {
         // exceed 50 queries (one per lead). With eager loading we expect a
         // bounded number — session/auth + paginated leads select + a single
         // eager-loaded tags select + ancillary lookups.
-        expect(count($queries))->toBeLessThan(40);
+        //
+        // The bound also guards User::tenantId memoization: before it, the
+        // first-tenant pivot select ran on every visibility-scope evaluation
+        // and accounted for 20 of the 39 queries this route used to issue.
+        expect(count($queries))->toBeLessThan(24);
     });
 });

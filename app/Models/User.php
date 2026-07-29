@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\TenantRole;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -13,7 +14,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     /**
@@ -65,10 +66,21 @@ class User extends Authenticatable
         return $this->belongsTo(Agent::class, 'onboarding_agent_id');
     }
 
+    /**
+     * Memoized result of the first-tenant fallback below.
+     *
+     * Only ever holds a resolved id — a "no tenant" outcome is deliberately not
+     * cached, so a tenant attached later in the same instance's lifetime (user
+     * registration, invitation acceptance) is still picked up.
+     */
+    private ?string $memoizedFirstTenantId = null;
+
     /** The tenant identifier for this user (used to scope data in multi-tenant queries). */
     public function getTenantIdAttribute(): ?string
     {
-        // Only check session in HTTP context where a session store is available
+        // Only check session in HTTP context where a session store is available.
+        // Read every time rather than memoized so switching the active tenant
+        // mid-request (backoffice switcher) takes effect immediately.
         if (request() && request()->hasSession()) {
             $activeTenant = request()->session()->get('active_tenant_id');
             if ($activeTenant) {
@@ -76,9 +88,27 @@ class User extends Authenticatable
             }
         }
 
-        $firstTenant = $this->tenants()->first();
+        return $this->resolveFirstTenantId();
+    }
 
-        return $firstTenant ? (string) $firstTenant->id : null;
+    /**
+     * The user's first tenant, resolved at most once per model instance.
+     *
+     * This accessor is read on every tenant-scoped query, so the uncached pivot
+     * select dominated request query counts. Prefers an already eager-loaded
+     * relation, then falls back to a single query whose result is memoized.
+     */
+    private function resolveFirstTenantId(): ?string
+    {
+        if ($this->memoizedFirstTenantId !== null) {
+            return $this->memoizedFirstTenantId;
+        }
+
+        $firstTenant = $this->relationLoaded('tenants')
+            ? $this->getRelation('tenants')->first()
+            : $this->tenants()->first();
+
+        return $this->memoizedFirstTenantId = $firstTenant ? (string) $firstTenant->id : null;
     }
 
     public function tenants(): BelongsToMany

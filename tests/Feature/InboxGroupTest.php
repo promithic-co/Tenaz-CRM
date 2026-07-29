@@ -249,6 +249,11 @@ test('listing the inbox does not cost a query per lead', function () {
     [$tenant, $owner] = groupTenant();
     $tenantId = (string) $tenant->id;
 
+    // User::tenantId memoizes its pivot lookup per model instance and the same
+    // instance backs both measured requests, so resolve it up front instead of
+    // charging that one-time query to whichever request runs first.
+    $owner->tenantId;
+
     $measure = function (int $leadCount) use ($tenantId, $owner): int {
         Lead::query()->where('tenant_id', $tenantId)->forceDelete();
 
