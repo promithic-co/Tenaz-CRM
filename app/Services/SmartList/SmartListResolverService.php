@@ -23,7 +23,18 @@ class SmartListResolverService
     public const PREVIEW_COUNT_CAP = 5001;
 
     /**
-     * Build an Eloquent query for leads matching filters, tenant-scoped, opt-out excluded.
+     * Build an Eloquent query for leads matching filters, tenant-scoped, opt-out excluded,
+     * unanswered campaign sends excluded.
+     *
+     * A campaign now creates a Lead per recipient so the send shows up in /conversas, and
+     * those rows carry the default status `novo` with a recent created_at. Left in, a rule
+     * as ordinary as "status is novo" or "created in the last 7 days" resolves to every
+     * person a past blast touched — so the list a campaign is built from grows by its own
+     * previous fan-out and re-sends to people who never answered. That is the audience most
+     * likely to report the number.
+     *
+     * Deliberate re-targeting still has a home: the campaign's own contact list holds the
+     * recipients. This query is about people who engaged.
      */
     public function buildQuery(string $tenantId, array $filters): Builder
     {
@@ -34,7 +45,8 @@ class SmartListResolverService
 
         $query = Lead::query()
             ->where('tenant_id', $tenantId)
-            ->where('status', '!=', self::OPT_OUT_STATUS);
+            ->where('status', '!=', self::OPT_OUT_STATUS)
+            ->withoutSilentCampaignSends();
 
         if ($rules === []) {
             return $query;
