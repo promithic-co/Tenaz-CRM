@@ -85,6 +85,37 @@ class PhoneNumberValidator
     }
 
     /**
+     * The single spelling a subscriber should be stored under.
+     *
+     * {@see variants()} answers "which rows might be this person"; this answers "which form
+     * do we write". Of the possible spellings it returns the one {@see normalize()} accepts,
+     * so a BR mobile always lands in its 13-digit form no matter whether it arrived from a
+     * CSV import (with the 9) or an inbound webhook (without it). Numbers the validator
+     * rejects — foreign, malformed — keep their raw digits, matching the permissive
+     * contract the contacts domain relies on.
+     *
+     * @return string|null null only when the input carries no digits at all
+     */
+    public static function canonical(?string $raw): ?string
+    {
+        $variants = self::variants($raw);
+
+        if ($variants === []) {
+            return null;
+        }
+
+        foreach ($variants as $variant) {
+            $normalized = self::normalize($variant);
+
+            if ($normalized !== null) {
+                return $normalized;
+            }
+        }
+
+        return $variants[0];
+    }
+
+    /**
      * The same Brazilian mobile written with the opposite 9th-digit convention, or null
      * when the number is not a BR mobile in either form (landlines never carry the 9).
      */

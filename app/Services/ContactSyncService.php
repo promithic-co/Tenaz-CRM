@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Console\Commands\DedupeContactPhoneVariantsCommand;
 use App\Models\Contact;
 use App\Models\ContactListEntry;
 use App\Models\Lead;
@@ -35,20 +36,20 @@ class ContactSyncService
             return null;
         }
 
-        $lockKey = "contact_sync_{$tenantId}_{$phone}";
+        $canonical = PhoneNumberValidator::canonical($phone) ?? $phone;
 
-        return Cache::lock($lockKey, 8)->block(5, function () use ($tenantId, $phone, $attrs, $source): Contact {
-            /** @var Contact|null $contact */
-            $contact = Contact::withoutGlobalScopes()
-                ->withTrashed()
-                ->where('tenant_id', $tenantId)
-                ->where('phone', $phone)
-                ->first();
+        // Locked per subscriber, not per digit form. The two 9th-digit spellings of the
+        // same mobile arrive concurrently — webhook and CSV import — and a lock keyed on
+        // the raw form lets both through to create a contact each.
+        $lockKey = "contact_sync_{$tenantId}_{$canonical}";
+
+        return Cache::lock($lockKey, 8)->block(5, function () use ($tenantId, $phone, $canonical, $attrs, $source): Contact {
+            $contact = $this->findAcrossPhoneVariants($tenantId, $phone, $canonical);
 
             if (! $contact) {
                 return Contact::withoutGlobalScopes()->create([
                     'tenant_id' => $tenantId,
-                    'phone' => $phone,
+                    'phone' => $canonical,
                     'name' => $attrs['name'] ?? null,
                     'email' => $attrs['email'] ?? null,
                     'cpf' => $attrs['cpf'] ?? null,
@@ -85,6 +86,37 @@ class ContactSyncService
 
             return $contact;
         });
+    }
+
+    /**
+     * The existing contact for this subscriber under any 9th-digit spelling.
+     *
+     * Matching the exact string alone is what minted a second Contact per person: the CSV
+     * import stores a BR mobile as 13 digits and the inbound webhook as 12, so the reply to
+     * a campaign never resolved to the imported contact. The duplicate then had to be
+     * opted out, tagged and reported on twice, and consistently only one of the two was.
+     *
+     * Where history already holds both spellings the exact match wins, so leads and list
+     * entries keep pointing at the contact they were linked to; consolidating them is
+     * {@see DedupeContactPhoneVariantsCommand}'s job, which merges the
+     * profile data instead of silently relinking.
+     */
+    private function findAcrossPhoneVariants(string $tenantId, string $phone, string $canonical): ?Contact
+    {
+        $matches = Contact::withoutGlobalScopes()
+            ->withTrashed()
+            ->where('tenant_id', $tenantId)
+            ->whereIn('phone', PhoneNumberValidator::variants($phone))
+            ->orderBy('id')
+            ->get();
+
+        if ($matches->isEmpty()) {
+            return null;
+        }
+
+        return $matches->firstWhere('phone', $phone)
+            ?? $matches->firstWhere('phone', $canonical)
+            ?? $matches->first();
     }
 
     /**

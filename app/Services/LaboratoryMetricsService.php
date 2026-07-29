@@ -307,10 +307,16 @@ class LaboratoryMetricsService
             'messages_delivered_today' => $deliveredToday,
             'messages_failed_today' => $failedToday,
             'delivery_rate_today' => $sentToday > 0 ? round($deliveredToday / $sentToday * 100, 1) : 0,
+            // Counted from the inbound stamp on a campaign-linked lead. The previous
+            // predicate was `modo = 'bulk'` and nothing in the application ever writes that
+            // value — only the agent API accepts it — so this reported 0 no matter how many
+            // people answered. Reading created_at was wrong besides: a campaign send now
+            // creates the lead, so the moment the row appeared says nothing about whether
+            // anyone replied. last_inbound_at is the column that only a real reply stamps.
             'replies_from_campaigns_today' => Lead::withoutGlobalScope('tenant')
                 ->where('tenant_id', $tenantId)
-                ->where('modo', 'bulk')
-                ->whereDate('created_at', today())
+                ->whereNotNull('campaign_id')
+                ->whereDate('last_inbound_at', today())
                 ->count(),
             'estimated_cost_today_usd' => $sentToday > 0 ? round($sentToday * 0.05, 2) : 0,
         ];

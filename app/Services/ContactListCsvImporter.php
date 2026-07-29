@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Contact;
 use App\Models\ContactList;
 use App\Models\ContactListEntry;
+use App\Services\WhatsApp\PhoneNumberValidator;
 use App\Support\CsvDelimiterDetector;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
@@ -209,8 +210,21 @@ class ContactListCsvImporter
     }
 
     /**
+     * The fewest digits any dialable number can have — the floor the E.164 fallback in
+     * {@see PhoneNumberValidator} already applies to foreign numbers.
+     */
+    private const MIN_DIALABLE_DIGITS = 8;
+
+    /**
      * Pull the canonical (normalized) phone numbers out of an already-UTF-8 CSV row.
      * Shared by the dedup-scoping pass and the insert pass so both derive identical keys.
+     *
+     * Rows too short to be a phone number are counted as skipped rather than imported.
+     * normalizePhone() is permissive on purpose — it falls back to bare digits so foreign
+     * and imperfect numbers still resolve to a contact — but that fallback also let a
+     * 5-digit cell become a real recipient: it inflated the campaign's recipient count,
+     * consumed a send slot, failed at Meta, and then counted toward the failure rate that
+     * decides whether to auto-pause the campaign.
      *
      * @param  array<int, string|null>  $row
      * @return list<string>
@@ -228,7 +242,7 @@ class ContactListCsvImporter
         foreach ($raw as $value) {
             $phone = $this->contactSync->normalizePhone($value);
 
-            if ($phone !== null) {
+            if ($phone !== null && strlen($phone) >= self::MIN_DIALABLE_DIGITS) {
                 $phones[] = $phone;
             }
         }

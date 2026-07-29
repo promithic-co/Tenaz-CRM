@@ -212,6 +212,29 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Environments
+    |--------------------------------------------------------------------------
+    |
+    | NOTE: the 'production' block below is not in effect. Production does not run
+    | `artisan horizon` at all — docker/supervisord.conf starts a plain `queue:work`
+    | per queue with fixed process counts, so none of the autoscaling here applies.
+    | Only 'local' is live, via the `composer run dev` script. Tuning the production
+    | numbers changes nothing until the container's supervisord is changed too.
+    |
+    | Two things must be reconciled before anyone flips that switch:
+    |
+    |  - supervisor-campaigns sets timeout 600, but DispatchCampaignJob declares
+    |    timeout 3600 and supervisord runs the campaigns worker with --timeout=3600.
+    |    Under Horizon a large fan-out would be killed ten minutes in, part-dispatched.
+    |
+    |  - the stack runs two replicas, so there would be two Horizon masters, each
+    |    scaling to its own maxProcesses — up to double the totals below, against a
+    |    1G per-container memory limit.
+    |
+    */
+
     'environments' => [
         'production' => [
             'supervisor-messages' => [
