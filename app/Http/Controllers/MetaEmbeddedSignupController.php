@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MetaOnboardingMode;
 use App\Exceptions\MetaApiException;
 use App\Http\Requests\MetaEmbeddedSignupRequest;
 use App\Services\WhatsApp\MetaTokenExchangeService;
@@ -22,15 +23,24 @@ class MetaEmbeddedSignupController extends Controller
     public function callback(MetaEmbeddedSignupRequest $request): JsonResponse
     {
         try {
+            $coexistence = $request->string('finish_type')->toString()
+                === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
+            $onboardingMode = MetaOnboardingMode::tryFrom(
+                $request->string('onboarding_mode')->toString()
+            ) ?? ($coexistence
+                ? MetaOnboardingMode::Coexistence
+                : MetaOnboardingMode::NewCloudApi);
+
+            if ($onboardingMode->isCoexistence() !== $coexistence) {
+                throw new MetaApiException('O modo concluído pela Meta não corresponde ao modo de conexão selecionado.');
+            }
+
             $result = $this->tokenService->exchangeCodeForPermanentToken(
                 code: $request->string('code')->toString(),
                 wabaId: $request->string('waba_id')->toString(),
                 businessId: $request->string('business_id', '')->toString(),
                 phoneNumberId: $request->string('phone_number_id', '')->toString(),
             );
-
-            $coexistence = $request->string('finish_type')->toString()
-                === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
 
             if ($coexistence && ! $this->tokenService->isCoexistencePhone(
                 $result['phone_number_id'],
@@ -52,6 +62,7 @@ class MetaEmbeddedSignupController extends Controller
             'waba_id' => $result['waba_id'],
             'phone_number_id' => $result['phone_number_id'],
             'coexistence' => $coexistence,
+            'onboarding_mode' => $onboardingMode->value,
         ], now()->addMinutes(30));
 
         return response()->json([
@@ -60,6 +71,7 @@ class MetaEmbeddedSignupController extends Controller
             'phone_number_id' => $result['phone_number_id'],
             'waba_id' => $result['waba_id'],
             'coexistence' => $coexistence,
+            'onboarding_mode' => $onboardingMode->value,
         ]);
     }
 }

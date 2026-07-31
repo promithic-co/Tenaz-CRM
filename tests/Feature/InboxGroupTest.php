@@ -250,6 +250,11 @@ test('listing the inbox does not cost a query per lead', function () {
     [$tenant, $owner] = groupTenant();
     $tenantId = (string) $tenant->id;
 
+    // The tenant and role memos live on the model instance and the same instance
+    // backs both measured requests, so resolve them up front instead of charging
+    // those one-time queries to whichever request runs first.
+    $owner->currentRole();
+
     $measure = function (int $leadCount) use ($tenantId, $owner): int {
         Lead::query()->where('tenant_id', $tenantId)->forceDelete();
 

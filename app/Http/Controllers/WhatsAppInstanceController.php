@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MetaOnboardingMode;
 use App\Enums\WhatsAppProvider;
 use App\Http\Requests\StoreWhatsappInstanceRequest;
 use App\Jobs\SyncMetaCoexistenceDataJob;
@@ -127,12 +128,15 @@ class WhatsAppInstanceController extends Controller
             $attributes['meta_system_user_id'] = (string) ($cached['system_user_id'] ?? '') ?: null;
             $attributes['meta_token_permanent'] = (bool) ($cached['permanent'] ?? false);
             $attributes['meta_token_expires_at'] = $attributes['meta_token_permanent'] ? null : now()->addDays(60);
-            $attributes['meta_coexistence'] = (bool) ($cached['coexistence'] ?? false);
+            $onboardingMode = MetaOnboardingMode::tryFrom((string) ($cached['onboarding_mode'] ?? ''))
+                ?? ((bool) ($cached['coexistence'] ?? false)
+                    ? MetaOnboardingMode::Coexistence
+                    : MetaOnboardingMode::NewCloudApi);
+            $attributes['meta_coexistence'] = $onboardingMode->isCoexistence();
             $attributes['api_url'] = 'https://graph.facebook.com';
             $attributes['api_key'] = '';
 
-            // Register phone number on Cloud API for modes A (new) and B (migrate)
-            if (! $attributes['meta_coexistence'] && $attributes['meta_phone_number_id']) {
+            if ($onboardingMode->requiresPhoneRegistration() && $attributes['meta_phone_number_id']) {
                 $pin = (string) ($request->validated('meta_pin') ?? '000000');
                 $registered = $this->metaTokenService->registerPhoneNumber(
                     $attributes['meta_phone_number_id'],
@@ -147,8 +151,9 @@ class WhatsAppInstanceController extends Controller
                 }
             }
 
-            // Subscribe WABA to this app so Meta delivers webhook events
-            if ($attributes['meta_waba_id'] && $attributes['meta_access_token']) {
+            if ($onboardingMode->requiresWabaSubscription()
+                && $attributes['meta_waba_id']
+                && $attributes['meta_access_token']) {
                 $subscribed = $this->metaTokenService->subscribeWaba(
                     $attributes['meta_waba_id'],
                     $attributes['meta_access_token'],

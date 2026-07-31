@@ -1,11 +1,15 @@
 <?php
 
+use App\Enums\TenantRole;
 use App\Models\Agent;
 use App\Models\Lead;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsappInstance;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 test('test_agents_index_includes_metrics', function () {
     $user = User::factory()->create();
@@ -152,14 +156,14 @@ test('update instance from same user but different active tenant is rejected', f
     $user = User::factory()->create();
 
     // Add a second tenant and switch context
-    $secondTenant = \App\Models\Tenant::create(['name' => 'Second Tenant']);
-    $user->tenants()->attach($secondTenant->id, ['role' => \App\Enums\TenantRole::Owner->value]);
+    $secondTenant = Tenant::create(['name' => 'Second Tenant']);
+    $user->tenants()->attach($secondTenant->id, ['role' => TenantRole::Owner->value]);
 
     // Agent belongs to the user's first (default) tenant
     $agent = Agent::factory()->create(['user_id' => $user->id, 'tenant_id' => $user->tenantId]);
 
     // Instance belongs to the SECOND tenant — not the active one
-    $crossTenantInstance = \App\Models\WhatsappInstance::factory()->create([
+    $crossTenantInstance = WhatsappInstance::factory()->create([
         'user_id' => $user->id,
         'tenant_id' => (string) $secondTenant->id,
         'agent_id' => null,
@@ -355,12 +359,17 @@ test('test_conversion_rate_is_zero_when_no_leads', function () {
 test('agents index query count does not scale with agent count', function () {
     $user = User::factory()->create();
 
+    // The tenant and role memos live on the model instance and the same instance
+    // backs both measured requests, so resolve them up front instead of charging
+    // those one-time queries to whichever request runs first.
+    $user->currentRole();
+
     $measure = function () use ($user): int {
-        \Illuminate\Support\Facades\DB::flushQueryLog();
-        \Illuminate\Support\Facades\DB::enableQueryLog();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
         $this->actingAs($user)->get(route('agentes.index'))->assertOk();
-        $count = count(\Illuminate\Support\Facades\DB::getQueryLog());
-        \Illuminate\Support\Facades\DB::disableQueryLog();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
 
         return $count;
     };
@@ -386,9 +395,9 @@ test('agents index query count does not scale with agent count', function () {
 
 test('owner can assign an agent to a tenant user', function () {
     $owner = User::factory()->create();
-    $member = \App\Models\User::factory()->create();
+    $member = User::factory()->create();
     $member->tenants()->detach();
-    $member->tenants()->attach($owner->tenantId, ['role' => \App\Enums\TenantRole::User->value]);
+    $member->tenants()->attach($owner->tenantId, ['role' => TenantRole::User->value]);
 
     $agent = Agent::factory()->create(['user_id' => $owner->id, 'tenant_id' => $owner->tenantId]);
 
@@ -403,7 +412,7 @@ test('assign returns 403 for a non-owner non-admin user', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $member->tenants()->detach();
-    $member->tenants()->attach($owner->tenantId, ['role' => \App\Enums\TenantRole::User->value]);
+    $member->tenants()->attach($owner->tenantId, ['role' => TenantRole::User->value]);
 
     $agent = Agent::factory()->create(['user_id' => $owner->id, 'tenant_id' => $owner->tenantId]);
 

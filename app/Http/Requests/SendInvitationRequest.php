@@ -8,6 +8,13 @@ use Illuminate\Validation\Rule;
 
 class SendInvitationRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'email' => strtolower(trim((string) $this->input('email'))),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return (bool) $this->user()?->isOwnerOrAdmin();

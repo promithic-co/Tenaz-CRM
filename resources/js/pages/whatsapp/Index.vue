@@ -14,6 +14,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import {
+    embeddedSignupExtras,
+    metaConfigIdForMode,
+} from '@/lib/metaEmbeddedSignup';
+import type { MetaOnboardingMode } from '@/lib/metaEmbeddedSignup';
 import type { BreadcrumbItem } from '@/types';
 import InstanceCard from './InstanceCard.vue';
 
@@ -72,10 +77,10 @@ const addForm = useForm({
 
 // ─── Meta Embedded Signup ─────────────────────────────────────────────────────
 //
-// The Meta popup owns the connection choice. The OAuth callback and the
-// Embedded Signup session event are coordinated before the backend exchange.
+// Tenaz selects the onboarding path; the Meta popup owns asset selection and
+// eligibility. The OAuth callback and session event are coordinated before the
+// backend exchange.
 
-type MetaMode = 'standard' | 'coexistence';
 type MetaFinishEvent = 'FINISH' | 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
 type MetaStage = 'intro' | 'processing' | 'confirm';
 
@@ -88,19 +93,47 @@ const metaBusinessId = ref('');
 const metaAuthorizationCode = ref('');
 const metaFinishEvent = ref<MetaFinishEvent | null>(null);
 const metaExchangeStarted = ref(false);
-const metaMode = ref<MetaMode>('standard');
+const metaMode = ref<MetaOnboardingMode>('new_cloud_api');
 
-const metaModeLabel: Record<MetaMode, string> = {
-    standard: 'Cloud API',
+const metaModeLabel: Record<MetaOnboardingMode, string> = {
+    new_cloud_api: 'Novo número na Cloud API',
+    existing_cloud_api: 'WABA já ativa na Cloud API',
     coexistence: 'Coexistência com o WhatsApp Business',
 };
 
-const metaConfigId = () =>
-    (window as any).__META_CONFIG_ID_COEXISTENCE__ ||
-    (window as any).__META_CONFIG_ID__ ||
-    '';
+const metaModeOptions: Array<{
+    value: MetaOnboardingMode;
+    title: string;
+    description: string;
+}> = [
+    {
+        value: 'new_cloud_api',
+        title: 'Novo número na Cloud API',
+        description:
+            'Registra o número e conecta os webhooks ao Tenaz para campanhas e atendimento.',
+    },
+    {
+        value: 'existing_cloud_api',
+        title: 'WABA já ativa na Cloud API',
+        description:
+            'Usa o Tenaz somente para envios, sem registrar novamente o número nem alterar os webhooks atuais.',
+    },
+    {
+        value: 'coexistence',
+        title: 'WhatsApp Business com coexistência',
+        description:
+            'Mantém o aplicativo WhatsApp Business ativo e conecta a Cloud API ao Tenaz.',
+    },
+];
 
-const needsPin = () => metaMode.value !== 'coexistence';
+const metaConfigId = () =>
+    metaConfigIdForMode(
+        metaMode.value,
+        (window as any).__META_CONFIG_ID__ || '',
+        (window as any).__META_CONFIG_ID_COEXISTENCE__ || '',
+    );
+
+const needsPin = () => metaMode.value === 'new_cloud_api';
 
 function loadFbSdk(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -143,7 +176,9 @@ function launchEmbeddedSignup(): void {
 
     if (!metaConfigId()) {
         metaError.value =
-            'Configuração do Meta (META_APP_CONFIG_ID) não definida no servidor. Contate o suporte.';
+            metaMode.value === 'coexistence'
+                ? 'Configuração de coexistência do Meta não definida no servidor. Contate o suporte.'
+                : 'Configuração padrão do Meta não definida no servidor. Contate o suporte.';
         return;
     }
 
@@ -186,11 +221,7 @@ function openFbLogin(): void {
             config_id: metaConfigId(),
             response_type: 'code',
             override_default_response_type: true,
-            extras: {
-                setup: {},
-                featureType: 'whatsapp_business_app_onboarding',
-                sessionInfoVersion: '3',
-            },
+            extras: embeddedSignupExtras(metaMode.value),
         },
     );
 }
@@ -228,6 +259,7 @@ async function completeEmbeddedSignup(): Promise<void> {
                 phone_number_id: metaPhoneNumberId.value || '',
                 business_id: metaBusinessId.value || '',
                 finish_type: metaFinishEvent.value,
+                onboarding_mode: metaMode.value,
             }),
         });
 
@@ -243,7 +275,6 @@ async function completeEmbeddedSignup(): Promise<void> {
         metaPhoneNumberId.value = data.phone_number_id || '';
         metaWabaId.value = data.waba_id || '';
         metaBusinessId.value = data.business_id || '';
-        metaMode.value = data.coexistence ? 'coexistence' : 'standard';
         metaStage.value = 'confirm';
     } catch {
         metaError.value = 'Erro de rede ao processar o signup.';
@@ -320,7 +351,7 @@ function resetMetaState(): void {
     metaAuthorizationCode.value = '';
     metaFinishEvent.value = null;
     metaExchangeStarted.value = false;
-    metaMode.value = 'standard';
+    metaMode.value = 'new_cloud_api';
     addForm.meta_signup_token = '';
     addForm.meta_pin = '';
 }
@@ -561,20 +592,48 @@ function csrf(): string {
                         class="space-y-2 rounded-lg border border-border bg-card px-3 py-3 text-sm"
                     >
                         <p class="font-semibold text-foreground">
-                            Escolha a conta e o número na Meta
+                            Como este número está configurado?
                         </p>
                         <p class="text-xs text-muted-foreground">
-                            Na próxima janela, a Meta mostrará as opções
-                            disponíveis para sua empresa: cadastrar um número na
-                            Cloud API ou conectar um WhatsApp Business existente
-                            com coexistência, quando a conta for elegível.
-                        </p>
-                        <p class="text-xs text-muted-foreground">
-                            Na coexistência, conclua a confirmação pelo celular
-                            e mantenha o WhatsApp Business aberto durante a
-                            sincronização inicial.
+                            Essa escolha define qual fluxo oficial a Meta abrirá
+                            e quais etapas o Tenaz executará depois da
+                            autorização.
                         </p>
                     </div>
+
+                    <fieldset class="space-y-2">
+                        <legend class="sr-only">Modo de conexão</legend>
+                        <label
+                            v-for="option in metaModeOptions"
+                            :key="option.value"
+                            class="flex cursor-pointer gap-3 rounded-lg border px-3 py-3 transition-colors"
+                            :class="
+                                metaMode === option.value
+                                    ? 'border-primary bg-primary/5'
+                                    : 'border-border hover:bg-muted/50'
+                            "
+                        >
+                            <input
+                                v-model="metaMode"
+                                type="radio"
+                                name="meta-onboarding-mode"
+                                :value="option.value"
+                                class="mt-1 h-4 w-4 accent-primary"
+                            />
+                            <span class="space-y-1">
+                                <span
+                                    class="block text-sm font-medium text-foreground"
+                                >
+                                    {{ option.title }}
+                                </span>
+                                <span
+                                    class="block text-xs text-muted-foreground"
+                                >
+                                    {{ option.description }}
+                                </span>
+                            </span>
+                        </label>
+                    </fieldset>
 
                     <div
                         v-if="metaError"

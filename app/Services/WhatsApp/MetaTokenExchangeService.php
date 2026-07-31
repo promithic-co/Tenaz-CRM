@@ -72,7 +72,6 @@ class MetaTokenExchangeService
 
     /**
      * Subscribe the WABA to this app so Meta starts delivering webhook events.
-     * Must be called once after a new Meta instance is created.
      */
     public function subscribeWaba(string $wabaId, string $accessToken): bool
     {
@@ -105,7 +104,7 @@ class MetaTokenExchangeService
     }
 
     /**
-     * Register phone number on the Cloud API (required for modes A/B, skip for mode C coexistence).
+     * Register a new phone number on the Cloud API.
      */
     public function registerPhoneNumber(string $phoneNumberId, string $accessToken, string $pin): bool
     {

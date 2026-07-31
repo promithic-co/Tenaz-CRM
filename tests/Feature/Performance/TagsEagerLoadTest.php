@@ -28,7 +28,10 @@ describe('Tag eager loading — N+1 prevention', function () {
         DB::enableQueryLog();
         DB::flushQueryLog();
 
-        $this->actingAs($user)
+        // Act as a freshly hydrated instance: the setup above already read
+        // tenantId, and reusing that instance would hide the one-time tenant and
+        // role lookups behind a warm memo, undercounting what production pays.
+        $this->actingAs(User::findOrFail($user->id))
             ->get('/conversas')
             ->assertOk();
 
@@ -40,12 +43,13 @@ describe('Tag eager loading — N+1 prevention', function () {
         // bounded number — session/auth + paginated leads select + a single
         // eager-loaded tags select + ancillary lookups.
         //
-        // Raised from 40 when the "envios" tab was added: the sidebar runs one count
-        // per tab, and each rebuilds the visibility scope. The count itself is one query;
-        // the other three are User::getTenantIdAttribute re-running tenants()->first()
-        // on every access, which already accounts for roughly 30 of the queries below
-        // and grows with anything that touches the scope. That is the real cost here and
-        // it is not what this test guards — it guards against scaling with lead count.
-        expect(count($queries))->toBeLessThan(46);
+        // The bound also guards the User tenancy memos. Adding the "envios" tab had
+        // pushed this to 46, because the sidebar runs one count per tab and each
+        // rebuilt the visibility scope, re-running tenants()->first() and the role
+        // lookup on every access — roughly 30 of the 43 queries were those two.
+        // Both are memoized per instance now, so a tab costs its own count query and
+        // nothing else, and the bound is back to guarding what it was meant to:
+        // that the cost does not scale with lead count.
+        expect(count($queries))->toBeLessThan(18);
     });
 });

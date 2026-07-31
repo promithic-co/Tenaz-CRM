@@ -46,11 +46,15 @@ const inputEmail = ref(props.email);
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="password">Nova senha</Label>
+                    <Label for="password">
+                        Nova senha (mínimo de 15 caracteres)
+                    </Label>
                     <Input
                         id="password"
                         type="password"
                         name="password"
+                        required
+                        minlength="15"
                         autocomplete="new-password"
                         class="mt-1 block w-full"
                         autofocus
@@ -60,13 +64,13 @@ const inputEmail = ref(props.email);
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="password_confirmation">
-                        Confirmar senha
-                    </Label>
+                    <Label for="password_confirmation"> Confirmar senha </Label>
                     <Input
                         id="password_confirmation"
                         type="password"
                         name="password_confirmation"
+                        required
+                        minlength="15"
                         autocomplete="new-password"
                         class="mt-1 block w-full"
                         placeholder="Confirmar senha"

@@ -1,14 +1,18 @@
 <?php
 
+use App\Enums\TenantRole;
 use App\Models\Agent;
 use App\Models\AppSetting;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
+use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 // ─── User tenantId ───────────────────────────────────────────────────────────
 
@@ -16,6 +20,174 @@ test('user tenantId equals string of user id', function () {
     $user = User::factory()->create();
 
     expect($user->tenantId)->toBe((string) $user->id);
+});
+
+test('user tenantId resolves the first tenant with a single pivot query per instance', function () {
+    $user = User::factory()->create();
+
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    $resolved = [$user->tenantId, $user->tenantId, $user->tenantId];
+
+    $pivotQueries = collect(DB::getQueryLog())
+        ->filter(fn (array $query): bool => str_contains($query['query'], 'tenant_user'));
+    DB::disableQueryLog();
+
+    expect($resolved)->each->toBe((string) $user->id)
+        ->and($pivotQueries)->toHaveCount(1);
+});
+
+test('user tenantId uses an already eager-loaded tenants relation', function () {
+    $user = User::factory()->create();
+    $user->load('tenants');
+
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    $tenantId = $user->tenantId;
+
+    $queries = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    expect($tenantId)->toBe((string) $user->id)
+        ->and($queries)->toBeEmpty();
+});
+
+test('user tenantId resolves without a request session (queue and console context)', function () {
+    $user = User::factory()->create();
+
+    // Queue workers and console commands run against a request that never had a
+    // session store attached, so the accessor must go straight to the fallback.
+    app()->instance('request', Request::create('/', 'GET'));
+
+    expect(request()->hasSession())->toBeFalse()
+        ->and($user->tenantId)->toBe((string) $user->id);
+});
+
+test('user tenantId follows the active tenant switched mid-request', function () {
+    $user = User::factory()->create();
+    $otherTenant = Tenant::create(['name' => 'Org B']);
+
+    // Attach a session store to the request the way StartSession does in HTTP.
+    request()->setLaravelSession(app('session.store'));
+
+    // Resolve once so the fallback is memoized before the switch happens.
+    expect($user->tenantId)->toBe((string) $user->id);
+
+    request()->session()->put('active_tenant_id', (string) $otherTenant->id);
+
+    expect($user->tenantId)->toBe((string) $otherTenant->id);
+
+    request()->session()->forget('active_tenant_id');
+
+    expect($user->tenantId)->toBe((string) $user->id);
+});
+
+// ─── User roleFor ────────────────────────────────────────────────────────────
+
+test('the first tenant role is seeded by the tenant id lookup', function () {
+    $user = User::factory()->create();
+
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    $tenantId = $user->tenantId;
+    $role = $user->currentRole();
+
+    $pivotQueries = collect(DB::getQueryLog())
+        ->filter(fn (array $query): bool => str_contains($query['query'], 'tenant_user'));
+    DB::disableQueryLog();
+
+    // The tenant lookup already selects the pivot row, so the role must come
+    // out of it rather than costing a second select.
+    expect($tenantId)->toBe((string) $user->id)
+        ->and($role)->toBe(TenantRole::Owner)
+        ->and($pivotQueries)->toHaveCount(1);
+});
+
+test('roleFor resolves each tenant with a single query', function () {
+    $user = User::factory()->create();
+    $secondTenant = Tenant::create(['name' => 'Org B']);
+    $user->tenants()->attach($secondTenant->id, ['role' => TenantRole::Administrator->value]);
+
+    $firstTenantId = $user->tenantId;
+    $user->forgetTenantMemo();
+
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    $roles = [
+        $user->roleFor($firstTenantId),
+        $user->roleFor($firstTenantId),
+        $user->roleFor((string) $secondTenant->id),
+        $user->roleFor((string) $secondTenant->id),
+    ];
+
+    $pivotQueries = collect(DB::getQueryLog())
+        ->filter(fn (array $query): bool => str_contains($query['query'], 'tenant_user'));
+    DB::disableQueryLog();
+
+    expect($roles)->toBe([
+        TenantRole::Owner,
+        TenantRole::Owner,
+        TenantRole::Administrator,
+        TenantRole::Administrator,
+    ])->and($pivotQueries)->toHaveCount(2);
+});
+
+test('roleFor caches a non-membership so repeated permission checks cost one query', function () {
+    $user = User::factory()->create();
+    $foreignTenant = Tenant::create(['name' => 'Org B']);
+
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    // What a super-admin acting as a company they do not belong to hits on
+    // every isOwnerOrAdmin()/isRestrictedUser() check across a request.
+    $roles = [
+        $user->roleFor((string) $foreignTenant->id),
+        $user->roleFor((string) $foreignTenant->id),
+        $user->roleFor((string) $foreignTenant->id),
+    ];
+
+    $pivotQueries = collect(DB::getQueryLog())
+        ->filter(fn (array $query): bool => str_contains($query['query'], 'tenant_user'));
+    DB::disableQueryLog();
+
+    expect($roles)->toBe([null, null, null])
+        ->and($pivotQueries)->toHaveCount(1);
+});
+
+test('a role change on the pivot invalidates the memo on the same instance', function () {
+    $user = User::factory()->create();
+    $tenantId = $user->tenantId;
+
+    expect($user->isOwnerOrAdmin())->toBeTrue();
+
+    // Note the argument is the value that just warmed the memo — the pattern that
+    // makes caller-side invalidation unworkable. A stale role here would let a
+    // demoted user keep passing owner/admin permission checks.
+    $user->tenants()->updateExistingPivot($tenantId, ['role' => TenantRole::User->value]);
+
+    expect($user->currentRole())->toBe(TenantRole::User)
+        ->and($user->isOwnerOrAdmin())->toBeFalse()
+        ->and($user->isRestrictedUser())->toBeTrue();
+});
+
+test('detaching and re-attaching on the same instance resolves the new tenant', function () {
+    $user = User::factory()->create();
+    $originalTenantId = $user->tenantId;
+
+    expect($user->currentRole())->toBe(TenantRole::Owner);
+
+    $newTenant = Tenant::create(['name' => 'Org B']);
+    $user->tenants()->detach($originalTenantId);
+    $user->tenants()->attach($newTenant->id, ['role' => TenantRole::Administrator->value]);
+
+    // A stale tenant id would scope every query to the tenant the user just left.
+    expect($user->tenantId)->toBe((string) $newTenant->id)
+        ->and($user->currentRole())->toBe(TenantRole::Administrator);
 });
 
 // ─── Lead scoping ────────────────────────────────────────────────────────────

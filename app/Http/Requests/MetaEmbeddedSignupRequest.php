@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\MetaOnboardingMode;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class MetaEmbeddedSignupRequest extends FormRequest
 {
@@ -20,6 +22,7 @@ class MetaEmbeddedSignupRequest extends FormRequest
             'phone_number_id' => ['nullable', 'string', 'max:64'],
             'business_id' => ['nullable', 'string', 'max:64'],
             'finish_type' => ['required', 'string', 'in:FINISH,FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING'],
+            'onboarding_mode' => ['sometimes', 'string', Rule::enum(MetaOnboardingMode::class)],
         ];
     }
 }
