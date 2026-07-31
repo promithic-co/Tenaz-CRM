@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Trash2 } from 'lucide-vue-next';
+import { computed } from 'vue';
+import TagInput from '@/components/TagInput.vue';
+import Button from '@/components/ui/button/Button.vue';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -8,11 +13,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import Button from '@/components/ui/button/Button.vue';
-import TagInput from '@/components/TagInput.vue';
 import type { FilterField, FilterOp, FilterRule, FilterValue } from '@/types/filters';
 
 interface Tag {

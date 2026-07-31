@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { X, Sparkles, Flame } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 type Tag = {
     id: number;

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
+import { watch } from 'vue';
 import { updateFilters } from '@/actions/App/Http/Controllers/ContactListController';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import FilterBuilder from './FilterBuilder.vue';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { FiltersJson } from '@/types/filters';
+import FilterBuilder from './FilterBuilder.vue';
 
 const props = defineProps<{
     open: boolean;

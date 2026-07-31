@@ -2,9 +2,9 @@
 import { computed } from 'vue';
 import Button from '@/components/ui/button/Button.vue';
 import { useFilterPreview } from '@/composables/useFilterPreview';
+import type { FilterRule, FiltersJson } from '@/types/filters';
 import FilterPreview from './FilterPreview.vue';
 import RuleRow from './RuleRow.vue';
-import type { FilterRule, FiltersJson } from '@/types/filters';
 
 const props = defineProps<{
     modelValue: FiltersJson;

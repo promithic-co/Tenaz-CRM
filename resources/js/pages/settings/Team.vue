@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import TeamController from '@/actions/App/Http/Controllers/Settings/TeamController';
 import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import TeamController from '@/actions/App/Http/Controllers/Settings/TeamController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,6 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { index as teamIndex } from '@/routes/team';
 import type { BreadcrumbItem } from '@/types';
-import { ref } from 'vue';
 
 type Member = {
     id: number;

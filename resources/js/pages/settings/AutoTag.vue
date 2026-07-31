@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import AutoTagSettingsController from '@/actions/App/Http/Controllers/Settings/AutoTagSettingsController';
 import { Form, Head } from '@inertiajs/vue3';
 import { Bot } from 'lucide-vue-next';
 import { ref } from 'vue';
+import AutoTagSettingsController from '@/actions/App/Http/Controllers/Settings/AutoTagSettingsController';
 import Heading from '@/components/Heading.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
