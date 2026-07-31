@@ -120,11 +120,15 @@ return [
         'rate_per_minute' => (int) env('TENAZ_CAMPAIGN_RATE_PER_MINUTE', env('CREDFLOW_CAMPAIGN_RATE_PER_MINUTE', 80)),
         // Backoff (seconds) when Meta returns a rate-limit error before retrying the message.
         'rate_limit_release_seconds' => (int) env('TENAZ_CAMPAIGN_RATE_LIMIT_RELEASE', env('CREDFLOW_CAMPAIGN_RATE_LIMIT_RELEASE', 60)),
-        // Debounce window (seconds) for the per-failure auto-pause check (SCALE-1). Under a
-        // failure storm every concurrent send worker used to take an exclusive row lock on the
-        // one campaign row; this gate lets only the first caller per window reach the locked
-        // evaluation, collapsing the convoy. MonitorCampaignsCommand is the backstop. 0 disables.
-        'autopause_debounce_seconds' => (int) env('TENAZ_CAMPAIGN_AUTOPAUSE_DEBOUNCE', env('CREDFLOW_CAMPAIGN_AUTOPAUSE_DEBOUNCE', 3)),
+        // Failure rate (%) above which MonitorCampaignsCommand raises a 'high_failure_rate'
+        // alert. ALERT ONLY — no percentage of failures pauses a campaign any more. Most
+        // campaign failures are malformed numbers rejected locally, before Meta is called, so
+        // they carry no account signal; failure volume still feeds the account's quality
+        // rating, which is what this notification exists to surface.
+        'failure_alert_percent' => (float) env('TENAZ_CAMPAIGN_FAILURE_ALERT_PERCENT', 25),
+        // Minimum attempts (sent + failed) before the alert above is evaluated. A rate over
+        // two or three attempts is noise, and an alert that cries wolf gets ignored.
+        'failure_alert_min_sample' => (int) env('TENAZ_CAMPAIGN_FAILURE_ALERT_MIN_SAMPLE', 20),
         // Maximum campaign sends per minute per TENANT (SCALE-2 fairness gate). The `campaigns`
         // queue is a single FIFO shared by all tenants; without a per-tenant cap one large tenant's
         // fan-out monopolizes the workers and starves smaller tenants. Over-budget sends release

@@ -26,6 +26,10 @@ class Campaign extends Model
         'template_params_mapping',
         'daily_limit',
         'delay_between_ms',
+        // NOTE: error_threshold_percent has no reader left anywhere in the application. The
+        // failure-rate auto-pause it drove was removed (see CampaignService), and the column
+        // is kept only so an in-flight deploy against the live table stays safe. Nothing
+        // writes it either — the create/update/throttle paths all dropped the field.
         'error_threshold_percent',
         'scheduled_at',
         'started_at',
@@ -168,13 +172,27 @@ class Campaign extends Model
         return round(($this->total_read / $this->total_delivered) * 100, 2);
     }
 
+    /**
+     * Share of ATTEMPTS that failed.
+     *
+     * The denominator is sent + failed, not sent alone. total_sent counts sent_at, and a
+     * send-time failure never gets one (see the accessor note below), so dividing by
+     * total_sent leaves the failures out of their own denominator and overstates the rate:
+     * 2 failures against 18 successes reported 11.11% when the true attempt failure rate was
+     * 2/20 = 10%. That gap was enough to trip the old 10% auto-pause on a campaign that was
+     * delivering 95%.
+     *
+     * Reporting only — nothing pauses on this value. See CampaignService for why.
+     */
     public function failureRate(): float
     {
-        if ($this->total_sent <= 0) {
+        $attempted = $this->total_sent + $this->total_failed;
+
+        if ($attempted <= 0) {
             return 0.0;
         }
 
-        return round(($this->total_failed / $this->total_sent) * 100, 2);
+        return round(($this->total_failed / $attempted) * 100, 2);
     }
 
     /**

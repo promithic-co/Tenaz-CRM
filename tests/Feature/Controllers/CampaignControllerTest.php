@@ -4,6 +4,7 @@ use App\Enums\TenantRole;
 use App\Models\Campaign;
 use App\Models\CampaignMessage;
 use App\Models\ContactList;
+use App\Models\ContactListEntry;
 use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
@@ -177,7 +178,6 @@ test('start action transitions draft campaign to sending', function () {
         'contact_list_id' => $list->id,
         'whatsapp_template_id' => $template->id,
         'status' => 'draft',
-        'error_threshold_percent' => 10,
     ]);
 
     $this->actingAs($user)->post("/campanhas/{$campaign->id}/start");
@@ -277,13 +277,11 @@ test('updateThrottle action updates the limits of a paused campaign', function (
     $this->actingAs($user)->patch("/campanhas/{$campaign->id}/throttle", [
         'daily_limit' => 3000,
         'delay_between_ms' => 500,
-        'error_threshold_percent' => 12,
     ]);
 
     $fresh = $campaign->fresh();
     expect($fresh->daily_limit)->toBe(3000);
     expect($fresh->delay_between_ms)->toBe(500);
-    expect($fresh->error_threshold_percent)->toBe(12);
 });
 
 test('updateThrottle action validates the limit range', function () {
@@ -293,20 +291,55 @@ test('updateThrottle action validates the limit range', function () {
     $this->actingAs($user)->patch("/campanhas/{$campaign->id}/throttle", [
         'daily_limit' => 0,
         'delay_between_ms' => 500,
-        'error_threshold_percent' => 12,
     ])->assertSessionHasErrors('daily_limit');
 });
 
-test('reprocessFailures action revives failed recipients', function () {
-    Queue::fake();
+test('the bulk reprocess-failures route no longer exists', function () {
     $user = makeCampaignUser();
     $campaign = Campaign::factory()->paused()->create(['tenant_id' => $user->tenantId]);
-    $failed = CampaignMessage::factory()->failed()->create(['campaign_id' => $campaign->id]);
 
-    $this->actingAs($user)->post("/campanhas/{$campaign->id}/reprocess-failures");
+    // Replaced by the failed-status CSV export: retrying a malformed number re-fails it.
+    $this->actingAs($user)
+        ->post("/campanhas/{$campaign->id}/reprocess-failures")
+        ->assertNotFound();
+});
 
-    expect($failed->fresh()->status)->toBe('pending');
-    expect($campaign->fresh()->status)->toBe('sending');
+test('export returns only the failed recipients when filtered by status', function () {
+    $user = makeCampaignUser();
+    $campaign = Campaign::factory()->paused()->create(['tenant_id' => $user->tenantId]);
+
+    $badNumber = ContactListEntry::factory()->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'phone' => '55349998766336',
+    ]);
+    $goodNumber = ContactListEntry::factory()->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'phone' => '5567999554874',
+    ]);
+
+    CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $badNumber->id,
+        'status' => 'failed',
+        'failed_at' => now(),
+        'error_code' => 'INVALID_PHONE',
+        'error_message' => 'Invalid destination format.',
+    ]);
+    CampaignMessage::factory()->sent()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $goodNumber->id,
+    ]);
+
+    $csv = $this->actingAs($user)
+        ->get("/campanhas/{$campaign->id}/export?status=failed")
+        ->assertOk()
+        ->streamedContent();
+
+    // This export IS the "Extrair falhas" button: the number plus the reason it failed, so
+    // the operator can fix the spreadsheet and load a corrected list.
+    expect($csv)->toContain('55349998766336')
+        ->toContain('INVALID_PHONE')
+        ->not->toContain('5567999554874');
 });
 
 test('retryMessage action reenqueues a single failed recipient', function () {

@@ -1023,20 +1023,40 @@ test('SendCampaignMessageJob honors an opt-out on the canonical contact (CAMP-05
         ->and($message->fresh()->error_code)->toBe('OPTED_OUT');
 });
 
-test('skipped messages never count as failures for the auto-pause or counters (CAMP-05)', function () {
-    $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
+test('skipped messages never count as failures for the reported rate or counters (CAMP-05)', function () {
+    $campaign = Campaign::factory()->sending()->create();
     CampaignMessage::factory()->sent()->count(12)->create(['campaign_id' => $campaign->id]);
     CampaignMessage::factory()->count(30)->create(['campaign_id' => $campaign->id, 'status' => 'skipped', 'error_code' => 'OPTED_OUT']);
 
     // A mass opt-out must not read as a delivery-failure storm.
     expect($campaign->fresh()->failureRate())->toBe(0.0)
-        ->and(app(CampaignService::class)->checkAndAutoPause($campaign))->toBeFalse()
         ->and($campaign->fresh()->status)->toBe('sending');
 
     $withCounters = Campaign::query()->withCounters()->find($campaign->id);
     expect($withCounters->total_skipped)->toBe(30)
         ->and($withCounters->total_failed)->toBe(0)
         ->and($withCounters->total_sent)->toBe(12);
+});
+
+test('a malformed number fails its own row without stopping the campaign', function () {
+    // The Promosys regression, end to end. 55349998766336 is a real number from that list:
+    // PhoneNumberValidator rejects it before any provider call, so it never reaches Meta and
+    // carries no account signal. Under the old percentage breaker two of these paused a run
+    // that was delivering 95% and getting a 90% reply rate.
+    [$campaign, $message] = makeTenantSendable('55349998766336');
+
+    // Past the 10-message sample floor the removed breaker used to evaluate against.
+    CampaignMessage::factory()->sent()->count(18)->create(['campaign_id' => $campaign->id]);
+
+    bindNonSendingProvider();
+
+    (new SendCampaignMessageJob($message))->handle(app(CampaignService::class), app(WhatsAppProviderFactory::class), app(BroadcastDebouncer::class));
+
+    $fresh = $message->fresh();
+    expect($fresh->status)->toBe('failed')
+        ->and($fresh->error_code)->toBe('INVALID_PHONE')
+        ->and($fresh->sent_at)->toBeNull()
+        ->and($campaign->fresh()->status)->toBe('sending');
 });
 
 test('SendCampaignMessageJob.failed parks an expired unattempted message of a paused campaign (CAMP-01/02)', function () {

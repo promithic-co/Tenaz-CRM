@@ -125,6 +125,39 @@ test('resume transitions paused campaign to sending and dispatches job', functio
     Queue::assertPushed(DispatchCampaignJob::class);
 });
 
+test('resume clears the explanation for the pause it just ended', function () {
+    Queue::fake();
+    $campaign = makeSendableCampaign();
+    $campaign->update([
+        'status' => 'paused',
+        'paused_at' => now(),
+        'paused_from_status' => 'sending',
+        'failure_reason' => 'Taxa de falha (11.11%) excedeu o limite (10%).',
+    ]);
+
+    app(CampaignService::class)->resume($campaign);
+
+    // The banner renders whatever the status, so a stale reason makes a live campaign
+    // advertise why it once stopped — here, about a mechanism that no longer exists.
+    expect($campaign->fresh()->failure_reason)->toBeNull()
+        ->and($campaign->fresh()->paused_from_status)->toBeNull()
+        ->and($campaign->fresh()->status)->toBe('sending');
+});
+
+test('resume keeps the Meta account pause reason, which is still true', function () {
+    Queue::fake();
+    $campaign = makeSendableCampaign();
+    $campaign->update([
+        'status' => 'paused',
+        'paused_at' => now(),
+        'pause_reason_code' => 'meta_account_blocked',
+    ]);
+
+    app(CampaignService::class)->resume($campaign);
+
+    expect($campaign->fresh()->pause_reason_code)->toBe('meta_account_blocked');
+});
+
 test('cancel sets status to cancelled with manual cancellation reason', function () {
     $campaign = Campaign::factory()->sending()->create();
 
@@ -135,59 +168,28 @@ test('cancel sets status to cancelled with manual cancellation reason', function
     expect($campaign->fresh()->failure_reason)->toContain('manualmente');
 });
 
-test('checkAndAutoPause returns false when failure rate below threshold', function () {
-    $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
-    seedCampaignCounters($campaign, sent: 20, failed: 1); // 5% < 10%
+test('no percentage of failures pauses a campaign', function () {
+    // Regression: campaign "Envio Promosys" delivered 95% and got a 90% reply rate, then
+    // paused itself over two malformed numbers in the imported list — rejected locally,
+    // never sent to Meta, no account signal whatsoever.
+    $campaign = Campaign::factory()->sending()->create();
+    seedCampaignCounters($campaign, sent: 10, failed: 10); // 50%
 
-    $service = app(CampaignService::class);
-
-    expect($service->checkAndAutoPause($campaign))->toBeFalse();
-    expect($campaign->fresh()->status)->toBe('sending');
+    expect(method_exists(CampaignService::class, 'checkAndAutoPause'))->toBeFalse()
+        ->and($campaign->fresh()->status)->toBe('sending');
 });
 
-test('checkAndAutoPause pauses campaign when failure rate exceeds threshold', function () {
-    $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
-    seedCampaignCounters($campaign, sent: 20, failed: 3); // 15% > 10%
+test('failureRate counts failures in its own denominator', function () {
+    $campaign = Campaign::factory()->sending()->create();
+    seedCampaignCounters($campaign, sent: 18, failed: 2);
 
-    $service = app(CampaignService::class);
-
-    expect($service->checkAndAutoPause($campaign))->toBeTrue();
-    expect($campaign->fresh()->status)->toBe('paused');
+    // 2/(18+2) = 10.0. Dividing by total_sent alone reported 11.11% — a failed send never
+    // gets a sent_at, so it was missing from the denominator it belonged in.
+    expect($campaign->fresh()->failureRate())->toBe(10.0);
 });
 
-test('checkAndAutoPause debounces rapid checks within the window (SCALE-1)', function () {
-    config(['credflow.campaigns.autopause_debounce_seconds' => 3]);
-
-    $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
-    seedCampaignCounters($campaign, sent: 20, failed: 1); // 5% < 10%
-
-    $service = app(CampaignService::class);
-
-    // First call wins the debounce gate, evaluates, and finds the rate below threshold.
-    expect($service->checkAndAutoPause($campaign))->toBeFalse();
-
-    // Failures now spike past the threshold, but a second call inside the window is gated
-    // out before it can take the row lock — so the campaign keeps sending this cycle.
-    seedCampaignCounters($campaign, sent: 0, failed: 9); // now 10/20 = 50%
-    expect($service->checkAndAutoPause($campaign))->toBeFalse();
-    expect($campaign->fresh()->status)->toBe('sending');
-
-    // Once the window elapses the next check evaluates against the locked row and pauses.
-    $this->travel(4)->seconds();
-    expect($service->checkAndAutoPause($campaign->fresh()))->toBeTrue();
-    expect($campaign->fresh()->status)->toBe('paused');
-});
-
-test('checkAndAutoPause still evaluates immediately when debounce is disabled', function () {
-    config(['credflow.campaigns.autopause_debounce_seconds' => 0]);
-
-    $campaign = Campaign::factory()->sending()->create(['error_threshold_percent' => 10]);
-    seedCampaignCounters($campaign, sent: 20, failed: 3); // 15% > 10%
-
-    $service = app(CampaignService::class);
-
-    expect($service->checkAndAutoPause($campaign))->toBeTrue();
-    expect($campaign->fresh()->status)->toBe('paused');
+test('failureRate is zero before any attempt', function () {
+    expect(Campaign::factory()->sending()->create()->failureRate())->toBe(0.0);
 });
 
 test('checkDailyLimit returns true when under limit', function () {
@@ -213,27 +215,30 @@ test('checkDailyLimit returns false when at daily limit', function () {
     expect($service->checkDailyLimit($campaign))->toBeFalse();
 });
 
-test('reprocessFailures revives never-sent failed rows and reopens a paused campaign', function () {
+test('there is no bulk reprocess-every-failure path', function () {
+    // Removed deliberately: most campaign failures are malformed numbers (INVALID_PHONE)
+    // that re-fail identically forever, so a bulk retry just burns the same rows again. The
+    // supported flow is to export the failed rows, fix the numbers, and load a new list.
+    expect(method_exists(CampaignService::class, 'reprocessFailures'))->toBeFalse();
+});
+
+test('retryMessage clears the failure metadata and reopens a paused campaign', function () {
     Queue::fake();
     $campaign = Campaign::factory()->paused()->create();
 
-    $failed = CampaignMessage::factory()->failed()->count(2)->create(['campaign_id' => $campaign->id]);
+    $failed = CampaignMessage::factory()->failed()->create(['campaign_id' => $campaign->id]);
 
-    $service = app(CampaignService::class);
-    $revived = $service->reprocessFailures($campaign);
+    expect(app(CampaignService::class)->retryMessage($campaign, $failed))->toBeTrue();
 
-    expect($revived)->toBe(2);
-    expect($campaign->fresh()->status)->toBe('sending');
-    foreach ($failed as $message) {
-        $fresh = $message->fresh();
-        expect($fresh->status)->toBe('pending');
-        expect($fresh->error_code)->toBeNull();
-        expect($fresh->failed_at)->toBeNull();
-    }
+    $fresh = $failed->fresh();
+    expect($fresh->status)->toBe('pending')
+        ->and($fresh->error_code)->toBeNull()
+        ->and($fresh->failed_at)->toBeNull()
+        ->and($campaign->fresh()->status)->toBe('sending');
     Queue::assertPushed(DispatchCampaignJob::class);
 });
 
-test('reprocessFailures never re-sends a failed row that already carries sent_at (webhook delivery failure)', function () {
+test('retryMessage never re-sends a failed row that already carries sent_at (webhook delivery failure)', function () {
     Queue::fake();
     $campaign = Campaign::factory()->paused()->create();
 
@@ -243,16 +248,13 @@ test('reprocessFailures never re-sends a failed row that already carries sent_at
         'sent_at' => now()->subMinutes(10),
     ]);
 
-    $service = app(CampaignService::class);
-    $revived = $service->reprocessFailures($campaign);
-
-    expect($revived)->toBe(0);
-    expect($postSendFailure->fresh()->status)->toBe('failed');
-    expect($campaign->fresh()->status)->toBe('paused');
+    expect(app(CampaignService::class)->retryMessage($campaign, $postSendFailure))->toBeFalse()
+        ->and($postSendFailure->fresh()->status)->toBe('failed')
+        ->and($campaign->fresh()->status)->toBe('paused');
     Queue::assertNotPushed(DispatchCampaignJob::class);
 });
 
-test('reprocessFailures leaves in_doubt rows untouched', function () {
+test('retryMessage leaves in_doubt rows untouched', function () {
     Queue::fake();
     $campaign = Campaign::factory()->paused()->create();
 
@@ -262,10 +264,8 @@ test('reprocessFailures leaves in_doubt rows untouched', function () {
         'error_code' => 'IN_DOUBT',
     ]);
 
-    $revived = app(CampaignService::class)->reprocessFailures($campaign);
-
-    expect($revived)->toBe(0);
-    expect($inDoubt->fresh()->status)->toBe('in_doubt');
+    expect(app(CampaignService::class)->retryMessage($campaign, $inDoubt))->toBeFalse()
+        ->and($inDoubt->fresh()->status)->toBe('in_doubt');
 });
 
 test('retryMessage revives a single failed row and dispatches', function () {
@@ -311,7 +311,6 @@ test('duplicate creates a fresh draft copy with the same config and no history',
     $campaign = Campaign::factory()->completed()->create([
         'daily_limit' => 500,
         'delay_between_ms' => 1500,
-        'error_threshold_percent' => 15,
     ]);
     CampaignMessage::factory()->sent()->count(3)->create(['campaign_id' => $campaign->id]);
 
@@ -323,7 +322,6 @@ test('duplicate creates a fresh draft copy with the same config and no history',
     expect($copy->whatsapp_template_id)->toBe($campaign->whatsapp_template_id);
     expect($copy->daily_limit)->toBe(500);
     expect($copy->delay_between_ms)->toBe(1500);
-    expect($copy->error_threshold_percent)->toBe(15);
     expect($copy->name)->toContain('(cópia)');
     expect($copy->messages()->count())->toBe(0);
 });

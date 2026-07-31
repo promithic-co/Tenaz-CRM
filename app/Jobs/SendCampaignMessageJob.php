@@ -173,7 +173,6 @@ class SendCampaignMessageJob implements ShouldQueue
 
         if (! $entry) {
             $message->markFailed('NO_ENTRY', 'Contact list entry not found');
-            $service->checkAndAutoPause($campaign);
 
             return;
         }
@@ -261,7 +260,6 @@ class SendCampaignMessageJob implements ShouldQueue
 
         if ($template->status !== 'APPROVED') {
             $message->markFailed('TEMPLATE_NOT_APPROVED', "Template status: {$template->status}");
-            $service->checkAndAutoPause($campaign->fresh());
 
             return;
         }
@@ -354,11 +352,12 @@ class SendCampaignMessageJob implements ShouldQueue
         }
 
         // Validate destination before hitting the provider — bad numbers burn Meta reputation
-        // (errors 131026/131027). Mark as failed without retry so the campaign moves on.
+        // (errors 131026/131027). Mark as failed without retry so the campaign moves on: the
+        // row never reached Meta, so it carries no account signal and must not stop the run.
+        // The operator finds it later via the failed-status CSV export and fixes the list.
         $destination = PhoneNumberValidator::normalize((string) $entry->phone);
         if ($destination === null) {
             $message->markFailed('INVALID_PHONE', 'Invalid destination format.');
-            $service->checkAndAutoPause($campaign->fresh());
 
             $interactionEvents->record(
                 interactionId: $interactionId,
@@ -827,12 +826,6 @@ class SendCampaignMessageJob implements ShouldQueue
         }
 
         $message->markFailed('JOB_FAILED', MetaApiException::sanitizeMessage($e->getMessage()));
-
-        $campaign = $message->campaign;
-
-        if ($campaign) {
-            app(CampaignService::class)->checkAndAutoPause($campaign->fresh());
-        }
     }
 
     private function scheduleProviderAttemptExpiryProbe(CampaignMessage $message): bool

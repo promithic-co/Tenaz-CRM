@@ -17,7 +17,6 @@ class UpdateCampaignThrottleRequest extends FormRequest
         return [
             'daily_limit' => ['required', 'integer', 'min:1', 'max:100000'],
             'delay_between_ms' => ['required', 'integer', 'min:0', 'max:60000'],
-            'error_threshold_percent' => ['required', 'integer', 'min:1', 'max:100'],
         ];
     }
 
@@ -28,8 +27,6 @@ class UpdateCampaignThrottleRequest extends FormRequest
             'daily_limit.required' => 'O limite diário é obrigatório.',
             'daily_limit.min' => 'O limite diário deve ser de ao menos 1 mensagem.',
             'delay_between_ms.required' => 'O atraso entre envios é obrigatório.',
-            'error_threshold_percent.required' => 'O limiar de falhas é obrigatório.',
-            'error_threshold_percent.min' => 'O limiar de falhas deve ser de ao menos 1%.',
         ];
     }
 }

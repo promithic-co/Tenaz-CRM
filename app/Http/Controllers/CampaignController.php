@@ -61,7 +61,6 @@ class CampaignController extends Controller
             'template_params_mapping' => $validated['template_params_mapping'] ?? null,
             'daily_limit' => $validated['daily_limit'] ?? 1000,
             'delay_between_ms' => $validated['delay_between_ms'] ?? 1000,
-            'error_threshold_percent' => $validated['error_threshold_percent'] ?? 10,
             'scheduled_at' => $validated['scheduled_at'] ?? null,
             'status' => isset($validated['scheduled_at']) ? 'scheduled' : 'draft',
         ]);
@@ -184,23 +183,6 @@ class CampaignController extends Controller
         }
 
         return back()->with('success', 'Limites atualizados.');
-    }
-
-    public function reprocessFailures(Campaign $campanha, CampaignService $service): RedirectResponse
-    {
-        $this->authorize('update', $campanha);
-
-        try {
-            $revived = $service->reprocessFailures($campanha);
-        } catch (\RuntimeException $e) {
-            return back()->withErrors(['campaign' => $e->getMessage()]);
-        }
-
-        if ($revived === 0) {
-            return back()->with('info', 'Nenhuma falha reprocessável encontrada.');
-        }
-
-        return back()->with('success', "{$revived} destinatário(s) reprocessado(s).");
     }
 
     public function retryMessage(Campaign $campanha, CampaignMessage $message, CampaignService $service): RedirectResponse

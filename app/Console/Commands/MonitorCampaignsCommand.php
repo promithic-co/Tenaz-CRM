@@ -21,7 +21,7 @@ class MonitorCampaignsCommand extends Command
     public function handle(CampaignService $campaignService, AlertService $alertService): int
     {
         $this->checkWalletErrors($campaignService, $alertService);
-        $this->checkHighFailureRate($campaignService, $alertService);
+        $this->checkHighFailureRate($alertService);
         $this->reconcileInDoubtMessages();
         $this->completeFinishedCampaigns($campaignService);
         $this->reviveIdleCampaigns($campaignService);
@@ -81,43 +81,46 @@ class MonitorCampaignsCommand extends Command
     }
 
     /**
-     * Rule 2: High failure rate — backstop auto-pause at the campaign's own threshold,
-     * plus a louder alert past threshold + 5%.
+     * Rule 2: High failure rate — alert only. This never pauses a campaign.
+     *
+     * The backstop auto-pause that used to live here was removed along with the breaker in
+     * CampaignService: most campaign failures are malformed numbers rejected locally, before
+     * the provider call, so they carry no account signal and stopping a healthy run over them
+     * costs more than it saves. Failure volume does feed the WhatsApp account's quality
+     * rating, so a rotten list still has to be visible — hence the alert, now against a fixed
+     * config percentage instead of the (removed) per-campaign threshold.
+     *
+     * The sample floor matters: a rate over two or three attempts is noise, and firing on it
+     * is how the alert becomes something operators learn to ignore.
      */
-    private function checkHighFailureRate(CampaignService $campaignService, AlertService $alertService): void
+    private function checkHighFailureRate(AlertService $alertService): void
     {
+        $alertPercent = (float) config('credflow.campaigns.failure_alert_percent', 25);
+        $minSample = (int) config('credflow.campaigns.failure_alert_min_sample', 20);
+
         // withCounters() hydrates the message-derived total_* in one query of correlated
         // subqueries (SCALE-1b) — without it, each campaign's accessor would fire its own
         // aggregate, an N+1 over all sending campaigns every tick.
         $sendingCampaigns = Campaign::where('status', 'sending')->withCounters()->get();
 
         foreach ($sendingCampaigns as $campaign) {
-            if ($campaign->total_sent <= 0) {
+            $attempted = $campaign->total_sent + $campaign->total_failed;
+
+            if ($attempted < $minSample) {
                 continue;
             }
 
             $failureRate = $campaign->failureRate();
 
-            // Backstop auto-pause (SCALE-1): the hot send path debounces its auto-pause checks,
-            // so a failure that loses the debounce race may not trigger an immediate pause. This
-            // timer-based sweep guarantees any sending campaign over its own threshold is paused
-            // within one monitor cycle. checkAndAutoPause re-evaluates under a row lock.
-            if ($failureRate > $campaign->error_threshold_percent && $campaignService->checkAndAutoPause($campaign)) {
-                Log::warning('MonitorCampaigns: backstop auto-paused campaign over failure threshold', [
-                    'campaign_id' => $campaign->id,
-                    'failure_rate' => $failureRate,
-                ]);
-
+            if ($failureRate <= $alertPercent) {
                 continue;
             }
 
-            if ($failureRate > $campaign->error_threshold_percent + 5) {
-                $alertService->sendAlert(
-                    'high_failure_rate',
-                    "Campanha '{$campaign->name}' com taxa de falha alta: {$failureRate}% (limiar: {$campaign->error_threshold_percent}%).",
-                    ['campaign_id' => $campaign->id, 'failure_rate' => $failureRate]
-                );
-            }
+            $alertService->sendAlert(
+                'high_failure_rate',
+                "Campanha '{$campaign->name}' com taxa de falha alta: {$failureRate}% ({$campaign->total_failed} de {$attempted} tentativas). A campanha continua enviando; revise a qualidade da lista.",
+                ['campaign_id' => $campaign->id, 'failure_rate' => $failureRate]
+            );
         }
     }
 

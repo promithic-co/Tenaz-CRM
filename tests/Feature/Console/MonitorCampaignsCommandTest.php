@@ -224,35 +224,62 @@ test('monitor-campaigns runs the failure-rate check on a sending campaign that h
     // Regression: the failure-rate query used whereColumn('total_sent', '>', 'total_recipients * 0'),
     // which Postgres treats as a (non-existent) column identifier and rejects, making the whole
     // command exit 1 every run. A sending campaign with derived total_sent > 0 exercises that path.
-    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 100, 'error_threshold_percent' => 10]);
+    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 100]);
     CampaignMessage::factory()->sent()->count(20)->create(['campaign_id' => $campaign->id]);
 
     $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
 });
 
-test('monitor-campaigns backstop auto-pauses a sending campaign over its failure threshold (SCALE-1)', function () {
-    // No wallet error — the campaign is simply over its own failure threshold. The hot send
-    // path debounces its auto-pause checks, so the monitor must catch this within one cycle.
-    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 100, 'error_threshold_percent' => 10]);
-    // 20 sent, 6 of them failed → 30% failure rate, over the 10% threshold.
-    CampaignMessage::factory()->sent()->count(14)->create(['campaign_id' => $campaign->id]);
-    CampaignMessage::factory()->sent()->count(6)->create(['campaign_id' => $campaign->id, 'status' => 'failed', 'failed_at' => now()]);
+test('monitor-campaigns alerts on a high failure rate but never pauses the campaign', function () {
+    $alerts = Mockery::spy(AlertService::class);
+    app()->instance(AlertService::class, $alerts);
 
-    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
-
-    expect($campaign->fresh()->status)->toBe('paused');
-});
-
-test('monitor-campaigns leaves a sending campaign under its failure threshold sending', function () {
-    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 100, 'error_threshold_percent' => 10]);
-    // 20 sent, 1 failed → 5% failure rate, under the 10% threshold.
-    CampaignMessage::factory()->sent()->count(19)->create(['campaign_id' => $campaign->id]);
-    CampaignMessage::factory()->sent()->count(1)->create(['campaign_id' => $campaign->id, 'status' => 'failed', 'failed_at' => now()]);
+    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 100]);
+    // 20 attempts, 12 failed → 60%, past the 25% alert percentage.
+    CampaignMessage::factory()->sent()->count(8)->create(['campaign_id' => $campaign->id]);
+    CampaignMessage::factory()->sent()->count(12)->create(['campaign_id' => $campaign->id, 'status' => 'failed', 'failed_at' => now()]);
     // Still-in-flight work keeps the campaign out of the CAMP-03 completion sweep.
     CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'status' => 'queued']);
 
     $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
 
+    // The alert is the whole point: failure volume feeds the account's quality rating, so a
+    // rotten list has to be visible. Stopping the run over it is what was removed.
+    $alerts->shouldHaveReceived('sendAlert')
+        ->withArgs(fn (string $type) => $type === 'high_failure_rate');
+    expect($campaign->fresh()->status)->toBe('sending');
+});
+
+test('monitor-campaigns stays quiet below the alert percentage', function () {
+    $alerts = Mockery::spy(AlertService::class);
+    app()->instance(AlertService::class, $alerts);
+
+    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 100]);
+    // 20 attempts, 1 failed → 5%, well under the 25% alert percentage.
+    CampaignMessage::factory()->sent()->count(19)->create(['campaign_id' => $campaign->id]);
+    CampaignMessage::factory()->sent()->count(1)->create(['campaign_id' => $campaign->id, 'status' => 'failed', 'failed_at' => now()]);
+    CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'status' => 'queued']);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    $alerts->shouldNotHaveReceived('sendAlert', ['high_failure_rate', Mockery::any(), Mockery::any()]);
+    expect($campaign->fresh()->status)->toBe('sending');
+});
+
+test('monitor-campaigns does not alert before the minimum sample', function () {
+    $alerts = Mockery::spy(AlertService::class);
+    app()->instance(AlertService::class, $alerts);
+
+    $campaign = Campaign::factory()->sending()->create(['total_recipients' => 100]);
+    // 4 attempts, 3 failed → 75%, but far under the 20-attempt floor. A rate over a handful
+    // of sends is noise, and an alert that cries wolf gets ignored.
+    CampaignMessage::factory()->sent()->count(1)->create(['campaign_id' => $campaign->id]);
+    CampaignMessage::factory()->sent()->count(3)->create(['campaign_id' => $campaign->id, 'status' => 'failed', 'failed_at' => now()]);
+    CampaignMessage::factory()->create(['campaign_id' => $campaign->id, 'status' => 'queued']);
+
+    $this->artisan('credflow:monitor-campaigns')->assertSuccessful();
+
+    $alerts->shouldNotHaveReceived('sendAlert', ['high_failure_rate', Mockery::any(), Mockery::any()]);
     expect($campaign->fresh()->status)->toBe('sending');
 });
 

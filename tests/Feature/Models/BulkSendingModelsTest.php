@@ -155,7 +155,10 @@ test('campaign rate calculations are correct', function () {
 
     expect($campaign->deliveryRate())->toBe(80.0); // 16/20
     expect($campaign->readRate())->toBe(50.0);     // 8/16
-    expect($campaign->failureRate())->toBe(5.0);   // 1/20
+
+    // Attempts, not sends: 1/(20+1). The failed row has no sent_at, so dividing by
+    // total_sent alone would leave it out of its own denominator and report 5%.
+    expect($campaign->failureRate())->toBe(4.76);
 });
 
 test('campaign counters derive live from message rows (SCALE-1b)', function () {

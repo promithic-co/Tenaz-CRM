@@ -57,7 +57,6 @@ class StoreCampaignRequest extends FormRequest
             'template_params_mapping.*' => ['string'],
             'daily_limit' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'delay_between_ms' => ['nullable', 'integer', 'min:0', 'max:60000'],
-            'error_threshold_percent' => ['nullable', 'integer', 'min:1', 'max:100'],
             'scheduled_at' => ['nullable', 'date', 'after:now'],
         ];
     }

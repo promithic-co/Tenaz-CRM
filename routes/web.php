@@ -251,7 +251,6 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
         Route::post('campanhas/{campanha}/cancel', [CampaignController::class, 'cancel'])->name('campanhas.cancel');
         Route::post('campanhas/{campanha}/duplicate', [CampaignController::class, 'duplicate'])->name('campanhas.duplicate');
         Route::patch('campanhas/{campanha}/throttle', [CampaignController::class, 'updateThrottle'])->name('campanhas.throttle');
-        Route::post('campanhas/{campanha}/reprocess-failures', [CampaignController::class, 'reprocessFailures'])->name('campanhas.reprocess-failures');
         Route::post('campanhas/{campanha}/messages/{message}/retry', [CampaignController::class, 'retryMessage'])->name('campanhas.messages.retry');
         Route::post('campanhas/{campanha}/remove-recipients', [CampaignController::class, 'removeRecipients'])->name('campanhas.remove-recipients');
         Route::get('campanhas/{campanha}/export', [CampaignController::class, 'export'])->name('campanhas.export');

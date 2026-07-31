@@ -48,7 +48,6 @@ type Campaign = {
     total_failed: number;
     daily_limit: number;
     delay_between_ms: number;
-    error_threshold_percent: number;
     started_at: string | null;
     completed_at: string | null;
     created_at: string;
@@ -170,14 +169,6 @@ function cancelCampaign(): void {
 function duplicateCampaign(): void {
     router.post(CampaignController.duplicate(props.campaign.id).url);
 }
-function reprocessFailures(): void {
-    if (
-        !confirm('Reprocessar as mensagens com falha? Elas serão reenviadas.')
-    ) {
-        return;
-    }
-    post(CampaignController.reprocessFailures(props.campaign.id).url);
-}
 function keepPausedForQualityRisk(): void {
     post(CampaignController.keepPausedForQualityRisk(props.campaign.id).url);
 }
@@ -198,7 +189,6 @@ const throttleOpen = ref(false);
 const throttleForm = useForm({
     daily_limit: props.campaign.daily_limit,
     delay_between_ms: props.campaign.delay_between_ms,
-    error_threshold_percent: props.campaign.error_threshold_percent,
 });
 const throttleEditable = computed(
     () => !['completed', 'cancelled'].includes(props.campaign.status),
@@ -322,6 +312,16 @@ const exportUrl = computed(() => {
     return CampaignController.export(props.campaign.id, { query }).url;
 });
 
+// Failures only, ignoring the active chip — the header shortcut has to mean the same thing
+// wherever the recipients table happens to be filtered. Each row carries its error code and
+// message, which is what tells the operator which number to fix before reloading the list.
+const failuresExportUrl = computed(
+    () =>
+        CampaignController.export(props.campaign.id, {
+            query: { status: 'failed' },
+        }).url,
+);
+
 // Status helpers
 function statusBadgeClass(status: string): string {
     const map: Record<string, string> = {
@@ -414,8 +414,14 @@ const deliveryRate = computed(() =>
 const readRate = computed(() =>
     safePercent(props.campaign.total_read, props.campaign.total_delivered),
 );
+// Denominator is attempts (sent + failed), matching Campaign::failureRate(). total_sent
+// counts sent_at, which a failed send never gets, so dividing by it alone leaves failures
+// out of their own denominator and overstates the rate.
 const failureRate = computed(() =>
-    safePercent(props.campaign.total_failed, props.campaign.total_sent),
+    safePercent(
+        props.campaign.total_failed,
+        props.campaign.total_sent + props.campaign.total_failed,
+    ),
 );
 const hasMetaQualityRisk = computed(
     () => props.campaign.pause_reason_code === 'meta_quality_red_auto_pause',
@@ -470,7 +476,10 @@ const failedCount = computed(() => props.statusCounts.failed ?? 0);
 const pendingCount = computed(
     () => (props.statusCounts.pending ?? 0) + (props.statusCounts.queued ?? 0),
 );
-const canReprocess = computed(
+// Per-row retry only. There is deliberately no bulk "reprocess every failure": most
+// failures are malformed numbers that re-fail identically, so the bulk path is to export
+// them, fix the spreadsheet and load a new list.
+const canRetryMessages = computed(
     () =>
         failedCount.value > 0 &&
         ['sending', 'paused', 'completed'].includes(props.campaign.status),
@@ -583,14 +592,14 @@ const templateExpanded = ref(false);
                         >
                             Retomar
                         </button>
-                        <button
-                            v-if="canReprocess"
+                        <a
+                            v-if="failedCount > 0"
+                            :href="failuresExportUrl"
                             class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                            @click="reprocessFailures"
                         >
-                            <RotateCcw class="h-3.5 w-3.5" />
-                            Reprocessar falhas ({{ failedCount }})
-                        </button>
+                            <Download class="h-3.5 w-3.5" />
+                            Extrair falhas ({{ failedCount }})
+                        </a>
                         <button
                             v-if="canCancel"
                             class="inline-flex items-center gap-1.5 rounded-md border border-red-300 bg-background px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
@@ -782,20 +791,6 @@ const templateExpanded = ref(false);
                                 class="w-32 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                             />
                         </label>
-                        <label class="flex flex-col gap-1">
-                            <span class="text-xs text-muted-foreground"
-                                >Limiar de falhas (%)</span
-                            >
-                            <input
-                                v-model.number="
-                                    throttleForm.error_threshold_percent
-                                "
-                                type="number"
-                                min="1"
-                                max="100"
-                                class="w-32 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
-                            />
-                        </label>
                         <div class="flex items-center gap-2">
                             <button
                                 type="button"
@@ -817,15 +812,13 @@ const templateExpanded = ref(false);
                     <p
                         v-if="
                             throttleForm.errors.daily_limit ||
-                            throttleForm.errors.delay_between_ms ||
-                            throttleForm.errors.error_threshold_percent
+                            throttleForm.errors.delay_between_ms
                         "
                         class="mt-2 text-xs text-red-600 dark:text-red-400"
                     >
                         {{
                             throttleForm.errors.daily_limit ||
-                            throttleForm.errors.delay_between_ms ||
-                            throttleForm.errors.error_threshold_percent
+                            throttleForm.errors.delay_between_ms
                         }}
                     </p>
                 </div>
@@ -925,37 +918,20 @@ const templateExpanded = ref(false);
                     >
                         Falhas
                     </p>
-                    <p
-                        class="mt-1 text-2xl font-bold"
-                        :class="
-                            failureRate > campaign.error_threshold_percent
-                                ? 'text-red-600 dark:text-red-400'
-                                : 'text-foreground'
-                        "
-                    >
+                    <p class="mt-1 text-2xl font-bold text-foreground">
                         {{ campaign.total_failed ?? 0 }}
                     </p>
-                    <p
-                        class="text-xs"
-                        :class="
-                            failureRate > campaign.error_threshold_percent
-                                ? 'text-red-500'
-                                : 'text-muted-foreground'
-                        "
-                    >
-                        Taxa: {{ failureRate }}% (limiar:
-                        {{ campaign.error_threshold_percent }}%)
+                    <!-- Informative only: no failure percentage pauses a campaign. Most
+                         failures are malformed numbers that never reach Meta. Use "Extrair
+                         falhas" to get them with their error codes. -->
+                    <p class="text-xs text-muted-foreground">
+                        Taxa: {{ failureRate }}% das tentativas
                     </p>
                     <div
                         class="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
                     >
                         <div
-                            class="h-full rounded-full transition-all"
-                            :class="
-                                failureRate > campaign.error_threshold_percent
-                                    ? 'bg-red-500'
-                                    : 'bg-muted-foreground'
-                            "
+                            class="h-full rounded-full bg-muted-foreground transition-all"
                             :style="{ width: `${failureRate}%` }"
                         />
                     </div>
@@ -1315,7 +1291,7 @@ const templateExpanded = ref(false);
                                         v-if="
                                             msg.status === 'failed' &&
                                             !msg.sent_at &&
-                                            canReprocess
+                                            canRetryMessages
                                         "
                                         type="button"
                                         class="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"

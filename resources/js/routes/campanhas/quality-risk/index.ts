@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\CampaignController::keepPaused
- * @see app/Http/Controllers/CampaignController.php:273
+ * @see app/Http/Controllers/CampaignController.php:251
  * @route '/campanhas/{campanha}/quality-risk/keep-paused'
  */
 export const keepPaused = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ keepPaused.definition = {
 
 /**
 * @see \App\Http\Controllers\CampaignController::keepPaused
- * @see app/Http/Controllers/CampaignController.php:273
+ * @see app/Http/Controllers/CampaignController.php:251
  * @route '/campanhas/{campanha}/quality-risk/keep-paused'
  */
 keepPaused.url = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ keepPaused.url = (args: { campanha: number | { id: number } } | [campanha: numbe
 
 /**
 * @see \App\Http\Controllers\CampaignController::keepPaused
- * @see app/Http/Controllers/CampaignController.php:273
+ * @see app/Http/Controllers/CampaignController.php:251
  * @route '/campanhas/{campanha}/quality-risk/keep-paused'
  */
 keepPaused.post = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -59,7 +59,7 @@ keepPaused.post = (args: { campanha: number | { id: number } } | [campanha: numb
 
     /**
 * @see \App\Http\Controllers\CampaignController::keepPaused
- * @see app/Http/Controllers/CampaignController.php:273
+ * @see app/Http/Controllers/CampaignController.php:251
  * @route '/campanhas/{campanha}/quality-risk/keep-paused'
  */
     const keepPausedForm = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -69,7 +69,7 @@ keepPaused.post = (args: { campanha: number | { id: number } } | [campanha: numb
 
             /**
 * @see \App\Http\Controllers\CampaignController::keepPaused
- * @see app/Http/Controllers/CampaignController.php:273
+ * @see app/Http/Controllers/CampaignController.php:251
  * @route '/campanhas/{campanha}/quality-risk/keep-paused'
  */
         keepPausedForm.post = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -80,7 +80,7 @@ keepPaused.post = (args: { campanha: number | { id: number } } | [campanha: numb
     keepPaused.form = keepPausedForm
 /**
 * @see \App\Http\Controllers\CampaignController::continueMethod
- * @see app/Http/Controllers/CampaignController.php:286
+ * @see app/Http/Controllers/CampaignController.php:264
  * @route '/campanhas/{campanha}/quality-risk/continue'
  */
 export const continueMethod = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -95,7 +95,7 @@ continueMethod.definition = {
 
 /**
 * @see \App\Http\Controllers\CampaignController::continueMethod
- * @see app/Http/Controllers/CampaignController.php:286
+ * @see app/Http/Controllers/CampaignController.php:264
  * @route '/campanhas/{campanha}/quality-risk/continue'
  */
 continueMethod.url = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -128,7 +128,7 @@ continueMethod.url = (args: { campanha: number | { id: number } } | [campanha: n
 
 /**
 * @see \App\Http\Controllers\CampaignController::continueMethod
- * @see app/Http/Controllers/CampaignController.php:286
+ * @see app/Http/Controllers/CampaignController.php:264
  * @route '/campanhas/{campanha}/quality-risk/continue'
  */
 continueMethod.post = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -138,7 +138,7 @@ continueMethod.post = (args: { campanha: number | { id: number } } | [campanha: 
 
     /**
 * @see \App\Http\Controllers\CampaignController::continueMethod
- * @see app/Http/Controllers/CampaignController.php:286
+ * @see app/Http/Controllers/CampaignController.php:264
  * @route '/campanhas/{campanha}/quality-risk/continue'
  */
     const continueMethodForm = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -148,7 +148,7 @@ continueMethod.post = (args: { campanha: number | { id: number } } | [campanha: 
 
             /**
 * @see \App\Http\Controllers\CampaignController::continueMethod
- * @see app/Http/Controllers/CampaignController.php:286
+ * @see app/Http/Controllers/CampaignController.php:264
  * @route '/campanhas/{campanha}/quality-risk/continue'
  */
         continueMethodForm.post = (args: { campanha: number | { id: number } } | [campanha: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

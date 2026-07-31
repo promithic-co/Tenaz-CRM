@@ -96,7 +96,6 @@ const form = useForm({
         | number,
     daily_limit: 1000,
     delay_between_ms: 1000,
-    error_threshold_percent: 10,
     contact_list_id: (props.defaults?.contact_list_id ?? '') as string | number,
     whatsapp_template_id: '' as string | number,
     template_params_mapping: {} as Record<string, string>,
@@ -109,13 +108,6 @@ const delayOptions = [
     { label: '2 segundos', value: 2000 },
     { label: '3 segundos', value: 3000 },
     { label: '5 segundos', value: 5000 },
-];
-
-const thresholdOptions = [
-    { label: '5%', value: 5 },
-    { label: '10%', value: 10 },
-    { label: '15%', value: 15 },
-    { label: '20%', value: 20 },
 ];
 
 // ─── Per-step validation ──────────────────────────────────────────────────────
@@ -597,28 +589,6 @@ function submitForm(): void {
                             </div>
                         </div>
 
-                        <div>
-                            <label
-                                class="mb-1 block text-sm font-medium text-foreground"
-                                >Limiar de Falha</label
-                            >
-                            <select
-                                v-model.number="form.error_threshold_percent"
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
-                            >
-                                <option
-                                    v-for="opt in thresholdOptions"
-                                    :key="opt.value"
-                                    :value="opt.value"
-                                >
-                                    {{ opt.label }}
-                                </option>
-                            </select>
-                            <p class="mt-1 text-xs text-muted-foreground">
-                                A campanha será pausada automaticamente se a
-                                taxa de falha ultrapassar este limiar.
-                            </p>
-                        </div>
                     </div>
 
                     <!-- Step 2: Lista e Template -->
@@ -1060,17 +1030,6 @@ function submitForm(): void {
                                 >
                                 <span class="text-sm text-foreground"
                                     >{{ form.delay_between_ms }}ms</span
-                                >
-                            </div>
-                            <div
-                                class="flex items-center justify-between px-4 py-3"
-                            >
-                                <span
-                                    class="text-xs font-semibold text-muted-foreground uppercase"
-                                    >Limiar de Falha</span
-                                >
-                                <span class="text-sm text-foreground"
-                                    >{{ form.error_threshold_percent }}%</span
                                 >
                             </div>
                         </div>
