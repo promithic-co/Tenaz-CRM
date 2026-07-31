@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
-    $this->user = User::factory()->create();
+    // AI Usage moved under the backoffice prefix behind the `super_admin` gate.
+    $this->user = User::factory()->superAdmin()->create();
     $this->agent = Agent::factory()->create(['user_id' => $this->user->id]);
 });
 
@@ -98,7 +99,7 @@ test('cost calculation uses model rates from config', function () {
 
 test('ai usage page loads for authenticated user', function () {
     $this->actingAs($this->user)
-        ->get('/laboratory/ai-usage')
+        ->get(route('backoffice.laboratory.ai-usage'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('laboratory/AiUsage')
@@ -207,7 +208,7 @@ test('ai usage page includes filtered ai runs', function () {
     ]);
 
     $this->actingAs($this->user)
-        ->get('/laboratory/ai-usage?architecture_version=folder_skills')
+        ->get(route('backoffice.laboratory.ai-usage', ['architecture_version' => 'folder_skills']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('laboratory/AiUsage')

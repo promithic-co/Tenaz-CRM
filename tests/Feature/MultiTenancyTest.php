@@ -332,14 +332,16 @@ test('user specific setting overrides global fallback', function () {
 // ─── Playground scoping ──────────────────────────────────────────────────────
 
 test('playground sessions are scoped by tenant', function () {
-    $userA = User::factory()->create();
-    $userB = User::factory()->create();
+    // The playground is behind the `super_admin` gate; tenant scoping still
+    // applies on top of it, which is what these two tests pin down.
+    $userA = User::factory()->superAdmin()->create();
+    $userB = User::factory()->superAdmin()->create();
 
     Lead::factory()->forTenant($userA->tenantId)->sandbox()->create(['sandbox_label' => 'Sessão A']);
     Lead::factory()->forTenant($userB->tenantId)->sandbox()->create(['sandbox_label' => 'Sessão B']);
 
     $this->actingAs($userA)
-        ->get(route('playground.index'))
+        ->get(route('backoffice.playground.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('playground/Index')
@@ -348,13 +350,16 @@ test('playground sessions are scoped by tenant', function () {
 });
 
 test('user B cannot access sandbox lead belonging to user A', function () {
-    $userA = User::factory()->create();
-    $userB = User::factory()->create();
+    $userA = User::factory()->superAdmin()->create();
+    $userB = User::factory()->superAdmin()->create();
 
     $lead = Lead::factory()->forTenant($userA->tenantId)->sandbox()->create();
 
+    // Selecting B's company is what scopes the super-admin; with nothing
+    // selected the cross-tenant view is intentional.
     $this->actingAs($userB)
-        ->postJson(route('playground.chat', $lead), ['message' => 'oi'])
+        ->withSession(['active_tenant_id' => (string) $userB->tenantId])
+        ->postJson(route('backoffice.playground.chat', $lead), ['message' => 'oi'])
         ->assertNotFound();
 });
 

@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Queue;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->user = User::factory()->create();
+    // Stress-test endpoints moved behind the `super_admin` gate with the rest of
+    // the Laboratory; ownership below is still per-user, not per-tenant.
+    $this->user = User::factory()->superAdmin()->create();
 });
 
 it('lists datasets for authenticated user', function () {
@@ -20,7 +22,7 @@ it('lists datasets for authenticated user', function () {
     CpfDataset::factory()->create(['user_id' => $this->user->id, 'name' => 'My Dataset']);
     CpfDataset::factory()->create(['user_id' => $otherUser->id, 'name' => 'Other User Dataset']);
 
-    $response = $this->actingAs($this->user)->getJson(route('laboratory.datasets.index'));
+    $response = $this->actingAs($this->user)->getJson(route('backoffice.laboratory.datasets.index'));
 
     $response->assertOk();
     $response->assertJsonCount(1, 'data');
@@ -31,7 +33,7 @@ it('uploads csv dataset', function () {
     $csv = "cpf,nome\n01113404116,LUIZA QUEVEDO\n03082303889,REINALDO JORGE\n";
     $file = UploadedFile::fake()->createWithContent('test.csv', $csv);
 
-    $response = $this->actingAs($this->user)->postJson(route('laboratory.datasets.store'), [
+    $response = $this->actingAs($this->user)->postJson(route('backoffice.laboratory.datasets.store'), [
         'file' => $file,
         'name' => 'Uploaded Dataset',
         'description' => 'Test upload',
@@ -49,7 +51,7 @@ it('uploads csv dataset', function () {
 it('starts a stress test run', function () {
     Queue::fake();
 
-    $response = $this->actingAs($this->user)->postJson(route('laboratory.stress-tests.store'), [
+    $response = $this->actingAs($this->user)->postJson(route('backoffice.laboratory.stress-tests.store'), [
         'label' => 'My Stress Test',
         'objective' => 'Test fidelity of credit values',
         'cpf_dataset_id' => null,
@@ -81,7 +83,7 @@ it('shows stress test run with cycles', function () {
         'fidelity_score' => 95.5,
     ]);
 
-    $response = $this->actingAs($this->user)->getJson(route('laboratory.stress-tests.show', $run));
+    $response = $this->actingAs($this->user)->getJson(route('backoffice.laboratory.stress-tests.show', $run));
 
     $response->assertOk();
     $response->assertJsonPath('data.label', 'Completed Run');
@@ -103,7 +105,7 @@ it('caps the results page cycle list and flags truncation (FE-03)', function () 
     // Only the 2 most-recent cycles are hydrated (returned oldest-first: #2 then #3),
     // and the page is told the array was truncated so the poll never re-ships all 3.
     $this->actingAs($this->user)
-        ->get(route('laboratory.stress-test.results', $run))
+        ->get(route('backoffice.laboratory.stress-test.results', $run))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('laboratory/StressTestResults')
@@ -120,7 +122,7 @@ it('cancels a running stress test', function () {
         'status' => 'running',
     ]);
 
-    $response = $this->actingAs($this->user)->postJson(route('laboratory.stress-tests.cancel', $run));
+    $response = $this->actingAs($this->user)->postJson(route('backoffice.laboratory.stress-tests.cancel', $run));
 
     $response->assertOk();
     $response->assertJsonPath('data.status', 'cancelled');
@@ -128,7 +130,7 @@ it('cancels a running stress test', function () {
 });
 
 it('rejects invalid stress test config', function () {
-    $response = $this->actingAs($this->user)->postJson(route('laboratory.stress-tests.store'), [
+    $response = $this->actingAs($this->user)->postJson(route('backoffice.laboratory.stress-tests.store'), [
         'label' => 'Bad Config',
         'objective' => 'Test',
         'config' => [
@@ -146,13 +148,13 @@ it('scopes datasets and runs to authenticated user', function () {
     $dataset = CpfDataset::factory()->create(['user_id' => $otherUser->id]);
     $run = StressTestRun::factory()->create(['user_id' => $otherUser->id]);
 
-    $listDatasets = $this->actingAs($this->user)->getJson(route('laboratory.datasets.index'));
+    $listDatasets = $this->actingAs($this->user)->getJson(route('backoffice.laboratory.datasets.index'));
     $listDatasets->assertOk();
     $listDatasets->assertJsonCount(0, 'data');
 
-    $showDataset = $this->actingAs($this->user)->getJson(route('laboratory.datasets.show', $dataset));
+    $showDataset = $this->actingAs($this->user)->getJson(route('backoffice.laboratory.datasets.show', $dataset));
     $showDataset->assertForbidden();
 
-    $showRun = $this->actingAs($this->user)->getJson(route('laboratory.stress-tests.show', $run));
+    $showRun = $this->actingAs($this->user)->getJson(route('backoffice.laboratory.stress-tests.show', $run));
     $showRun->assertForbidden();
 });

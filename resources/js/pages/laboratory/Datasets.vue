@@ -2,8 +2,12 @@
 import { Head, router } from '@inertiajs/vue3';
 import { Database, Upload, Trash2, Loader2, Eye } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
+import LaboratoryTenantBar from '@/components/LaboratoryTenantBar.vue';
+import { useBackofficeRoutes } from '@/composables/useBackofficeRoutes';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+
+const routes = useBackofficeRoutes();
 
 type Dataset = {
     id: number;
@@ -18,8 +22,8 @@ type Props = { datasets: Dataset[] };
 const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Laboratory', href: '/laboratory' },
-    { title: 'Datasets', href: '/laboratory/datasets-page' },
+    { title: 'Laboratory', href: routes.laboratory() },
+    { title: 'Datasets', href: routes.laboratoryDatasetsPage() },
 ];
 
 const uploading = ref(false);
@@ -63,7 +67,7 @@ async function submitUpload() {
         formData.append('name', name.value.trim());
         if (description.value.trim())
             formData.append('description', description.value.trim());
-        const res = await fetch('/laboratory/datasets', {
+        const res = await fetch(routes.datasets(), {
             method: 'POST',
             headers: { 'X-XSRF-TOKEN': csrf(), Accept: 'application/json' },
             body: formData,
@@ -77,7 +81,9 @@ async function submitUpload() {
             name.value = '';
             description.value = '';
             if (fileInput.value) fileInput.value.value = '';
-            router.visit('/laboratory/datasets-page', { preserveState: false });
+            router.visit(routes.laboratoryDatasetsPage(), {
+                preserveState: false,
+            });
         } else {
             uploadMessage.value = {
                 type: 'error',
@@ -94,13 +100,15 @@ async function submitUpload() {
 async function prefetch(id: number) {
     prefetchingId.value = id;
     try {
-        const res = await fetch(`/laboratory/datasets/${id}/prefetch`, {
+        const res = await fetch(routes.datasetPrefetch(id), {
             method: 'POST',
             headers: { 'X-XSRF-TOKEN': csrf(), Accept: 'application/json' },
         });
         const data = await res.json();
         if (res.ok) {
-            router.visit('/laboratory/datasets-page', { preserveState: false });
+            router.visit(routes.laboratoryDatasetsPage(), {
+                preserveState: false,
+            });
         }
     } finally {
         prefetchingId.value = null;
@@ -112,7 +120,7 @@ async function showEntries(id: number) {
         showEntriesId.value = null;
         return;
     }
-    const res = await fetch(`/laboratory/datasets/${id}`, {
+    const res = await fetch(routes.dataset(id), {
         headers: { Accept: 'application/json' },
     });
     const data = await res.json();
@@ -123,12 +131,12 @@ async function showEntries(id: number) {
 async function destroy(id: number) {
     if (!confirm('Excluir este dataset? Esta ação não pode ser desfeita.'))
         return;
-    const res = await fetch(`/laboratory/datasets/${id}`, {
+    const res = await fetch(routes.dataset(id), {
         method: 'DELETE',
         headers: { 'X-XSRF-TOKEN': csrf(), Accept: 'application/json' },
     });
     if (res.ok)
-        router.visit('/laboratory/datasets-page', { preserveState: false });
+        router.visit(routes.laboratoryDatasetsPage(), { preserveState: false });
 }
 
 function formatDate(iso: string): string {
@@ -144,6 +152,8 @@ function formatDate(iso: string): string {
     <Head title="Datasets - Laboratory" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-col gap-6 p-3 sm:p-4">
+            <LaboratoryTenantBar />
+
             <div class="flex items-center gap-2">
                 <Database class="h-5 w-5 text-muted-foreground" />
                 <h1 class="text-lg font-semibold text-foreground">
