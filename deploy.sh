@@ -39,6 +39,43 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
+# 3b. Reclaim disk before building
+# Every deploy runs two `docker build --no-cache` (app + landing), which orphans the
+# previous layer set. Nothing ever reclaimed them, so the node filled to 100% and the
+# Postgres stack — separate stack, same disk — dropped to 0 replicas. The app stayed
+# 2/2 Running the whole time because the healthcheck hits /up, which never touches the
+# database, so the outage was silent until a migration failed to resolve postgres_postgres.
+#
+# Only two reclaims are safe to run unattended:
+#   builder prune -af  build cache only, and every build here is --no-cache, so it is dead weight
+#   image prune -f     untagged/dangling images only
+# NOT `system prune -a` or `image prune -a`: those call an image unused when no *container*
+# runs it, which during this very failure would have deleted the Postgres image while the
+# service sat at 0 replicas, leaving nothing to restart from on a full disk.
+disk_free() { df -Ph / | awk 'NR==2 {print $4" free ("$5" used)"}'; }
+
+echo "[1b/5] Reclaiming disk before build..."
+echo "  before: $(disk_free)"
+docker builder prune -af >/dev/null 2>&1 || true
+docker image prune -f >/dev/null 2>&1 || true
+echo "  after:  $(disk_free)"
+
+# Refuse to build into a full disk. A half-written image next to a database that ran out
+# of space is worse than a deploy that never started.
+MIN_FREE_MB="${MIN_FREE_MB:-5120}"
+AVAIL_MB=$(df -Pm / | awk 'NR==2 {print $4}')
+# Empty means df itself failed; fall through to the abort rather than to a bare `[` error.
+AVAIL_MB="${AVAIL_MB:-0}"
+if [ "$AVAIL_MB" -lt "$MIN_FREE_MB" ]; then
+    echo ""
+    echo "ERROR: only ${AVAIL_MB}MB free on / after pruning (need ${MIN_FREE_MB}MB)."
+    echo "Two --no-cache builds will not fit. Find the space first:"
+    echo "  docker system df"
+    echo "  du -sh /var/lib/docker/containers/*/*-json.log 2>/dev/null | sort -h | tail"
+    echo "Then re-run. To override: MIN_FREE_MB=0 bash deploy.sh"
+    exit 1
+fi
+
 # 4. Build Docker image (--no-cache ensures fresh assets after code changes)
 # Read only the vars we need (do NOT source .env — it can run commands and start a second deploy)
 echo "[2/5] Building Docker image (no cache)..."
