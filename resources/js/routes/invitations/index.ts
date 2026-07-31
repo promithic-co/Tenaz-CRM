@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\InvitationController::show
- * @see app/Http/Controllers/InvitationController.php:16
+ * @see app/Http/Controllers/InvitationController.php:19
  * @route '/invite/{token}'
  */
 export const show = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\InvitationController::show
- * @see app/Http/Controllers/InvitationController.php:16
+ * @see app/Http/Controllers/InvitationController.php:19
  * @route '/invite/{token}'
  */
 show.url = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -44,7 +44,7 @@ show.url = (args: { token: string | number } | [token: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\InvitationController::show
- * @see app/Http/Controllers/InvitationController.php:16
+ * @see app/Http/Controllers/InvitationController.php:19
  * @route '/invite/{token}'
  */
 show.get = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -53,7 +53,7 @@ show.get = (args: { token: string | number } | [token: string | number ] | strin
 })
 /**
 * @see \App\Http\Controllers\InvitationController::show
- * @see app/Http/Controllers/InvitationController.php:16
+ * @see app/Http/Controllers/InvitationController.php:19
  * @route '/invite/{token}'
  */
 show.head = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -63,7 +63,7 @@ show.head = (args: { token: string | number } | [token: string | number ] | stri
 
     /**
 * @see \App\Http\Controllers\InvitationController::show
- * @see app/Http/Controllers/InvitationController.php:16
+ * @see app/Http/Controllers/InvitationController.php:19
  * @route '/invite/{token}'
  */
     const showForm = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -73,7 +73,7 @@ show.head = (args: { token: string | number } | [token: string | number ] | stri
 
             /**
 * @see \App\Http\Controllers\InvitationController::show
- * @see app/Http/Controllers/InvitationController.php:16
+ * @see app/Http/Controllers/InvitationController.php:19
  * @route '/invite/{token}'
  */
         showForm.get = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -82,7 +82,7 @@ show.head = (args: { token: string | number } | [token: string | number ] | stri
         })
             /**
 * @see \App\Http\Controllers\InvitationController::show
- * @see app/Http/Controllers/InvitationController.php:16
+ * @see app/Http/Controllers/InvitationController.php:19
  * @route '/invite/{token}'
  */
         showForm.head = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -98,7 +98,7 @@ show.head = (args: { token: string | number } | [token: string | number ] | stri
     show.form = showForm
 /**
 * @see \App\Http\Controllers\InvitationController::accept
- * @see app/Http/Controllers/InvitationController.php:41
+ * @see app/Http/Controllers/InvitationController.php:56
  * @route '/invite/{token}'
  */
 export const accept = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -113,7 +113,7 @@ accept.definition = {
 
 /**
 * @see \App\Http\Controllers\InvitationController::accept
- * @see app/Http/Controllers/InvitationController.php:41
+ * @see app/Http/Controllers/InvitationController.php:56
  * @route '/invite/{token}'
  */
 accept.url = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -141,7 +141,7 @@ accept.url = (args: { token: string | number } | [token: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\InvitationController::accept
- * @see app/Http/Controllers/InvitationController.php:41
+ * @see app/Http/Controllers/InvitationController.php:56
  * @route '/invite/{token}'
  */
 accept.post = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -151,7 +151,7 @@ accept.post = (args: { token: string | number } | [token: string | number ] | st
 
     /**
 * @see \App\Http\Controllers\InvitationController::accept
- * @see app/Http/Controllers/InvitationController.php:41
+ * @see app/Http/Controllers/InvitationController.php:56
  * @route '/invite/{token}'
  */
     const acceptForm = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -161,7 +161,7 @@ accept.post = (args: { token: string | number } | [token: string | number ] | st
 
             /**
 * @see \App\Http\Controllers\InvitationController::accept
- * @see app/Http/Controllers/InvitationController.php:41
+ * @see app/Http/Controllers/InvitationController.php:56
  * @route '/invite/{token}'
  */
         acceptForm.post = (args: { token: string | number } | [token: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

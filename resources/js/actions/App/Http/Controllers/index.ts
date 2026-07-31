@@ -30,8 +30,6 @@ import RegrasOperacionaisController from './RegrasOperacionaisController'
 import ConfiguracoesController from './ConfiguracoesController'
 import StatusPipelineController from './StatusPipelineController'
 import CustomFieldController from './CustomFieldController'
-import LaboratoryController from './LaboratoryController'
-import StressTestController from './StressTestController'
 import WhatsappTemplateController from './WhatsappTemplateController'
 import CampaignController from './CampaignController'
 import ContactListController from './ContactListController'
@@ -39,9 +37,11 @@ import VoiceInstanceController from './VoiceInstanceController'
 import VoiceCampaignController from './VoiceCampaignController'
 import UraApiKeyController from './UraApiKeyController'
 import VoicePreviewController from './VoicePreviewController'
-import PlaygroundController from './PlaygroundController'
 import Settings from './Settings'
 import Backoffice from './Backoffice'
+import LaboratoryController from './LaboratoryController'
+import StressTestController from './StressTestController'
+import PlaygroundController from './PlaygroundController'
 import OnboardingController from './OnboardingController'
 const Controllers = {
     Api: Object.assign(Api, Api),
@@ -76,8 +76,6 @@ RegrasOperacionaisController: Object.assign(RegrasOperacionaisController, Regras
 ConfiguracoesController: Object.assign(ConfiguracoesController, ConfiguracoesController),
 StatusPipelineController: Object.assign(StatusPipelineController, StatusPipelineController),
 CustomFieldController: Object.assign(CustomFieldController, CustomFieldController),
-LaboratoryController: Object.assign(LaboratoryController, LaboratoryController),
-StressTestController: Object.assign(StressTestController, StressTestController),
 WhatsappTemplateController: Object.assign(WhatsappTemplateController, WhatsappTemplateController),
 CampaignController: Object.assign(CampaignController, CampaignController),
 ContactListController: Object.assign(ContactListController, ContactListController),
@@ -85,9 +83,11 @@ VoiceInstanceController: Object.assign(VoiceInstanceController, VoiceInstanceCon
 VoiceCampaignController: Object.assign(VoiceCampaignController, VoiceCampaignController),
 UraApiKeyController: Object.assign(UraApiKeyController, UraApiKeyController),
 VoicePreviewController: Object.assign(VoicePreviewController, VoicePreviewController),
-PlaygroundController: Object.assign(PlaygroundController, PlaygroundController),
 Settings: Object.assign(Settings, Settings),
 Backoffice: Object.assign(Backoffice, Backoffice),
+LaboratoryController: Object.assign(LaboratoryController, LaboratoryController),
+StressTestController: Object.assign(StressTestController, StressTestController),
+PlaygroundController: Object.assign(PlaygroundController, PlaygroundController),
 OnboardingController: Object.assign(OnboardingController, OnboardingController),
 }
 

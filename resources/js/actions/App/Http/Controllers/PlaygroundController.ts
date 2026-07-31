@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \App\Http\Controllers\PlaygroundController::index
  * @see app/Http/Controllers/PlaygroundController.php:41
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -11,13 +11,13 @@ export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 index.definition = {
     methods: ["get","head"],
-    url: '/playground',
+    url: '/backoffice/playground',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\PlaygroundController::index
  * @see app/Http/Controllers/PlaygroundController.php:41
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ index.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\PlaygroundController::index
  * @see app/Http/Controllers/PlaygroundController.php:41
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\PlaygroundController::index
  * @see app/Http/Controllers/PlaygroundController.php:41
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     /**
 * @see \App\Http\Controllers\PlaygroundController::index
  * @see app/Http/Controllers/PlaygroundController.php:41
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
         action: index.url(options),
@@ -55,7 +55,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\PlaygroundController::index
  * @see app/Http/Controllers/PlaygroundController.php:41
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: index.url(options),
@@ -64,7 +64,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\PlaygroundController::index
  * @see app/Http/Controllers/PlaygroundController.php:41
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: index.url({
@@ -80,7 +80,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \App\Http\Controllers\PlaygroundController::store
  * @see app/Http/Controllers/PlaygroundController.php:69
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
@@ -89,13 +89,13 @@ export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
 
 store.definition = {
     methods: ["post"],
-    url: '/playground',
+    url: '/backoffice/playground',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\PlaygroundController::store
  * @see app/Http/Controllers/PlaygroundController.php:69
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
 store.url = (options?: RouteQueryOptions) => {
     return store.definition.url + queryParams(options)
@@ -104,7 +104,7 @@ store.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\PlaygroundController::store
  * @see app/Http/Controllers/PlaygroundController.php:69
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
@@ -114,7 +114,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     /**
 * @see \App\Http\Controllers\PlaygroundController::store
  * @see app/Http/Controllers/PlaygroundController.php:69
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
     const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: store.url(options),
@@ -124,7 +124,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             /**
 * @see \App\Http\Controllers\PlaygroundController::store
  * @see app/Http/Controllers/PlaygroundController.php:69
- * @route '/playground'
+ * @route '/backoffice/playground'
  */
         storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: store.url(options),
@@ -135,7 +135,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \App\Http\Controllers\PlaygroundController::destroy
  * @see app/Http/Controllers/PlaygroundController.php:96
- * @route '/playground/{lead}'
+ * @route '/backoffice/playground/{lead}'
  */
 export const destroy = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
@@ -144,13 +144,13 @@ export const destroy = (args: { lead: number | { id: number } } | [lead: number 
 
 destroy.definition = {
     methods: ["delete"],
-    url: '/playground/{lead}',
+    url: '/backoffice/playground/{lead}',
 } satisfies RouteDefinition<["delete"]>
 
 /**
 * @see \App\Http\Controllers\PlaygroundController::destroy
  * @see app/Http/Controllers/PlaygroundController.php:96
- * @route '/playground/{lead}'
+ * @route '/backoffice/playground/{lead}'
  */
 destroy.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -183,7 +183,7 @@ destroy.url = (args: { lead: number | { id: number } } | [lead: number | { id: n
 /**
 * @see \App\Http\Controllers\PlaygroundController::destroy
  * @see app/Http/Controllers/PlaygroundController.php:96
- * @route '/playground/{lead}'
+ * @route '/backoffice/playground/{lead}'
  */
 destroy.delete = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
@@ -193,7 +193,7 @@ destroy.delete = (args: { lead: number | { id: number } } | [lead: number | { id
     /**
 * @see \App\Http\Controllers\PlaygroundController::destroy
  * @see app/Http/Controllers/PlaygroundController.php:96
- * @route '/playground/{lead}'
+ * @route '/backoffice/playground/{lead}'
  */
     const destroyForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: destroy.url(args, {
@@ -208,7 +208,7 @@ destroy.delete = (args: { lead: number | { id: number } } | [lead: number | { id
             /**
 * @see \App\Http\Controllers\PlaygroundController::destroy
  * @see app/Http/Controllers/PlaygroundController.php:96
- * @route '/playground/{lead}'
+ * @route '/backoffice/playground/{lead}'
  */
         destroyForm.delete = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: destroy.url(args, {
@@ -224,7 +224,7 @@ destroy.delete = (args: { lead: number | { id: number } } | [lead: number | { id
 /**
 * @see \App\Http\Controllers\PlaygroundController::reset
  * @see app/Http/Controllers/PlaygroundController.php:105
- * @route '/playground/{lead}/reset'
+ * @route '/backoffice/playground/{lead}/reset'
  */
 export const reset = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reset.url(args, options),
@@ -233,13 +233,13 @@ export const reset = (args: { lead: number | { id: number } } | [lead: number | 
 
 reset.definition = {
     methods: ["post"],
-    url: '/playground/{lead}/reset',
+    url: '/backoffice/playground/{lead}/reset',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\PlaygroundController::reset
  * @see app/Http/Controllers/PlaygroundController.php:105
- * @route '/playground/{lead}/reset'
+ * @route '/backoffice/playground/{lead}/reset'
  */
 reset.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -272,7 +272,7 @@ reset.url = (args: { lead: number | { id: number } } | [lead: number | { id: num
 /**
 * @see \App\Http\Controllers\PlaygroundController::reset
  * @see app/Http/Controllers/PlaygroundController.php:105
- * @route '/playground/{lead}/reset'
+ * @route '/backoffice/playground/{lead}/reset'
  */
 reset.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reset.url(args, options),
@@ -282,7 +282,7 @@ reset.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
     /**
 * @see \App\Http\Controllers\PlaygroundController::reset
  * @see app/Http/Controllers/PlaygroundController.php:105
- * @route '/playground/{lead}/reset'
+ * @route '/backoffice/playground/{lead}/reset'
  */
     const resetForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: reset.url(args, options),
@@ -292,7 +292,7 @@ reset.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
             /**
 * @see \App\Http\Controllers\PlaygroundController::reset
  * @see app/Http/Controllers/PlaygroundController.php:105
- * @route '/playground/{lead}/reset'
+ * @route '/backoffice/playground/{lead}/reset'
  */
         resetForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: reset.url(args, options),
@@ -303,7 +303,7 @@ reset.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
 /**
 * @see \App\Http\Controllers\PlaygroundController::updatePrompt
  * @see app/Http/Controllers/PlaygroundController.php:121
- * @route '/playground/{lead}/prompt'
+ * @route '/backoffice/playground/{lead}/prompt'
  */
 export const updatePrompt = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: updatePrompt.url(args, options),
@@ -312,13 +312,13 @@ export const updatePrompt = (args: { lead: number | { id: number } } | [lead: nu
 
 updatePrompt.definition = {
     methods: ["post"],
-    url: '/playground/{lead}/prompt',
+    url: '/backoffice/playground/{lead}/prompt',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\PlaygroundController::updatePrompt
  * @see app/Http/Controllers/PlaygroundController.php:121
- * @route '/playground/{lead}/prompt'
+ * @route '/backoffice/playground/{lead}/prompt'
  */
 updatePrompt.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -351,7 +351,7 @@ updatePrompt.url = (args: { lead: number | { id: number } } | [lead: number | { 
 /**
 * @see \App\Http\Controllers\PlaygroundController::updatePrompt
  * @see app/Http/Controllers/PlaygroundController.php:121
- * @route '/playground/{lead}/prompt'
+ * @route '/backoffice/playground/{lead}/prompt'
  */
 updatePrompt.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: updatePrompt.url(args, options),
@@ -361,7 +361,7 @@ updatePrompt.post = (args: { lead: number | { id: number } } | [lead: number | {
     /**
 * @see \App\Http\Controllers\PlaygroundController::updatePrompt
  * @see app/Http/Controllers/PlaygroundController.php:121
- * @route '/playground/{lead}/prompt'
+ * @route '/backoffice/playground/{lead}/prompt'
  */
     const updatePromptForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: updatePrompt.url(args, options),
@@ -371,7 +371,7 @@ updatePrompt.post = (args: { lead: number | { id: number } } | [lead: number | {
             /**
 * @see \App\Http\Controllers\PlaygroundController::updatePrompt
  * @see app/Http/Controllers/PlaygroundController.php:121
- * @route '/playground/{lead}/prompt'
+ * @route '/backoffice/playground/{lead}/prompt'
  */
         updatePromptForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: updatePrompt.url(args, options),
@@ -382,7 +382,7 @@ updatePrompt.post = (args: { lead: number | { id: number } } | [lead: number | {
 /**
 * @see \App\Http\Controllers\PlaygroundController::messages
  * @see app/Http/Controllers/PlaygroundController.php:146
- * @route '/playground/{lead}/messages'
+ * @route '/backoffice/playground/{lead}/messages'
  */
 export const messages = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: messages.url(args, options),
@@ -391,13 +391,13 @@ export const messages = (args: { lead: number | { id: number } } | [lead: number
 
 messages.definition = {
     methods: ["get","head"],
-    url: '/playground/{lead}/messages',
+    url: '/backoffice/playground/{lead}/messages',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\PlaygroundController::messages
  * @see app/Http/Controllers/PlaygroundController.php:146
- * @route '/playground/{lead}/messages'
+ * @route '/backoffice/playground/{lead}/messages'
  */
 messages.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -430,7 +430,7 @@ messages.url = (args: { lead: number | { id: number } } | [lead: number | { id: 
 /**
 * @see \App\Http\Controllers\PlaygroundController::messages
  * @see app/Http/Controllers/PlaygroundController.php:146
- * @route '/playground/{lead}/messages'
+ * @route '/backoffice/playground/{lead}/messages'
  */
 messages.get = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: messages.url(args, options),
@@ -439,7 +439,7 @@ messages.get = (args: { lead: number | { id: number } } | [lead: number | { id: 
 /**
 * @see \App\Http\Controllers\PlaygroundController::messages
  * @see app/Http/Controllers/PlaygroundController.php:146
- * @route '/playground/{lead}/messages'
+ * @route '/backoffice/playground/{lead}/messages'
  */
 messages.head = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: messages.url(args, options),
@@ -449,7 +449,7 @@ messages.head = (args: { lead: number | { id: number } } | [lead: number | { id:
     /**
 * @see \App\Http\Controllers\PlaygroundController::messages
  * @see app/Http/Controllers/PlaygroundController.php:146
- * @route '/playground/{lead}/messages'
+ * @route '/backoffice/playground/{lead}/messages'
  */
     const messagesForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
         action: messages.url(args, options),
@@ -459,7 +459,7 @@ messages.head = (args: { lead: number | { id: number } } | [lead: number | { id:
             /**
 * @see \App\Http\Controllers\PlaygroundController::messages
  * @see app/Http/Controllers/PlaygroundController.php:146
- * @route '/playground/{lead}/messages'
+ * @route '/backoffice/playground/{lead}/messages'
  */
         messagesForm.get = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: messages.url(args, options),
@@ -468,7 +468,7 @@ messages.head = (args: { lead: number | { id: number } } | [lead: number | { id:
             /**
 * @see \App\Http\Controllers\PlaygroundController::messages
  * @see app/Http/Controllers/PlaygroundController.php:146
- * @route '/playground/{lead}/messages'
+ * @route '/backoffice/playground/{lead}/messages'
  */
         messagesForm.head = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: messages.url(args, {
@@ -484,7 +484,7 @@ messages.head = (args: { lead: number | { id: number } } | [lead: number | { id:
 /**
 * @see \App\Http\Controllers\PlaygroundController::generateScenario
  * @see app/Http/Controllers/PlaygroundController.php:266
- * @route '/playground/generate-scenario'
+ * @route '/backoffice/playground/generate-scenario'
  */
 export const generateScenario = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: generateScenario.url(options),
@@ -493,13 +493,13 @@ export const generateScenario = (options?: RouteQueryOptions): RouteDefinition<'
 
 generateScenario.definition = {
     methods: ["post"],
-    url: '/playground/generate-scenario',
+    url: '/backoffice/playground/generate-scenario',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\PlaygroundController::generateScenario
  * @see app/Http/Controllers/PlaygroundController.php:266
- * @route '/playground/generate-scenario'
+ * @route '/backoffice/playground/generate-scenario'
  */
 generateScenario.url = (options?: RouteQueryOptions) => {
     return generateScenario.definition.url + queryParams(options)
@@ -508,7 +508,7 @@ generateScenario.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\PlaygroundController::generateScenario
  * @see app/Http/Controllers/PlaygroundController.php:266
- * @route '/playground/generate-scenario'
+ * @route '/backoffice/playground/generate-scenario'
  */
 generateScenario.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: generateScenario.url(options),
@@ -518,7 +518,7 @@ generateScenario.post = (options?: RouteQueryOptions): RouteDefinition<'post'> =
     /**
 * @see \App\Http\Controllers\PlaygroundController::generateScenario
  * @see app/Http/Controllers/PlaygroundController.php:266
- * @route '/playground/generate-scenario'
+ * @route '/backoffice/playground/generate-scenario'
  */
     const generateScenarioForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: generateScenario.url(options),
@@ -528,7 +528,7 @@ generateScenario.post = (options?: RouteQueryOptions): RouteDefinition<'post'> =
             /**
 * @see \App\Http\Controllers\PlaygroundController::generateScenario
  * @see app/Http/Controllers/PlaygroundController.php:266
- * @route '/playground/generate-scenario'
+ * @route '/backoffice/playground/generate-scenario'
  */
         generateScenarioForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: generateScenario.url(options),
@@ -539,7 +539,7 @@ generateScenario.post = (options?: RouteQueryOptions): RouteDefinition<'post'> =
 /**
 * @see \App\Http\Controllers\PlaygroundController::scanBlindspots
  * @see app/Http/Controllers/PlaygroundController.php:197
- * @route '/playground/scan-blindspots'
+ * @route '/backoffice/playground/scan-blindspots'
  */
 export const scanBlindspots = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: scanBlindspots.url(options),
@@ -548,13 +548,13 @@ export const scanBlindspots = (options?: RouteQueryOptions): RouteDefinition<'po
 
 scanBlindspots.definition = {
     methods: ["post"],
-    url: '/playground/scan-blindspots',
+    url: '/backoffice/playground/scan-blindspots',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\PlaygroundController::scanBlindspots
  * @see app/Http/Controllers/PlaygroundController.php:197
- * @route '/playground/scan-blindspots'
+ * @route '/backoffice/playground/scan-blindspots'
  */
 scanBlindspots.url = (options?: RouteQueryOptions) => {
     return scanBlindspots.definition.url + queryParams(options)
@@ -563,7 +563,7 @@ scanBlindspots.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\PlaygroundController::scanBlindspots
  * @see app/Http/Controllers/PlaygroundController.php:197
- * @route '/playground/scan-blindspots'
+ * @route '/backoffice/playground/scan-blindspots'
  */
 scanBlindspots.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: scanBlindspots.url(options),
@@ -573,7 +573,7 @@ scanBlindspots.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => 
     /**
 * @see \App\Http\Controllers\PlaygroundController::scanBlindspots
  * @see app/Http/Controllers/PlaygroundController.php:197
- * @route '/playground/scan-blindspots'
+ * @route '/backoffice/playground/scan-blindspots'
  */
     const scanBlindspotsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: scanBlindspots.url(options),
@@ -583,7 +583,7 @@ scanBlindspots.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => 
             /**
 * @see \App\Http\Controllers\PlaygroundController::scanBlindspots
  * @see app/Http/Controllers/PlaygroundController.php:197
- * @route '/playground/scan-blindspots'
+ * @route '/backoffice/playground/scan-blindspots'
  */
         scanBlindspotsForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: scanBlindspots.url(options),
@@ -594,7 +594,7 @@ scanBlindspots.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => 
 /**
 * @see \App\Http\Controllers\PlaygroundController::chat
  * @see app/Http/Controllers/PlaygroundController.php:135
- * @route '/playground/{lead}/chat'
+ * @route '/backoffice/playground/{lead}/chat'
  */
 export const chat = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: chat.url(args, options),
@@ -603,13 +603,13 @@ export const chat = (args: { lead: number | { id: number } } | [lead: number | {
 
 chat.definition = {
     methods: ["post"],
-    url: '/playground/{lead}/chat',
+    url: '/backoffice/playground/{lead}/chat',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\PlaygroundController::chat
  * @see app/Http/Controllers/PlaygroundController.php:135
- * @route '/playground/{lead}/chat'
+ * @route '/backoffice/playground/{lead}/chat'
  */
 chat.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -642,7 +642,7 @@ chat.url = (args: { lead: number | { id: number } } | [lead: number | { id: numb
 /**
 * @see \App\Http\Controllers\PlaygroundController::chat
  * @see app/Http/Controllers/PlaygroundController.php:135
- * @route '/playground/{lead}/chat'
+ * @route '/backoffice/playground/{lead}/chat'
  */
 chat.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: chat.url(args, options),
@@ -652,7 +652,7 @@ chat.post = (args: { lead: number | { id: number } } | [lead: number | { id: num
     /**
 * @see \App\Http\Controllers\PlaygroundController::chat
  * @see app/Http/Controllers/PlaygroundController.php:135
- * @route '/playground/{lead}/chat'
+ * @route '/backoffice/playground/{lead}/chat'
  */
     const chatForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: chat.url(args, options),
@@ -662,7 +662,7 @@ chat.post = (args: { lead: number | { id: number } } | [lead: number | { id: num
             /**
 * @see \App\Http\Controllers\PlaygroundController::chat
  * @see app/Http/Controllers/PlaygroundController.php:135
- * @route '/playground/{lead}/chat'
+ * @route '/backoffice/playground/{lead}/chat'
  */
         chatForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: chat.url(args, options),
@@ -673,7 +673,7 @@ chat.post = (args: { lead: number | { id: number } } | [lead: number | { id: num
 /**
 * @see \App\Http\Controllers\PlaygroundController::testerChat
  * @see app/Http/Controllers/PlaygroundController.php:154
- * @route '/playground/{lead}/tester-chat'
+ * @route '/backoffice/playground/{lead}/tester-chat'
  */
 export const testerChat = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: testerChat.url(args, options),
@@ -682,13 +682,13 @@ export const testerChat = (args: { lead: number | { id: number } } | [lead: numb
 
 testerChat.definition = {
     methods: ["post"],
-    url: '/playground/{lead}/tester-chat',
+    url: '/backoffice/playground/{lead}/tester-chat',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\PlaygroundController::testerChat
  * @see app/Http/Controllers/PlaygroundController.php:154
- * @route '/playground/{lead}/tester-chat'
+ * @route '/backoffice/playground/{lead}/tester-chat'
  */
 testerChat.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -721,7 +721,7 @@ testerChat.url = (args: { lead: number | { id: number } } | [lead: number | { id
 /**
 * @see \App\Http\Controllers\PlaygroundController::testerChat
  * @see app/Http/Controllers/PlaygroundController.php:154
- * @route '/playground/{lead}/tester-chat'
+ * @route '/backoffice/playground/{lead}/tester-chat'
  */
 testerChat.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: testerChat.url(args, options),
@@ -731,7 +731,7 @@ testerChat.post = (args: { lead: number | { id: number } } | [lead: number | { i
     /**
 * @see \App\Http\Controllers\PlaygroundController::testerChat
  * @see app/Http/Controllers/PlaygroundController.php:154
- * @route '/playground/{lead}/tester-chat'
+ * @route '/backoffice/playground/{lead}/tester-chat'
  */
     const testerChatForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: testerChat.url(args, options),
@@ -741,7 +741,7 @@ testerChat.post = (args: { lead: number | { id: number } } | [lead: number | { i
             /**
 * @see \App\Http\Controllers\PlaygroundController::testerChat
  * @see app/Http/Controllers/PlaygroundController.php:154
- * @route '/playground/{lead}/tester-chat'
+ * @route '/backoffice/playground/{lead}/tester-chat'
  */
         testerChatForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: testerChat.url(args, options),
@@ -752,7 +752,7 @@ testerChat.post = (args: { lead: number | { id: number } } | [lead: number | { i
 /**
 * @see \App\Http\Controllers\PlaygroundController::evaluate
  * @see app/Http/Controllers/PlaygroundController.php:185
- * @route '/playground/{lead}/evaluate'
+ * @route '/backoffice/playground/{lead}/evaluate'
  */
 export const evaluate = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: evaluate.url(args, options),
@@ -761,13 +761,13 @@ export const evaluate = (args: { lead: number | { id: number } } | [lead: number
 
 evaluate.definition = {
     methods: ["post"],
-    url: '/playground/{lead}/evaluate',
+    url: '/backoffice/playground/{lead}/evaluate',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\PlaygroundController::evaluate
  * @see app/Http/Controllers/PlaygroundController.php:185
- * @route '/playground/{lead}/evaluate'
+ * @route '/backoffice/playground/{lead}/evaluate'
  */
 evaluate.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -800,7 +800,7 @@ evaluate.url = (args: { lead: number | { id: number } } | [lead: number | { id: 
 /**
 * @see \App\Http\Controllers\PlaygroundController::evaluate
  * @see app/Http/Controllers/PlaygroundController.php:185
- * @route '/playground/{lead}/evaluate'
+ * @route '/backoffice/playground/{lead}/evaluate'
  */
 evaluate.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: evaluate.url(args, options),
@@ -810,7 +810,7 @@ evaluate.post = (args: { lead: number | { id: number } } | [lead: number | { id:
     /**
 * @see \App\Http\Controllers\PlaygroundController::evaluate
  * @see app/Http/Controllers/PlaygroundController.php:185
- * @route '/playground/{lead}/evaluate'
+ * @route '/backoffice/playground/{lead}/evaluate'
  */
     const evaluateForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: evaluate.url(args, options),
@@ -820,7 +820,7 @@ evaluate.post = (args: { lead: number | { id: number } } | [lead: number | { id:
             /**
 * @see \App\Http\Controllers\PlaygroundController::evaluate
  * @see app/Http/Controllers/PlaygroundController.php:185
- * @route '/playground/{lead}/evaluate'
+ * @route '/backoffice/playground/{lead}/evaluate'
  */
         evaluateForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: evaluate.url(args, options),

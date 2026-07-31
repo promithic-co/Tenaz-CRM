@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \App\Http\Controllers\StressTestController::datasets
  * @see app/Http/Controllers/StressTestController.php:21
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
 export const datasets = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: datasets.url(options),
@@ -11,13 +11,13 @@ export const datasets = (options?: RouteQueryOptions): RouteDefinition<'get'> =>
 
 datasets.definition = {
     methods: ["get","head"],
-    url: '/laboratory/datasets',
+    url: '/backoffice/laboratory/datasets',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\StressTestController::datasets
  * @see app/Http/Controllers/StressTestController.php:21
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
 datasets.url = (options?: RouteQueryOptions) => {
     return datasets.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ datasets.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StressTestController::datasets
  * @see app/Http/Controllers/StressTestController.php:21
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
 datasets.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: datasets.url(options),
@@ -35,7 +35,7 @@ datasets.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\StressTestController::datasets
  * @see app/Http/Controllers/StressTestController.php:21
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
 datasets.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: datasets.url(options),
@@ -45,7 +45,7 @@ datasets.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     /**
 * @see \App\Http\Controllers\StressTestController::datasets
  * @see app/Http/Controllers/StressTestController.php:21
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
     const datasetsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
         action: datasets.url(options),
@@ -55,7 +55,7 @@ datasets.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\StressTestController::datasets
  * @see app/Http/Controllers/StressTestController.php:21
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
         datasetsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: datasets.url(options),
@@ -64,7 +64,7 @@ datasets.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\StressTestController::datasets
  * @see app/Http/Controllers/StressTestController.php:21
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
         datasetsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: datasets.url({
@@ -80,7 +80,7 @@ datasets.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \App\Http\Controllers\StressTestController::storeDataset
  * @see app/Http/Controllers/StressTestController.php:30
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
 export const storeDataset = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: storeDataset.url(options),
@@ -89,13 +89,13 @@ export const storeDataset = (options?: RouteQueryOptions): RouteDefinition<'post
 
 storeDataset.definition = {
     methods: ["post"],
-    url: '/laboratory/datasets',
+    url: '/backoffice/laboratory/datasets',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\StressTestController::storeDataset
  * @see app/Http/Controllers/StressTestController.php:30
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
 storeDataset.url = (options?: RouteQueryOptions) => {
     return storeDataset.definition.url + queryParams(options)
@@ -104,7 +104,7 @@ storeDataset.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StressTestController::storeDataset
  * @see app/Http/Controllers/StressTestController.php:30
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
 storeDataset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: storeDataset.url(options),
@@ -114,7 +114,7 @@ storeDataset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     /**
 * @see \App\Http\Controllers\StressTestController::storeDataset
  * @see app/Http/Controllers/StressTestController.php:30
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
     const storeDatasetForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: storeDataset.url(options),
@@ -124,7 +124,7 @@ storeDataset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             /**
 * @see \App\Http\Controllers\StressTestController::storeDataset
  * @see app/Http/Controllers/StressTestController.php:30
- * @route '/laboratory/datasets'
+ * @route '/backoffice/laboratory/datasets'
  */
         storeDatasetForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: storeDataset.url(options),
@@ -135,7 +135,7 @@ storeDataset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \App\Http\Controllers\StressTestController::showDataset
  * @see app/Http/Controllers/StressTestController.php:65
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
 export const showDataset = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: showDataset.url(args, options),
@@ -144,13 +144,13 @@ export const showDataset = (args: { dataset: number | { id: number } } | [datase
 
 showDataset.definition = {
     methods: ["get","head"],
-    url: '/laboratory/datasets/{dataset}',
+    url: '/backoffice/laboratory/datasets/{dataset}',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\StressTestController::showDataset
  * @see app/Http/Controllers/StressTestController.php:65
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
 showDataset.url = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -183,7 +183,7 @@ showDataset.url = (args: { dataset: number | { id: number } } | [dataset: number
 /**
 * @see \App\Http\Controllers\StressTestController::showDataset
  * @see app/Http/Controllers/StressTestController.php:65
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
 showDataset.get = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: showDataset.url(args, options),
@@ -192,7 +192,7 @@ showDataset.get = (args: { dataset: number | { id: number } } | [dataset: number
 /**
 * @see \App\Http\Controllers\StressTestController::showDataset
  * @see app/Http/Controllers/StressTestController.php:65
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
 showDataset.head = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: showDataset.url(args, options),
@@ -202,7 +202,7 @@ showDataset.head = (args: { dataset: number | { id: number } } | [dataset: numbe
     /**
 * @see \App\Http\Controllers\StressTestController::showDataset
  * @see app/Http/Controllers/StressTestController.php:65
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
     const showDatasetForm = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
         action: showDataset.url(args, options),
@@ -212,7 +212,7 @@ showDataset.head = (args: { dataset: number | { id: number } } | [dataset: numbe
             /**
 * @see \App\Http\Controllers\StressTestController::showDataset
  * @see app/Http/Controllers/StressTestController.php:65
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
         showDatasetForm.get = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: showDataset.url(args, options),
@@ -221,7 +221,7 @@ showDataset.head = (args: { dataset: number | { id: number } } | [dataset: numbe
             /**
 * @see \App\Http\Controllers\StressTestController::showDataset
  * @see app/Http/Controllers/StressTestController.php:65
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
         showDatasetForm.head = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: showDataset.url(args, {
@@ -237,7 +237,7 @@ showDataset.head = (args: { dataset: number | { id: number } } | [dataset: numbe
 /**
 * @see \App\Http\Controllers\StressTestController::destroyDataset
  * @see app/Http/Controllers/StressTestController.php:94
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
 export const destroyDataset = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroyDataset.url(args, options),
@@ -246,13 +246,13 @@ export const destroyDataset = (args: { dataset: number | { id: number } } | [dat
 
 destroyDataset.definition = {
     methods: ["delete"],
-    url: '/laboratory/datasets/{dataset}',
+    url: '/backoffice/laboratory/datasets/{dataset}',
 } satisfies RouteDefinition<["delete"]>
 
 /**
 * @see \App\Http\Controllers\StressTestController::destroyDataset
  * @see app/Http/Controllers/StressTestController.php:94
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
 destroyDataset.url = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -285,7 +285,7 @@ destroyDataset.url = (args: { dataset: number | { id: number } } | [dataset: num
 /**
 * @see \App\Http\Controllers\StressTestController::destroyDataset
  * @see app/Http/Controllers/StressTestController.php:94
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
 destroyDataset.delete = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroyDataset.url(args, options),
@@ -295,7 +295,7 @@ destroyDataset.delete = (args: { dataset: number | { id: number } } | [dataset: 
     /**
 * @see \App\Http\Controllers\StressTestController::destroyDataset
  * @see app/Http/Controllers/StressTestController.php:94
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
     const destroyDatasetForm = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: destroyDataset.url(args, {
@@ -310,7 +310,7 @@ destroyDataset.delete = (args: { dataset: number | { id: number } } | [dataset: 
             /**
 * @see \App\Http\Controllers\StressTestController::destroyDataset
  * @see app/Http/Controllers/StressTestController.php:94
- * @route '/laboratory/datasets/{dataset}'
+ * @route '/backoffice/laboratory/datasets/{dataset}'
  */
         destroyDatasetForm.delete = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: destroyDataset.url(args, {
@@ -326,7 +326,7 @@ destroyDataset.delete = (args: { dataset: number | { id: number } } | [dataset: 
 /**
 * @see \App\Http\Controllers\StressTestController::prefetchDataset
  * @see app/Http/Controllers/StressTestController.php:102
- * @route '/laboratory/datasets/{dataset}/prefetch'
+ * @route '/backoffice/laboratory/datasets/{dataset}/prefetch'
  */
 export const prefetchDataset = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: prefetchDataset.url(args, options),
@@ -335,13 +335,13 @@ export const prefetchDataset = (args: { dataset: number | { id: number } } | [da
 
 prefetchDataset.definition = {
     methods: ["post"],
-    url: '/laboratory/datasets/{dataset}/prefetch',
+    url: '/backoffice/laboratory/datasets/{dataset}/prefetch',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\StressTestController::prefetchDataset
  * @see app/Http/Controllers/StressTestController.php:102
- * @route '/laboratory/datasets/{dataset}/prefetch'
+ * @route '/backoffice/laboratory/datasets/{dataset}/prefetch'
  */
 prefetchDataset.url = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -374,7 +374,7 @@ prefetchDataset.url = (args: { dataset: number | { id: number } } | [dataset: nu
 /**
 * @see \App\Http\Controllers\StressTestController::prefetchDataset
  * @see app/Http/Controllers/StressTestController.php:102
- * @route '/laboratory/datasets/{dataset}/prefetch'
+ * @route '/backoffice/laboratory/datasets/{dataset}/prefetch'
  */
 prefetchDataset.post = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: prefetchDataset.url(args, options),
@@ -384,7 +384,7 @@ prefetchDataset.post = (args: { dataset: number | { id: number } } | [dataset: n
     /**
 * @see \App\Http\Controllers\StressTestController::prefetchDataset
  * @see app/Http/Controllers/StressTestController.php:102
- * @route '/laboratory/datasets/{dataset}/prefetch'
+ * @route '/backoffice/laboratory/datasets/{dataset}/prefetch'
  */
     const prefetchDatasetForm = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: prefetchDataset.url(args, options),
@@ -394,7 +394,7 @@ prefetchDataset.post = (args: { dataset: number | { id: number } } | [dataset: n
             /**
 * @see \App\Http\Controllers\StressTestController::prefetchDataset
  * @see app/Http/Controllers/StressTestController.php:102
- * @route '/laboratory/datasets/{dataset}/prefetch'
+ * @route '/backoffice/laboratory/datasets/{dataset}/prefetch'
  */
         prefetchDatasetForm.post = (args: { dataset: number | { id: number } } | [dataset: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: prefetchDataset.url(args, options),
@@ -405,7 +405,7 @@ prefetchDataset.post = (args: { dataset: number | { id: number } } | [dataset: n
 /**
 * @see \App\Http\Controllers\StressTestController::runs
  * @see app/Http/Controllers/StressTestController.php:115
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
 export const runs = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: runs.url(options),
@@ -414,13 +414,13 @@ export const runs = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 runs.definition = {
     methods: ["get","head"],
-    url: '/laboratory/stress-tests',
+    url: '/backoffice/laboratory/stress-tests',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\StressTestController::runs
  * @see app/Http/Controllers/StressTestController.php:115
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
 runs.url = (options?: RouteQueryOptions) => {
     return runs.definition.url + queryParams(options)
@@ -429,7 +429,7 @@ runs.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StressTestController::runs
  * @see app/Http/Controllers/StressTestController.php:115
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
 runs.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: runs.url(options),
@@ -438,7 +438,7 @@ runs.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\StressTestController::runs
  * @see app/Http/Controllers/StressTestController.php:115
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
 runs.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: runs.url(options),
@@ -448,7 +448,7 @@ runs.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     /**
 * @see \App\Http\Controllers\StressTestController::runs
  * @see app/Http/Controllers/StressTestController.php:115
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
     const runsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
         action: runs.url(options),
@@ -458,7 +458,7 @@ runs.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\StressTestController::runs
  * @see app/Http/Controllers/StressTestController.php:115
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
         runsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: runs.url(options),
@@ -467,7 +467,7 @@ runs.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\StressTestController::runs
  * @see app/Http/Controllers/StressTestController.php:115
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
         runsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: runs.url({
@@ -483,7 +483,7 @@ runs.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \App\Http\Controllers\StressTestController::storeRun
  * @see app/Http/Controllers/StressTestController.php:142
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
 export const storeRun = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: storeRun.url(options),
@@ -492,13 +492,13 @@ export const storeRun = (options?: RouteQueryOptions): RouteDefinition<'post'> =
 
 storeRun.definition = {
     methods: ["post"],
-    url: '/laboratory/stress-tests',
+    url: '/backoffice/laboratory/stress-tests',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\StressTestController::storeRun
  * @see app/Http/Controllers/StressTestController.php:142
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
 storeRun.url = (options?: RouteQueryOptions) => {
     return storeRun.definition.url + queryParams(options)
@@ -507,7 +507,7 @@ storeRun.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StressTestController::storeRun
  * @see app/Http/Controllers/StressTestController.php:142
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
 storeRun.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: storeRun.url(options),
@@ -517,7 +517,7 @@ storeRun.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     /**
 * @see \App\Http\Controllers\StressTestController::storeRun
  * @see app/Http/Controllers/StressTestController.php:142
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
     const storeRunForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: storeRun.url(options),
@@ -527,7 +527,7 @@ storeRun.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             /**
 * @see \App\Http\Controllers\StressTestController::storeRun
  * @see app/Http/Controllers/StressTestController.php:142
- * @route '/laboratory/stress-tests'
+ * @route '/backoffice/laboratory/stress-tests'
  */
         storeRunForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: storeRun.url(options),
@@ -538,7 +538,7 @@ storeRun.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \App\Http\Controllers\StressTestController::showRun
  * @see app/Http/Controllers/StressTestController.php:177
- * @route '/laboratory/stress-tests/{run}'
+ * @route '/backoffice/laboratory/stress-tests/{run}'
  */
 export const showRun = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: showRun.url(args, options),
@@ -547,13 +547,13 @@ export const showRun = (args: { run: number | { id: number } } | [run: number | 
 
 showRun.definition = {
     methods: ["get","head"],
-    url: '/laboratory/stress-tests/{run}',
+    url: '/backoffice/laboratory/stress-tests/{run}',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\StressTestController::showRun
  * @see app/Http/Controllers/StressTestController.php:177
- * @route '/laboratory/stress-tests/{run}'
+ * @route '/backoffice/laboratory/stress-tests/{run}'
  */
 showRun.url = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -586,7 +586,7 @@ showRun.url = (args: { run: number | { id: number } } | [run: number | { id: num
 /**
 * @see \App\Http\Controllers\StressTestController::showRun
  * @see app/Http/Controllers/StressTestController.php:177
- * @route '/laboratory/stress-tests/{run}'
+ * @route '/backoffice/laboratory/stress-tests/{run}'
  */
 showRun.get = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: showRun.url(args, options),
@@ -595,7 +595,7 @@ showRun.get = (args: { run: number | { id: number } } | [run: number | { id: num
 /**
 * @see \App\Http\Controllers\StressTestController::showRun
  * @see app/Http/Controllers/StressTestController.php:177
- * @route '/laboratory/stress-tests/{run}'
+ * @route '/backoffice/laboratory/stress-tests/{run}'
  */
 showRun.head = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: showRun.url(args, options),
@@ -605,7 +605,7 @@ showRun.head = (args: { run: number | { id: number } } | [run: number | { id: nu
     /**
 * @see \App\Http\Controllers\StressTestController::showRun
  * @see app/Http/Controllers/StressTestController.php:177
- * @route '/laboratory/stress-tests/{run}'
+ * @route '/backoffice/laboratory/stress-tests/{run}'
  */
     const showRunForm = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
         action: showRun.url(args, options),
@@ -615,7 +615,7 @@ showRun.head = (args: { run: number | { id: number } } | [run: number | { id: nu
             /**
 * @see \App\Http\Controllers\StressTestController::showRun
  * @see app/Http/Controllers/StressTestController.php:177
- * @route '/laboratory/stress-tests/{run}'
+ * @route '/backoffice/laboratory/stress-tests/{run}'
  */
         showRunForm.get = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: showRun.url(args, options),
@@ -624,7 +624,7 @@ showRun.head = (args: { run: number | { id: number } } | [run: number | { id: nu
             /**
 * @see \App\Http\Controllers\StressTestController::showRun
  * @see app/Http/Controllers/StressTestController.php:177
- * @route '/laboratory/stress-tests/{run}'
+ * @route '/backoffice/laboratory/stress-tests/{run}'
  */
         showRunForm.head = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: showRun.url(args, {
@@ -640,7 +640,7 @@ showRun.head = (args: { run: number | { id: number } } | [run: number | { id: nu
 /**
 * @see \App\Http\Controllers\StressTestController::cancelRun
  * @see app/Http/Controllers/StressTestController.php:215
- * @route '/laboratory/stress-tests/{run}/cancel'
+ * @route '/backoffice/laboratory/stress-tests/{run}/cancel'
  */
 export const cancelRun = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: cancelRun.url(args, options),
@@ -649,13 +649,13 @@ export const cancelRun = (args: { run: number | { id: number } } | [run: number 
 
 cancelRun.definition = {
     methods: ["post"],
-    url: '/laboratory/stress-tests/{run}/cancel',
+    url: '/backoffice/laboratory/stress-tests/{run}/cancel',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\StressTestController::cancelRun
  * @see app/Http/Controllers/StressTestController.php:215
- * @route '/laboratory/stress-tests/{run}/cancel'
+ * @route '/backoffice/laboratory/stress-tests/{run}/cancel'
  */
 cancelRun.url = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -688,7 +688,7 @@ cancelRun.url = (args: { run: number | { id: number } } | [run: number | { id: n
 /**
 * @see \App\Http\Controllers\StressTestController::cancelRun
  * @see app/Http/Controllers/StressTestController.php:215
- * @route '/laboratory/stress-tests/{run}/cancel'
+ * @route '/backoffice/laboratory/stress-tests/{run}/cancel'
  */
 cancelRun.post = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: cancelRun.url(args, options),
@@ -698,7 +698,7 @@ cancelRun.post = (args: { run: number | { id: number } } | [run: number | { id: 
     /**
 * @see \App\Http\Controllers\StressTestController::cancelRun
  * @see app/Http/Controllers/StressTestController.php:215
- * @route '/laboratory/stress-tests/{run}/cancel'
+ * @route '/backoffice/laboratory/stress-tests/{run}/cancel'
  */
     const cancelRunForm = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: cancelRun.url(args, options),
@@ -708,7 +708,7 @@ cancelRun.post = (args: { run: number | { id: number } } | [run: number | { id: 
             /**
 * @see \App\Http\Controllers\StressTestController::cancelRun
  * @see app/Http/Controllers/StressTestController.php:215
- * @route '/laboratory/stress-tests/{run}/cancel'
+ * @route '/backoffice/laboratory/stress-tests/{run}/cancel'
  */
         cancelRunForm.post = (args: { run: number | { id: number } } | [run: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: cancelRun.url(args, options),

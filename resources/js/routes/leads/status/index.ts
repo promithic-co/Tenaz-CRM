@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\LeadStatusController::update
- * @see app/Http/Controllers/LeadStatusController.php:29
+ * @see app/Http/Controllers/LeadStatusController.php:31
  * @route '/leads/{lead}/status'
  */
 export const update = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\LeadStatusController::update
- * @see app/Http/Controllers/LeadStatusController.php:29
+ * @see app/Http/Controllers/LeadStatusController.php:31
  * @route '/leads/{lead}/status'
  */
 update.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ update.url = (args: { lead: number | { id: number } } | [lead: number | { id: nu
 
 /**
 * @see \App\Http\Controllers\LeadStatusController::update
- * @see app/Http/Controllers/LeadStatusController.php:29
+ * @see app/Http/Controllers/LeadStatusController.php:31
  * @route '/leads/{lead}/status'
  */
 update.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -59,7 +59,7 @@ update.post = (args: { lead: number | { id: number } } | [lead: number | { id: n
 
     /**
 * @see \App\Http\Controllers\LeadStatusController::update
- * @see app/Http/Controllers/LeadStatusController.php:29
+ * @see app/Http/Controllers/LeadStatusController.php:31
  * @route '/leads/{lead}/status'
  */
     const updateForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -69,7 +69,7 @@ update.post = (args: { lead: number | { id: number } } | [lead: number | { id: n
 
             /**
 * @see \App\Http\Controllers\LeadStatusController::update
- * @see app/Http/Controllers/LeadStatusController.php:29
+ * @see app/Http/Controllers/LeadStatusController.php:31
  * @route '/leads/{lead}/status'
  */
         updateForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
