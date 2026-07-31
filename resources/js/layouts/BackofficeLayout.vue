@@ -21,6 +21,8 @@ const navItems = computed(() => [
     { label: 'Agentes', href: routes.agents() },
     { label: 'Templates LLM', href: routes.templates() },
     { label: 'Modelos de agente', href: routes.nicheTemplates() },
+    { label: 'Laboratory', href: routes.laboratory() },
+    { label: 'Playground', href: routes.playground() },
 ]);
 
 function isActive(href: string): boolean {

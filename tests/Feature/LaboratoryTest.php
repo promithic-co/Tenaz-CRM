@@ -16,7 +16,7 @@ uses(RefreshDatabase::class);
 /** @return array{0: User, 1: Tenant, 2: Agent} */
 function labUserWithTenant(): array
 {
-    $user = User::factory()->create();
+    $user = User::factory()->superAdmin()->create();
     $tenant = $user->tenants()->first();
     $agent = Agent::factory()->create([
         'user_id' => $user->id,
@@ -27,10 +27,10 @@ function labUserWithTenant(): array
 }
 
 it('displays laboratory dashboard for authenticated users', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->superAdmin()->create();
 
     $this->actingAs($user)
-        ->get(route('laboratory'))
+        ->get(route('backoffice.laboratory'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('laboratory/Index')
@@ -41,7 +41,7 @@ it('displays laboratory dashboard for authenticated users', function () {
 });
 
 it('redirects guests to login', function () {
-    $this->get(route('laboratory'))
+    $this->get(route('backoffice.laboratory'))
         ->assertRedirect(route('login'));
 });
 
@@ -67,7 +67,7 @@ it('shows correct failure statistics for the current tenant only', function () {
     ]);
 
     $this->actingAs($user)
-        ->get(route('laboratory'))
+        ->get(route('backoffice.laboratory'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('laboratory/Index')
@@ -103,7 +103,7 @@ it('does not include other tenants failed interactions in stats', function () {
     ]);
 
     $this->actingAs($userA)
-        ->get(route('laboratory'))
+        ->get(route('backoffice.laboratory'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->where('stats.pending_retries', 1)
@@ -125,7 +125,7 @@ it('shows error pattern distribution for the current tenant', function () {
     ]);
 
     $this->actingAs($user)
-        ->get(route('laboratory'))
+        ->get(route('backoffice.laboratory'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('laboratory/Index')
@@ -161,7 +161,7 @@ it('calculates recovery rate correctly for the current tenant', function () {
     ]);
 
     $this->actingAs($user)
-        ->get(route('laboratory'))
+        ->get(route('backoffice.laboratory'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('laboratory/Index')
@@ -185,7 +185,7 @@ it('marks laboratory posture as attention when recovery work is still open', fun
     ]);
 
     $this->actingAs($user)
-        ->get(route('laboratory'))
+        ->get(route('backoffice.laboratory'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->where('stats.pending_retries', 1)
@@ -195,7 +195,7 @@ it('marks laboratory posture as attention when recovery work is still open', fun
 });
 
 it('laboratory follow-up metrics show for current tenant', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->superAdmin()->create();
     $agent = Agent::factory()->create([
         'user_id' => $user->id,
         'tenant_id' => $user->tenantId,
@@ -208,7 +208,7 @@ it('laboratory follow-up metrics show for current tenant', function () {
     ]);
 
     $this->actingAs($user)
-        ->get(route('laboratory'))
+        ->get(route('backoffice.laboratory'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->where('followupStats.active_count', 1)
@@ -238,7 +238,7 @@ it('buckets hourly failures by created hour using the sqlite strftime branch', f
     }
 
     $this->actingAs($user)
-        ->get(route('laboratory'))
+        ->get(route('backoffice.laboratory'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->where('hourlyFailures.9', 2)
@@ -258,7 +258,7 @@ it('shows bulk campaign metrics for the current tenant', function () {
     CampaignMessage::factory()->delivered()->count(2)->create(['campaign_id' => $deliveryCampaign->id]);
 
     $this->actingAs($user)
-        ->get(route('laboratory'))
+        ->get(route('backoffice.laboratory'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->where('bulkMetrics.campaigns_active', 1)
@@ -314,7 +314,7 @@ it('shows minimal ai run architecture comparison for the current tenant', functi
     ]);
 
     $this->actingAs($user)
-        ->get(route('laboratory'))
+        ->get(route('backoffice.laboratory'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->where('aiRunSummary.runs', 2)

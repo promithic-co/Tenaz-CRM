@@ -2,8 +2,11 @@
 import { Head } from '@inertiajs/vue3';
 import { ArrowLeft, Bug, X } from 'lucide-vue-next';
 import { computed, nextTick, ref, watch } from 'vue';
+import { useBackofficeRoutes } from '@/composables/useBackofficeRoutes';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+
+const routes = useBackofficeRoutes();
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -49,8 +52,8 @@ type Props = {
 const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Laboratory', href: '/laboratory' },
-    { title: 'Playground', href: '/playground' },
+    { title: 'Laboratory', href: routes.laboratory() },
+    { title: 'Playground', href: routes.playground() },
 ];
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -185,7 +188,7 @@ async function scanBlindspots() {
     scanError.value = '';
     attackPlan.value = [];
     try {
-        const res = await fetch('/playground/scan-blindspots', {
+        const res = await fetch(routes.playgroundScanBlindspots(), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -232,7 +235,7 @@ watch(activeId, async (id) => {
     debugLog.value = [];
     messages.value = [];
     promptDraft.value = '';
-    const res = await fetch(`/playground/${id}/messages`);
+    const res = await fetch(routes.playgroundMessages(id));
     if (res.ok) {
         const data = await res.json();
         messages.value = data.messages ?? [];
@@ -245,7 +248,7 @@ watch(activeId, async (id) => {
 // ─── Actions ─────────────────────────────────────────────────────────────────
 
 async function createSession() {
-    const res = await fetch('/playground', {
+    const res = await fetch(routes.playground(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrf() },
         body: JSON.stringify({
@@ -263,7 +266,7 @@ async function createSession() {
 }
 
 async function deleteSession(id: number) {
-    const res = await fetch(`/playground/${id}`, {
+    const res = await fetch(routes.playgroundSession(id), {
         method: 'DELETE',
         headers: { 'X-XSRF-TOKEN': csrf() },
     });
@@ -277,7 +280,7 @@ async function deleteSession(id: number) {
 
 async function resetSession() {
     if (!activeId.value) return;
-    const res = await fetch(`/playground/${activeId.value}/reset`, {
+    const res = await fetch(routes.playgroundReset(activeId.value), {
         method: 'POST',
         headers: { 'X-XSRF-TOKEN': csrf() },
     });
@@ -289,7 +292,7 @@ async function resetSession() {
 
 async function savePrompt() {
     if (!activeId.value) return;
-    await fetch(`/playground/${activeId.value}/prompt`, {
+    await fetch(routes.playgroundPrompt(activeId.value), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrf() },
         body: JSON.stringify({ system_prompt: promptDraft.value }),
@@ -308,7 +311,7 @@ async function sendMessage() {
     messages.value.push({ role: 'user', content: text, hora: now() });
     scrollBottom();
 
-    const res = await fetch(`/playground/${activeId.value}/chat`, {
+    const res = await fetch(routes.playgroundChat(activeId.value), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrf() },
         body: JSON.stringify({
@@ -365,18 +368,21 @@ async function startBatchTest() {
                 scenario = `[${atk.category}] ${atk.scenario}`;
             } else {
                 try {
-                    const scRes = await fetch('/playground/generate-scenario', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-XSRF-TOKEN': csrf(),
+                    const scRes = await fetch(
+                        routes.playgroundGenerateScenario(),
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-XSRF-TOKEN': csrf(),
+                            },
+                            body: JSON.stringify({
+                                objective: batchObjective.value,
+                                cycle: cycle,
+                                tester_model: testerModel,
+                            }),
                         },
-                        body: JSON.stringify({
-                            objective: batchObjective.value,
-                            cycle: cycle,
-                            tester_model: testerModel,
-                        }),
-                    });
+                    );
                     if (scRes.ok) scenario = (await scRes.json()).scenario;
                     else scenario = 'Cliente insistente (fallback)';
                 } catch (e) {
@@ -388,7 +394,7 @@ async function startBatchTest() {
 
             // 2. Criar nova sessão Playground dinamicamente
             try {
-                const sessRes = await fetch('/playground', {
+                const sessRes = await fetch(routes.playground(), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -412,6 +418,11 @@ async function startBatchTest() {
 
             if (!isBatchTesting.value) break;
 
+            // Pin the session this cycle drives: `activeId` is nullable and the
+            // rest of the loop builds URLs from it.
+            const sessionId = activeId.value;
+            if (sessionId === null) break;
+
             messages.value.push({
                 role: 'assistant',
                 content: `[SISTEMA] Iniciando Ciclo ${cycle}/${cycles}\nAlvo:\n${scenario}`,
@@ -430,7 +441,7 @@ async function startBatchTest() {
 
                 try {
                     const testerRes = await fetch(
-                        `/playground/${activeId.value}/tester-chat`,
+                        routes.playgroundTesterChat(sessionId),
                         {
                             method: 'POST',
                             headers: {
@@ -507,7 +518,7 @@ async function startBatchTest() {
 
                 try {
                     const evalres = await fetch(
-                        `/playground/${activeId.value}/evaluate`,
+                        routes.playgroundEvaluate(sessionId),
                         {
                             method: 'POST',
                             headers: {
@@ -528,7 +539,7 @@ async function startBatchTest() {
 
                     // Recarrega as mensagens para buscar a Evaluation do DB!
                     const resMsgs = await fetch(
-                        `/playground/${activeId.value}/messages`,
+                        routes.playgroundMessages(sessionId),
                     );
                     if (resMsgs.ok) {
                         messages.value = (await resMsgs.json()).messages ?? [];
@@ -544,7 +555,7 @@ async function startBatchTest() {
                 } catch (e) {
                     console.error('EVAL FETCH ERROR', e);
                     const resMsgs = await fetch(
-                        `/playground/${activeId.value}/messages`,
+                        routes.playgroundMessages(sessionId),
                     );
                     if (resMsgs.ok) {
                         messages.value = (await resMsgs.json()).messages ?? [];

@@ -2,8 +2,12 @@
 import { Head, router } from '@inertiajs/vue3';
 import { FlaskConical, Loader2 } from 'lucide-vue-next';
 import { ref } from 'vue';
+import LaboratoryTenantBar from '@/components/LaboratoryTenantBar.vue';
+import { useBackofficeRoutes } from '@/composables/useBackofficeRoutes';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+
+const routes = useBackofficeRoutes();
 
 type Dataset = { id: number; name: string; total_entries: number };
 type RecentRun = {
@@ -21,8 +25,8 @@ type Props = { datasets: Dataset[]; recentRuns: RecentRun[] };
 defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Laboratory', href: '/laboratory' },
-    { title: 'Stress Test', href: '/laboratory/stress-test' },
+    { title: 'Laboratory', href: routes.laboratory() },
+    { title: 'Stress Test', href: routes.laboratoryStressTest() },
 ];
 
 type ModelOption = { label: string; value: string; hint?: string };
@@ -120,7 +124,7 @@ async function startRun() {
     if (!label.value.trim() || !objective.value.trim()) return;
     starting.value = true;
     try {
-        const res = await fetch('/laboratory/stress-tests', {
+        const res = await fetch(routes.stressTests(), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -141,7 +145,7 @@ async function startRun() {
         });
         const data = await res.json();
         if (res.ok && data.data?.id) {
-            router.visit(`/laboratory/stress-test/${data.data.id}`);
+            router.visit(routes.laboratoryStressTestResults(data.data.id));
         }
     } finally {
         starting.value = false;
@@ -177,6 +181,8 @@ function formatDate(iso: string): string {
     <Head title="Stress Test - Laboratory" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-col gap-6 p-3 sm:p-4">
+            <LaboratoryTenantBar />
+
             <div class="flex items-center gap-2">
                 <FlaskConical class="h-5 w-5 text-muted-foreground" />
                 <h1 class="text-lg font-semibold text-foreground">
@@ -389,7 +395,9 @@ function formatDate(iso: string): string {
                                     class="cursor-pointer text-foreground hover:bg-muted/50"
                                     @click="
                                         router.visit(
-                                            `/laboratory/stress-test/${r.id}`,
+                                            routes.laboratoryStressTestResults(
+                                                r.id,
+                                            ),
                                         )
                                     "
                                 >

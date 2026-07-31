@@ -29,5 +29,41 @@ export function useBackofficeRoutes() {
         nicheTemplates: () => `${base()}/modelos`,
         tenants: () => `${base()}/tenants`,
         activeTenant: () => `${base()}/empresa-ativa`,
+
+        laboratory: () => `${base()}/laboratory`,
+        laboratoryDatasetsPage: () => `${base()}/laboratory/datasets-page`,
+        laboratoryStressTest: () => `${base()}/laboratory/stress-test`,
+        laboratoryStressTestResults: (runId: number | string) =>
+            `${base()}/laboratory/stress-test/${runId}`,
+        laboratoryAiUsage: () => `${base()}/laboratory/ai-usage`,
+        laboratoryHealth: () => `${base()}/laboratory/health`,
+
+        datasets: () => `${base()}/laboratory/datasets`,
+        dataset: (datasetId: number | string) =>
+            `${base()}/laboratory/datasets/${datasetId}`,
+        datasetPrefetch: (datasetId: number | string) =>
+            `${base()}/laboratory/datasets/${datasetId}/prefetch`,
+        stressTests: () => `${base()}/laboratory/stress-tests`,
+        stressTestCancel: (runId: number | string) =>
+            `${base()}/laboratory/stress-tests/${runId}/cancel`,
+
+        playground: () => `${base()}/playground`,
+        playgroundSession: (leadId: number | string) =>
+            `${base()}/playground/${leadId}`,
+        playgroundMessages: (leadId: number | string) =>
+            `${base()}/playground/${leadId}/messages`,
+        playgroundReset: (leadId: number | string) =>
+            `${base()}/playground/${leadId}/reset`,
+        playgroundPrompt: (leadId: number | string) =>
+            `${base()}/playground/${leadId}/prompt`,
+        playgroundChat: (leadId: number | string) =>
+            `${base()}/playground/${leadId}/chat`,
+        playgroundTesterChat: (leadId: number | string) =>
+            `${base()}/playground/${leadId}/tester-chat`,
+        playgroundEvaluate: (leadId: number | string) =>
+            `${base()}/playground/${leadId}/evaluate`,
+        playgroundGenerateScenario: () =>
+            `${base()}/playground/generate-scenario`,
+        playgroundScanBlindspots: () => `${base()}/playground/scan-blindspots`,
     };
 }

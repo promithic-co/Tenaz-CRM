@@ -15,7 +15,6 @@ use App\Http\Controllers\CustomFieldController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeRedirectController;
 use App\Http\Controllers\InvitationController;
-use App\Http\Controllers\LaboratoryController;
 use App\Http\Controllers\LeadAutoTagController;
 use App\Http\Controllers\LeadFollowUpController;
 use App\Http\Controllers\LeadManagementController;
@@ -23,12 +22,10 @@ use App\Http\Controllers\LeadStatusController;
 use App\Http\Controllers\LeadTagController;
 use App\Http\Controllers\MetaEmbeddedSignupController;
 use App\Http\Controllers\PipelineController;
-use App\Http\Controllers\PlaygroundController;
 use App\Http\Controllers\RegrasOperacionaisController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ServiceTicketController;
 use App\Http\Controllers\StatusPipelineController;
-use App\Http\Controllers\StressTestController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\UraApiKeyController;
 use App\Http\Controllers\VersionController;
@@ -216,27 +213,11 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
         Route::delete('/{customField}', [CustomFieldController::class, 'destroy'])->name('destroy');
     });
 
-    // Laboratory (observability & retry engine dashboard)
-    Route::get('/laboratory', [LaboratoryController::class, 'index'])->name('laboratory');
-    Route::get('/laboratory/datasets-page', [LaboratoryController::class, 'datasets'])->name('laboratory.datasets');
-    Route::get('/laboratory/stress-test', [LaboratoryController::class, 'stressTest'])->name('laboratory.stress-test');
-    Route::get('/laboratory/stress-test/{run}', [LaboratoryController::class, 'stressTestResults'])->name('laboratory.stress-test.results');
-    Route::get('/laboratory/ai-usage', [LaboratoryController::class, 'aiUsage'])->name('laboratory.ai-usage');
-    Route::get('/laboratory/health', [LaboratoryController::class, 'health'])->name('laboratory.health');
-    Route::get('/laboratory/interactions/{interactionId}', [LaboratoryController::class, 'interactionTimeline'])->name('laboratory.interactions.show');
-    Route::get('/laboratory/leads/{lead}/interactions', [LaboratoryController::class, 'leadInteractionTimeline'])->name('laboratory.leads.interactions');
-
-    Route::prefix('laboratory')->name('laboratory.')->group(function () {
-        Route::get('/datasets', [StressTestController::class, 'datasets'])->name('datasets.index');
-        Route::post('/datasets', [StressTestController::class, 'storeDataset'])->name('datasets.store');
-        Route::get('/datasets/{dataset}', [StressTestController::class, 'showDataset'])->name('datasets.show');
-        Route::delete('/datasets/{dataset}', [StressTestController::class, 'destroyDataset'])->name('datasets.destroy');
-        Route::post('/datasets/{dataset}/prefetch', [StressTestController::class, 'prefetchDataset'])->name('datasets.prefetch');
-        Route::get('/stress-tests', [StressTestController::class, 'runs'])->name('stress-tests.index');
-        Route::post('/stress-tests', [StressTestController::class, 'storeRun'])->name('stress-tests.store');
-        Route::get('/stress-tests/{run}', [StressTestController::class, 'showRun'])->name('stress-tests.show');
-        Route::post('/stress-tests/{run}/cancel', [StressTestController::class, 'cancelRun'])->name('stress-tests.cancel');
-    });
+    /**
+     * Laboratory and Playground live in routes/backoffice.php behind the
+     * `super_admin` gate — they expose infrastructure health, AI cost and an
+     * LLM sandbox that are platform-operator tools, not tenant features.
+     */
 
     // Admin-only: campaigns, templates, contact lists
     Route::middleware('role:owner,administrator')->group(function () {
@@ -302,25 +283,6 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
 
     // Voice TTS Preview (generates mp3 via Google TTS API)
     Route::post('/voz/preview-tts', [VoicePreviewController::class, 'preview'])->name('voz.preview-tts');
-    // Playground (sandbox de testes do agente)
-    Route::prefix('playground')->name('playground.')->group(function () {
-        Route::get('/', [PlaygroundController::class, 'index'])->name('index');
-        Route::post('/', [PlaygroundController::class, 'store'])->name('store');
-        Route::delete('/{lead}', [PlaygroundController::class, 'destroy'])->name('destroy');
-        Route::post('/{lead}/reset', [PlaygroundController::class, 'reset'])->name('reset');
-        Route::post('/{lead}/prompt', [PlaygroundController::class, 'updatePrompt'])->name('updatePrompt');
-        Route::get('/{lead}/messages', [PlaygroundController::class, 'messages'])->name('messages');
-
-        // LLM-invoking endpoints — throttled as abuse control (F8). Applies to all
-        // users equally; not a feature gate.
-        Route::middleware('throttle:30,1')->group(function () {
-            Route::post('/generate-scenario', [PlaygroundController::class, 'generateScenario'])->name('generateScenario');
-            Route::post('/scan-blindspots', [PlaygroundController::class, 'scanBlindspots'])->name('scanBlindspots');
-            Route::post('/{lead}/chat', [PlaygroundController::class, 'chat'])->name('chat');
-            Route::post('/{lead}/tester-chat', [PlaygroundController::class, 'testerChat'])->name('testerChat');
-            Route::post('/{lead}/evaluate', [PlaygroundController::class, 'evaluate'])->name('evaluate');
-        });
-    });
 });
 
 require __DIR__.'/settings.php';

@@ -139,10 +139,12 @@ test('delivery tracking updates campaign counters', function () {
 });
 
 test('laboratory shows bulk metrics', function () {
-    $user = User::factory()->create();
+    // The Laboratory dashboard is super-admin-only since it moved under the
+    // backoffice prefix.
+    $user = User::factory()->superAdmin()->create();
     $campaign = Campaign::factory()->sending()->create(['tenant_id' => $user->tenantId]);
 
-    $response = $this->actingAs($user)->get('/laboratory');
+    $response = $this->actingAs($user)->get(route('backoffice.laboratory'));
 
     $response->assertStatus(200);
     $response->assertInertia(fn ($page) => $page
