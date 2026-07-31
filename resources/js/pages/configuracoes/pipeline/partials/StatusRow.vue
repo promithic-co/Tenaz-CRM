@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
 import { Lock, GripVertical, Trash2 } from 'lucide-vue-next';
+import { ref, computed } from 'vue';
 
 type Status = {
     slug: string;

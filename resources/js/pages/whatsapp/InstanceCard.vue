@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import { Info, Trash2 } from 'lucide-vue-next';
+import { ref } from 'vue';
 import InstanceDetailsDrawer from './InstanceDetailsDrawer.vue';
 
 type Instance = {
