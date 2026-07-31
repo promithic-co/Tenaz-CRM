@@ -7,8 +7,12 @@ import {
     ChevronRight,
 } from 'lucide-vue-next';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import LaboratoryTenantBar from '@/components/LaboratoryTenantBar.vue';
+import { useBackofficeRoutes } from '@/composables/useBackofficeRoutes';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+
+const routes = useBackofficeRoutes();
 
 type GroundTruthProduct = {
     name: string;
@@ -67,8 +71,8 @@ type Props = { run: Run };
 const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Laboratory', href: '/laboratory' },
-    { title: 'Stress Test', href: '/laboratory/stress-test' },
+    { title: 'Laboratory', href: routes.laboratory() },
+    { title: 'Stress Test', href: routes.laboratoryStressTest() },
     { title: props.run.label, href: '#' },
 ];
 
@@ -132,7 +136,7 @@ function formatBrl(value: number | null): string {
 }
 
 async function cancelRun() {
-    const res = await fetch(`/laboratory/stress-tests/${props.run.id}/cancel`, {
+    const res = await fetch(routes.stressTestCancel(props.run.id), {
         method: 'POST',
         headers: { 'X-XSRF-TOKEN': csrf(), Accept: 'application/json' },
     });
@@ -156,6 +160,8 @@ onUnmounted(() => {
     <Head :title="`${run.label} - Stress Test`" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-col gap-6 p-3 sm:p-4">
+            <LaboratoryTenantBar />
+
             <div
                 class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
             >

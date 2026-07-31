@@ -163,7 +163,8 @@ test('incoming whatsapp job records inbound event and passes interaction id to a
 
 test('laboratory exposes interaction timeline scoped by tenant', function () {
     $user = userWithTenant();
-    $this->actingAs($user);
+    $user->forceFill(['is_super_admin' => true])->save();
+    $this->actingAs($user->fresh());
 
     $lead = Lead::factory()->create([
         'tenant_id' => $user->tenantId,
@@ -180,7 +181,7 @@ test('laboratory exposes interaction timeline scoped by tenant', function () {
         payload: ['ok' => true],
     );
 
-    $this->getJson(route('laboratory.interactions.show', ['interactionId' => $interactionId]))
+    $this->getJson(route('backoffice.laboratory.interactions.show', ['interactionId' => $interactionId]))
         ->assertOk()
         ->assertJsonPath('interaction_id', $interactionId)
         ->assertJsonPath('events.0.event_type', 'agent_started')
@@ -189,7 +190,8 @@ test('laboratory exposes interaction timeline scoped by tenant', function () {
 
 test('lead interaction timeline caps results at the most recent slice and flags truncation (MEM-2)', function () {
     $user = userWithTenant();
-    $this->actingAs($user);
+    $user->forceFill(['is_super_admin' => true])->save();
+    $this->actingAs($user->fresh());
 
     $lead = Lead::factory()->create([
         'tenant_id' => $user->tenantId,
@@ -214,7 +216,7 @@ test('lead interaction timeline caps results at the most recent slice and flags 
     }
     collect($rows)->chunk(100)->each(fn ($chunk) => AgentInteractionEvent::insert($chunk->all()));
 
-    $this->getJson(route('laboratory.leads.interactions', ['lead' => $lead->id]))
+    $this->getJson(route('backoffice.laboratory.leads.interactions', ['lead' => $lead->id]))
         ->assertOk()
         ->assertJsonPath('lead_id', $lead->id)
         ->assertJsonPath('total_events', $total)
@@ -227,7 +229,8 @@ test('lead interaction timeline caps results at the most recent slice and flags 
 
 test('lead interaction timeline returns all events chronologically under the cap and honors limit (MEM-2)', function () {
     $user = userWithTenant();
-    $this->actingAs($user);
+    $user->forceFill(['is_super_admin' => true])->save();
+    $this->actingAs($user->fresh());
 
     $lead = Lead::factory()->create([
         'tenant_id' => $user->tenantId,
@@ -244,7 +247,7 @@ test('lead interaction timeline returns all events chronologically under the cap
         );
     }
 
-    $this->getJson(route('laboratory.leads.interactions', ['lead' => $lead->id]))
+    $this->getJson(route('backoffice.laboratory.leads.interactions', ['lead' => $lead->id]))
         ->assertOk()
         ->assertJsonPath('total_events', 3)
         ->assertJsonPath('returned_events', 3)
@@ -252,7 +255,7 @@ test('lead interaction timeline returns all events chronologically under the cap
         ->assertJsonPath('events.0.event_type', 'a')
         ->assertJsonPath('events.2.event_type', 'c');
 
-    $this->getJson(route('laboratory.leads.interactions', ['lead' => $lead->id, 'limit' => 2]))
+    $this->getJson(route('backoffice.laboratory.leads.interactions', ['lead' => $lead->id, 'limit' => 2]))
         ->assertOk()
         ->assertJsonPath('total_events', 3)
         ->assertJsonPath('returned_events', 2)

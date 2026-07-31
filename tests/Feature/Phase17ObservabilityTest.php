@@ -43,7 +43,11 @@ test('health endpoint checks cache connectivity', function () {
 // ─── Laboratory Health Page ────────────────────────────────────────────────
 
 test('laboratory health page loads', function () {
-    $this->get('/laboratory/health')->assertOk();
+    $this->user->forceFill(['is_super_admin' => true])->save();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('backoffice.laboratory.health'))
+        ->assertOk();
 });
 
 // ─── A/B Experiments ─────────────────────────────────────────────────────────

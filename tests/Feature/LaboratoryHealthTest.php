@@ -7,10 +7,10 @@ use Illuminate\Support\Facades\Queue;
 uses(RefreshDatabase::class);
 
 it('renders the health dashboard with every probe section', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->superAdmin()->create();
 
     $this->actingAs($user)
-        ->get(route('laboratory.health'))
+        ->get(route('backoffice.laboratory.health'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('laboratory/Health')
@@ -25,13 +25,13 @@ it('renders the health dashboard with every probe section', function () {
 });
 
 it('degrades a failing probe to an error status without throwing a 500', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->superAdmin()->create();
 
     Queue::shouldReceive('size')
         ->andThrow(new RuntimeException('queue connection refused'));
 
     $this->actingAs($user)
-        ->get(route('laboratory.health'))
+        ->get(route('backoffice.laboratory.health'))
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('laboratory/Health')

@@ -26,6 +26,19 @@ uses(RefreshDatabase::class);
  * for sandbox rows (which never carry attachments). Assertions check
  * role/content/hora VALUES exactly and do NOT assert array-exact-equality.
  */
+/**
+ * The playground now sits behind the `super_admin` gate, so the operator driving
+ * these characterization tests carries that flag on top of a real tenant — the
+ * controller still reads `$user->tenantId` to scope sandbox leads.
+ */
+function playgroundOperator(): User
+{
+    $user = userWithTenant();
+    $user->forceFill(['is_super_admin' => true])->save();
+
+    return $user->fresh();
+}
+
 function playgroundSandboxLead(User $user, array $overrides = []): Lead
 {
     return Lead::factory()->sandbox()->create(array_merge([
@@ -77,57 +90,66 @@ function playgroundLegacyMessage(string $conversationId, string $role, string $c
 // custom PT message; the other guards (reset, etc.) are bare 403.
 
 test('destroy denies a same-tenant non-sandbox lead with the custom PT message body', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     $lead = Lead::factory()->create(['tenant_id' => (string) $user->tenantId, 'is_sandbox' => false]);
 
-    $response = $this->actingAs($user)->deleteJson(route('playground.destroy', $lead));
+    $response = $this->actingAs($user)->deleteJson(route('backoffice.playground.destroy', $lead));
 
     $response->assertForbidden()
         ->assertJsonPath('message', 'Apenas sessões sandbox do seu tenant podem ser deletadas aqui.');
 });
 
 test('destroy 404s a cross-tenant lead via the global tenant scope', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     $other = userWithTenant();
     $lead = playgroundSandboxLead($other);
 
-    $this->actingAs($user)->deleteJson(route('playground.destroy', $lead))->assertNotFound();
+    // A super-admin with no company selected deliberately sees every tenant, so
+    // the scope only bites once the backoffice switcher points somewhere — which
+    // is how an operator actually drives the playground.
+    $this->actingAs($user)
+        ->withSession(['active_tenant_id' => (string) $user->tenantId])
+        ->deleteJson(route('backoffice.playground.destroy', $lead))
+        ->assertNotFound();
 });
 
 test('reset denies a same-tenant non-sandbox lead with a bare 403 carrying NO custom message', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     $lead = Lead::factory()->create(['tenant_id' => (string) $user->tenantId, 'is_sandbox' => false]);
 
-    $response = $this->actingAs($user)->postJson(route('playground.reset', $lead));
+    $response = $this->actingAs($user)->postJson(route('backoffice.playground.reset', $lead));
 
     $response->assertForbidden();
     expect($response->json('message'))->not->toBe('Apenas sessões sandbox do seu tenant podem ser deletadas aqui.');
 });
 
 test('reset 404s a cross-tenant lead via the global tenant scope', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     $other = userWithTenant();
     $lead = playgroundSandboxLead($other);
 
-    $this->actingAs($user)->postJson(route('playground.reset', $lead))->assertNotFound();
+    $this->actingAs($user)
+        ->withSession(['active_tenant_id' => (string) $user->tenantId])
+        ->postJson(route('backoffice.playground.reset', $lead))
+        ->assertNotFound();
 });
 
 test('same-tenant sandbox lead is authorized for reset', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     $lead = playgroundSandboxLead($user);
 
-    $this->actingAs($user)->postJson(route('playground.reset', $lead))->assertOk();
+    $this->actingAs($user)->postJson(route('backoffice.playground.reset', $lead))->assertOk();
 });
 
 // ─── destroy / reset delete seams ───────────────────────────────────────────
 
 test('destroy deletes the conversation and messages rows', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     $lead = playgroundSandboxLead($user);
     $conversationId = playgroundSandboxConversation($lead);
     playgroundLegacyMessage($conversationId, 'user', 'oi');
 
-    $this->actingAs($user)->deleteJson(route('playground.destroy', $lead))->assertOk();
+    $this->actingAs($user)->deleteJson(route('backoffice.playground.destroy', $lead))->assertOk();
 
     expect(DB::table('agent_conversation_messages')->where('conversation_id', $conversationId)->count())->toBe(0)
         ->and(DB::table('agent_conversations')->where('id', $conversationId)->count())->toBe(0)
@@ -135,7 +157,7 @@ test('destroy deletes the conversation and messages rows', function () {
 });
 
 test('reset deletes conversation rows and resets lead fields', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     $lead = playgroundSandboxLead($user, [
         'status' => 'qualificado',
         'cpf' => '12345678900',
@@ -146,7 +168,7 @@ test('reset deletes conversation rows and resets lead fields', function () {
     $conversationId = playgroundSandboxConversation($lead);
     playgroundLegacyMessage($conversationId, 'user', 'oi');
 
-    $this->actingAs($user)->postJson(route('playground.reset', $lead))->assertOk();
+    $this->actingAs($user)->postJson(route('backoffice.playground.reset', $lead))->assertOk();
 
     expect(DB::table('agent_conversation_messages')->where('conversation_id', $conversationId)->count())->toBe(0)
         ->and(DB::table('agent_conversations')->where('id', $conversationId)->count())->toBe(0);
@@ -163,13 +185,13 @@ test('reset deletes conversation rows and resets lead fields', function () {
 // ─── messages endpoint shape ─────────────────────────────────────────────────
 
 test('messages endpoint returns the legacy message shape plus the system prompt', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     $lead = playgroundSandboxLead($user, ['sandbox_system_prompt' => 'Seja gentil.']);
     $conversationId = playgroundSandboxConversation($lead);
     playgroundLegacyMessage($conversationId, 'user', 'Olá', '2026-01-01 08:15:00');
     playgroundLegacyMessage($conversationId, 'assistant', 'Bom dia!', '2026-01-01 08:16:00');
 
-    $response = $this->actingAs($user)->getJson(route('playground.messages', $lead));
+    $response = $this->actingAs($user)->getJson(route('backoffice.playground.messages', $lead));
 
     $response->assertOk()
         ->assertJsonPath('sandbox_system_prompt', 'Seja gentil.')
@@ -188,12 +210,12 @@ test('messages endpoint returns the legacy message shape plus the system prompt'
 // Pre-D.4 this 500'd on the malformed raw insert (locked as baseline in commit 1).
 
 test('evaluate without a conversation returns the report and appends nothing', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     $lead = playgroundSandboxLead($user);
 
     Ai::fakeAgent(EvaluatorAgent::class, ['Relatório sem conversa.']);
 
-    $response = $this->actingAs($user)->postJson(route('playground.evaluate', $lead), [
+    $response = $this->actingAs($user)->postJson(route('backoffice.playground.evaluate', $lead), [
         'persona_prompt' => 'Cliente desconfiado',
     ]);
 
@@ -202,14 +224,14 @@ test('evaluate without a conversation returns the report and appends nothing', f
 });
 
 test('evaluate appends an assistant row with the AVALIAÇÃO content prefix', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     $lead = playgroundSandboxLead($user);
     $conversationId = playgroundSandboxConversation($lead);
     playgroundLegacyMessage($conversationId, 'user', 'meu cpf é 123', '2026-01-01 10:00:00');
 
     Ai::fakeAgent(EvaluatorAgent::class, ['Relatório detalhado da rodada.']);
 
-    $response = $this->actingAs($user)->postJson(route('playground.evaluate', $lead), [
+    $response = $this->actingAs($user)->postJson(route('backoffice.playground.evaluate', $lead), [
         'persona_prompt' => 'Cliente desconfiado',
     ]);
 
@@ -230,9 +252,9 @@ test('evaluate appends an assistant row with the AVALIAÇÃO content prefix', fu
 // ─── store ───────────────────────────────────────────────────────────────────
 
 test('store creates a sandbox lead and returns the session shape', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
 
-    $response = $this->actingAs($user)->postJson(route('playground.store'), [
+    $response = $this->actingAs($user)->postJson(route('backoffice.playground.store'), [
         'label' => 'Minha sessão',
         'system_prompt' => 'Prompt custom',
     ]);
@@ -253,18 +275,18 @@ test('store creates a sandbox lead and returns the session shape', function () {
 // ─── FormRequest validation (D.3) ───────────────────────────────────────────
 
 test('chat validates the required message via the FormRequest', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     $lead = playgroundSandboxLead($user);
 
-    $this->actingAs($user)->postJson(route('playground.chat', $lead), [])
+    $this->actingAs($user)->postJson(route('backoffice.playground.chat', $lead), [])
         ->assertStatus(422)
         ->assertJsonValidationErrors('message');
 });
 
 test('generateScenario validates objective and cycle via the FormRequest', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
 
-    $this->actingAs($user)->postJson(route('playground.generateScenario'), [])
+    $this->actingAs($user)->postJson(route('backoffice.playground.generateScenario'), [])
         ->assertStatus(422)
         ->assertJsonValidationErrors(['objective', 'cycle']);
 });
@@ -272,37 +294,37 @@ test('generateScenario validates objective and cycle via the FormRequest', funct
 // ─── scanBlindspots JSON parse (added in D.1 once the agent is named) ─────────
 
 test('scanBlindspots parses a plain JSON array response into attacks', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     playgroundSandboxLead($user);
 
     $json = json_encode([['category' => 'Prompt Injection', 'scenario' => 's', 'severity' => 'high', 'target' => 't']]);
     Ai::fakeAgent(BlindspotScannerAgent::class, [$json]);
 
-    $this->actingAs($user)->postJson(route('playground.scanBlindspots'), [])
+    $this->actingAs($user)->postJson(route('backoffice.playground.scanBlindspots'), [])
         ->assertOk()
         ->assertJsonPath('attacks.0.category', 'Prompt Injection')
         ->assertJsonPath('attacks.0.severity', 'high');
 });
 
 test('scanBlindspots strips a fenced json block before parsing', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     playgroundSandboxLead($user);
 
     $json = json_encode([['category' => 'Tool Abuse', 'scenario' => 's', 'severity' => 'low', 'target' => 't']]);
     Ai::fakeAgent(BlindspotScannerAgent::class, ["```json\n{$json}\n```"]);
 
-    $this->actingAs($user)->postJson(route('playground.scanBlindspots'), [])
+    $this->actingAs($user)->postJson(route('backoffice.playground.scanBlindspots'), [])
         ->assertOk()
         ->assertJsonPath('attacks.0.category', 'Tool Abuse');
 });
 
 test('scanBlindspots returns the parse-error payload for a non-array response', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     playgroundSandboxLead($user);
 
     Ai::fakeAgent(BlindspotScannerAgent::class, ['not json at all']);
 
-    $this->actingAs($user)->postJson(route('playground.scanBlindspots'), [])
+    $this->actingAs($user)->postJson(route('backoffice.playground.scanBlindspots'), [])
         ->assertOk()
         ->assertJsonPath('attacks', [])
         ->assertJsonPath('error', 'Falha no parse do JSON')
@@ -312,11 +334,11 @@ test('scanBlindspots returns the parse-error payload for a non-array response', 
 // ─── generateScenario ────────────────────────────────────────────────────────
 
 test('generateScenario returns the agent text as scenario', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
 
     Ai::fakeAgent(ScenarioGeneratorAgent::class, ['Persona agressiva que tenta burlar validações.']);
 
-    $this->actingAs($user)->postJson(route('playground.generateScenario'), [
+    $this->actingAs($user)->postJson(route('backoffice.playground.generateScenario'), [
         'objective' => 'Quebrar validação de CPF',
         'cycle' => 1,
     ])
@@ -327,12 +349,12 @@ test('generateScenario returns the agent text as scenario', function () {
 // ─── index session cap ───────────────────────────────────────────────────────
 
 test('index bounds the sandbox session list with a SQL limit (FE-05)', function () {
-    $user = userWithTenant();
+    $user = playgroundOperator();
     playgroundSandboxLead($user);
     playgroundSandboxLead($user);
 
     DB::enableQueryLog();
-    $this->actingAs($user)->get(route('playground.index'))->assertOk();
+    $this->actingAs($user)->get(route('backoffice.playground.index'))->assertOk();
     $sessionQuery = collect(DB::getQueryLog())
         ->first(fn ($q) => str_contains($q['query'], 'from "leads"') && str_contains($q['query'], 'is_sandbox'));
     DB::disableQueryLog();

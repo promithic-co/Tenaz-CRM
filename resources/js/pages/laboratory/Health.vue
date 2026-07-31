@@ -11,8 +11,12 @@ import {
     Layers,
 } from 'lucide-vue-next';
 import { ref } from 'vue';
+import LaboratoryTenantBar from '@/components/LaboratoryTenantBar.vue';
+import { useBackofficeRoutes } from '@/composables/useBackofficeRoutes';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
+
+const routes = useBackofficeRoutes();
 
 type CheckResult = {
     status: 'ok' | 'warning' | 'error';
@@ -29,8 +33,8 @@ type Props = {
 const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Laboratory', href: '/laboratory' },
-    { title: 'Health', href: '/laboratory/health' },
+    { title: 'Laboratory', href: routes.laboratory() },
+    { title: 'Health', href: routes.laboratoryHealth() },
 ];
 
 const refreshing = ref(false);
@@ -75,6 +79,8 @@ const overallOk =
     <Head title="Health — Laboratory" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="space-y-6 p-3 sm:p-6">
+            <LaboratoryTenantBar />
+
             <!-- Header -->
             <div
                 class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"

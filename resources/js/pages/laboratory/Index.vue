@@ -24,12 +24,14 @@ import {
     Zap,
 } from 'lucide-vue-next';
 import { computed } from 'vue';
+import LaboratoryTenantBar from '@/components/LaboratoryTenantBar.vue';
+import { useBackofficeRoutes } from '@/composables/useBackofficeRoutes';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { laboratory as laboratoryIndex } from '@/routes';
 import campanhas from '@/routes/campanhas';
 import conversas from '@/routes/conversas';
-import laboratory from '@/routes/laboratory';
 import type { BreadcrumbItem } from '@/types';
+
+const routes = useBackofficeRoutes();
 
 type Stats = {
     pending_retries: number;
@@ -123,7 +125,7 @@ type Props = {
 const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Laboratory', href: laboratoryIndex() },
+    { title: 'Laboratory', href: routes.laboratory() },
 ];
 const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -156,10 +158,10 @@ const posture = computed(() => {
 });
 
 const navigationItems = [
-    { label: 'AI Usage', href: laboratory.aiUsage.url() },
-    { label: 'Stress Test', href: laboratory.stressTest.url() },
-    { label: 'Datasets', href: laboratory.datasets.url() },
-    { label: 'Health', href: laboratory.health.url() },
+    { label: 'AI Usage', href: routes.laboratoryAiUsage() },
+    { label: 'Stress Test', href: routes.laboratoryStressTest() },
+    { label: 'Datasets', href: routes.laboratoryDatasetsPage() },
+    { label: 'Health', href: routes.laboratoryHealth() },
 ];
 
 const aiMetrics = computed(() => [
@@ -327,6 +329,8 @@ function formatMs(value: number): string {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex max-w-7xl flex-col gap-6 p-3 sm:p-4 lg:p-6">
+            <LaboratoryTenantBar />
+
             <header
                 class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
             >
@@ -511,7 +515,7 @@ function formatMs(value: number): string {
                         </p>
                     </div>
                     <Link
-                        :href="laboratory.aiUsage.url()"
+                        :href="routes.laboratoryAiUsage()"
                         class="text-xs font-medium text-primary hover:text-primary/80"
                     >
                         Ver AI Usage

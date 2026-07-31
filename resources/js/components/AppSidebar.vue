@@ -80,26 +80,38 @@ const vozSubItems = [
     { title: 'Integrações URA', href: '/ura' },
 ];
 
-// Laboratory submenu
-const laboratoryOpen = ref(
-    currentPath.value.startsWith('/laboratory') ||
-        currentPath.value.startsWith('/playground'),
-);
-
 // Backoffice (super-admin only). The prefix is environment-configurable, so it
 // comes from the server at runtime instead of being hardcoded here.
 const backofficeBase = computed(
     () => `/${page.props.backoffice?.path ?? 'backoffice'}`,
 );
 
-const laboratorySubItems = [
-    { title: 'Dashboard', href: '/laboratory' },
-    { title: 'Datasets', href: '/laboratory/datasets-page' },
-    { title: 'Stress Test', href: '/laboratory/stress-test' },
-    { title: 'AI Usage', href: '/laboratory/ai-usage' },
-    { title: 'Health', href: '/laboratory/health' },
-    { title: 'Playground', href: '/playground' },
-];
+const isSuperAdmin = computed(() => page.props.auth?.is_super_admin === true);
+
+/**
+ * Laboratory lives under the backoffice prefix and is gated by `super_admin`
+ * server-side. It exposes infrastructure health, AI cost and an LLM sandbox
+ * billed to the platform — operator tooling, never a tenant feature.
+ */
+const laboratorySubItems = computed(() => [
+    { title: 'Dashboard', href: `${backofficeBase.value}/laboratory` },
+    {
+        title: 'Datasets',
+        href: `${backofficeBase.value}/laboratory/datasets-page`,
+    },
+    {
+        title: 'Stress Test',
+        href: `${backofficeBase.value}/laboratory/stress-test`,
+    },
+    { title: 'AI Usage', href: `${backofficeBase.value}/laboratory/ai-usage` },
+    { title: 'Health', href: `${backofficeBase.value}/laboratory/health` },
+    { title: 'Playground', href: `${backofficeBase.value}/playground` },
+]);
+
+const laboratoryOpen = ref(
+    currentPath.value.startsWith(`${backofficeBase.value}/laboratory`) ||
+        currentPath.value.startsWith(`${backofficeBase.value}/playground`),
+);
 
 // Configurações submenu. The pipeline editor shipped without a nav entry and was
 // reachable by URL only; the extra-fields CRUD gives it a home worth having.
@@ -385,12 +397,16 @@ const footerNavItems: NavItem[] = [];
                         </SidebarMenuSub>
                     </SidebarMenuItem>
 
-                    <!-- Laboratory com submenu -->
-                    <SidebarMenuItem v-if="canManageAdmin">
+                    <!-- Laboratory com submenu (super-admin only) -->
+                    <SidebarMenuItem v-if="isSuperAdmin">
                         <SidebarMenuButton
                             :is-active="
-                                currentPath.startsWith('/laboratory') ||
-                                currentPath.startsWith('/playground')
+                                currentPath.startsWith(
+                                    `${backofficeBase}/laboratory`,
+                                ) ||
+                                currentPath.startsWith(
+                                    `${backofficeBase}/playground`,
+                                )
                             "
                             tooltip="Laboratory"
                             @click="laboratoryOpen = !laboratoryOpen"
@@ -465,7 +481,7 @@ const footerNavItems: NavItem[] = [];
                     </SidebarMenuItem>
 
                     <!-- Backoffice (super-admin only) -->
-                    <SidebarMenuItem v-if="page.props.auth?.is_super_admin">
+                    <SidebarMenuItem v-if="isSuperAdmin">
                         <SidebarMenuButton
                             as-child
                             :is-active="currentPath.startsWith(backofficeBase)"

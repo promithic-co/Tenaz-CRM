@@ -9,10 +9,12 @@ import {
     Zap,
 } from 'lucide-vue-next';
 import { reactive } from 'vue';
+import LaboratoryTenantBar from '@/components/LaboratoryTenantBar.vue';
+import { useBackofficeRoutes } from '@/composables/useBackofficeRoutes';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { laboratory as laboratoryIndex } from '@/routes';
-import laboratory from '@/routes/laboratory';
 import type { BreadcrumbItem } from '@/types';
+
+const routes = useBackofficeRoutes();
 
 type DailyUsage = {
     date: string;
@@ -75,8 +77,8 @@ const props = defineProps<Props>();
 const filterForm = reactive({ ...props.filters });
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Laboratory', href: laboratoryIndex() },
-    { title: 'AI Usage', href: laboratory.aiUsage() },
+    { title: 'Laboratory', href: routes.laboratory() },
+    { title: 'AI Usage', href: routes.laboratoryAiUsage() },
 ];
 
 const maxCost = Math.max(...props.dailyUsage.map((day) => day.cost_usd), 0.01);
@@ -103,7 +105,7 @@ function submitFilters(): void {
         ),
     );
 
-    router.get(laboratory.aiUsage.url(), query, {
+    router.get(routes.laboratoryAiUsage(), query, {
         preserveState: true,
         replace: true,
     });
@@ -147,6 +149,8 @@ function statusClass(status: string): string {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex max-w-7xl flex-col gap-6 p-3 sm:p-4 lg:p-6">
+            <LaboratoryTenantBar />
+
             <header
                 class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
             >
