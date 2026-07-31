@@ -40,49 +40,70 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 # 3b. Reclaim disk before building
-# Every deploy runs two `docker build --no-cache` (app + landing), which orphans the
-# previous layer set. Nothing ever reclaimed them, so the node filled to 100% and the
-# Postgres stack — separate stack, same disk — dropped to 0 replicas. The app stayed
+# Each deploy retags tenaz:latest and tenaz-landing:latest, orphaning the layer set the
+# previous tag pointed at. Nothing ever reclaimed them, so the node filled to 100% and
+# the Postgres stack — separate stack, same disk — dropped to 0 replicas. The app stayed
 # 2/2 Running the whole time because the healthcheck hits /up, which never touches the
 # database, so the outage was silent until a migration failed to resolve postgres_postgres.
 #
-# Only two reclaims are safe to run unattended:
-#   builder prune -af  build cache only, and every build here is --no-cache, so it is dead weight
-#   image prune -f     untagged/dangling images only
+# Reclaims run cheapest first, because the BuildKit cache is what makes the builds below
+# fast — wiping it every deploy would undo the caching this script now relies on. So
+# dangling images go unconditionally, and the build cache is sacrificed only if that was
+# not enough to clear the floor.
+#
 # NOT `system prune -a` or `image prune -a`: those call an image unused when no *container*
 # runs it, which during this very failure would have deleted the Postgres image while the
 # service sat at 0 replicas, leaving nothing to restart from on a full disk.
 disk_free() { df -Ph / | awk 'NR==2 {print $4" free ("$5" used)"}'; }
+# Empty means df itself failed; report 0 so callers fall through to the abort rather than
+# to a bare `[` error under set -e.
+free_mb() { local m; m=$(df -Pm / | awk 'NR==2 {print $4}'); echo "${m:-0}"; }
+
+MIN_FREE_MB="${MIN_FREE_MB:-5120}"
 
 echo "[1b/5] Reclaiming disk before build..."
 echo "  before: $(disk_free)"
-docker builder prune -af >/dev/null 2>&1 || true
 docker image prune -f >/dev/null 2>&1 || true
 echo "  after:  $(disk_free)"
 
+if [ "$(free_mb)" -lt "$MIN_FREE_MB" ]; then
+    echo "  below ${MIN_FREE_MB}MB — dropping the build cache too (this build will be slow)..."
+    docker builder prune -af >/dev/null 2>&1 || true
+    echo "  after:  $(disk_free)"
+fi
+
 # Refuse to build into a full disk. A half-written image next to a database that ran out
 # of space is worse than a deploy that never started.
-MIN_FREE_MB="${MIN_FREE_MB:-5120}"
-AVAIL_MB=$(df -Pm / | awk 'NR==2 {print $4}')
-# Empty means df itself failed; fall through to the abort rather than to a bare `[` error.
-AVAIL_MB="${AVAIL_MB:-0}"
-if [ "$AVAIL_MB" -lt "$MIN_FREE_MB" ]; then
+if [ "$(free_mb)" -lt "$MIN_FREE_MB" ]; then
     echo ""
-    echo "ERROR: only ${AVAIL_MB}MB free on / after pruning (need ${MIN_FREE_MB}MB)."
-    echo "Two --no-cache builds will not fit. Find the space first:"
+    echo "ERROR: only $(free_mb)MB free on / after pruning (need ${MIN_FREE_MB}MB)."
+    echo "The build will not fit. Find the space first:"
+    echo "  du -xh --max-depth=1 / 2>/dev/null | sort -h | tail"
     echo "  docker system df"
-    echo "  du -sh /var/lib/docker/containers/*/*-json.log 2>/dev/null | sort -h | tail"
+    echo "  journalctl --vacuum-size=200M"
     echo "Then re-run. To override: MIN_FREE_MB=0 bash deploy.sh"
     exit 1
 fi
 
-# 4. Build Docker image (--no-cache ensures fresh assets after code changes)
+# 4. Build Docker image
+# This used to pass --no-cache "to ensure fresh assets after code changes", which
+# misread how Docker caches: a COPY layer is keyed on the checksum of what it copies,
+# so `COPY . .` invalidates on any changed file and everything after it — including
+# `npm run build` — reruns on its own. --no-cache bought nothing and cost a full
+# rebuild of the layers that never change between deploys: apk add, eight
+# docker-php-ext-install compiles (intl links against icu and dominates), the Composer
+# installer download, `composer install`, and `npm ci`. That was most of the ~10min.
+#
+# Safe to cache because composer.json declares no branch or path repositories and no
+# wildcard constraints, so the composer layer is deterministic in composer.lock, and
+# the VITE_* build args sit in their own ENV layer that invalidates when they change.
+#
 # Read only the vars we need (do NOT source .env — it can run commands and start a second deploy)
-echo "[2/5] Building Docker image (no cache)..."
+echo "[2/5] Building Docker image..."
 REVERB_APP_KEY=$(grep -E '^REVERB_APP_KEY=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)
 APP_URL=$(grep -E '^APP_URL=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)
 
-docker build --no-cache \
+docker build \
     --build-arg VITE_REVERB_APP_KEY="${REVERB_APP_KEY}" \
     --build-arg VITE_REVERB_HOST="${APP_URL#https://}" \
     --build-arg VITE_REVERB_PORT=443 \
@@ -90,10 +111,12 @@ docker build --no-cache \
     -t tenaz:latest .
 
 # Build landing site image (static nginx — tenazcrm.com.br)
-# --no-cache so edited landing/ HTML + assets always ship (COPY layer can
-# otherwise serve a stale static site).
+# Also cached now: the old comment claimed a COPY layer could serve a stale static
+# site, but COPY is keyed on the content checksum of landing/, so edited HTML and
+# assets invalidate it every time. The image is two COPY layers on nginx:alpine, so
+# this one was never the slow half — it is dropped for consistency, not for speed.
 echo "[2b/5] Building landing image..."
-docker build --no-cache -t tenaz-landing:latest -f docker/landing.Dockerfile .
+docker build -t tenaz-landing:latest -f docker/landing.Dockerfile .
 
 # 5. Export env vars for stack (safe: grep/cut only — no sourcing)
 # docker stack deploy expands ${VAR} from this shell; container needs DB_*, APP_KEY, etc.
