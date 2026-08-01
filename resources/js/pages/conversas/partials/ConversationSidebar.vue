@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { Link, router, useForm, WhenVisible } from '@inertiajs/vue3';
 import {
     Check,
@@ -144,6 +144,15 @@ function groupCount(group: InboxGroup): number | null {
     return group === 'todas'
         ? null
         : (props.groupCounts?.[group] ?? null);
+}
+
+// The count sits on its own line under the label, so a tab with nothing to show
+// still needs that line occupied — otherwise it collapses and the tab ends up
+// shorter than its neighbours. A non-breaking space holds the row open.
+function groupCountLabel(group: InboxGroup): string {
+    const count = groupCount(group);
+
+    return count ? String(count) : '\u00A0';
 }
 
 function filterQuery(overrides: QueryParams = {}): QueryParams {
@@ -352,23 +361,23 @@ function openNewContactModal(): void {
                 preserve-scroll
                 preserve-state
                 :class="[
-                    'flex flex-1 items-center justify-center gap-1.5 border-b-2 px-1 py-2 text-xs font-medium transition-colors',
+                    'relative flex flex-1 flex-col items-center gap-px px-1 pt-1.5 pb-2 text-xs font-medium transition-colors',
+                    'before:absolute before:top-1/2 before:left-0 before:h-5 before:w-px before:-translate-y-1/2 before:rounded-full before:bg-border first:before:hidden',
                     activeGroup === tab.key
-                        ? 'border-primary text-foreground'
-                        : 'border-transparent text-muted-foreground hover:text-foreground',
+                        ? 'text-foreground after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary'
+                        : 'text-muted-foreground hover:text-foreground',
                 ]"
             >
-                {{ tab.label }}
+                <span class="whitespace-nowrap">{{ tab.label }}</span>
                 <span
-                    v-if="groupCount(tab.key)"
                     :class="[
-                        'rounded-full px-1.5 py-px text-[10px] font-semibold tabular-nums',
+                        'text-[10px] font-semibold tabular-nums',
                         activeGroup === tab.key
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground',
+                            ? 'text-foreground'
+                            : 'text-muted-foreground',
                     ]"
                 >
-                    {{ groupCount(tab.key) }}
+                    {{ groupCountLabel(tab.key) }}
                 </span>
             </Link>
         </nav>
