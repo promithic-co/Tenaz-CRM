@@ -67,6 +67,11 @@
   forest-green accent. Scoped to landing + auth surfaces; the authenticated
   app keeps the neutral primary tokens above. Utilities: bg-paper, bg-surface,
   bg-ink, text-ink, text-brand (green), bg-gold, border-ink, font-display.
+
+  Do not add a token here whose name already exists in the `@theme inline`
+  block above — this block wins, so `--color-muted` here silently turned every
+  `bg-muted` in the app into warm ink and made `text-muted-foreground`
+  invisible on top of it. Prefix brand-only neutrals with `ink-` or `surface-`.
 */
 @theme {
     --font-display: 'Instrument Serif', Georgia, serif;
@@ -77,7 +82,6 @@
     --color-surface-muted: #f1eee7;
     --color-ink: #111111;
     --color-ink-soft: #4f4b45;
-    --color-muted: #746f66;
     --color-line: #d8d1c5;
 
     --color-brand: #214b36;
