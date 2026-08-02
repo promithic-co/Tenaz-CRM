@@ -3,11 +3,12 @@
 namespace Database\Factories;
 
 use App\Models\Agent;
+use App\Models\AgentConfig;
 use App\Services\AgentTemplateService;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\AgentConfig>
+ * @extends Factory<AgentConfig>
  */
 class AgentConfigFactory extends Factory
 {

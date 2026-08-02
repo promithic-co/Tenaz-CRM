@@ -2,17 +2,19 @@
 
 namespace Database\Factories;
 
+use App\Models\ContactList;
+use App\Models\VoiceCampaign;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\VoiceCampaign>
+ * @extends Factory<VoiceCampaign>
  */
 class VoiceCampaignFactory extends Factory
 {
     public function definition(): array
     {
         return [
-            'contact_list_id' => \App\Models\ContactList::factory(),
+            'contact_list_id' => ContactList::factory(),
             'name' => fake()->words(3, true),
             'status' => 'draft',
             'tts_voice' => 'Google.pt-BR-Standard-A',

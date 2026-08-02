@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Twilio\Security\RequestValidator;
 
 class ValidateTwilioSignature
 {
@@ -16,7 +17,7 @@ class ValidateTwilioSignature
 
         $authToken = config('services.twilio.token');
 
-        $validator = new \Twilio\Security\RequestValidator($authToken);
+        $validator = new RequestValidator($authToken);
         $signature = $request->header('X-Twilio-Signature', '');
         $url = config('app.url').$request->getRequestUri();
 

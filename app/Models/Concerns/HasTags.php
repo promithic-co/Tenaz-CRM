@@ -5,6 +5,7 @@ namespace App\Models\Concerns;
 use App\Enums\TaggableSource;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -62,7 +63,7 @@ trait HasTags
 
             try {
                 $this->tags()->attach($resolved->id, $pivotData);
-            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            } catch (UniqueConstraintViolationException) {
                 // Concurrent attach won the race; the pivot row already exists.
                 return;
             }
@@ -151,7 +152,7 @@ trait HasTags
                         'source' => $source->value,
                         'tagged_by' => $userId,
                     ]);
-                } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                } catch (UniqueConstraintViolationException) {
                     continue;
                 }
                 Tag::query()->whereKey($id)->increment('usage_count');

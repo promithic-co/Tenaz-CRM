@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TenantRole;
 use App\Models\AppSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,7 +38,7 @@ describe('AutoTag Settings', function () {
         $tenantId = (string) $member->tenantId;
 
         // Downgrade to 'user' role (not owner/administrator)
-        $member->tenants()->updateExistingPivot($tenantId, ['role' => \App\Enums\TenantRole::User->value]);
+        $member->tenants()->updateExistingPivot($tenantId, ['role' => TenantRole::User->value]);
 
         $this->actingAs($member)
             ->patch(route('auto-tag.update'), ['auto_tagging_enabled' => true])

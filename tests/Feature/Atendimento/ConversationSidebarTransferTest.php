@@ -6,8 +6,9 @@ use App\Models\Lead;
 use App\Models\ServiceTicket;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function transferSetup(): array
 {

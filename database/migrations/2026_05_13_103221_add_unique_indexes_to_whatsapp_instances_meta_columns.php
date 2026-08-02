@@ -19,7 +19,7 @@ return new class extends Migration
             ->pluck('meta_phone_number_id');
 
         if ($duplicates->isNotEmpty()) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'Duplicate meta_phone_number_id values found in whatsapp_instances: '
                 .$duplicates->implode(', ').'. Resolve duplicates before re-running.'
             );
@@ -35,7 +35,7 @@ return new class extends Migration
         // meta_waba_id legitimately repeats across multiple phone numbers of the same WABA,
         // so we DO NOT add a unique constraint on it. Just keep the lookup index.
         if ($wabaDuplicates->isNotEmpty()) {
-            \Log::info('meta_waba_id has expected duplicates (multiple phone numbers per WABA)', [
+            Log::info('meta_waba_id has expected duplicates (multiple phone numbers per WABA)', [
                 'count' => $wabaDuplicates->count(),
             ]);
         }

@@ -23,16 +23,17 @@ class MediaUnderstandingService
      */
     public function process(MediaContext $media): ?string
     {
-        if (!$media->type->isProcessable()) {
+        if (! $media->type->isProcessable()) {
             Log::info('media_understanding.skipped', ['type' => $media->type->value]);
+
             return null;
         }
 
         return match ($media->type) {
-            MediaType::Audio    => $this->processAudio($media),
-            MediaType::Image    => $this->processImage($media),
+            MediaType::Audio => $this->processAudio($media),
+            MediaType::Image => $this->processImage($media),
             MediaType::Document => $this->processDocument($media),
-            default             => null,
+            default => null,
         };
     }
 
@@ -42,10 +43,10 @@ class MediaUnderstandingService
     public function fallbackMessage(MediaContext $media): string
     {
         return match ($media->type) {
-            MediaType::Audio    => '[O cliente enviou um áudio, mas não foi possível transcrever. Peça para repetir por texto.]',
-            MediaType::Image    => '[O cliente enviou uma imagem, mas não foi possível analisar. Peça para descrever o que enviou.]',
+            MediaType::Audio => '[O cliente enviou um áudio, mas não foi possível transcrever. Peça para repetir por texto.]',
+            MediaType::Image => '[O cliente enviou uma imagem, mas não foi possível analisar. Peça para descrever o que enviou.]',
             MediaType::Document => '[O cliente enviou um documento, mas não foi possível processar. Peça para informar o tipo do documento.]',
-            default             => '[O cliente enviou uma mídia não suportada.]',
+            default => '[O cliente enviou uma mídia não suportada.]',
         };
     }
 
@@ -53,7 +54,7 @@ class MediaUnderstandingService
     {
         $transcription = $this->transcription->transcribe($media);
 
-        if (!$transcription) {
+        if (! $transcription) {
             return null;
         }
 
@@ -66,7 +67,7 @@ class MediaUnderstandingService
     {
         $description = $this->vision->describe($media);
 
-        if (!$description) {
+        if (! $description) {
             return null;
         }
 
@@ -83,11 +84,11 @@ class MediaUnderstandingService
     {
         $description = $this->vision->describe($media);
 
-        if (!$description) {
+        if (! $description) {
             return null;
         }
 
-        $name   = $media->filename ?? 'documento';
+        $name = $media->filename ?? 'documento';
         $result = "[Documento recebido — {$name}]: {$description}";
 
         if ($media->caption) {

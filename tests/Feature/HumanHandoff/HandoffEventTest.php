@@ -9,8 +9,9 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AgentInteractionEventService;
 use App\Services\HumanHandoffTransferService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function eventLead(): Lead
 {
@@ -54,7 +55,7 @@ test('event failure does not roll back ticket and lead state', function () {
     // Bind a broken event service that always throws.
     $this->app->bind(AgentInteractionEventService::class, function () {
         $mock = Mockery::mock(AgentInteractionEventService::class);
-        $mock->shouldReceive('record')->andThrow(new \RuntimeException('Event service down'));
+        $mock->shouldReceive('record')->andThrow(new RuntimeException('Event service down'));
 
         return $mock;
     });

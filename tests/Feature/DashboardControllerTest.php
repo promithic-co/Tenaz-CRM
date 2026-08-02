@@ -3,8 +3,9 @@
 use App\Models\Agent;
 use App\Models\Lead;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 test('test_dashboard_returns_trend_data', function () {
     $user = User::factory()->create();

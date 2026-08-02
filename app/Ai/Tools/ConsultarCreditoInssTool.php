@@ -4,6 +4,7 @@ namespace App\Ai\Tools;
 
 use App\Models\AgentOperationalRule;
 use App\Services\CreditoQualificacaoService;
+use Illuminate\Support\Collection;
 use Stringable;
 
 class ConsultarCreditoInssTool extends AbstractConsultaCreditoTool
@@ -45,7 +46,7 @@ class ConsultarCreditoInssTool extends AbstractConsultaCreditoTool
 
     /**
      * @param  array<string, mixed>  $rawData
-     * @param  \Illuminate\Support\Collection<int, AgentOperationalRule>  $rules
+     * @param  Collection<int, AgentOperationalRule>  $rules
      * @return array<string, mixed>
      */
     protected function qualify(array $rawData, $rules): array

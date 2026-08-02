@@ -2,7 +2,6 @@
 
 use App\Ai\DTOs\MediaContext;
 use App\Enums\MediaType;
-use App\Models\AppSetting;
 use App\Services\AudioTranscriptionService;
 use App\Services\ImageVisionService;
 use App\Services\MediaUnderstandingService;
@@ -13,10 +12,10 @@ function makeMedia(MediaType $type, ?string $caption = null, ?int $durationSecs 
         type: $type,
         localPath: '/tmp/test_media_aria',
         mimeType: match ($type) {
-            MediaType::Audio    => 'audio/ogg',
-            MediaType::Image    => 'image/jpeg',
+            MediaType::Audio => 'audio/ogg',
+            MediaType::Image => 'image/jpeg',
             MediaType::Document => 'application/pdf',
-            default             => 'application/octet-stream',
+            default => 'application/octet-stream',
         },
         originalHash: sha1('test'),
         sizeBytes: 1024,
@@ -28,13 +27,13 @@ function makeMedia(MediaType $type, ?string $caption = null, ?int $durationSecs 
 
 it('processa áudio e retorna texto formatado com duração', function () {
     $transcription = app()->make(AudioTranscriptionService::class);
-    $vision        = app()->make(ImageVisionService::class);
+    $vision = app()->make(ImageVisionService::class);
 
     $mock = Mockery::mock(AudioTranscriptionService::class);
     $mock->shouldReceive('transcribe')->once()->andReturn('quero fazer um empréstimo');
 
     $service = new MediaUnderstandingService($mock, $vision);
-    $media   = makeMedia(MediaType::Audio, durationSecs: 30);
+    $media = makeMedia(MediaType::Audio, durationSecs: 30);
 
     $result = $service->process($media);
 
@@ -48,7 +47,7 @@ it('processa áudio sem duração', function () {
     $mock->shouldReceive('transcribe')->once()->andReturn('oi bom dia');
 
     $service = new MediaUnderstandingService($mock, $vision);
-    $media   = makeMedia(MediaType::Audio);
+    $media = makeMedia(MediaType::Audio);
 
     $result = $service->process($media);
 
@@ -62,7 +61,7 @@ it('processa imagem com caption e retorna descrição formatada', function () {
     $mock->shouldReceive('describe')->once()->andReturn('Carteira de habilitação (CNH) legível.');
 
     $service = new MediaUnderstandingService($transcription, $mock);
-    $media   = makeMedia(MediaType::Image, caption: 'minha CNH');
+    $media = makeMedia(MediaType::Image, caption: 'minha CNH');
 
     $result = $service->process($media);
 
@@ -78,7 +77,7 @@ it('processa imagem sem caption', function () {
     $mock->shouldReceive('describe')->once()->andReturn('Foto de rosto.');
 
     $service = new MediaUnderstandingService($transcription, $mock);
-    $media   = makeMedia(MediaType::Image);
+    $media = makeMedia(MediaType::Image);
 
     $result = $service->process($media);
 
@@ -92,7 +91,7 @@ it('processa documento com nome do arquivo', function () {
     $mock->shouldReceive('describe')->once()->andReturn('Comprovante de residência ENEL.');
 
     $service = new MediaUnderstandingService($transcription, $mock);
-    $media   = makeMedia(MediaType::Document, filename: 'conta_luz.pdf');
+    $media = makeMedia(MediaType::Document, filename: 'conta_luz.pdf');
 
     $result = $service->process($media);
 
@@ -106,7 +105,7 @@ it('retorna null quando a transcrição falha', function () {
     $mock->shouldReceive('transcribe')->once()->andReturn(null);
 
     $service = new MediaUnderstandingService($mock, $vision);
-    $media   = makeMedia(MediaType::Audio);
+    $media = makeMedia(MediaType::Audio);
 
     $result = $service->process($media);
 
@@ -115,10 +114,10 @@ it('retorna null quando a transcrição falha', function () {
 
 it('retorna null para tipos não processáveis', function () {
     $transcription = app()->make(AudioTranscriptionService::class);
-    $vision        = app()->make(ImageVisionService::class);
+    $vision = app()->make(ImageVisionService::class);
 
     $service = new MediaUnderstandingService($transcription, $vision);
-    $media   = makeMedia(MediaType::Video);
+    $media = makeMedia(MediaType::Video);
 
     $result = $service->process($media);
 
@@ -131,12 +130,12 @@ it('retorna mensagem de fallback correta por tipo', function (MediaType $type, s
         app()->make(ImageVisionService::class),
     );
 
-    $media  = makeMedia($type);
+    $media = makeMedia($type);
     $result = $service->fallbackMessage($media);
 
     expect($result)->toBe($expected);
 })->with([
-    'audio'    => [MediaType::Audio,    '[O cliente enviou um áudio, mas não foi possível transcrever. Peça para repetir por texto.]'],
-    'image'    => [MediaType::Image,    '[O cliente enviou uma imagem, mas não foi possível analisar. Peça para descrever o que enviou.]'],
+    'audio' => [MediaType::Audio,    '[O cliente enviou um áudio, mas não foi possível transcrever. Peça para repetir por texto.]'],
+    'image' => [MediaType::Image,    '[O cliente enviou uma imagem, mas não foi possível analisar. Peça para descrever o que enviou.]'],
     'document' => [MediaType::Document, '[O cliente enviou um documento, mas não foi possível processar. Peça para informar o tipo do documento.]'],
 ]);

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Database\Factories\VoiceCampaignFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class VoiceCampaign extends Model
 {
-    /** @use HasFactory<\Database\Factories\VoiceCampaignFactory> */
+    /** @use HasFactory<VoiceCampaignFactory> */
     use BelongsToTenant, HasFactory, SoftDeletes;
 
     protected $fillable = [

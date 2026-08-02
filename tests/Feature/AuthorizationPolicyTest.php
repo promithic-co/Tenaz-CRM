@@ -4,8 +4,9 @@ use App\Models\Agent;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 // ─── LeadPolicy ───────────────────────────────────────────────────────────────
 

@@ -16,7 +16,7 @@ test('process returns null when lead status is optou_sair', function () {
 });
 
 test('shouldNotSendReply returns true when response contains sentinel', function () {
-    $method = (new \ReflectionClass(AgentService::class))->getMethod('shouldNotSendReply');
+    $method = (new ReflectionClass(AgentService::class))->getMethod('shouldNotSendReply');
     $method->setAccessible(true);
 
     expect($method->invoke($this->service, AgentService::NO_REPLY_SENTINEL))->toBeTrue();
@@ -25,7 +25,7 @@ test('shouldNotSendReply returns true when response contains sentinel', function
 });
 
 test('shouldNotSendReply returns true when response is empty or whitespace', function () {
-    $method = (new \ReflectionClass(AgentService::class))->getMethod('shouldNotSendReply');
+    $method = (new ReflectionClass(AgentService::class))->getMethod('shouldNotSendReply');
     $method->setAccessible(true);
 
     expect($method->invoke($this->service, ''))->toBeTrue();
@@ -33,7 +33,7 @@ test('shouldNotSendReply returns true when response is empty or whitespace', fun
 });
 
 test('shouldNotSendReply returns false when response is normal text', function () {
-    $method = (new \ReflectionClass(AgentService::class))->getMethod('shouldNotSendReply');
+    $method = (new ReflectionClass(AgentService::class))->getMethod('shouldNotSendReply');
     $method->setAccessible(true);
 
     expect($method->invoke($this->service, 'Olá, como posso ajudar?'))->toBeFalse();

@@ -3,6 +3,8 @@
 use App\Http\Controllers\AgentController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\IvrController;
+use App\Http\Controllers\MetaWebhookController;
+use App\Http\Controllers\UraInboundController;
 use App\Http\Middleware\AuthenticateApiKey;
 use Illuminate\Support\Facades\Route;
 
@@ -21,16 +23,16 @@ Route::prefix('ivr/call')->middleware('twilio.signature')->group(function () {
 
 // Inbound URA lead API — external IVR systems push interested leads
 Route::prefix('ura')->middleware(['ura.api_key', 'throttle:ura-inbound'])->group(function () {
-    Route::post('inbound-lead', [\App\Http\Controllers\UraInboundController::class, 'store'])
+    Route::post('inbound-lead', [UraInboundController::class, 'store'])
         ->name('ura.inbound-lead');
-    Route::post('trigger', [\App\Http\Controllers\UraInboundController::class, 'trigger'])
+    Route::post('trigger', [UraInboundController::class, 'trigger'])
         ->name('ura.trigger');
 });
 
 // Meta Cloud API webhook — HMAC-SHA256 authenticated inside the controller, not via middleware.
-Route::get('/webhooks/meta', [\App\Http\Controllers\MetaWebhookController::class, 'verify'])
+Route::get('/webhooks/meta', [MetaWebhookController::class, 'verify'])
     ->name('webhooks.meta.verify');
-Route::post('/webhooks/meta', [\App\Http\Controllers\MetaWebhookController::class, 'handle'])
+Route::post('/webhooks/meta', [MetaWebhookController::class, 'handle'])
     ->middleware('throttle:meta-webhook')
     ->name('webhooks.meta.handle');
 

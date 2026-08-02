@@ -1,5 +1,8 @@
 <?php
 
+use App\Enums\WhatsAppProvider;
+use App\Models\CampaignMessage;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -13,7 +16,7 @@ it('drops gupshup_element_name column', function () {
 
 it('test_safety_precheck', function () {
     // Create a user to satisfy FK constraint
-    $user = \App\Models\User::factory()->create();
+    $user = User::factory()->create();
 
     // Insert a whatsapp_instance with provider='gupshup' using a raw INSERT
     // to bypass the Eloquent enum cast (enum case no longer exists after Task 1.2).
@@ -31,13 +34,13 @@ it('test_safety_precheck', function () {
     $migration = require __DIR__.'/../../../database/migrations/2026_04_23_000000_phase43_pre_check_no_gupshup_waha_rows.php';
 
     expect(fn () => $migration->up())->toThrow(
-        \RuntimeException::class,
+        RuntimeException::class,
         '1 whatsapp_instance(s) still use gupshup/waha'
     );
 });
 
 it('removes gupshup and waha enum cases', function () {
-    $cases = \App\Enums\WhatsAppProvider::cases();
+    $cases = WhatsAppProvider::cases();
     $values = array_map(fn ($c) => $c->value, $cases);
 
     expect($values)->not->toContain('gupshup')
@@ -56,7 +59,7 @@ it('test_renames_gupshup_message_id', function () {
 
 it('test_renames_preserve_data', function () {
     // Verify that the renamed column provider_message_id can store and retrieve data.
-    $message = \App\Models\CampaignMessage::factory()->create([
+    $message = CampaignMessage::factory()->create([
         'provider_message_id' => 'test-preserved-id-abc',
         'status' => 'sent',
     ]);

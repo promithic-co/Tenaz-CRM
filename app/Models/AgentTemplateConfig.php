@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Observers\AgentTemplateConfigObserver;
+use Database\Factories\AgentTemplateConfigFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class AgentTemplateConfig extends Model
 {
-    /** @use HasFactory<\Database\Factories\AgentTemplateConfigFactory> */
+    /** @use HasFactory<AgentTemplateConfigFactory> */
     use HasFactory;
 
     protected static function booted(): void

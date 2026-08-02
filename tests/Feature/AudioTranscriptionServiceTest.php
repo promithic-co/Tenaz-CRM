@@ -33,8 +33,8 @@ it('transcreve áudio com sucesso via OpenAI', function () {
 
     config(['ai.providers.openai.key' => 'test-key']);
 
-    $service = new AudioTranscriptionService();
-    $result  = $service->transcribe($audio);
+    $service = new AudioTranscriptionService;
+    $result = $service->transcribe($audio);
 
     expect($result)->toBe('Quero saber sobre empréstimo consignado.');
 
@@ -51,8 +51,8 @@ it('retorna null quando a API falha', function () {
 
     config(['ai.providers.openai.key' => 'bad-key']);
 
-    $service = new AudioTranscriptionService();
-    $result  = $service->transcribe($audio);
+    $service = new AudioTranscriptionService;
+    $result = $service->transcribe($audio);
 
     expect($result)->toBeNull();
 
@@ -70,8 +70,8 @@ it('retorna null quando o arquivo não existe', function () {
 
     config(['ai.providers.openai.key' => 'test-key']);
 
-    $service = new AudioTranscriptionService();
-    $result  = $service->transcribe($audio);
+    $service = new AudioTranscriptionService;
+    $result = $service->transcribe($audio);
 
     expect($result)->toBeNull();
 });
@@ -89,8 +89,8 @@ it('usa o provider groq quando configurado', function () {
 
     config(['ai.providers.groq.key' => 'groq-test-key']);
 
-    $service = new AudioTranscriptionService();
-    $result  = $service->transcribe($audio);
+    $service = new AudioTranscriptionService;
+    $result = $service->transcribe($audio);
 
     expect($result)->toBe('Texto transcrito via Groq.');
     Http::assertSent(fn ($req) => str_contains($req->url(), 'groq.com'));
@@ -104,8 +104,8 @@ it('retorna null quando a API key está ausente', function () {
 
     config(['ai.providers.openai.key' => null]);
 
-    $service = new AudioTranscriptionService();
-    $result  = $service->transcribe($audio);
+    $service = new AudioTranscriptionService;
+    $result = $service->transcribe($audio);
 
     expect($result)->toBeNull();
     Http::assertNothingSent();

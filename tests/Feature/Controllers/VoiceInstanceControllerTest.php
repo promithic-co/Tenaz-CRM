@@ -1,19 +1,20 @@
 <?php
 
+use App\Models\User;
 use App\Models\VoiceInstance;
 use App\Models\WhatsappInstance;
 
-function makeVoiceUser(): \App\Models\User
+function makeVoiceUser(): User
 {
     return userWithTenant();
 }
 
-function makeTenantId(\App\Models\User $user): string
+function makeTenantId(User $user): string
 {
     return (string) $user->tenants()->first()->id;
 }
 
-function makeVoiceInstanceForUser(\App\Models\User $user): VoiceInstance
+function makeVoiceInstanceForUser(User $user): VoiceInstance
 {
     return VoiceInstance::factory()->create([
         'tenant_id' => makeTenantId($user),

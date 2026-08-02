@@ -1,10 +1,11 @@
 <?php
 
 use App\Actions\StoreInboundMediaAction;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 /**
  * Behaviour coverage for StoreInboundMediaAction (Plan B.4): content-addressed

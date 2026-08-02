@@ -3,8 +3,9 @@
 use App\Enums\TenantRole;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 // Note: LogBroadcaster (used in test env) skips channel callbacks, so we test
 // the authorization logic directly — same code that runs in routes/channels.php.

@@ -6,12 +6,14 @@ use App\Ai\Agents\CredFlowAgent;
 use App\Ai\Agents\EvaluatorAgent;
 use App\Ai\Agents\TesterAgent;
 use App\Models\Agent;
+use App\Models\AppSetting;
 use App\Models\CpfDatasetEntry;
 use App\Models\Lead;
 use App\Models\StressTestCycle;
 use App\Models\StressTestRun;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Promptable;
 use Throwable;
 
 class StressTestOrchestrator
@@ -259,13 +261,13 @@ Pense de forma destrutiva: desafie limites sistêmicos, tente looping, burle val
 Retorne APENAS a diretriz/texto da estratégia (máx 4 linhas). Sem saudações.
 TEXT;
 
-        $provider = $modelOverride && str_contains($modelOverride, '/') ? 'openrouter' : \App\Models\AppSetting::get('agent_provider', 'openai');
+        $provider = $modelOverride && str_contains($modelOverride, '/') ? 'openrouter' : AppSetting::get('agent_provider', 'openai');
         $model = $modelOverride ?: 'gpt-4o';
 
         try {
             $agent = new class($provider, $model) implements \Laravel\Ai\Contracts\Agent
             {
-                use \Laravel\Ai\Promptable;
+                use Promptable;
 
                 public function __construct(private string $p, private string $m) {}
 

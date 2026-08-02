@@ -12,8 +12,8 @@ return new class extends Migration
             ->count();
 
         if ($count > 0) {
-            throw new \RuntimeException(
-                "Phase 43 migration aborted — {$count} whatsapp_instance(s) still use gupshup/waha. " .
+            throw new RuntimeException(
+                "Phase 43 migration aborted — {$count} whatsapp_instance(s) still use gupshup/waha. ".
                 'Delete or reassign these instances to evolution/meta_cloud before running this migration.'
             );
         }

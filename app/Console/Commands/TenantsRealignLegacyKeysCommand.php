@@ -2,12 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Tenant;
 use App\Services\LegacyTenantKeyRealignmentService;
 use Illuminate\Console\Command;
 
 /**
  * After introducing `tenants` + `tenant_user`, the app resolves the active tenant to
- * {@see \App\Models\Tenant::$id}. Older rows still store `tenant_id` as the owner's user id string.
+ * {@see Tenant::$id}. Older rows still store `tenant_id` as the owner's user id string.
  * This command rewrites those keys to the real tenant id (owner membership) — same rows, in place.
  *
  * @see LegacyTenantKeyRealignmentService Deploy also runs this automatically via migration.

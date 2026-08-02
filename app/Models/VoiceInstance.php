@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Database\Factories\VoiceInstanceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VoiceInstance extends Model
 {
-    /** @use HasFactory<\Database\Factories\VoiceInstanceFactory> */
+    /** @use HasFactory<VoiceInstanceFactory> */
     use BelongsToTenant, HasFactory;
 
     protected $fillable = [

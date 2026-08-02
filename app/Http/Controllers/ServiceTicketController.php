@@ -8,6 +8,7 @@ use App\Services\ServiceTicketBoardService;
 use App\Services\ServiceTicketLifecycleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -45,7 +46,7 @@ class ServiceTicketController extends Controller
 
         try {
             $this->lifecycle->claim($ticket, auth()->user());
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->with('flash_error', $e->getMessage());
         }
 

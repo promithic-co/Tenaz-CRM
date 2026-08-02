@@ -7,9 +7,11 @@ use App\Models\ServiceTicket;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\ConversationTransferService;
+use App\Services\FollowUpWindowService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function transferTenant(): array
 {
@@ -128,7 +130,7 @@ test('transfer from AI-active lead prevents future automated follow-up eligibili
     app(ConversationTransferService::class)->transferToUser($lead, $actor, $target);
 
     $lead->refresh();
-    $result = app(\App\Services\FollowUpWindowService::class)->evaluate($lead, [
+    $result = app(FollowUpWindowService::class)->evaluate($lead, [
         'enabled' => true,
         'max_attempts_within_window' => 5,
         'first_delay_minutes' => 1,

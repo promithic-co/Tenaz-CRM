@@ -2,8 +2,12 @@
 
 use App\Models\Lead;
 use App\Services\ConversationTimelineService;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -25,10 +29,10 @@ function seedLegacyConversation(string $conversationId): void
 /**
  * @param  array<string, mixed>|null  $media
  */
-function seedLegacyMessage(string $conversationId, string $role, string $content, \Carbon\CarbonInterface $at, ?array $media = null): void
+function seedLegacyMessage(string $conversationId, string $role, string $content, CarbonInterface $at, ?array $media = null): void
 {
     DB::table('agent_conversation_messages')->insert([
-        'id' => (string) \Illuminate\Support\Str::uuid(),
+        'id' => (string) Str::uuid(),
         'conversation_id' => $conversationId,
         'user_id' => null,
         'agent' => 'test-agent',
@@ -51,7 +55,7 @@ test('returns empty array when lead has no conversation', function () {
 });
 
 test('ascending read matches the backfill inline shape including media', function () {
-    $conversationId = (string) \Illuminate\Support\Str::uuid();
+    $conversationId = (string) Str::uuid();
     seedLegacyConversation($conversationId);
 
     seedLegacyMessage($conversationId, 'user', 'oi', now()->subMinutes(3));
@@ -71,7 +75,7 @@ test('ascending read matches the backfill inline shape including media', functio
         ->map(fn ($m) => [
             'role' => $m->role,
             'content' => $m->content,
-            'hora' => \Carbon\Carbon::parse($m->created_at)->format('H:i'),
+            'hora' => Carbon::parse($m->created_at)->format('H:i'),
             'media' => $m->attachments
                 ? (json_decode($m->attachments, true)['_aria_media'] ?? null)
                 : null,
@@ -82,7 +86,7 @@ test('ascending read matches the backfill inline shape including media', functio
 });
 
 test('newest-first read matches the preview inline shape (latest N re-sorted ascending)', function () {
-    $conversationId = (string) \Illuminate\Support\Str::uuid();
+    $conversationId = (string) Str::uuid();
     seedLegacyConversation($conversationId);
 
     foreach (range(1, 8) as $i) {
@@ -102,7 +106,7 @@ test('newest-first read matches the preview inline shape (latest N re-sorted asc
         ->map(fn ($m) => [
             'role' => $m->role,
             'content' => $m->content,
-            'hora' => \Carbon\Carbon::parse($m->created_at)->format('H:i'),
+            'hora' => Carbon::parse($m->created_at)->format('H:i'),
         ])
         ->toArray();
 
@@ -110,7 +114,7 @@ test('newest-first read matches the preview inline shape (latest N re-sorted asc
 
     // Service always carries a `media` key; preview omits it. Compare on the
     // shared keys to prove ordering + content + time parity.
-    expect(array_map(fn ($m) => \Illuminate\Support\Arr::only($m, ['role', 'content', 'hora']), $actual))
+    expect(array_map(fn ($m) => Arr::only($m, ['role', 'content', 'hora']), $actual))
         ->toBe($previewInline)
         ->and($actual)->toHaveCount(5)
         ->and($actual[0]['content'])->toBe('msg-4')
@@ -118,7 +122,7 @@ test('newest-first read matches the preview inline shape (latest N re-sorted asc
 });
 
 test('ascending read matches the playground getMessages inline shape (media-excluded)', function () {
-    $conversationId = (string) \Illuminate\Support\Str::uuid();
+    $conversationId = (string) Str::uuid();
     seedLegacyConversation($conversationId);
 
     seedLegacyMessage($conversationId, 'user', 'q', now()->subMinutes(2));
@@ -134,13 +138,13 @@ test('ascending read matches the playground getMessages inline shape (media-excl
         ->map(fn ($m) => [
             'role' => $m->role,
             'content' => $m->content,
-            'hora' => \Carbon\Carbon::parse($m->created_at)->format('H:i'),
+            'hora' => Carbon::parse($m->created_at)->format('H:i'),
         ])
         ->toArray();
 
     $actual = $this->service->legacyMessages($lead);
 
-    expect(array_map(fn ($m) => \Illuminate\Support\Arr::only($m, ['role', 'content', 'hora']), $actual))
+    expect(array_map(fn ($m) => Arr::only($m, ['role', 'content', 'hora']), $actual))
         ->toBe($getMessagesInline)
         ->and($actual[0]['media'])->toBeNull();
 });

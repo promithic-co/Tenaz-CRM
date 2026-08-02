@@ -2,12 +2,15 @@
 
 namespace Database\Factories;
 
+use App\Enums\TenantRole;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
+ * @extends Factory<User>
  */
 class UserFactory extends Factory
 {
@@ -39,9 +42,9 @@ class UserFactory extends Factory
 
     public function configure(): static
     {
-        return $this->afterCreating(function (\App\Models\User $user) {
-            $tenant = \App\Models\Tenant::create(['name' => $user->name]);
-            $user->tenants()->attach($tenant->id, ['role' => \App\Enums\TenantRole::Owner->value]);
+        return $this->afterCreating(function (User $user) {
+            $tenant = Tenant::create(['name' => $user->name]);
+            $user->tenants()->attach($tenant->id, ['role' => TenantRole::Owner->value]);
         });
     }
 

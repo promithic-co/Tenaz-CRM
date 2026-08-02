@@ -5,6 +5,7 @@ namespace App\Http\Requests\SmartList;
 use App\Exceptions\SmartList\InvalidFiltersException;
 use App\Services\SmartList\FilterSchema;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreDynamicContactListRequest extends FormRequest
 {
@@ -39,9 +40,9 @@ class StoreDynamicContactListRequest extends FormRequest
         ];
     }
 
-    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function (\Illuminate\Validation\Validator $v): void {
+        $validator->after(function (Validator $v): void {
             if (! $this->boolean('is_dynamic')) {
                 return;
             }

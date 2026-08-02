@@ -1,10 +1,13 @@
 <?php
 
+use App\Ai\Agents\CredFlowFollowUpAgent;
 use App\Jobs\ProcessLeadFollowUpJob;
 use App\Models\AppSetting;
 use App\Models\Lead;
+use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
+use Laravel\Ai\Responses\AgentResponse;
 
 echo "=== INICIANDO VALIDAÇÃO E2E DA ENGINE DE FOLLOW-UP ===\n\n";
 
@@ -18,14 +21,14 @@ AppSetting::set('agent_model', 'gpt-4o-mini');
 echo "[1] Configurações de AppSettings injetadas.\n";
 
 // 2. Mock Agent Response (LLM) and HTTP for WhatsApp
-$mockResponse = Mockery::mock(\Laravel\Ai\Responses\AgentResponse::class);
+$mockResponse = Mockery::mock(AgentResponse::class);
 $mockResponse->shouldReceive('__toString')->andReturn('Olá João, esta é a mensagem E2E validando o fluxo 100% nativo!');
 
-$mockAgent = Mockery::mock(\App\Ai\Agents\CredFlowFollowUpAgent::class)->makePartial();
+$mockAgent = Mockery::mock(CredFlowFollowUpAgent::class)->makePartial();
 $mockAgent->shouldReceive('continue')->andReturnSelf();
 $mockAgent->shouldReceive('prompt')->andReturn($mockResponse);
 
-app()->bind(\App\Ai\Agents\CredFlowFollowUpAgent::class, function () use ($mockAgent) {
+app()->bind(CredFlowFollowUpAgent::class, function () use ($mockAgent) {
     return $mockAgent;
 });
 
@@ -69,7 +72,7 @@ echo "[5] Executando o Job de Follow-up (ProcessLeadFollowUpJob)...\n";
 
 try {
     $job = new ProcessLeadFollowUpJob($lead);
-    $whatsappService = app(\App\Services\WhatsAppService::class);
+    $whatsappService = app(WhatsAppService::class);
     $job->handle($whatsappService);
 
     $lead->refresh();
@@ -93,7 +96,7 @@ try {
         echo "❌ FALHA: O Job rodou mas NENHUMA requisição Http foi feita para WhatsApp API (Evolution).\n";
     }
 
-} catch (\Exception $e) {
+} catch (Exception $e) {
     echo '❌ FALHA NO JOB: '.$e->getMessage()."\n";
     echo $e->getTraceAsString()."\n";
 }

@@ -7,8 +7,9 @@ use App\Ai\Tools\ConsultarCreditoSiapeTool;
 use App\Models\Agent;
 use App\Models\AgentConfig;
 use App\Models\Lead;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function createCltLead(array $leadOverrides = []): Lead
 {

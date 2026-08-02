@@ -8,8 +8,9 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\FollowUpWindowService;
 use App\Services\ServiceTicketLifecycleService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function returnToAiSetup(): array
 {

@@ -5,8 +5,10 @@ use App\Models\Lead;
 use App\Models\ServiceTicket;
 use App\Models\User;
 use App\Services\HumanHandoffStateService;
+use App\Services\ServiceTicketLifecycleService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function makeHandoffLead(?User $user = null): Lead
 {
@@ -60,7 +62,7 @@ test('escalation ticket is the active handoff entity', function () {
 
 test('creating escalation twice updates active ticket instead of duplicating', function () {
     $lead = makeHandoffLead();
-    $lifecycle = app(\App\Services\ServiceTicketLifecycleService::class);
+    $lifecycle = app(ServiceTicketLifecycleService::class);
 
     $t1 = $lifecycle->createOpenTicket($lead, ServiceTicket::TYPE_ESCALATION, ['reason' => 'outro', 'summary' => 'first']);
     $t2 = $lifecycle->createOpenTicket($lead, ServiceTicket::TYPE_ESCALATION, ['reason' => 'proposta_aceita', 'summary' => 'second']);

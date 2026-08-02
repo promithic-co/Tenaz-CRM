@@ -6,9 +6,10 @@ use App\Models\AppSetting;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsappInstance;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     AppSetting::flushCache();

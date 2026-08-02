@@ -4,9 +4,10 @@ use App\Models\Agent;
 use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Services\AgentContextResolver;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Cache::flush();
