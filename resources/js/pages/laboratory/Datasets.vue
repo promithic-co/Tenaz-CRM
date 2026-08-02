@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { Database, Upload, Trash2, Loader2, Eye } from 'lucide-vue-next';
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import LaboratoryTenantBar from '@/components/LaboratoryTenantBar.vue';
 import { useBackofficeRoutes } from '@/composables/useBackofficeRoutes';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -19,7 +19,7 @@ type Dataset = {
 };
 
 type Props = { datasets: Dataset[] };
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Laboratory', href: routes.laboratory() },
@@ -90,7 +90,7 @@ async function submitUpload() {
                 text: data.message || 'Falha ao importar.',
             };
         }
-    } catch (e) {
+    } catch {
         uploadMessage.value = { type: 'error', text: 'Erro de rede.' };
     } finally {
         uploading.value = false;
@@ -104,7 +104,6 @@ async function prefetch(id: number) {
             method: 'POST',
             headers: { 'X-XSRF-TOKEN': csrf(), Accept: 'application/json' },
         });
-        const data = await res.json();
         if (res.ok) {
             router.visit(routes.laboratoryDatasetsPage(), {
                 preserveState: false,

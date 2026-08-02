@@ -334,14 +334,17 @@ function formatDate(value: string): string {
                         <Link
                             v-if="link.url"
                             :href="link.url"
-                            v-html="link.label"
                             :class="[
                                 'rounded px-3 py-1 text-sm',
                                 link.active
                                     ? 'bg-primary font-medium text-primary-foreground'
                                     : 'text-muted-foreground hover:bg-muted',
                             ]"
-                        />
+                        >
+                            <!-- Paginator labels carry entities (&laquo;), so they need
+                                 v-html — but on a plain span, never on the component. -->
+                            <span v-html="link.label" />
+                        </Link>
                         <span
                             v-else
                             v-html="link.label"

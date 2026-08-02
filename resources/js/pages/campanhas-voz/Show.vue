@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import VoiceCampaignController from '@/actions/App/Http/Controllers/VoiceCampaignController';
 import AppLayout from '@/layouts/AppLayout.vue';

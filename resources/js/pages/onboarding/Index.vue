@@ -119,13 +119,6 @@ const agentForm = useForm({
     template_slug: initialTemplate.value?.slug ?? '',
 });
 
-const selectedTemplate = computed(
-    () =>
-        (props.templates ?? []).find(
-            (t) => t.slug === agentForm.template_slug,
-        ) ?? null,
-);
-
 function selectTemplate(tpl: AgentTemplate): void {
     agentForm.template_slug = tpl.slug;
 }

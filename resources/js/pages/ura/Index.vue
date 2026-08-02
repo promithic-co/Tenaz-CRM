@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { Link2, Copy, Check, Plug, Trash2, Pencil } from 'lucide-vue-next';
+import { Copy, Check, Plug, Trash2, Pencil } from 'lucide-vue-next';
 import { ref, computed, watch, onMounted } from 'vue';
 import UraApiKeyController from '@/actions/App/Http/Controllers/UraApiKeyController';
 import EmptyState from '@/components/EmptyState.vue';
