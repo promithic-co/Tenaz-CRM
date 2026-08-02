@@ -10,7 +10,6 @@ import {
     UserCheck,
 } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import Button from '@/components/ui/button/Button.vue';
 import {
     Dialog,
     DialogContent,
@@ -26,13 +25,7 @@ import {
     ticketStatusClasses,
     ticketStatusLabel,
 } from '@/lib/ticket-status';
-import {
-    claim,
-    close,
-    keepManual,
-    resolve,
-    returnToAi,
-} from '@/routes/atendimentos';
+import { claim, keepManual, resolve, returnToAi } from '@/routes/atendimentos';
 import { show as conversaShow } from '@/routes/conversas';
 import type { BreadcrumbItem } from '@/types';
 
@@ -635,14 +628,17 @@ onUnmounted(() => {
                                 <Link
                                     v-if="link.url"
                                     :href="link.url"
-                                    v-html="link.label"
                                     :class="[
                                         'rounded px-3 py-1 text-sm',
                                         link.active
                                             ? 'bg-primary font-medium text-primary-foreground'
                                             : 'text-muted-foreground hover:bg-muted',
                                     ]"
-                                />
+                                >
+                                    <!-- Paginator labels carry entities (&laquo;), so they need
+                                         v-html — but on a plain span, never on the component. -->
+                                    <span v-html="link.label" />
+                                </Link>
                                 <span
                                     v-else
                                     v-html="link.label"
@@ -867,14 +863,17 @@ onUnmounted(() => {
                                 <Link
                                     v-if="link.url"
                                     :href="link.url"
-                                    v-html="link.label"
                                     :class="[
                                         'rounded px-3 py-1 text-sm',
                                         link.active
                                             ? 'bg-primary font-medium text-primary-foreground'
                                             : 'text-muted-foreground hover:bg-muted',
                                     ]"
-                                />
+                                >
+                                    <!-- Paginator labels carry entities (&laquo;), so they need
+                                         v-html — but on a plain span, never on the component. -->
+                                    <span v-html="link.label" />
+                                </Link>
                                 <span
                                     v-else
                                     v-html="link.label"
@@ -1160,14 +1159,17 @@ onUnmounted(() => {
                                 <Link
                                     v-if="link.url"
                                     :href="link.url"
-                                    v-html="link.label"
                                     :class="[
                                         'rounded px-3 py-1 text-sm',
                                         link.active
                                             ? 'bg-primary font-medium text-primary-foreground'
                                             : 'text-muted-foreground hover:bg-muted',
                                     ]"
-                                />
+                                >
+                                    <!-- Paginator labels carry entities (&laquo;), so they need
+                                         v-html — but on a plain span, never on the component. -->
+                                    <span v-html="link.label" />
+                                </Link>
                                 <span
                                     v-else
                                     v-html="link.label"

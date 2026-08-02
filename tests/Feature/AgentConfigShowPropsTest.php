@@ -3,10 +3,12 @@
 use App\Models\Agent;
 use App\Models\AgentConfig;
 use App\Models\AppSetting;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsappInstance;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     AppSetting::flushCache();
@@ -41,7 +43,7 @@ test('config page renders only persona props', function () {
 function createAgentForShowPropsTest(User $user, string $name = 'SC1 Test Agent'): Agent
 {
     if ($user->tenants()->doesntExist()) {
-        $tenant = \App\Models\Tenant::create(['name' => $user->name.' Tenant']);
+        $tenant = Tenant::create(['name' => $user->name.' Tenant']);
         $user->tenants()->attach($tenant->id, ['role' => 'owner']);
     }
 

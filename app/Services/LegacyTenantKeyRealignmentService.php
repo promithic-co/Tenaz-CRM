@@ -3,13 +3,14 @@
 namespace App\Services;
 
 use App\Enums\TenantRole;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Unifies legacy string {@code tenant_id} values (owner user id) with the canonical
- * {@see \App\Models\Tenant} id after {@code tenants} / {@code tenant_user} were introduced.
+ * {@see Tenant} id after {@code tenants} / {@code tenant_user} were introduced.
  */
 class LegacyTenantKeyRealignmentService
 {

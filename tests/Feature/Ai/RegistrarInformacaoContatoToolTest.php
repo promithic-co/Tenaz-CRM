@@ -3,8 +3,10 @@
 use App\Ai\Agents\CredFlowAgent;
 use App\Ai\Tools\RegistrarInformacaoContatoTool;
 use App\Models\Contact;
+use App\Models\ConversationSession;
 use App\Models\Lead;
 use App\Services\ContactCollectedInformationService;
+use App\Services\ConversationSessionInformationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
 use Illuminate\JsonSchema\Serializer;
@@ -217,7 +219,12 @@ test('standard customer service agents expose the contact information tool', fun
     ))->toBeTrue();
 });
 
-test('lead system context does not interpolate registered information', function (): void {
+/**
+ * Contact information is the agent's durable memory, so it belongs in the prompt.
+ * Session entries are scoped to one atendimento: once the cycle closes they turn
+ * into an archive and must never travel back into the next conversation.
+ */
+test('lead system context carries contact information but not closed sessions', function (): void {
     $contact = Contact::factory()->create();
     $lead = Lead::factory()->create([
         'tenant_id' => $contact->tenant_id,
@@ -232,6 +239,13 @@ test('lead system context does not interpolate registered information', function
         'value' => 'Renovação',
     ]);
 
+    $closed = ConversationSession::factory()->forLead($lead)->closed()->create(['number' => 1]);
+    app(ConversationSessionInformationService::class)->applyManual($closed, [
+        'operation' => 'upsert',
+        'label' => 'Proposta',
+        'value' => 'Recusada',
+    ]);
+
     $agent = new class($lead) extends CredFlowAgent
     {
         public function exposedLeadContext(): string
@@ -241,6 +255,31 @@ test('lead system context does not interpolate registered information', function
     };
 
     expect($agent->exposedLeadContext())
+        ->toContain('Informações do contato:')
+        ->toContain('Assunto: Renovação')
         ->not->toContain('Informações do atendimento')
-        ->not->toContain('Assunto: Renovação');
+        ->not->toContain('Proposta: Recusada');
+});
+
+test('lead system context carries the open atendimento entries', function (): void {
+    $lead = Lead::factory()->create(['nome' => 'Lucas']);
+
+    $open = ConversationSession::factory()->forLead($lead)->open()->create(['number' => 1]);
+    app(ConversationSessionInformationService::class)->applyManual($open, [
+        'operation' => 'upsert',
+        'label' => 'Proposta',
+        'value' => 'Em análise',
+    ]);
+
+    $agent = new class($lead) extends CredFlowAgent
+    {
+        public function exposedLeadContext(): string
+        {
+            return $this->buildLeadContext();
+        }
+    };
+
+    expect($agent->exposedLeadContext())
+        ->toContain('Informações do atendimento atual:')
+        ->toContain('Proposta: Em análise');
 });

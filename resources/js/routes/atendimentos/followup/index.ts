@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\ServiceTicketController::disable
- * @see app/Http/Controllers/ServiceTicketController.php:55
+ * @see app/Http/Controllers/ServiceTicketController.php:56
  * @route '/atendimentos/{ticket}/followup-disable'
  */
 export const disable = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ disable.definition = {
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::disable
- * @see app/Http/Controllers/ServiceTicketController.php:55
+ * @see app/Http/Controllers/ServiceTicketController.php:56
  * @route '/atendimentos/{ticket}/followup-disable'
  */
 disable.url = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ disable.url = (args: { ticket: number | { id: number } } | [ticket: number | { i
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::disable
- * @see app/Http/Controllers/ServiceTicketController.php:55
+ * @see app/Http/Controllers/ServiceTicketController.php:56
  * @route '/atendimentos/{ticket}/followup-disable'
  */
 disable.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -59,7 +59,7 @@ disable.post = (args: { ticket: number | { id: number } } | [ticket: number | { 
 
     /**
 * @see \App\Http\Controllers\ServiceTicketController::disable
- * @see app/Http/Controllers/ServiceTicketController.php:55
+ * @see app/Http/Controllers/ServiceTicketController.php:56
  * @route '/atendimentos/{ticket}/followup-disable'
  */
     const disableForm = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -69,7 +69,7 @@ disable.post = (args: { ticket: number | { id: number } } | [ticket: number | { 
 
             /**
 * @see \App\Http\Controllers\ServiceTicketController::disable
- * @see app/Http/Controllers/ServiceTicketController.php:55
+ * @see app/Http/Controllers/ServiceTicketController.php:56
  * @route '/atendimentos/{ticket}/followup-disable'
  */
         disableForm.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

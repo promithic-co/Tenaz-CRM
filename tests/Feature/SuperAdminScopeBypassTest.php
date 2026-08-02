@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TenantRole;
 use App\Models\Lead;
 use App\Models\Tenant;
 use App\Models\User;
@@ -41,7 +42,7 @@ it('normal tenant owner only sees their own tenant leads', function () {
     // Create a normal owner scoped to tenantA
     $owner = User::factory()->create();
     $owner->tenants()->detach();
-    $owner->tenants()->attach($tenantA->id, ['role' => \App\Enums\TenantRole::Owner->value]);
+    $owner->tenants()->attach($tenantA->id, ['role' => TenantRole::Owner->value]);
 
     // Act: authenticate as normal owner with active_tenant_id in session
     $this->actingAs($owner)->withSession(['active_tenant_id' => $tenantA->id]);

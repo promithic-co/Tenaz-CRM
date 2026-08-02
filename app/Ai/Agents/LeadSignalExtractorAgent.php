@@ -3,6 +3,7 @@
 namespace App\Ai\Agents;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\JsonSchema\Types\Type;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Promptable;
@@ -30,7 +31,7 @@ final class LeadSignalExtractorAgent implements Agent, HasStructuredOutput
     /**
      * Structured output schema: detected array of slug/confidence/evidence objects.
      *
-     * @return array<string, \Illuminate\JsonSchema\Types\Type>
+     * @return array<string, Type>
      */
     public function schema(JsonSchema $schema): array
     {

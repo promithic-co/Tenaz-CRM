@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Agent;
 use App\Models\FailedInteraction;
 use App\Models\Lead;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class InteractionRecoveryService
@@ -46,22 +47,22 @@ class InteractionRecoveryService
     /**
      * Calculate first retry time — within business hours.
      */
-    private function calculateFirstRetry(): \Carbon\Carbon
+    private function calculateFirstRetry(): Carbon
     {
         $start = config('laboratory.retry.business_hours_start', '08:00');
         $end = config('laboratory.retry.business_hours_end', '18:00');
         $delay = config('laboratory.retry.backoff_minutes', [15])[0];
 
-        $retryAt = \Carbon\Carbon::now()->addMinutes($delay);
+        $retryAt = Carbon::now()->addMinutes($delay);
 
         if ($retryAt->format('H:i') > $end) {
-            $retryAt = \Carbon\Carbon::instance($retryAt->addDay())->setTimeFromTimeString($start);
+            $retryAt = Carbon::instance($retryAt->addDay())->setTimeFromTimeString($start);
         } elseif ($retryAt->format('H:i') < $start) {
-            $retryAt = \Carbon\Carbon::instance($retryAt)->setTimeFromTimeString($start);
+            $retryAt = Carbon::instance($retryAt)->setTimeFromTimeString($start);
         }
 
         while ($retryAt->isWeekend()) {
-            $retryAt = \Carbon\Carbon::instance($retryAt->addDay())->setTimeFromTimeString($start);
+            $retryAt = Carbon::instance($retryAt->addDay())->setTimeFromTimeString($start);
         }
 
         return $retryAt;

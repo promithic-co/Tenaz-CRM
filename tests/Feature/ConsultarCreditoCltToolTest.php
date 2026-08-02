@@ -3,10 +3,11 @@
 use App\Ai\Tools\ConsultarCreditoCltTool;
 use App\Models\Lead;
 use App\Services\PromosysService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Tools\Request;
 use Mockery\MockInterface;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function makeCltPromosysResponse(array $overrides = []): array
 {

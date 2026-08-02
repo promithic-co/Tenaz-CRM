@@ -9,7 +9,10 @@ use App\Models\Lead;
 use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappOutboxMessage;
+use App\Services\FollowUpSettingsResolver;
 use App\Services\FollowUpWindowService;
+use App\Services\PauseService;
+use App\Services\WhatsappOutboxService;
 use App\Services\WhatsAppService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -121,10 +124,10 @@ test('follow-up queues WhatsApp outbox through lead instance id', function (): v
 
     $job = new ProcessLeadFollowUpJob($lead);
     $job->handle(
-        app(\App\Services\WhatsappOutboxService::class),
-        app(\App\Services\FollowUpSettingsResolver::class),
-        app(\App\Services\FollowUpWindowService::class),
-        app(\App\Services\PauseService::class),
+        app(WhatsappOutboxService::class),
+        app(FollowUpSettingsResolver::class),
+        app(FollowUpWindowService::class),
+        app(PauseService::class),
     );
 
     $outbox = WhatsappOutboxMessage::query()->where('lead_id', $lead->id)->firstOrFail();
@@ -148,10 +151,10 @@ test('follow-up does not send without lead WhatsApp instance id', function (): v
 
     $job = new ProcessLeadFollowUpJob($lead);
     $job->handle(
-        app(\App\Services\WhatsappOutboxService::class),
-        app(\App\Services\FollowUpSettingsResolver::class),
-        app(\App\Services\FollowUpWindowService::class),
-        app(\App\Services\PauseService::class),
+        app(WhatsappOutboxService::class),
+        app(FollowUpSettingsResolver::class),
+        app(FollowUpWindowService::class),
+        app(PauseService::class),
     );
 
     expect(WhatsappOutboxMessage::query()->where('lead_id', $lead->id)->exists())->toBeFalse()

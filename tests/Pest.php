@@ -76,6 +76,23 @@ function userWithTenant(): User
 }
 
 /**
+ * Create a tenant-less super-admin User for backoffice tests.
+ *
+ * The backoffice console is global, so the admin is detached from every tenant
+ * to prove the routes never depend on an active tenant context. Shared here
+ * because several `Backoffice*` test files need it and Pest gives each file its
+ * own process under paratest — a helper defined inside one file is not visible
+ * to the others.
+ */
+function superAdmin(): User
+{
+    $admin = User::factory()->superAdmin()->create();
+    $admin->tenants()->detach();
+
+    return $admin;
+}
+
+/**
  * Align a campaign's test template with its Meta instance.
  *
  * Production rejects templates from another instance or WABA. Legacy tests that

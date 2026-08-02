@@ -1,13 +1,16 @@
 <?php
 
+use App\Enums\TenantRole;
 use App\Models\Agent;
 use App\Models\Lead;
 use App\Models\ServiceTicket;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Services\PauseService;
 use Carbon\Carbon;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 test('test_ticket_includes_urgency_for_open_tickets', function () {
     $user = User::factory()->create();
@@ -343,14 +346,14 @@ test('counters reflect total not the current page slice', function () {
 });
 
 test('restricted user only sees own and unassigned escalation tickets', function () {
-    $tenant = \App\Models\Tenant::create(['name' => 'TicketVisibility']);
+    $tenant = Tenant::create(['name' => 'TicketVisibility']);
     $owner = User::factory()->create();
     $owner->tenants()->detach();
-    $owner->tenants()->attach($tenant->id, ['role' => \App\Enums\TenantRole::Owner->value]);
+    $owner->tenants()->attach($tenant->id, ['role' => TenantRole::Owner->value]);
 
     $restricted = User::factory()->create();
     $restricted->tenants()->detach();
-    $restricted->tenants()->attach($tenant->id, ['role' => \App\Enums\TenantRole::User->value]);
+    $restricted->tenants()->attach($tenant->id, ['role' => TenantRole::User->value]);
 
     expect($restricted->isRestrictedUser())->toBeTrue();
 

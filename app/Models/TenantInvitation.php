@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\TenantRole;
+use Database\Factories\TenantInvitationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Illuminate\Support\Str;
 
 class TenantInvitation extends Model
 {
-    /** @use HasFactory<\Database\Factories\TenantInvitationFactory> */
+    /** @use HasFactory<TenantInvitationFactory> */
     use HasFactory;
 
     protected $fillable = [

@@ -1,12 +1,13 @@
 <?php
 
+use App\Models\Tenant;
 use App\Services\LegacyTenantKeyRealignmentService;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Unifies legacy {@code tenant_id} strings (owner user id) with {@see \App\Models\Tenant::$id}
+ * Unifies legacy {@code tenant_id} strings (owner user id) with {@see Tenant::$id}
  * after {@code tenants} / {@code tenant_user} exist. Safe to re-run: no-op when already aligned.
  *
  * Also re-targets the foreign key on campaign-family tables from users → tenants.

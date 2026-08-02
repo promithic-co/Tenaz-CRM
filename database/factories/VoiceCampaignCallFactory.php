@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\VoiceCampaignCall;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\VoiceCampaignCall>
+ * @extends Factory<VoiceCampaignCall>
  */
 class VoiceCampaignCallFactory extends Factory
 {

@@ -143,8 +143,6 @@ final class FilterSchema
     }
 
     /**
-     * @param  mixed  $rule
-     *
      * @throws InvalidFiltersException
      */
     private static function validateRule(mixed $rule, int $index): void
@@ -200,7 +198,6 @@ final class FilterSchema
     /**
      * Validate that the rule value matches the expected type for the field/op combination.
      *
-     * @param  mixed  $value
      *
      * @throws InvalidFiltersException
      */

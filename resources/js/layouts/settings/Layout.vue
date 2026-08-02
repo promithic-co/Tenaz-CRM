@@ -9,10 +9,18 @@ import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editAutoTag } from '@/routes/auto-tag';
 import { edit as editProfile } from '@/routes/profile';
+import { index as camposIndex } from '@/routes/settings/campos';
+import { index as pipelineIndex } from '@/routes/settings/pipeline';
 import { index as teamIndex } from '@/routes/team';
 import { show } from '@/routes/two-factor';
 import { edit as editPassword } from '@/routes/user-password';
 import type { NavItem } from '@/types';
+
+/**
+ * The pipeline editor and the extra-fields CRUD are wide tables, not the narrow
+ * forms the rest of this area holds, so they opt out of the reading-width column.
+ */
+withDefaults(defineProps<{ wide?: boolean }>(), { wide: false });
 
 const page = usePage();
 const canManageTeam = computed(() => {
@@ -28,9 +36,14 @@ const sidebarNavItems = computed<NavItem[]>(() => {
         { title: 'Appearance', href: editAppearance() },
     ];
 
+    // Tenant-wide configuration, not account preferences — hence the same guard
+    // the team page uses. They used to live behind their own sidebar group,
+    // which meant two doors into the same "settings" idea.
     if (canManageTeam.value) {
         items.push({ title: 'Team', href: teamIndex() });
         items.push({ title: 'Auto-tag IA', href: editAutoTag() });
+        items.push({ title: 'Pipeline de status', href: pipelineIndex() });
+        items.push({ title: 'Campos adicionais', href: camposIndex() });
     }
 
     return items;
@@ -72,8 +85,8 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 
             <Separator class="my-6 lg:hidden" />
 
-            <div class="flex-1 md:max-w-2xl">
-                <section class="max-w-xl space-y-12">
+            <div :class="wide ? 'min-w-0 flex-1' : 'flex-1 md:max-w-2xl'">
+                <section :class="wide ? 'space-y-12' : 'max-w-xl space-y-12'">
                     <slot />
                 </section>
             </div>

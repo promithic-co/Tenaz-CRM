@@ -3,8 +3,9 @@
 use App\Models\Agent;
 use App\Models\AgentOperationalRule;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 // ─── Page access ─────────────────────────────────────────────────────────────
 

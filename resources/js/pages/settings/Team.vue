@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { Form, Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import TeamController from '@/actions/App/Http/Controllers/Settings/TeamController';
 import Heading from '@/components/Heading.vue';

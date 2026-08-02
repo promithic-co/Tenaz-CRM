@@ -6,8 +6,10 @@ use App\Models\AgentConfig;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\WhatsappInstance;
+use App\Services\AgentTemplateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class);
 
@@ -45,10 +47,10 @@ function makeFreeInstance(User $user): WhatsappInstance
  * Post a valid template slug to storeAgent and return the response.
  * Uses the first available slug from AgentTemplateService.
  */
-function postAgent(User $user, ?string $slug = null): \Illuminate\Testing\TestResponse
+function postAgent(User $user, ?string $slug = null): TestResponse
 {
     if ($slug === null) {
-        $slug = app(\App\Services\AgentTemplateService::class)->slugs()[0] ?? 'alicia-receptivo';
+        $slug = app(AgentTemplateService::class)->slugs()[0] ?? 'alicia-receptivo';
     }
 
     return test()->actingAs($user)->post('/onboarding/agent', ['template_slug' => $slug]);
@@ -191,7 +193,7 @@ test('POST /onboarding/agent creates a draft agent with server-owned initial val
 
 test('draft agent config is seeded from template defaults', function () {
     $owner = makeWizardOwner();
-    $slug = app(\App\Services\AgentTemplateService::class)->slugs()[0] ?? 'alicia-receptivo';
+    $slug = app(AgentTemplateService::class)->slugs()[0] ?? 'alicia-receptivo';
     postAgent($owner, $slug);
 
     $owner->refresh();
@@ -378,7 +380,7 @@ test('cross-tenant onboarding_agent_id on storeAgent returns 403', function () {
     }
     DB::table('users')->where('id', $owner->id)->update(['onboarding_agent_id' => $foreignAgent->id]);
 
-    $validSlug = app(\App\Services\AgentTemplateService::class)->slugs()[0] ?? 'alicia-receptivo';
+    $validSlug = app(AgentTemplateService::class)->slugs()[0] ?? 'alicia-receptivo';
     $this->actingAs($owner->fresh())->post('/onboarding/agent', ['template_slug' => $validSlug])
         ->assertForbidden();
 });

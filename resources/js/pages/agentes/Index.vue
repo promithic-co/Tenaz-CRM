@@ -7,10 +7,8 @@ import {
     Pencil,
     Check,
     X,
-    Power,
     Archive,
     RotateCcw,
-    Trash2,
 } from 'lucide-vue-next';
 import { ref, nextTick } from 'vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -96,11 +94,6 @@ const templateModeMap: Record<string, { label: string; classes: string }> = {
 function templateBadge(slug: string | null) {
     if (!slug) return null;
     return templateModeMap[slug] ?? null;
-}
-
-function instanceLabel(instance: Instance): string {
-    const name = instance.display_name || instance.name;
-    return instance.phone_number ? `${name} · ${instance.phone_number}` : name;
 }
 
 // Inline edit de nome/descrição

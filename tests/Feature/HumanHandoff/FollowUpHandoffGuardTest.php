@@ -5,8 +5,9 @@ use App\Models\Lead;
 use App\Models\ServiceTicket;
 use App\Models\User;
 use App\Services\FollowUpWindowService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function guardLead(string $stage, array $extra = []): Lead
 {

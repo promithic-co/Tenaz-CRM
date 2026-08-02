@@ -51,7 +51,7 @@ class StatusPipelineController extends Controller
             ->pluck('count', 'status')
             ->all();
 
-        return Inertia::render('configuracoes/pipeline/Index', [
+        return Inertia::render('settings/pipeline/Index', [
             'statuses' => $machine->getStatuses()->sortBy('position')->values()->all(),
             'transitions' => $machine->transitions ?? [],
             'lead_counts_by_status' => $leadCountsByStatus,

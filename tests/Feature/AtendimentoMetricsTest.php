@@ -3,10 +3,25 @@
 use App\Models\ConversationSession;
 use App\Models\Lead;
 use App\Services\Dashboard\DashboardMetricsService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
+
+/*
+ * The `*_today` counters are bucketed by `whereDate(..., today())` in the app
+ * timezone (UTC). Sessions seeded at `now()->subHours(2)` would fall on the
+ * previous UTC day whenever the suite runs between 00:00 and 02:00 UTC, so the
+ * clock is pinned mid-day to keep every seeded row inside the same bucket.
+ */
+beforeEach(function () {
+    Carbon::setTestNow(Carbon::create(2026, 3, 20, 12, 0, 0, 'UTC'));
+});
+
+afterEach(function () {
+    Carbon::setTestNow();
+});
 
 test('snapshot exposes per-session atendimento counters', function () {
     $tenantId = 'tenant-metrics';

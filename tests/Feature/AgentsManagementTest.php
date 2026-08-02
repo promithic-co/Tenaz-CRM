@@ -4,8 +4,9 @@ use App\Models\Agent;
 use App\Models\AgentConfig;
 use App\Models\User;
 use App\Models\WhatsappInstance;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 test('user can create agent from available instance', function () {
     $user = userWithTenant();
@@ -60,7 +61,7 @@ test('create agent without whatsapp_instance_id succeeds and agent is inactive',
         ])
         ->assertRedirect();
 
-    $agent = \App\Models\Agent::query()
+    $agent = Agent::query()
         ->where('user_id', $user->id)
         ->where('name', 'Agente Sem Instância')
         ->first();
@@ -72,7 +73,7 @@ test('create agent without whatsapp_instance_id succeeds and agent is inactive',
 
 test('create agent with free owned instance produces active linked agent', function () {
     $user = userWithTenant();
-    $instance = \App\Models\WhatsappInstance::factory()->for($user)->create([
+    $instance = WhatsappInstance::factory()->for($user)->create([
         'tenant_id' => $user->tenantId,
         'agent_id' => null,
     ]);
@@ -87,7 +88,7 @@ test('create agent with free owned instance produces active linked agent', funct
         ])
         ->assertRedirect();
 
-    $agent = \App\Models\Agent::query()
+    $agent = Agent::query()
         ->where('user_id', $user->id)
         ->where('name', 'Agente Com Instância')
         ->first();

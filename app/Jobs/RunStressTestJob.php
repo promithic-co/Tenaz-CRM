@@ -16,6 +16,7 @@ use Throwable;
 class RunStressTestJob implements ShouldQueue
 {
     public $failOnTimeout = false;
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 3600;

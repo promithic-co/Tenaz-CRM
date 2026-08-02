@@ -8,6 +8,7 @@ use App\Services\FollowUpWindowService;
 use App\Services\PromosysService;
 use App\Services\SiapeQualificacaoService;
 use App\Support\CpfValidator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -157,7 +158,7 @@ class ConsultarCreditoSiapeTool extends AbstractConsultaCreditoTool
 
     /**
      * @param  array<string, mixed>  $rawData
-     * @param  \Illuminate\Support\Collection<int, AgentOperationalRule>  $rules
+     * @param  Collection<int, AgentOperationalRule>  $rules
      * @return array<string, mixed>
      */
     protected function qualify(array $rawData, $rules): array

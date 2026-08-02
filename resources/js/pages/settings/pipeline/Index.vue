@@ -4,6 +4,7 @@ import { ref, computed } from 'vue';
 import StatusPipelineController from '@/actions/App/Http/Controllers/StatusPipelineController';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
+import SettingsLayout from '@/layouts/settings/Layout.vue';
 import type { BreadcrumbItem } from '@/types';
 import AddStatusModal from './partials/AddStatusModal.vue';
 import DeleteStatusModal from './partials/DeleteStatusModal.vue';
@@ -36,7 +37,7 @@ type Props = {
 const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Configurações', href: '/configuracoes' },
+    { title: 'Settings', href: '/settings' },
     { title: 'Pipeline', href: '/settings/pipeline' },
 ];
 
@@ -197,143 +198,152 @@ const sortedStatuses = computed(() =>
     <Head title="Pipeline de Status" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="max-w-5xl space-y-6 p-3 sm:p-4">
-            <!-- Header -->
-            <div
-                class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-                <div>
-                    <h1 class="text-lg font-semibold text-foreground">
-                        Pipeline de Status
-                    </h1>
-                    <p class="text-sm text-muted-foreground">
-                        Configure os nomes, cores e ordem do pipeline de leads.
-                    </p>
-                </div>
-                <div class="flex w-full flex-wrap gap-2 sm:w-auto">
-                    <Button size="sm" @click="showAddModal = true">
-                        + Adicionar Status
-                    </Button>
-                    <Button variant="outline" size="sm" @click="startReset">
-                        Resetar para Padrão
-                    </Button>
-                </div>
-            </div>
-
-            <!-- Empty state: tenant using default machine (no persisted row) -->
-            <div
-                v-if="!has_persisted_machine"
-                class="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground"
-            >
-                Você está usando o pipeline padrão. Clique em "Adicionar Status"
-                ou edite um label para criar sua cópia personalizada.
-            </div>
-
-            <!-- Reset confirm dialog (inline) -->
-            <div
-                v-if="resetConfirmStep === 1"
-                class="space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4"
-            >
-                <p class="text-sm font-medium text-destructive">
-                    Resetar o pipeline é uma ação destrutiva. Todos os status
-                    customizados serão removidos. Se houver leads em status
-                    customizados, o reset sera bloqueado para preservar o
-                    contexto comercial.
-                </p>
-                <p class="text-sm text-foreground">
-                    Digite
-                    <code class="rounded bg-muted px-1 font-mono">RESETAR</code>
-                    para confirmar:
-                </p>
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <input
-                        v-model="resetInput"
-                        class="rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
-                        placeholder="RESETAR"
-                        autofocus
-                    />
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        :disabled="resetInput !== 'RESETAR'"
-                        @click="confirmReset"
-                    >
-                        Confirmar Reset
-                    </Button>
-                    <Button variant="outline" size="sm" @click="cancelReset"
-                        >Cancelar</Button
-                    >
-                </div>
-            </div>
-
-            <!-- Main status list -->
-            <div class="space-y-6">
-                <!-- Left: Status list -->
-                <div class="space-y-2">
-                    <h2 class="text-sm font-semibold text-foreground/80">
-                        Statuses
-                    </h2>
-                    <div class="space-y-1.5">
-                        <StatusRow
-                            v-for="status in sortedStatuses"
-                            :key="status.slug"
-                            :status="status"
-                            :lead-count="localLeadCounts[status.slug] ?? 0"
-                            :saving="savingSlug === status.slug"
-                            @update="updateStatus"
-                            @delete="requestDelete"
-                        />
-                    </div>
-                </div>
-
-                <!-- Advanced transition matrix -->
-                <div class="rounded-lg border border-border bg-card">
-                    <button
-                        type="button"
-                        class="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-foreground"
-                        @click="
-                            showAdvancedTransitions = !showAdvancedTransitions
-                        "
-                    >
-                        <span>Avancado: transicoes internas</span>
-                        <span class="text-xs text-muted-foreground">{{
-                            showAdvancedTransitions ? 'Ocultar' : 'Mostrar'
-                        }}</span>
-                    </button>
-                    <div
-                        v-if="showAdvancedTransitions"
-                        class="space-y-2 border-t border-border p-3"
-                    >
-                        <p class="text-xs text-muted-foreground">
-                            Use apenas quando precisar ajustar caminhos
-                            internos. Status customizados ja recebem transicoes
-                            seguras automaticamente.
+        <SettingsLayout wide>
+            <div class="max-w-5xl space-y-6">
+                <!-- Header -->
+                <div
+                    class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div>
+                        <h1 class="text-lg font-semibold text-foreground">
+                            Pipeline de Status
+                        </h1>
+                        <p class="text-sm text-muted-foreground">
+                            Configure os nomes, cores e ordem do pipeline de
+                            leads.
                         </p>
-                        <TransitionMatrix
-                            :statuses="sortedStatuses"
-                            :transitions="localTransitions"
-                            :canonical-slugs="canonical_slugs"
-                            @add="addTransition"
-                            @remove="removeTransition"
+                    </div>
+                    <div class="flex w-full flex-wrap gap-2 sm:w-auto">
+                        <Button size="sm" @click="showAddModal = true">
+                            + Adicionar Status
+                        </Button>
+                        <Button variant="outline" size="sm" @click="startReset">
+                            Resetar para Padrão
+                        </Button>
+                    </div>
+                </div>
+
+                <!-- Empty state: tenant using default machine (no persisted row) -->
+                <div
+                    v-if="!has_persisted_machine"
+                    class="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground"
+                >
+                    Você está usando o pipeline padrão. Clique em "Adicionar
+                    Status" ou edite um label para criar sua cópia
+                    personalizada.
+                </div>
+
+                <!-- Reset confirm dialog (inline) -->
+                <div
+                    v-if="resetConfirmStep === 1"
+                    class="space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4"
+                >
+                    <p class="text-sm font-medium text-destructive">
+                        Resetar o pipeline é uma ação destrutiva. Todos os
+                        status customizados serão removidos. Se houver leads em
+                        status customizados, o reset sera bloqueado para
+                        preservar o contexto comercial.
+                    </p>
+                    <p class="text-sm text-foreground">
+                        Digite
+                        <code class="rounded bg-muted px-1 font-mono"
+                            >RESETAR</code
+                        >
+                        para confirmar:
+                    </p>
+                    <div
+                        class="flex flex-col gap-2 sm:flex-row sm:items-center"
+                    >
+                        <input
+                            v-model="resetInput"
+                            class="rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
+                            placeholder="RESETAR"
+                            autofocus
                         />
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            :disabled="resetInput !== 'RESETAR'"
+                            @click="confirmReset"
+                        >
+                            Confirmar Reset
+                        </Button>
+                        <Button variant="outline" size="sm" @click="cancelReset"
+                            >Cancelar</Button
+                        >
+                    </div>
+                </div>
+
+                <!-- Main status list -->
+                <div class="space-y-6">
+                    <!-- Left: Status list -->
+                    <div class="space-y-2">
+                        <h2 class="text-sm font-semibold text-foreground/80">
+                            Statuses
+                        </h2>
+                        <div class="space-y-1.5">
+                            <StatusRow
+                                v-for="status in sortedStatuses"
+                                :key="status.slug"
+                                :status="status"
+                                :lead-count="localLeadCounts[status.slug] ?? 0"
+                                :saving="savingSlug === status.slug"
+                                @update="updateStatus"
+                                @delete="requestDelete"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Advanced transition matrix -->
+                    <div class="rounded-lg border border-border bg-card">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-foreground"
+                            @click="
+                                showAdvancedTransitions =
+                                    !showAdvancedTransitions
+                            "
+                        >
+                            <span>Avancado: transicoes internas</span>
+                            <span class="text-xs text-muted-foreground">{{
+                                showAdvancedTransitions ? 'Ocultar' : 'Mostrar'
+                            }}</span>
+                        </button>
+                        <div
+                            v-if="showAdvancedTransitions"
+                            class="space-y-2 border-t border-border p-3"
+                        >
+                            <p class="text-xs text-muted-foreground">
+                                Use apenas quando precisar ajustar caminhos
+                                internos. Status customizados ja recebem
+                                transicoes seguras automaticamente.
+                            </p>
+                            <TransitionMatrix
+                                :statuses="sortedStatuses"
+                                :transitions="localTransitions"
+                                :canonical-slugs="canonical_slugs"
+                                @add="addTransition"
+                                @remove="removeTransition"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Modals -->
-        <AddStatusModal
-            v-model:open="showAddModal"
-            @created="onStatusCreated"
-        />
+            <!-- Modals -->
+            <AddStatusModal
+                v-model:open="showAddModal"
+                @created="onStatusCreated"
+            />
 
-        <DeleteStatusModal
-            v-model:open="showDeleteModal"
-            :status="deleteTarget"
-            :lead-count="
-                deleteTarget ? (localLeadCounts[deleteTarget.slug] ?? 0) : 0
-            "
-            @deleted="onStatusDeleted"
-        />
+            <DeleteStatusModal
+                v-model:open="showDeleteModal"
+                :status="deleteTarget"
+                :lead-count="
+                    deleteTarget ? (localLeadCounts[deleteTarget.slug] ?? 0) : 0
+                "
+                @deleted="onStatusDeleted"
+            />
+        </SettingsLayout>
     </AppLayout>
 </template>

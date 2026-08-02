@@ -2,12 +2,12 @@
 
 use App\Ai\Agents\LeadSignalExtractorAgent;
 use App\Enums\TaggableSource;
+use App\Models\AppSetting;
 use App\Models\Lead;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\LeadAutoTaggingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
@@ -15,7 +15,7 @@ function makeAutoTagTenant(): array
 {
     $user = User::factory()->create();
     $tenantId = (string) $user->tenantId;
-    \App\Models\AppSetting::setForTenant($tenantId, 'auto_tagging_enabled', true);
+    AppSetting::setForTenant($tenantId, 'auto_tagging_enabled', true);
 
     return [$user, $tenantId];
 }

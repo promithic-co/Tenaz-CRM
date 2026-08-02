@@ -27,7 +27,7 @@ class CustomFieldController extends Controller
 
     public function index(Request $request): Response
     {
-        return Inertia::render('configuracoes/campos/Index', [
+        return Inertia::render('settings/campos/Index', [
             'fields' => $this->service->definitionsPayload((string) $request->user()->tenantId),
             'types' => CustomFieldService::TYPES,
             'max_fields' => CustomFieldService::MAX_FIELDS,

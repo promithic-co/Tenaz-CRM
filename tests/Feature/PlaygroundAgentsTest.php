@@ -4,8 +4,9 @@ use App\Ai\Agents\BlindspotScannerAgent;
 use App\Ai\Agents\CredFlowAgent;
 use App\Ai\Agents\ScenarioGeneratorAgent;
 use App\Models\Lead;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 test('BlindspotScannerAgent resolves provider, model and the configured instructions', function () {
     $agent = new BlindspotScannerAgent('openrouter', 'anthropic/claude-3.5');

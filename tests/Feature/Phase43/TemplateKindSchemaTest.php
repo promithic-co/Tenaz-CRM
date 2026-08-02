@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 it('adds kind column with meta_hsm default', function () {
@@ -16,7 +17,7 @@ it('test_adds_meta_columns', function () {
     // Verify that meta columns are nullable (insert without them succeeds)
     $user = userWithTenant();
 
-    $id = \Illuminate\Support\Facades\DB::table('whatsapp_templates')->insertGetId([
+    $id = DB::table('whatsapp_templates')->insertGetId([
         'tenant_id' => $user->tenant_id,
         'whatsapp_instance_id' => null,
         'kind' => 'meta_hsm',
@@ -32,7 +33,7 @@ it('test_adds_meta_columns', function () {
         'updated_at' => now(),
     ]);
 
-    $row = \Illuminate\Support\Facades\DB::table('whatsapp_templates')->where('id', $id)->first();
+    $row = DB::table('whatsapp_templates')->where('id', $id)->first();
 
     expect($row)->not->toBeNull()
         ->and($row->kind)->toBe('meta_hsm')

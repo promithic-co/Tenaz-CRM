@@ -2,11 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\StressTestCycle;
 use App\Models\StressTestRun;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\StressTestCycle>
+ * @extends Factory<StressTestCycle>
  */
 class StressTestCycleFactory extends Factory
 {

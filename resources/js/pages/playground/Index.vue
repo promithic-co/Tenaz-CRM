@@ -151,15 +151,6 @@ const MODEL_CATALOG: VendorGroup[] = [
 
 const selectedModel = ref(props.defaultModel);
 
-function modelLabel(value: string): string {
-    for (const group of MODEL_CATALOG) {
-        for (const m of group.models) {
-            if (m.value === value) return m.label;
-        }
-    }
-    return value;
-}
-
 // Bateria de Testes state
 const showAutoTestModal = ref(false);
 const batchObjective = ref('');
@@ -205,7 +196,7 @@ async function scanBlindspots() {
         } else {
             scanError.value = data.error || 'Nenhum vetor de ataque gerado.';
         }
-    } catch (e) {
+    } catch {
         scanError.value = 'Erro de rede ao escanear vulnerabilidades.';
     } finally {
         isScanning.value = false;
@@ -385,7 +376,7 @@ async function startBatchTest() {
                     );
                     if (scRes.ok) scenario = (await scRes.json()).scenario;
                     else scenario = 'Cliente insistente (fallback)';
-                } catch (e) {
+                } catch {
                     scenario = 'Testador genérico (erro)';
                 }
             }
@@ -412,7 +403,7 @@ async function startBatchTest() {
                 messages.value = [];
                 debugLog.value = [];
                 await nextTick();
-            } catch (e) {
+            } catch {
                 break;
             }
 

@@ -2,14 +2,16 @@
 
 use App\Ai\Agents\SiapeAgent;
 use App\Ai\Tools\AtualizarStatusLeadTool;
+use App\Ai\Tools\ConsultarCreditoInssTool;
 use App\Ai\Tools\ConsultarCreditoSiapeTool;
 use App\Ai\Tools\EscalarParaHumanoTool;
 use App\Ai\Tools\RegistrarLeadSemCreditoTool;
 use App\Models\Agent;
 use App\Models\AgentConfig;
 use App\Models\Lead;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function createSiapeLead(array $leadOverrides = []): Lead
 {
@@ -57,7 +59,7 @@ test('SiapeAgent does not include INSS tool', function () {
     $tools = iterator_to_array($agent->tools());
     $toolClasses = array_map(fn ($t) => $t::class, $tools);
 
-    expect($toolClasses)->not->toContain(\App\Ai\Tools\ConsultarCreditoInssTool::class);
+    expect($toolClasses)->not->toContain(ConsultarCreditoInssTool::class);
 });
 
 test('SiapeAgent omits escalation tool when lead is already escalated', function () {

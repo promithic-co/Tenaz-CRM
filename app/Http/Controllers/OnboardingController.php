@@ -87,20 +87,20 @@ class OnboardingController extends Controller
             $config = AgentConfig::where('agent_id', $draftAgent->id)->first();
             if ($config) {
                 $personaValues = [
-                    'agent_name'        => $config->agent_name,
-                    'company_name'      => $config->company_name,
+                    'agent_name' => $config->agent_name,
+                    'company_name' => $config->company_name,
                     'agent_personality' => $config->agent_personality,
-                    'agent_greeting'    => $config->agent_greeting,
+                    'agent_greeting' => $config->agent_greeting,
                 ];
             }
         }
 
         return Inertia::render('onboarding/Index', [
-            'current_step'    => $currentStep,
-            'templates'       => $templates,
+            'current_step' => $currentStep,
+            'templates' => $templates,
             'default_template' => $defaultTemplate,
-            'instances'       => $instances,
-            'persona_values'  => $personaValues,
+            'instances' => $instances,
+            'persona_values' => $personaValues,
         ]);
     }
 
@@ -116,7 +116,7 @@ class OnboardingController extends Controller
     {
         $templateSlug = $request->validated('template_slug');
 
-        DB::transaction(function () use ($templateSlug, $request) {
+        DB::transaction(function () use ($templateSlug) {
             /** @var User $user */
             $user = User::whereKey(auth()->id())->lockForUpdate()->firstOrFail();
 
@@ -322,8 +322,8 @@ class OnboardingController extends Controller
 
         return Inertia::render('onboarding/Index', [
             'current_step' => 'complete',
-            'agent_name'   => $config?->agent_name ?? $agentModel->name,
-            'is_ready'     => $isReady,
+            'agent_name' => $config?->agent_name ?? $agentModel->name,
+            'is_ready' => $isReady,
         ]);
     }
 }

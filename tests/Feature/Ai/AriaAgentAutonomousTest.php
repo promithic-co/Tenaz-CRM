@@ -1,6 +1,7 @@
 <?php
 
 use App\Ai\Agents\CredFlowAgent;
+use App\Ai\Tools\EscalarParaHumanoTool;
 use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,7 +57,7 @@ test('CredFlowAgent tools are context-filtered based on lead status', function (
 
     $toolClasses = collect($agent->tools())->map(fn ($t) => get_class($t))->all();
 
-    expect($toolClasses)->not->toContain(\App\Ai\Tools\EscalarParaHumanoTool::class);
+    expect($toolClasses)->not->toContain(EscalarParaHumanoTool::class);
 });
 
 test('CredFlowAgent includes escalar tool when lead is qualificado', function () {
@@ -65,5 +66,5 @@ test('CredFlowAgent includes escalar tool when lead is qualificado', function ()
 
     $toolClasses = collect($agent->tools())->map(fn ($t) => get_class($t))->all();
 
-    expect($toolClasses)->toContain(\App\Ai\Tools\EscalarParaHumanoTool::class);
+    expect($toolClasses)->toContain(EscalarParaHumanoTool::class);
 });

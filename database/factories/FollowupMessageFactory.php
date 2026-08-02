@@ -2,11 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\FollowupMessage;
 use App\Models\Lead;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\FollowupMessage>
+ * @extends Factory<FollowupMessage>
  */
 class FollowupMessageFactory extends Factory
 {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import VoiceCampaignController from '@/actions/App/Http/Controllers/VoiceCampaignController';
 import VoicePreviewController from '@/actions/App/Http/Controllers/VoicePreviewController';
@@ -110,7 +110,7 @@ function removeDtmfRow(i: number) {
     syncDtmfToForm();
 }
 
-function onActionChange(_i: number) {
+function onActionChange() {
     syncDtmfToForm();
 }
 
@@ -462,7 +462,7 @@ const dtmfIsValid = computed(
                                     <select
                                         v-model="row.action"
                                         class="flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
-                                        @change="onActionChange(i)"
+                                        @change="onActionChange()"
                                     >
                                         <option
                                             v-for="opt in dtmfActionOptions"

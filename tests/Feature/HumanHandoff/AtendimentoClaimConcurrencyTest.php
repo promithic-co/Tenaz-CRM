@@ -7,9 +7,10 @@ use App\Models\ServiceTicket;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\ServiceTicketLifecycleService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function concurrencyTenant(): array
 {

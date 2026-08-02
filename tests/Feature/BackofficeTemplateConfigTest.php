@@ -8,14 +8,6 @@ uses(RefreshDatabase::class);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function superAdmin(): User
-{
-    $admin = User::factory()->superAdmin()->create();
-    $admin->tenants()->detach();
-
-    return $admin;
-}
-
 function validTemplatePayload(array $overrides = []): array
 {
     return array_merge([

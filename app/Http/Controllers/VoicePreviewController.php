@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Http;
@@ -27,7 +28,7 @@ class VoicePreviewController extends Controller
      * Generate a TTS audio preview for a given text and voice.
      * Returns audio/mpeg binary that the browser plays directly.
      */
-    public function preview(Request $request): Response|\Illuminate\Http\JsonResponse
+    public function preview(Request $request): Response|JsonResponse
     {
         $validated = $request->validate([
             'text' => ['required', 'string', 'max:500'],
