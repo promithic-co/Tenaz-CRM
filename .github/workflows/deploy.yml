@@ -14,10 +14,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      # pcntl and posix are hard requirements of laravel/horizon, redis of
+      # predis' serializer path. setup-php ships none of them by default, which
+      # is why `composer install` had never once got past this step.
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
+          extensions: pcntl, posix, redis, bcmath, intl, gd, zip
           tools: composer:v2
           coverage: none
 
@@ -26,13 +30,23 @@ jobs:
         with:
           node-version: '22'
 
+      # composer's post-autoload-dump runs `artisan package:discover`, which boots
+      # the framework — so it cannot run before there is an env and a key. The
+      # Lint job only ever got past this because it passes --no-scripts. Install
+      # without scripts, configure, then dump the autoloader for real.
+      - name: Copy environment
+        run: cp .env.example .env
+
       - name: Install dependencies
         run: |
-          composer install --no-interaction --prefer-dist --optimize-autoloader
+          composer install --no-interaction --prefer-dist --no-scripts
           npm ci
 
-      - name: Copy environment
-        run: cp .env.example .env && php artisan key:generate
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Discover packages
+        run: composer dump-autoload --optimize
 
       - name: Build assets
         run: npm run build

@@ -20,10 +20,13 @@ jobs:
 
       # Production runs 8.3 and composer.json pins the platform to 8.3.31, so
       # that is the only version worth proving green here.
+      # pcntl and posix are hard requirements of laravel/horizon, redis of
+      # predis' serializer path. setup-php ships none of them by default.
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
+          extensions: pcntl, posix, redis, bcmath, intl, gd, zip
           tools: composer:v2
           coverage: xdebug
 
@@ -32,17 +35,22 @@ jobs:
         with:
           node-version: '22'
 
+      # composer's post-autoload-dump runs `artisan package:discover`, which boots
+      # the framework — so it cannot run before there is an env and a key.
+      - name: Copy Environment File
+        run: cp .env.example .env
+
       - name: Install Node Dependencies
         run: npm i
 
       - name: Install Dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Copy Environment File
-        run: cp .env.example .env
+        run: composer install --no-interaction --prefer-dist --no-scripts
 
       - name: Generate Application Key
         run: php artisan key:generate
+
+      - name: Discover Packages
+        run: composer dump-autoload --optimize
 
       - name: Build Assets
         run: npm run build
