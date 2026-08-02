@@ -11,7 +11,6 @@ import {
     MessageSquare,
     Microscope,
     Phone,
-    Settings,
     Shield,
     Smartphone,
     Users,
@@ -111,21 +110,6 @@ const laboratorySubItems = computed(() => [
 const laboratoryOpen = ref(
     currentPath.value.startsWith(`${backofficeBase.value}/laboratory`) ||
         currentPath.value.startsWith(`${backofficeBase.value}/playground`),
-);
-
-// Configurações submenu. The pipeline editor shipped without a nav entry and was
-// reachable by URL only; the extra-fields CRUD gives it a home worth having.
-const configuracoesSubItems = [
-    { title: 'Pipeline de status', href: '/settings/pipeline' },
-    { title: 'Campos adicionais', href: '/settings/campos' },
-];
-
-// Only these two pages open the submenu: /settings also holds profile, password
-// and appearance, which belong to the account menu, not here.
-const configuracoesOpen = ref(
-    configuracoesSubItems.some((item) =>
-        currentPath.value.startsWith(item.href),
-    ),
 );
 
 const agentSubItems = [
@@ -447,44 +431,10 @@ const footerNavItems: NavItem[] = [];
                         </SidebarMenuSub>
                     </SidebarMenuItem>
 
-                    <!-- Configurações com submenu -->
-                    <SidebarMenuItem v-if="canManageAdmin">
-                        <SidebarMenuButton
-                            :is-active="
-                                currentPath.startsWith('/configuracoes')
-                            "
-                            tooltip="Configurações"
-                            @click="configuracoesOpen = !configuracoesOpen"
-                            class="cursor-pointer select-none"
-                        >
-                            <Settings />
-                            <span>Configurações</span>
-                            <ChevronRight
-                                class="ml-auto transition-transform duration-200"
-                                :class="configuracoesOpen ? 'rotate-90' : ''"
-                                :size="14"
-                            />
-                        </SidebarMenuButton>
-
-                        <SidebarMenuSub v-if="configuracoesOpen">
-                            <SidebarMenuSubItem
-                                v-for="sub in configuracoesSubItems"
-                                :key="sub.href"
-                            >
-                                <SidebarMenuSubButton
-                                    as-child
-                                    :is-active="
-                                        currentPath === sub.href ||
-                                        currentPath.startsWith(sub.href + '/')
-                                    "
-                                >
-                                    <Link :href="sub.href">{{
-                                        sub.title
-                                    }}</Link>
-                                </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                        </SidebarMenuSub>
-                    </SidebarMenuItem>
+                    <!-- Pipeline de status and Campos adicionais used to hang off a
+                         "Configurações" group here. They are tenant settings, so they
+                         now live in the settings area with Team and Auto-tag, reachable
+                         from the account menu below. -->
 
                     <!-- Backoffice (super-admin only) -->
                     <SidebarMenuItem v-if="isSuperAdmin">

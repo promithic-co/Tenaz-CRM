@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 import followup from './followup'
 /**
 * @see \App\Http\Controllers\ServiceTicketController::index
- * @see app/Http/Controllers/ServiceTicketController.php:18
+ * @see app/Http/Controllers/ServiceTicketController.php:19
  * @route '/atendimentos'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -17,7 +17,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::index
- * @see app/Http/Controllers/ServiceTicketController.php:18
+ * @see app/Http/Controllers/ServiceTicketController.php:19
  * @route '/atendimentos'
  */
 index.url = (options?: RouteQueryOptions) => {
@@ -26,7 +26,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::index
- * @see app/Http/Controllers/ServiceTicketController.php:18
+ * @see app/Http/Controllers/ServiceTicketController.php:19
  * @route '/atendimentos'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\ServiceTicketController::index
- * @see app/Http/Controllers/ServiceTicketController.php:18
+ * @see app/Http/Controllers/ServiceTicketController.php:19
  * @route '/atendimentos'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\ServiceTicketController::index
- * @see app/Http/Controllers/ServiceTicketController.php:18
+ * @see app/Http/Controllers/ServiceTicketController.php:19
  * @route '/atendimentos'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -55,7 +55,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\ServiceTicketController::index
- * @see app/Http/Controllers/ServiceTicketController.php:18
+ * @see app/Http/Controllers/ServiceTicketController.php:19
  * @route '/atendimentos'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -64,7 +64,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\ServiceTicketController::index
- * @see app/Http/Controllers/ServiceTicketController.php:18
+ * @see app/Http/Controllers/ServiceTicketController.php:19
  * @route '/atendimentos'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -80,7 +80,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     index.form = indexForm
 /**
 * @see \App\Http\Controllers\ServiceTicketController::claim
- * @see app/Http/Controllers/ServiceTicketController.php:42
+ * @see app/Http/Controllers/ServiceTicketController.php:43
  * @route '/atendimentos/{ticket}/claim'
  */
 export const claim = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -95,7 +95,7 @@ claim.definition = {
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::claim
- * @see app/Http/Controllers/ServiceTicketController.php:42
+ * @see app/Http/Controllers/ServiceTicketController.php:43
  * @route '/atendimentos/{ticket}/claim'
  */
 claim.url = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -128,7 +128,7 @@ claim.url = (args: { ticket: number | { id: number } } | [ticket: number | { id:
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::claim
- * @see app/Http/Controllers/ServiceTicketController.php:42
+ * @see app/Http/Controllers/ServiceTicketController.php:43
  * @route '/atendimentos/{ticket}/claim'
  */
 claim.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -138,7 +138,7 @@ claim.post = (args: { ticket: number | { id: number } } | [ticket: number | { id
 
     /**
 * @see \App\Http\Controllers\ServiceTicketController::claim
- * @see app/Http/Controllers/ServiceTicketController.php:42
+ * @see app/Http/Controllers/ServiceTicketController.php:43
  * @route '/atendimentos/{ticket}/claim'
  */
     const claimForm = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -148,7 +148,7 @@ claim.post = (args: { ticket: number | { id: number } } | [ticket: number | { id
 
             /**
 * @see \App\Http\Controllers\ServiceTicketController::claim
- * @see app/Http/Controllers/ServiceTicketController.php:42
+ * @see app/Http/Controllers/ServiceTicketController.php:43
  * @route '/atendimentos/{ticket}/claim'
  */
         claimForm.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -159,7 +159,7 @@ claim.post = (args: { ticket: number | { id: number } } | [ticket: number | { id
     claim.form = claimForm
 /**
 * @see \App\Http\Controllers\ServiceTicketController::resolve
- * @see app/Http/Controllers/ServiceTicketController.php:74
+ * @see app/Http/Controllers/ServiceTicketController.php:75
  * @route '/atendimentos/{ticket}/resolve'
  */
 export const resolve = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -174,7 +174,7 @@ resolve.definition = {
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::resolve
- * @see app/Http/Controllers/ServiceTicketController.php:74
+ * @see app/Http/Controllers/ServiceTicketController.php:75
  * @route '/atendimentos/{ticket}/resolve'
  */
 resolve.url = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -207,7 +207,7 @@ resolve.url = (args: { ticket: number | { id: number } } | [ticket: number | { i
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::resolve
- * @see app/Http/Controllers/ServiceTicketController.php:74
+ * @see app/Http/Controllers/ServiceTicketController.php:75
  * @route '/atendimentos/{ticket}/resolve'
  */
 resolve.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -217,7 +217,7 @@ resolve.post = (args: { ticket: number | { id: number } } | [ticket: number | { 
 
     /**
 * @see \App\Http\Controllers\ServiceTicketController::resolve
- * @see app/Http/Controllers/ServiceTicketController.php:74
+ * @see app/Http/Controllers/ServiceTicketController.php:75
  * @route '/atendimentos/{ticket}/resolve'
  */
     const resolveForm = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -227,7 +227,7 @@ resolve.post = (args: { ticket: number | { id: number } } | [ticket: number | { 
 
             /**
 * @see \App\Http\Controllers\ServiceTicketController::resolve
- * @see app/Http/Controllers/ServiceTicketController.php:74
+ * @see app/Http/Controllers/ServiceTicketController.php:75
  * @route '/atendimentos/{ticket}/resolve'
  */
         resolveForm.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -238,7 +238,7 @@ resolve.post = (args: { ticket: number | { id: number } } | [ticket: number | { 
     resolve.form = resolveForm
 /**
 * @see \App\Http\Controllers\ServiceTicketController::close
- * @see app/Http/Controllers/ServiceTicketController.php:90
+ * @see app/Http/Controllers/ServiceTicketController.php:91
  * @route '/atendimentos/{ticket}/close'
  */
 export const close = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -253,7 +253,7 @@ close.definition = {
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::close
- * @see app/Http/Controllers/ServiceTicketController.php:90
+ * @see app/Http/Controllers/ServiceTicketController.php:91
  * @route '/atendimentos/{ticket}/close'
  */
 close.url = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -286,7 +286,7 @@ close.url = (args: { ticket: number | { id: number } } | [ticket: number | { id:
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::close
- * @see app/Http/Controllers/ServiceTicketController.php:90
+ * @see app/Http/Controllers/ServiceTicketController.php:91
  * @route '/atendimentos/{ticket}/close'
  */
 close.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -296,7 +296,7 @@ close.post = (args: { ticket: number | { id: number } } | [ticket: number | { id
 
     /**
 * @see \App\Http\Controllers\ServiceTicketController::close
- * @see app/Http/Controllers/ServiceTicketController.php:90
+ * @see app/Http/Controllers/ServiceTicketController.php:91
  * @route '/atendimentos/{ticket}/close'
  */
     const closeForm = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -306,7 +306,7 @@ close.post = (args: { ticket: number | { id: number } } | [ticket: number | { id
 
             /**
 * @see \App\Http\Controllers\ServiceTicketController::close
- * @see app/Http/Controllers/ServiceTicketController.php:90
+ * @see app/Http/Controllers/ServiceTicketController.php:91
  * @route '/atendimentos/{ticket}/close'
  */
         closeForm.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -317,7 +317,7 @@ close.post = (args: { ticket: number | { id: number } } | [ticket: number | { id
     close.form = closeForm
 /**
 * @see \App\Http\Controllers\ServiceTicketController::returnToAi
- * @see app/Http/Controllers/ServiceTicketController.php:106
+ * @see app/Http/Controllers/ServiceTicketController.php:107
  * @route '/atendimentos/{ticket}/return-to-ai'
  */
 export const returnToAi = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -332,7 +332,7 @@ returnToAi.definition = {
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::returnToAi
- * @see app/Http/Controllers/ServiceTicketController.php:106
+ * @see app/Http/Controllers/ServiceTicketController.php:107
  * @route '/atendimentos/{ticket}/return-to-ai'
  */
 returnToAi.url = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -365,7 +365,7 @@ returnToAi.url = (args: { ticket: number | { id: number } } | [ticket: number | 
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::returnToAi
- * @see app/Http/Controllers/ServiceTicketController.php:106
+ * @see app/Http/Controllers/ServiceTicketController.php:107
  * @route '/atendimentos/{ticket}/return-to-ai'
  */
 returnToAi.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -375,7 +375,7 @@ returnToAi.post = (args: { ticket: number | { id: number } } | [ticket: number |
 
     /**
 * @see \App\Http\Controllers\ServiceTicketController::returnToAi
- * @see app/Http/Controllers/ServiceTicketController.php:106
+ * @see app/Http/Controllers/ServiceTicketController.php:107
  * @route '/atendimentos/{ticket}/return-to-ai'
  */
     const returnToAiForm = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -385,7 +385,7 @@ returnToAi.post = (args: { ticket: number | { id: number } } | [ticket: number |
 
             /**
 * @see \App\Http\Controllers\ServiceTicketController::returnToAi
- * @see app/Http/Controllers/ServiceTicketController.php:106
+ * @see app/Http/Controllers/ServiceTicketController.php:107
  * @route '/atendimentos/{ticket}/return-to-ai'
  */
         returnToAiForm.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -396,7 +396,7 @@ returnToAi.post = (args: { ticket: number | { id: number } } | [ticket: number |
     returnToAi.form = returnToAiForm
 /**
 * @see \App\Http\Controllers\ServiceTicketController::keepManual
- * @see app/Http/Controllers/ServiceTicketController.php:115
+ * @see app/Http/Controllers/ServiceTicketController.php:116
  * @route '/atendimentos/{ticket}/keep-manual'
  */
 export const keepManual = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -411,7 +411,7 @@ keepManual.definition = {
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::keepManual
- * @see app/Http/Controllers/ServiceTicketController.php:115
+ * @see app/Http/Controllers/ServiceTicketController.php:116
  * @route '/atendimentos/{ticket}/keep-manual'
  */
 keepManual.url = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -444,7 +444,7 @@ keepManual.url = (args: { ticket: number | { id: number } } | [ticket: number | 
 
 /**
 * @see \App\Http\Controllers\ServiceTicketController::keepManual
- * @see app/Http/Controllers/ServiceTicketController.php:115
+ * @see app/Http/Controllers/ServiceTicketController.php:116
  * @route '/atendimentos/{ticket}/keep-manual'
  */
 keepManual.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -454,7 +454,7 @@ keepManual.post = (args: { ticket: number | { id: number } } | [ticket: number |
 
     /**
 * @see \App\Http\Controllers\ServiceTicketController::keepManual
- * @see app/Http/Controllers/ServiceTicketController.php:115
+ * @see app/Http/Controllers/ServiceTicketController.php:116
  * @route '/atendimentos/{ticket}/keep-manual'
  */
     const keepManualForm = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -464,7 +464,7 @@ keepManual.post = (args: { ticket: number | { id: number } } | [ticket: number |
 
             /**
 * @see \App\Http\Controllers\ServiceTicketController::keepManual
- * @see app/Http/Controllers/ServiceTicketController.php:115
+ * @see app/Http/Controllers/ServiceTicketController.php:116
  * @route '/atendimentos/{ticket}/keep-manual'
  */
         keepManualForm.post = (args: { ticket: number | { id: number } } | [ticket: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

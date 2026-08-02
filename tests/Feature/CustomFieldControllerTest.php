@@ -44,7 +44,7 @@ test('the settings page lists the tenant fields in display order', function (): 
         ->get(route('settings.campos.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('configuracoes/campos/Index')
+            ->component('settings/campos/Index')
             ->has('fields', 2)
             ->where('fields.0.label', 'Primeiro')
             ->where('fields.1.label', 'Segundo')

@@ -312,7 +312,7 @@ destroy.delete = (args: { voiceInstance: number | { id: number } } | [voiceInsta
     destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\VoicePreviewController::previewTts
- * @see app/Http/Controllers/VoicePreviewController.php:30
+ * @see app/Http/Controllers/VoicePreviewController.php:31
  * @route '/voz/preview-tts'
  */
 export const previewTts = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -327,7 +327,7 @@ previewTts.definition = {
 
 /**
 * @see \App\Http\Controllers\VoicePreviewController::previewTts
- * @see app/Http/Controllers/VoicePreviewController.php:30
+ * @see app/Http/Controllers/VoicePreviewController.php:31
  * @route '/voz/preview-tts'
  */
 previewTts.url = (options?: RouteQueryOptions) => {
@@ -336,7 +336,7 @@ previewTts.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\VoicePreviewController::previewTts
- * @see app/Http/Controllers/VoicePreviewController.php:30
+ * @see app/Http/Controllers/VoicePreviewController.php:31
  * @route '/voz/preview-tts'
  */
 previewTts.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -346,7 +346,7 @@ previewTts.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\VoicePreviewController::previewTts
- * @see app/Http/Controllers/VoicePreviewController.php:30
+ * @see app/Http/Controllers/VoicePreviewController.php:31
  * @route '/voz/preview-tts'
  */
     const previewTtsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -356,7 +356,7 @@ previewTts.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\VoicePreviewController::previewTts
- * @see app/Http/Controllers/VoicePreviewController.php:30
+ * @see app/Http/Controllers/VoicePreviewController.php:31
  * @route '/voz/preview-tts'
  */
         previewTtsForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

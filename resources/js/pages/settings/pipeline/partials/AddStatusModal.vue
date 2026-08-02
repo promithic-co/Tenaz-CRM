@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,7 +26,7 @@ const colorDot: Record<string, string> = {
     pink: 'bg-pink-500',
 };
 
-const props = defineProps<{
+defineProps<{
     open: boolean;
 }>();
 

@@ -58,7 +58,7 @@ it('pipeline index returns statuses and canonical_slugs', function (): void {
 
     $response->assertStatus(200)
         ->assertInertia(fn ($page) => $page
-            ->component('configuracoes/pipeline/Index')
+            ->component('settings/pipeline/Index')
             ->has('statuses')
             ->has('transitions')
             ->has('canonical_slugs')
