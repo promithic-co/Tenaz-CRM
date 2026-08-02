@@ -44,8 +44,17 @@ jobs:
 
       # --force because .env.example carries APP_ENV=production, and every
       # confirmable command aborts rather than prompt when there is no TTY.
+      # The failure is echoed as an annotation so it is readable without a token.
       - name: Generate application key
-        run: php artisan key:generate --force
+        run: |
+          set +e
+          php artisan key:generate --force -vvv > key.log 2>&1
+          code=$?
+          cat key.log
+          if [ $code -ne 0 ]; then
+            echo "::error::$(tr '\n' ' ' < key.log | tail -c 900)"
+          fi
+          exit $code
 
       - name: Discover packages
         run: composer dump-autoload --optimize
