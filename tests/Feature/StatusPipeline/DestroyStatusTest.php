@@ -9,7 +9,7 @@ it('deleting a canonical status returns 422', function (): void {
     $user = userWithTenant();
 
     $this->actingAs($user)
-        ->deleteJson('/configuracoes/pipeline/statuses/novo')
+        ->deleteJson('/settings/pipeline/statuses/novo')
         ->assertStatus(422);
 });
 
@@ -21,7 +21,7 @@ it('deleting a custom status with no leads removes it', function (): void {
     app(StatusMachineService::class)->addCustomStatus($machine, ['name' => 'Aguardando Doc']);
 
     $this->actingAs($user)
-        ->deleteJson('/configuracoes/pipeline/statuses/aguardando-doc')
+        ->deleteJson('/settings/pipeline/statuses/aguardando-doc')
         ->assertOk();
 
     $machine->refresh();
@@ -42,6 +42,6 @@ it('deleting a custom status with leads returns 409', function (): void {
     ]);
 
     $this->actingAs($user)
-        ->deleteJson('/configuracoes/pipeline/statuses/em-analise')
+        ->deleteJson('/settings/pipeline/statuses/em-analise')
         ->assertStatus(409);
 });

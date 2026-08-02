@@ -64,7 +64,7 @@ function close() {
 }
 
 function submit() {
-    form.post('/configuracoes/pipeline/statuses', {
+    form.post('/settings/pipeline/statuses', {
         preserveScroll: true,
         preserveState: true,
         onSuccess: (page) => {

@@ -36,6 +36,7 @@ class ConversationPanelPropsBuilder
         private readonly FollowUpStateSummarizer $followUpState,
         private readonly CustomFieldService $customFields,
         private readonly ConversationHistoryBuilder $history,
+        private readonly ConversationSessionInformationService $sessionInformation,
     ) {}
 
     /**
@@ -48,7 +49,6 @@ class ConversationPanelPropsBuilder
      *     followupState: array<string, mixed>,
      *     conversationWindow: array<string, mixed>,
      *     history: array{entries: list<array<string, mixed>>, truncated: bool, event_retention_days: int},
-     *     canStartCampaign: bool,
      *     active_handoff: array<string, mixed>|null,
      *     handoff_state: array<string, mixed>,
      *     handoff_actions: array<string, mixed>,
@@ -103,7 +103,6 @@ class ConversationPanelPropsBuilder
             'followupState' => $this->followUpState->forLead($lead),
             'conversationWindow' => $this->conversationWindow->resolve($lead),
             'history' => $this->history->forLead($lead),
-            'canStartCampaign' => $actor->isOwnerOrAdmin(),
             'active_handoff' => $activeHandoff,
             'handoff_state' => $this->handoffState->deriveState($lead, $activeTicket),
             'handoff_actions' => $this->handoffState->handoffActions($activeTicket),
@@ -150,7 +149,7 @@ class ConversationPanelPropsBuilder
      * The lead's atendimentos (service cycles), newest first, so the panel can render
      * session dividers, the returning badge, and the close/new-atendimento controls.
      *
-     * @return list<array{id: int, number: int, status: string, open_reason: string, outcome: string|null, value_cents: int|null, expected_close_at: string|null, opened_at: string|null, closed_at: string|null, last_message_at: string|null, is_returning: bool}>
+     * @return list<array{id: int, number: int, status: string, open_reason: string, outcome: string|null, value_cents: int|null, collected_information: list<array{key: string, label: string, value: string, source: string}>, opened_at: string|null, closed_at: string|null, last_message_at: string|null, is_returning: bool}>
      */
     private function buildSessions(Lead $lead): array
     {
@@ -164,9 +163,7 @@ class ConversationPanelPropsBuilder
                 'open_reason' => $session->open_reason,
                 'outcome' => $session->outcome,
                 'value_cents' => $session->value_cents,
-                // Date-only: a forecast is a day, not an instant, and an ISO8601 timestamp
-                // would shift it across the date line for anyone outside UTC.
-                'expected_close_at' => $session->expected_close_at?->toDateString(),
+                'collected_information' => $this->sessionInformation->items($session),
                 'opened_at' => $session->opened_at?->toIso8601String(),
                 'closed_at' => $session->closed_at?->toIso8601String(),
                 'last_message_at' => $session->last_message_at?->toIso8601String(),

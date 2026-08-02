@@ -6,12 +6,10 @@ import {
     ExternalLink,
     History,
     ListPlus,
-    Megaphone,
     Phone,
     Play,
     Plus,
     RefreshCw,
-    SlidersHorizontal,
     StickyNote,
     Trash2,
     UserPlus,
@@ -31,13 +29,12 @@ import {
 } from '@/components/ui/dialog';
 import {
     formatCents,
-    parseCents,
     SELECTABLE_SESSION_OUTCOMES,
     SESSION_OUTCOME_LABELS,
     SESSION_REASON_LABELS,
 } from '@/lib/conversation-session';
 import type { LeadCustomField } from '@/lib/custom-fields';
-import { keepManual, returnToAi } from '@/routes/atendimentos';
+import { keepManual } from '@/routes/atendimentos';
 import { show as showContact } from '@/routes/contatos';
 import {
     addToContacts,
@@ -45,7 +42,6 @@ import {
     clearHistory,
     destroy,
     pause,
-    prepareCampaign,
     resume,
 } from '@/routes/conversas';
 import { update as updateCollectedInformation } from '@/routes/conversas/collected-information';
@@ -61,14 +57,10 @@ import {
     close as closeSession,
     store as storeSession,
 } from '@/routes/conversas/sessions';
-import { update as updateSessionValue } from '@/routes/conversas/sessions/value';
+import { update as updateSessionInformation } from '@/routes/conversas/sessions/information';
 import { store as autoTagStore } from '@/routes/leads/auto-tag';
 import { store as storeListEntry } from '@/routes/listas-contato/entries';
-import type {
-    ActiveConversation,
-    ConversationHistory,
-    ConversationSessionOutcome,
-} from '../types';
+import type { ActiveConversation, ConversationSessionOutcome } from '../types';
 import PanelSection from './PanelSection.vue';
 
 type Props = {
@@ -85,13 +77,11 @@ const disableFollowUpForm = useForm({});
 const reactivateFollowUpForm = useForm({});
 const clearHistoryForm = useForm({});
 const deleteLeadForm = useForm({});
-const prepareCampaignForm = useForm({});
 const addContactForm = useForm({});
 const aiModeForm = useForm({
     ai_mode: props.conversation.lead.ai_mode ?? '',
 });
 
-const returnToAiForm = useForm({});
 const keepManualForm = useForm({});
 const autoTagForm = useForm({});
 
@@ -147,8 +137,28 @@ const sessions = computed(() => props.conversation.sessions ?? []);
 const openSession = computed(
     () => sessions.value.find((session) => session.status === 'open') ?? null,
 );
+const closedSessions = computed(() =>
+    sessions.value.filter((session) => session.status !== 'open'),
+);
 
-const history = computed<ConversationHistory>(
+const handoffStateLabels: Record<string, string> = {
+    waiting_human: 'Aguardando atendimento',
+    human_active: 'Em atendimento humano',
+    waiting_customer: 'Aguardando cliente',
+    closed: 'Encerrado',
+    ai_active: 'IA ativa',
+};
+
+const HANDOFF_STATE_BADGE: Record<string, string> = {
+    waiting_human:
+        'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    human_active:
+        'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    waiting_customer:
+        'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+};
+
+const history = computed(
     () =>
         props.conversation.history ?? {
             entries: [],
@@ -201,9 +211,10 @@ const listEntryForm = useForm({
 });
 
 /**
- * Extra lead fields defined by the tenant in configuracoes/campos. The section
- * hides itself when the tenant defined none, so the panel doesn't grow an empty
- * box for the majority who never touch the feature.
+ * Extra lead fields defined by the tenant in configuracoes/campos. They render
+ * inside the contact information box and disappear entirely when the tenant
+ * defined none, so the panel doesn't grow an empty form for the majority who
+ * never touch the feature.
  */
 const customFields = computed<LeadCustomField[]>(
     () => props.conversation.custom_fields ?? [],
@@ -321,86 +332,6 @@ function submitCloseSession(): void {
     );
 }
 
-/**
- * Amount and forecast on the open atendimento. The text field holds whatever the operator
- * typed; only `parseCents` output crosses the wire, so the server never guesses a locale.
- */
-const valueInput = ref(
-    openSession.value?.value_cents != null
-        ? (openSession.value.value_cents / 100).toFixed(2).replace('.', ',')
-        : '',
-);
-const valueForm = useForm<{
-    value_cents: number | null;
-    expected_close_at: string | null;
-}>({
-    value_cents: openSession.value?.value_cents ?? null,
-    expected_close_at: openSession.value?.expected_close_at ?? null,
-});
-const valueSaved = ref(false);
-
-/**
- * A close (or a new atendimento) swaps the session under the form. Reset from the incoming
- * row unless the operator has unsaved edits — their typing outranks a background refresh.
- */
-watch(
-    () => openSession.value?.id,
-    () => {
-        if (valueForm.isDirty) {
-            return;
-        }
-        const cents = openSession.value?.value_cents ?? null;
-        valueInput.value =
-            cents != null ? (cents / 100).toFixed(2).replace('.', ',') : '';
-        valueForm.defaults({
-            value_cents: cents,
-            expected_close_at: openSession.value?.expected_close_at ?? null,
-        });
-        valueForm.reset();
-    },
-);
-
-function onValueInput(): void {
-    valueForm.value_cents = parseCents(valueInput.value);
-}
-
-/** Reformat to pt-BR on blur so the field shows the number that was actually stored. */
-function onValueBlur(): void {
-    valueInput.value =
-        valueForm.value_cents != null
-            ? (valueForm.value_cents / 100).toFixed(2).replace('.', ',')
-            : '';
-}
-
-function submitSessionValue(): void {
-    if (!openSession.value) {
-        return;
-    }
-    valueSaved.value = false;
-
-    valueForm.patch(
-        updateSessionValue.url({
-            lead: lead.value.id,
-            session: openSession.value.id,
-        }),
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                // Spread: `defaults()` merges shallowly, and handing over the live form
-                // object would make isDirty blind to every later edit.
-                valueForm.defaults({
-                    value_cents: valueForm.value_cents,
-                    expected_close_at: valueForm.expected_close_at,
-                });
-                valueSaved.value = true;
-                setTimeout(() => {
-                    valueSaved.value = false;
-                }, 2500);
-            },
-        },
-    );
-}
-
 /** Shared by the atendimento list and the history: dd/mm hh:mm, no year. */
 function formatShortDateTime(value: string | null): string {
     if (!value) {
@@ -497,12 +428,6 @@ function submitDeleteLead(): void {
     });
 }
 
-function submitPrepareCampaign(): void {
-    prepareCampaignForm.post(prepareCampaign.url({ lead: lead.value.id }), {
-        preserveScroll: false,
-    });
-}
-
 function initials(name: string): string {
     return name.trim().slice(0, 2).toUpperCase() || '?';
 }
@@ -588,13 +513,185 @@ function initials(name: string): string {
             <CollectedInformationEditor
                 :items="lead.collected_information"
                 :action="updateCollectedInformation({ lead: lead.id })"
+                title="Informações do contato"
+                hint="memória da IA"
                 can-edit
                 compact
-            />
+            >
+                <!-- The tenant's own typed fields belong in this box, not a section of
+                     their own: both are "what we know about this contact", and splitting
+                     them left the operator with two places to look for the same thing.
+                     What the tenant modelled sits above what the conversation revealed. -->
+                <template v-if="customFields.length > 0" #fields>
+                    <div
+                        class="mt-2.5 border-b border-sidebar-border/70 pb-3 dark:border-sidebar-border"
+                    >
+                        <form
+                            class="space-y-2.5"
+                            @submit.prevent="submitCustomFields"
+                        >
+                            <div
+                                v-for="field in editableCustomFields"
+                                :key="field.id"
+                                class="space-y-1"
+                            >
+                                <label
+                                    :for="`custom-field-${field.id}`"
+                                    class="flex items-center gap-1 text-[11px] text-muted-foreground"
+                                >
+                                    {{ field.label }}
+                                    <span
+                                        v-if="field.is_required"
+                                        class="text-amber-500"
+                                        >*</span
+                                    >
+                                </label>
+
+                                <label
+                                    v-if="field.type === 'boolean'"
+                                    class="flex cursor-pointer items-center gap-2 text-xs text-foreground"
+                                >
+                                    <input
+                                        :id="`custom-field-${field.id}`"
+                                        v-model="
+                                            customFieldsForm.values[field.slug]
+                                        "
+                                        type="checkbox"
+                                        class="h-3.5 w-3.5 rounded border-input"
+                                    />
+                                    {{
+                                        customFieldsForm.values[field.slug]
+                                            ? 'Sim'
+                                            : 'Não'
+                                    }}
+                                </label>
+
+                                <select
+                                    v-else-if="field.type === 'select'"
+                                    :id="`custom-field-${field.id}`"
+                                    v-model="
+                                        customFieldsForm.values[field.slug]
+                                    "
+                                    class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
+                                >
+                                    <option value="">—</option>
+                                    <option
+                                        v-for="option in field.options"
+                                        :key="option.value"
+                                        :value="option.value"
+                                    >
+                                        {{ option.label }}
+                                    </option>
+                                </select>
+
+                                <input
+                                    v-else
+                                    :id="`custom-field-${field.id}`"
+                                    v-model="
+                                        customFieldsForm.values[field.slug]
+                                    "
+                                    :type="
+                                        field.type === 'number'
+                                            ? 'number'
+                                            : field.type === 'date'
+                                              ? 'date'
+                                              : 'text'
+                                    "
+                                    :step="
+                                        field.type === 'number'
+                                            ? 'any'
+                                            : undefined
+                                    "
+                                    class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
+                                />
+
+                                <p
+                                    v-if="customFieldError(field.slug)"
+                                    class="text-xs text-rose-500"
+                                >
+                                    {{ customFieldError(field.slug) }}
+                                </p>
+                            </div>
+
+                            <div
+                                v-if="editableCustomFields.length > 0"
+                                class="flex items-center gap-2 pt-0.5"
+                            >
+                                <button
+                                    type="submit"
+                                    :disabled="
+                                        customFieldsForm.processing ||
+                                        !customFieldsForm.isDirty
+                                    "
+                                    class="h-8 flex-1 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
+                                >
+                                    {{
+                                        customFieldsForm.processing
+                                            ? 'Salvando…'
+                                            : 'Salvar campos'
+                                    }}
+                                </button>
+                                <button
+                                    v-if="customFieldsForm.isDirty"
+                                    type="button"
+                                    class="h-8 rounded-lg border border-input px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                                    @click="customFieldsForm.reset()"
+                                >
+                                    Descartar
+                                </button>
+                                <span
+                                    v-else-if="customFieldsSaved"
+                                    class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                                >
+                                    Salvo
+                                </span>
+                            </div>
+                        </form>
+
+                        <!-- Fields the agent's own tools fill in. Shown for context, not edited. -->
+                        <div
+                            v-if="readOnlyCustomFields.length > 0"
+                            class="mt-3 space-y-1.5 border-t border-border pt-2.5"
+                        >
+                            <div
+                                v-for="field in readOnlyCustomFields"
+                                :key="field.id"
+                            >
+                                <p class="text-[11px] text-muted-foreground">
+                                    {{ field.label }}
+                                </p>
+                                <pre
+                                    class="mt-0.5 max-h-32 overflow-auto rounded-md bg-muted/40 p-2 font-mono text-[10px] leading-relaxed text-foreground"
+                                    >{{ readOnlyCustomFieldText(field) }}</pre
+                                >
+                            </div>
+                        </div>
+
+                        <p class="mt-2 text-[10px] text-muted-foreground">
+                            Campos definidos em Configurações › Campos. Cada
+                            nicho define os seus.
+                        </p>
+                    </div>
+                </template>
+            </CollectedInformationEditor>
+
+            <!-- The credit summary is a niche AI artefact, not a section of its own:
+                 shown only when the agent actually produced one. -->
+            <div
+                v-if="lead.agent_niche !== 'generic' && lead.resumo_credito"
+                class="mt-3 border-t border-sidebar-border/70 pt-3 dark:border-sidebar-border"
+            >
+                <p class="text-[10px] font-medium text-muted-foreground">
+                    Crédito
+                </p>
+                <p class="text-xs leading-relaxed break-words text-foreground">
+                    {{ lead.resumo_credito }}
+                </p>
+            </div>
 
             <!-- Atendente and Modo IA are not repeated here: the thread header
                  states them and offers the action, and the AI mode is editable
-                 under "Controle do Agente". -->
+                 under "IA e Follow-up". -->
             <div
                 class="mt-3 flex items-center justify-between gap-3 border-t border-sidebar-border/70 pt-3 text-sm dark:border-sidebar-border"
             >
@@ -605,6 +702,412 @@ function initials(name: string): string {
                 }}</span>
             </div>
         </section>
+
+        <PanelSection
+            section-key="ia-followup"
+            title="IA e Follow-up"
+            default-open
+        >
+            <template #icon>
+                <Bot class="h-4 w-4 text-muted-foreground" />
+            </template>
+            <template #meta>
+                <span
+                    v-if="conversation.pausado"
+                    class="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500"
+                >
+                    Pausada
+                </span>
+            </template>
+
+            <select
+                v-model="aiModeForm.ai_mode"
+                class="mb-3 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                :disabled="aiModeForm.processing"
+                @change="updateAiMode"
+            >
+                <option value="">Herdar da instancia</option>
+                <option value="automatic">Automatico</option>
+                <option value="manual">Manual</option>
+                <option value="assisted">Assistido</option>
+                <option value="qualify_then_handoff">
+                    Qualifica e transfere
+                </option>
+            </select>
+            <form
+                v-if="!conversation.pausado"
+                @submit.prevent="
+                    pauseForm.post(pause.url({ lead: lead.id }), {
+                        preserveScroll: true,
+                    })
+                "
+            >
+                <button
+                    type="submit"
+                    :disabled="pauseForm.processing"
+                    class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+                >
+                    Assumir e pausar IA
+                </button>
+            </form>
+            <form
+                v-else
+                @submit.prevent="
+                    resumeForm.post(resume.url({ lead: lead.id }), {
+                        preserveScroll: true,
+                    })
+                "
+            >
+                <button
+                    type="submit"
+                    :disabled="resumeForm.processing"
+                    class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                >
+                    Retomar IA
+                </button>
+                <p class="mt-2 text-center text-xs font-medium text-amber-600">
+                    Agente pausado - responda manualmente
+                </p>
+            </form>
+
+            <div
+                class="mt-3 border-t border-sidebar-border/70 pt-3 dark:border-sidebar-border"
+            >
+                <p
+                    v-if="followupStatus === 'paused'"
+                    class="mb-2 text-center text-xs font-medium text-amber-600"
+                >
+                    Follow-up pausado - aguardando retomada
+                </p>
+                <p
+                    v-else-if="followupStatus === 'inactive'"
+                    class="mb-2 text-center text-xs font-medium text-muted-foreground"
+                >
+                    Follow-up desativado
+                </p>
+
+                <div class="space-y-2">
+                    <form
+                        v-if="followupStatus === 'active'"
+                        @submit.prevent="
+                            pauseFollowUpForm.post(
+                                pauseFollowup.url({ lead: lead.id }),
+                                { preserveScroll: true },
+                            )
+                        "
+                    >
+                        <button
+                            type="submit"
+                            :disabled="pauseFollowUpForm.processing"
+                            class="flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-amber-500/60 bg-transparent px-3 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-500/10 disabled:opacity-50"
+                        >
+                            Pausar Follow-up
+                        </button>
+                    </form>
+
+                    <form
+                        v-if="followupStatus === 'paused'"
+                        @submit.prevent="
+                            resumeFollowUpForm.post(
+                                resumeFollowup.url({ lead: lead.id }),
+                                { preserveScroll: true },
+                            )
+                        "
+                    >
+                        <button
+                            type="submit"
+                            :disabled="resumeFollowUpForm.processing"
+                            class="flex h-8 w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 text-xs font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                        >
+                            <Play class="h-3.5 w-3.5" />
+                            Retomar Follow-up
+                        </button>
+                    </form>
+
+                    <form
+                        v-if="followupStatus === 'inactive'"
+                        @submit.prevent="
+                            reactivateFollowUpForm.post(
+                                reactivateFollowup.url({ lead: lead.id }),
+                                { preserveScroll: true },
+                            )
+                        "
+                    >
+                        <button
+                            type="submit"
+                            :disabled="reactivateFollowUpForm.processing"
+                            class="flex h-8 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                            <Play class="h-3.5 w-3.5" />
+                            Reativar Follow-up
+                        </button>
+                    </form>
+
+                    <form
+                        v-if="followupStatus !== 'inactive'"
+                        @submit.prevent="
+                            disableFollowUpForm.post(
+                                disableFollowup.url({ lead: lead.id }),
+                                { preserveScroll: true },
+                            )
+                        "
+                    >
+                        <button
+                            type="submit"
+                            :disabled="disableFollowUpForm.processing"
+                            class="flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-rose-500/50 bg-transparent px-3 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10 disabled:opacity-50"
+                        >
+                            Desativar follow-up
+                        </button>
+                    </form>
+                </div>
+
+                <div
+                    class="mt-3 border-t border-sidebar-border/70 pt-3 dark:border-sidebar-border"
+                >
+                    <FollowUpStateSummary :state="conversation.followupState" />
+                </div>
+            </div>
+        </PanelSection>
+
+        <!-- One section for the whole atendimento: escalation state, the open cycle
+             with its free-form entries, and the archived cycles below. "Devolver para
+             IA" lives in the thread header only. -->
+        <PanelSection
+            section-key="atendimento"
+            title="Atendimento"
+            default-open
+        >
+            <template #icon>
+                <UserRound class="h-4 w-4 text-muted-foreground" />
+            </template>
+            <template #meta>
+                <span
+                    v-if="conversation.handoff_state !== 'ai_active'"
+                    :class="[
+                        'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                        HANDOFF_STATE_BADGE[conversation.handoff_state] ??
+                            'bg-muted text-muted-foreground',
+                    ]"
+                >
+                    {{
+                        handoffStateLabels[conversation.handoff_state] ??
+                        conversation.handoff_state
+                    }}
+                </span>
+            </template>
+
+            <div
+                v-if="conversation.active_handoff"
+                class="mb-3 space-y-2 text-xs"
+            >
+                <div
+                    v-if="conversation.active_handoff.reason"
+                    class="flex items-center justify-between gap-2"
+                >
+                    <span class="text-muted-foreground">Motivo</span>
+                    <span class="text-right text-foreground">{{
+                        conversation.active_handoff.reason
+                    }}</span>
+                </div>
+                <div
+                    v-if="conversation.active_handoff.summary"
+                    class="text-muted-foreground"
+                >
+                    {{ conversation.active_handoff.summary }}
+                </div>
+                <div
+                    v-if="conversation.active_handoff.assigned_user_name"
+                    class="flex items-center justify-between gap-2"
+                >
+                    <span class="text-muted-foreground">Responsavel</span>
+                    <span class="text-right text-foreground">{{
+                        conversation.active_handoff.assigned_user_name
+                    }}</span>
+                </div>
+                <div
+                    v-if="conversation.active_handoff.sla_due_at"
+                    class="flex items-center justify-between gap-2"
+                >
+                    <span class="text-muted-foreground">SLA</span>
+                    <span
+                        :class="[
+                            'text-right',
+                            conversation.active_handoff.sla_overdue
+                                ? 'font-medium text-red-500'
+                                : 'text-foreground',
+                        ]"
+                    >
+                        {{
+                            new Date(
+                                conversation.active_handoff.sla_due_at,
+                            ).toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                            })
+                        }}
+                        <span v-if="conversation.active_handoff.sla_overdue">
+                            (vencido)</span
+                        >
+                    </span>
+                </div>
+                <form
+                    v-if="conversation.handoff_actions.includes('keep_manual')"
+                    @submit.prevent="
+                        keepManualForm.post(
+                            keepManual.url({
+                                ticket: conversation.active_handoff!.id,
+                            }),
+                            { preserveScroll: true },
+                        )
+                    "
+                >
+                    <button
+                        type="submit"
+                        :disabled="keepManualForm.processing"
+                        title="Fecha o atendimento mantendo a IA pausada — você continua respondendo manualmente"
+                        class="flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                    >
+                        Manter manual
+                    </button>
+                </form>
+            </div>
+
+            <div
+                v-if="openSession"
+                class="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2.5"
+            >
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-semibold text-foreground"
+                        >Atendimento #{{ openSession.number }} · aberto</span
+                    >
+                    <span
+                        v-if="openSession.is_returning"
+                        class="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500 dark:text-violet-400"
+                        >Retornante</span
+                    >
+                </div>
+                <p class="text-[11px] text-muted-foreground">
+                    {{ SESSION_REASON_LABELS[openSession.open_reason] }} ·
+                    {{ formatShortDateTime(openSession.opened_at) }}
+                </p>
+
+                <CollectedInformationEditor
+                    :items="openSession.collected_information"
+                    :action="
+                        updateSessionInformation({
+                            lead: lead.id,
+                            session: openSession.id,
+                        })
+                    "
+                    can-edit
+                    compact
+                />
+
+                <div class="flex items-center gap-2 pt-1">
+                    <select
+                        v-model="closeSessionForm.outcome"
+                        class="h-8 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                        :disabled="closeSessionForm.processing"
+                    >
+                        <option
+                            v-for="outcome in SELECTABLE_SESSION_OUTCOMES"
+                            :key="outcome"
+                            :value="outcome"
+                        >
+                            {{ SESSION_OUTCOME_LABELS[outcome] }}
+                        </option>
+                    </select>
+                    <button
+                        type="button"
+                        :disabled="closeSessionForm.processing"
+                        class="h-8 shrink-0 rounded-md bg-emerald-600 px-3 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                        @click="submitCloseSession"
+                    >
+                        Encerrar
+                    </button>
+                </div>
+            </div>
+
+            <form v-else @submit.prevent="submitNewSession">
+                <button
+                    type="submit"
+                    :disabled="newSessionForm.processing"
+                    class="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                >
+                    <Plus class="h-3.5 w-3.5" />
+                    Novo atendimento
+                </button>
+            </form>
+
+            <div
+                v-if="closedSessions.length > 0"
+                class="mt-3 border-t border-sidebar-border/70 pt-2.5 dark:border-sidebar-border"
+            >
+                <p class="mb-1.5 text-[10px] font-medium text-muted-foreground">
+                    Anteriores
+                </p>
+                <div class="space-y-2">
+                    <div
+                        v-for="session in closedSessions"
+                        :key="session.id"
+                        class="border-l-2 border-muted pl-3"
+                    >
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-medium text-foreground"
+                                >#{{ session.number }}</span
+                            >
+                            <div class="flex items-center gap-1.5">
+                                <span
+                                    v-if="session.value_cents !== null"
+                                    class="text-[11px] font-medium text-foreground tabular-nums"
+                                    >{{
+                                        formatCents(session.value_cents)
+                                    }}</span
+                                >
+                                <span
+                                    v-if="session.outcome"
+                                    class="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                                >
+                                    {{
+                                        SESSION_OUTCOME_LABELS[session.outcome]
+                                    }}
+                                </span>
+                            </div>
+                        </div>
+                        <p class="mt-0.5 text-[11px] text-muted-foreground">
+                            {{ SESSION_REASON_LABELS[session.open_reason] }}
+                        </p>
+                        <p class="text-[11px] text-muted-foreground/70">
+                            {{ formatShortDateTime(session.opened_at) }}
+                            <span v-if="session.closed_at">
+                                →
+                                {{
+                                    formatShortDateTime(session.closed_at)
+                                }}</span
+                            >
+                        </p>
+                        <div
+                            v-if="session.collected_information.length > 0"
+                            class="mt-1 space-y-0.5"
+                        >
+                            <p
+                                v-for="item in session.collected_information"
+                                :key="item.key"
+                                class="text-[11px] text-muted-foreground"
+                            >
+                                <span class="font-medium"
+                                    >{{ item.label }}:</span
+                                >
+                                {{ item.value }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </PanelSection>
 
         <PanelSection section-key="notas" title="Notas" default-open>
             <template #icon>
@@ -633,6 +1136,9 @@ function initials(name: string): string {
                     placeholder="Anotações da equipe sobre este contato…"
                     class="w-full resize-y rounded-md border border-input bg-background px-2.5 py-2 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                 />
+                <p class="mt-1 text-[10px] text-muted-foreground">
+                    Visível só para a equipe — a IA não lê estas notas.
+                </p>
                 <p
                     v-if="notesForm.errors.notes"
                     class="mt-1 text-xs text-rose-500"
@@ -661,233 +1167,15 @@ function initials(name: string): string {
             </form>
         </PanelSection>
 
-        <PanelSection
-            v-if="customFields.length > 0"
-            section-key="campos-adicionais"
-            title="Campos adicionais"
-            default-open
-        >
-            <template #icon>
-                <SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
-            </template>
-            <template #meta>
-                <span
-                    v-if="customFieldsSaved"
-                    class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
-                >
-                    Salvo
-                </span>
-                <span
-                    v-else-if="customFieldsForm.isDirty"
-                    class="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500"
-                >
-                    Não salvo
-                </span>
-            </template>
-
-            <form class="space-y-2.5" @submit.prevent="submitCustomFields">
-                <div
-                    v-for="field in editableCustomFields"
-                    :key="field.id"
-                    class="space-y-1"
-                >
-                    <label
-                        :for="`custom-field-${field.id}`"
-                        class="flex items-center gap-1 text-[11px] text-muted-foreground"
-                    >
-                        {{ field.label }}
-                        <span v-if="field.is_required" class="text-amber-500"
-                            >*</span
-                        >
-                    </label>
-
-                    <label
-                        v-if="field.type === 'boolean'"
-                        class="flex cursor-pointer items-center gap-2 text-xs text-foreground"
-                    >
-                        <input
-                            :id="`custom-field-${field.id}`"
-                            v-model="customFieldsForm.values[field.slug]"
-                            type="checkbox"
-                            class="h-3.5 w-3.5 rounded border-input"
-                        />
-                        {{
-                            customFieldsForm.values[field.slug] ? 'Sim' : 'Não'
-                        }}
-                    </label>
-
-                    <select
-                        v-else-if="field.type === 'select'"
-                        :id="`custom-field-${field.id}`"
-                        v-model="customFieldsForm.values[field.slug]"
-                        class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
-                    >
-                        <option value="">—</option>
-                        <option
-                            v-for="option in field.options"
-                            :key="option.value"
-                            :value="option.value"
-                        >
-                            {{ option.label }}
-                        </option>
-                    </select>
-
-                    <input
-                        v-else
-                        :id="`custom-field-${field.id}`"
-                        v-model="customFieldsForm.values[field.slug]"
-                        :type="
-                            field.type === 'number'
-                                ? 'number'
-                                : field.type === 'date'
-                                  ? 'date'
-                                  : 'text'
-                        "
-                        :step="field.type === 'number' ? 'any' : undefined"
-                        class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-none"
-                    />
-
-                    <p
-                        v-if="customFieldError(field.slug)"
-                        class="text-xs text-rose-500"
-                    >
-                        {{ customFieldError(field.slug) }}
-                    </p>
-                </div>
-
-                <div
-                    v-if="editableCustomFields.length > 0"
-                    class="flex items-center gap-2 pt-0.5"
-                >
-                    <button
-                        type="submit"
-                        :disabled="
-                            customFieldsForm.processing ||
-                            !customFieldsForm.isDirty
-                        "
-                        class="h-8 flex-1 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
-                    >
-                        {{
-                            customFieldsForm.processing
-                                ? 'Salvando…'
-                                : 'Salvar campos'
-                        }}
-                    </button>
-                    <button
-                        v-if="customFieldsForm.isDirty"
-                        type="button"
-                        class="h-8 rounded-lg border border-input px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                        @click="customFieldsForm.reset()"
-                    >
-                        Descartar
-                    </button>
-                </div>
-            </form>
-
-            <!-- Fields the agent's own tools fill in. Shown for context, not edited. -->
-            <div
-                v-if="readOnlyCustomFields.length > 0"
-                class="mt-3 space-y-1.5 border-t border-border pt-2.5"
-            >
-                <div v-for="field in readOnlyCustomFields" :key="field.id">
-                    <p class="text-[11px] text-muted-foreground">
-                        {{ field.label }}
-                    </p>
-                    <pre
-                        class="mt-0.5 max-h-32 overflow-auto rounded-md bg-muted/40 p-2 font-mono text-[10px] leading-relaxed text-foreground"
-                        >{{ readOnlyCustomFieldText(field) }}</pre
-                    >
-                </div>
-            </div>
-        </PanelSection>
-
-        <PanelSection
-            v-if="contactLists.length > 0"
-            section-key="listas"
-            title="Listas de contato"
-        >
-            <template #icon>
-                <ListPlus class="h-4 w-4 text-muted-foreground" />
-            </template>
-
-            <form
-                class="flex items-center gap-2"
-                @submit.prevent="submitAddToList"
-            >
-                <select
-                    v-model="selectedListId"
-                    class="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                    :disabled="listEntryForm.processing"
-                >
-                    <option :value="null" disabled>Adicionar à lista…</option>
-                    <option
-                        v-for="list in contactLists"
-                        :key="list.id"
-                        :value="list.id"
-                    >
-                        {{ list.name }} ({{ list.entries_count }})
-                    </option>
-                </select>
-                <button
-                    type="submit"
-                    :disabled="listEntryForm.processing || !selectedListId"
-                    class="h-8 shrink-0 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
-                >
-                    Adicionar
-                </button>
-            </form>
-            <p
-                v-if="listEntryForm.errors.phone"
-                class="mt-1 text-xs text-rose-500"
-            >
-                {{ listEntryForm.errors.phone }}
-            </p>
-            <p class="mt-2 text-[11px] text-muted-foreground">
-                Somente listas estáticas. Listas dinâmicas são recalculadas
-                pelos filtros.
-            </p>
-        </PanelSection>
-
+        <!-- Only what the thread header does not already show: the header carries the
+             24h countdown, so this section keeps the template flag, the free entry
+             point and the coexistence note. -->
         <PanelSection
             v-if="conversationWindow"
             section-key="janela"
             title="Janela WhatsApp"
         >
             <div class="flex flex-col gap-1.5 text-xs">
-                <div class="flex items-center justify-between gap-3">
-                    <span class="text-muted-foreground">Sessão 24h</span>
-                    <span
-                        :class="[
-                            'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                            conversationWindow.service_window.status === 'open'
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                : conversationWindow.service_window.status ===
-                                    'closed'
-                                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                  : 'bg-muted text-muted-foreground',
-                        ]"
-                    >
-                        {{
-                            conversationWindow.service_window.status === 'open'
-                                ? 'Aberta'
-                                : conversationWindow.service_window.status ===
-                                    'closed'
-                                  ? 'Fechada'
-                                  : 'Sem dados'
-                        }}
-                    </span>
-                </div>
-                <div
-                    v-if="conversationWindow.service_window.status === 'open'"
-                    class="flex items-center justify-between gap-3"
-                >
-                    <span class="text-muted-foreground">Restante</span>
-                    <span class="text-foreground">{{
-                        formatRemaining(
-                            conversationWindow.service_window.remaining_seconds,
-                        )
-                    }}</span>
-                </div>
                 <div class="flex items-center justify-between gap-3">
                     <span class="text-muted-foreground"
                         >Template necessário</span
@@ -957,505 +1245,9 @@ function initials(name: string): string {
             </div>
         </PanelSection>
 
-        <PanelSection
-            v-if="lead.agent_niche !== 'generic'"
-            section-key="credito"
-            title="Credito"
-            default-open
-        >
-            <p class="text-xs leading-relaxed text-foreground">
-                {{ lead.resumo_credito ?? 'Sem resumo de credito' }}
-            </p>
-        </PanelSection>
-
-        <PanelSection
-            v-if="
-                conversation.active_handoff ||
-                conversation.handoff_state !== 'ai_active'
-            "
-            section-key="atendimento"
-            title="Atendimento"
-            default-open
-        >
-            <div class="space-y-3">
-                <div class="flex items-center justify-between gap-2">
-                    <span class="text-xs text-muted-foreground">Estado</span>
-                    <span
-                        :class="[
-                            'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                            conversation.handoff_state === 'waiting_human'
-                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                                : conversation.handoff_state === 'human_active'
-                                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                                  : conversation.handoff_state ===
-                                      'waiting_customer'
-                                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                                    : 'bg-muted text-muted-foreground',
-                        ]"
-                    >
-                        {{
-                            conversation.handoff_state === 'waiting_human'
-                                ? 'Aguardando atendimento'
-                                : conversation.handoff_state === 'human_active'
-                                  ? 'Em atendimento humano'
-                                  : conversation.handoff_state ===
-                                      'waiting_customer'
-                                    ? 'Aguardando cliente'
-                                    : conversation.handoff_state === 'closed'
-                                      ? 'Encerrado'
-                                      : 'IA ativa'
-                        }}
-                    </span>
-                </div>
-                <template v-if="conversation.active_handoff">
-                    <div
-                        v-if="conversation.active_handoff.reason"
-                        class="flex items-center justify-between gap-2"
-                    >
-                        <span class="text-xs text-muted-foreground"
-                            >Motivo</span
-                        >
-                        <span class="text-right text-xs text-foreground">{{
-                            conversation.active_handoff.reason
-                        }}</span>
-                    </div>
-                    <div
-                        v-if="conversation.active_handoff.summary"
-                        class="text-xs text-muted-foreground"
-                    >
-                        {{ conversation.active_handoff.summary }}
-                    </div>
-                    <div
-                        v-if="conversation.active_handoff.assigned_user_name"
-                        class="flex items-center justify-between gap-2"
-                    >
-                        <span class="text-xs text-muted-foreground"
-                            >Responsavel</span
-                        >
-                        <span class="text-right text-xs text-foreground">{{
-                            conversation.active_handoff.assigned_user_name
-                        }}</span>
-                    </div>
-                    <div
-                        v-if="conversation.active_handoff.sla_due_at"
-                        class="flex items-center justify-between gap-2"
-                    >
-                        <span class="text-xs text-muted-foreground">SLA</span>
-                        <span
-                            :class="[
-                                'text-right text-xs',
-                                conversation.active_handoff.sla_overdue
-                                    ? 'font-medium text-red-500'
-                                    : 'text-foreground',
-                            ]"
-                        >
-                            {{
-                                new Date(
-                                    conversation.active_handoff.sla_due_at,
-                                ).toLocaleString('pt-BR', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                })
-                            }}
-                            <span
-                                v-if="conversation.active_handoff.sla_overdue"
-                            >
-                                (vencido)</span
-                            >
-                        </span>
-                    </div>
-                </template>
-                <div
-                    v-if="conversation.handoff_actions.includes('return_to_ai')"
-                    class="pt-1"
-                >
-                    <form
-                        @submit.prevent="
-                            returnToAiForm.post(
-                                returnToAi.url({
-                                    ticket: conversation.active_handoff!.id,
-                                }),
-                                { preserveScroll: true },
-                            )
-                        "
-                    >
-                        <button
-                            type="submit"
-                            :disabled="returnToAiForm.processing"
-                            title="Encerra o atendimento humano e devolve o lead para a IA continuar"
-                            class="flex h-8 w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-3 text-xs font-medium text-white transition-colors hover:bg-sky-700 disabled:opacity-50"
-                        >
-                            Devolver para IA
-                        </button>
-                    </form>
-                </div>
-                <div
-                    v-if="conversation.handoff_actions.includes('keep_manual')"
-                >
-                    <form
-                        @submit.prevent="
-                            keepManualForm.post(
-                                keepManual.url({
-                                    ticket: conversation.active_handoff!.id,
-                                }),
-                                { preserveScroll: true },
-                            )
-                        "
-                    >
-                        <button
-                            type="submit"
-                            :disabled="keepManualForm.processing"
-                            title="Fecha o atendimento mantendo a IA pausada — você continua respondendo manualmente"
-                            class="flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-                        >
-                            Manter manual
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </PanelSection>
-
-        <PanelSection section-key="sessoes" title="Atendimentos">
-            <template #icon>
-                <UserRound class="h-4 w-4 text-muted-foreground" />
-            </template>
-
-            <div
-                v-if="openSession"
-                class="mb-3 space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2.5"
-            >
-                <div class="flex items-center justify-between gap-2">
-                    <span class="text-xs font-semibold text-foreground"
-                        >Atendimento #{{ openSession.number }} · aberto</span
-                    >
-                    <span
-                        v-if="openSession.is_returning"
-                        class="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500 dark:text-violet-400"
-                        >Retornante</span
-                    >
-                </div>
-                <p class="text-[11px] text-muted-foreground">
-                    {{ SESSION_REASON_LABELS[openSession.open_reason] }} ·
-                    {{ formatShortDateTime(openSession.opened_at) }}
-                </p>
-
-                <div class="grid grid-cols-2 gap-2 pt-1">
-                    <label class="space-y-1">
-                        <span
-                            class="text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
-                            >Valor</span
-                        >
-                        <div class="relative">
-                            <span
-                                class="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs text-muted-foreground"
-                                >R$</span
-                            >
-                            <input
-                                v-model="valueInput"
-                                type="text"
-                                inputmode="decimal"
-                                placeholder="0,00"
-                                class="h-8 w-full rounded-md border border-input bg-background pr-2 pl-7 text-xs text-foreground"
-                                :disabled="valueForm.processing"
-                                @input="onValueInput"
-                                @blur="onValueBlur"
-                            />
-                        </div>
-                    </label>
-                    <label class="space-y-1">
-                        <span
-                            class="text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
-                            >Previsão</span
-                        >
-                        <input
-                            v-model="valueForm.expected_close_at"
-                            type="date"
-                            class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                            :disabled="valueForm.processing"
-                        />
-                    </label>
-                </div>
-                <p
-                    v-if="valueForm.errors.value_cents"
-                    class="text-[11px] text-rose-500"
-                >
-                    {{ valueForm.errors.value_cents }}
-                </p>
-                <p
-                    v-else-if="valueForm.errors.expected_close_at"
-                    class="text-[11px] text-rose-500"
-                >
-                    {{ valueForm.errors.expected_close_at }}
-                </p>
-                <div class="flex items-center justify-end gap-2">
-                    <span
-                        v-if="valueSaved"
-                        class="text-[11px] text-emerald-600 dark:text-emerald-400"
-                        >Salvo</span
-                    >
-                    <button
-                        type="button"
-                        :disabled="valueForm.processing || !valueForm.isDirty"
-                        class="h-7 rounded-md border border-input px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-                        @click="submitSessionValue"
-                    >
-                        Salvar valor
-                    </button>
-                </div>
-
-                <div class="flex items-center gap-2 pt-1">
-                    <select
-                        v-model="closeSessionForm.outcome"
-                        class="h-8 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                        :disabled="closeSessionForm.processing"
-                    >
-                        <option
-                            v-for="outcome in SELECTABLE_SESSION_OUTCOMES"
-                            :key="outcome"
-                            :value="outcome"
-                        >
-                            {{ SESSION_OUTCOME_LABELS[outcome] }}
-                        </option>
-                    </select>
-                    <button
-                        type="button"
-                        :disabled="closeSessionForm.processing"
-                        class="h-8 shrink-0 rounded-md bg-emerald-600 px-3 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
-                        @click="submitCloseSession"
-                    >
-                        Encerrar
-                    </button>
-                </div>
-            </div>
-
-            <form v-else class="mb-3" @submit.prevent="submitNewSession">
-                <button
-                    type="submit"
-                    :disabled="newSessionForm.processing"
-                    class="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
-                >
-                    <Plus class="h-3.5 w-3.5" />
-                    Novo atendimento
-                </button>
-            </form>
-
-            <div v-if="sessions.length > 0" class="space-y-2">
-                <div
-                    v-for="session in sessions"
-                    :key="session.id"
-                    class="border-l-2 border-muted pl-3"
-                >
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-xs font-medium text-foreground"
-                            >#{{ session.number }}</span
-                        >
-                        <div class="flex items-center gap-1.5">
-                            <span
-                                v-if="session.value_cents !== null"
-                                class="text-[11px] font-medium text-foreground tabular-nums"
-                                >{{ formatCents(session.value_cents) }}</span
-                            >
-                            <span
-                                :class="[
-                                    'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                                    session.status === 'open'
-                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                        : 'bg-muted text-muted-foreground',
-                                ]"
-                            >
-                                {{
-                                    session.status === 'open'
-                                        ? 'Aberto'
-                                        : 'Fechado'
-                                }}
-                            </span>
-                        </div>
-                    </div>
-                    <p class="mt-0.5 text-[11px] text-muted-foreground">
-                        {{ SESSION_REASON_LABELS[session.open_reason] }}
-                        <span v-if="session.outcome">
-                            ·
-                            {{ SESSION_OUTCOME_LABELS[session.outcome] }}</span
-                        >
-                    </p>
-                    <p class="text-[11px] text-muted-foreground/70">
-                        {{ formatShortDateTime(session.opened_at) }}
-                        <span v-if="session.closed_at">
-                            → {{ formatShortDateTime(session.closed_at) }}</span
-                        >
-                    </p>
-                </div>
-            </div>
-            <p v-else class="text-xs text-muted-foreground">
-                Nenhum atendimento registrado.
-            </p>
-        </PanelSection>
-
-        <PanelSection section-key="agente" title="Controle do Agente">
-            <template #icon>
-                <Bot class="h-4 w-4 text-muted-foreground" />
-            </template>
-            <template #meta>
-                <span
-                    v-if="conversation.pausado"
-                    class="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500"
-                >
-                    Pausada
-                </span>
-            </template>
-            <select
-                v-model="aiModeForm.ai_mode"
-                class="mb-3 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                :disabled="aiModeForm.processing"
-                @change="updateAiMode"
-            >
-                <option value="">Herdar da instancia</option>
-                <option value="automatic">Automatico</option>
-                <option value="manual">Manual</option>
-                <option value="assisted">Assistido</option>
-                <option value="qualify_then_handoff">
-                    Qualifica e transfere
-                </option>
-            </select>
-            <form
-                v-if="!conversation.pausado"
-                @submit.prevent="
-                    pauseForm.post(pause.url({ lead: lead.id }), {
-                        preserveScroll: true,
-                    })
-                "
-            >
-                <button
-                    type="submit"
-                    :disabled="pauseForm.processing"
-                    class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
-                >
-                    Assumir e pausar IA
-                </button>
-            </form>
-            <form
-                v-else
-                @submit.prevent="
-                    resumeForm.post(resume.url({ lead: lead.id }), {
-                        preserveScroll: true,
-                    })
-                "
-            >
-                <button
-                    type="submit"
-                    :disabled="resumeForm.processing"
-                    class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
-                >
-                    Retomar IA
-                </button>
-                <p class="mt-2 text-center text-xs font-medium text-amber-600">
-                    Agente pausado - responda manualmente
-                </p>
-            </form>
-        </PanelSection>
-
-        <PanelSection section-key="followup" title="Controle do Follow-up">
-            <p
-                v-if="followupStatus === 'paused'"
-                class="mb-2 text-center text-xs font-medium text-amber-600"
-            >
-                Follow-up pausado - aguardando retomada
-            </p>
-            <p
-                v-else-if="followupStatus === 'inactive'"
-                class="mb-2 text-center text-xs font-medium text-muted-foreground"
-            >
-                Follow-up desativado
-            </p>
-
-            <div class="space-y-2">
-                <form
-                    v-if="followupStatus === 'active'"
-                    @submit.prevent="
-                        pauseFollowUpForm.post(
-                            pauseFollowup.url({ lead: lead.id }),
-                            { preserveScroll: true },
-                        )
-                    "
-                >
-                    <button
-                        type="submit"
-                        :disabled="pauseFollowUpForm.processing"
-                        class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
-                    >
-                        Pausar Follow-up
-                    </button>
-                </form>
-
-                <form
-                    v-if="followupStatus === 'paused'"
-                    @submit.prevent="
-                        resumeFollowUpForm.post(
-                            resumeFollowup.url({ lead: lead.id }),
-                            { preserveScroll: true },
-                        )
-                    "
-                >
-                    <button
-                        type="submit"
-                        :disabled="resumeFollowUpForm.processing"
-                        class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
-                    >
-                        <Play class="h-4 w-4" />
-                        Retomar Follow-up
-                    </button>
-                </form>
-
-                <form
-                    v-if="followupStatus === 'inactive'"
-                    @submit.prevent="
-                        reactivateFollowUpForm.post(
-                            reactivateFollowup.url({ lead: lead.id }),
-                            { preserveScroll: true },
-                        )
-                    "
-                >
-                    <button
-                        type="submit"
-                        :disabled="reactivateFollowUpForm.processing"
-                        class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                        <Play class="h-4 w-4" />
-                        Reativar Follow-up
-                    </button>
-                </form>
-
-                <form
-                    v-if="followupStatus !== 'inactive'"
-                    @submit.prevent="
-                        disableFollowUpForm.post(
-                            disableFollowup.url({ lead: lead.id }),
-                            { preserveScroll: true },
-                        )
-                    "
-                >
-                    <button
-                        type="submit"
-                        :disabled="disableFollowUpForm.processing"
-                        class="flex h-8 w-full items-center justify-center gap-2 rounded-lg border border-rose-500/50 bg-transparent px-3 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10 disabled:opacity-50"
-                    >
-                        Desativar follow-up
-                    </button>
-                </form>
-            </div>
-
-            <div
-                class="mt-3 border-t border-sidebar-border/70 pt-3 dark:border-sidebar-border"
-            >
-                <FollowUpStateSummary :state="conversation.followupState" />
-            </div>
-        </PanelSection>
-
         <!-- One timeline instead of three boxes: agent events, atendimento cycles,
              human tickets and follow-ups all land here in the order they happened. -->
-        <PanelSection section-key="historico" title="Histórico">
+        <PanelSection section-key="historico" title="Histórico de eventos">
             <template #icon>
                 <History class="h-4 w-4 text-muted-foreground" />
             </template>
@@ -1511,32 +1303,54 @@ function initials(name: string): string {
             <p v-else class="text-xs text-muted-foreground">
                 Nada registrado ainda.
             </p>
-
-            <p
-                v-if="history.event_retention_days > 0"
-                class="mt-2.5 border-t border-border pt-2 text-[10px] text-muted-foreground"
-            >
-                Eventos do agente ficam
-                {{ history.event_retention_days }} dias. Atendimentos,
-                escalações e follow-ups não expiram.
-            </p>
         </PanelSection>
 
-        <section
-            v-if="conversation.canStartCampaign"
-            class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"
+        <PanelSection
+            v-if="contactLists.length > 0"
+            section-key="listas"
+            title="Listas de contato"
         >
-            <form @submit.prevent="submitPrepareCampaign">
+            <template #icon>
+                <ListPlus class="h-4 w-4 text-muted-foreground" />
+            </template>
+
+            <form
+                class="flex items-center gap-2"
+                @submit.prevent="submitAddToList"
+            >
+                <select
+                    v-model="selectedListId"
+                    class="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                    :disabled="listEntryForm.processing"
+                >
+                    <option :value="null" disabled>Adicionar à lista…</option>
+                    <option
+                        v-for="list in contactLists"
+                        :key="list.id"
+                        :value="list.id"
+                    >
+                        {{ list.name }} ({{ list.entries_count }})
+                    </option>
+                </select>
                 <button
                     type="submit"
-                    :disabled="prepareCampaignForm.processing"
-                    class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
+                    :disabled="listEntryForm.processing || !selectedListId"
+                    class="h-8 shrink-0 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
                 >
-                    <Megaphone class="h-4 w-4" />
-                    Iniciar via campanha
+                    Adicionar
                 </button>
             </form>
-        </section>
+            <p
+                v-if="listEntryForm.errors.phone"
+                class="mt-1 text-xs text-rose-500"
+            >
+                {{ listEntryForm.errors.phone }}
+            </p>
+            <p class="mt-2 text-[11px] text-muted-foreground">
+                Somente listas estáticas. Listas dinâmicas são recalculadas
+                pelos filtros.
+            </p>
+        </PanelSection>
 
         <section
             class="rounded-lg border border-sidebar-border/70 bg-background/40 p-3 dark:border-sidebar-border"

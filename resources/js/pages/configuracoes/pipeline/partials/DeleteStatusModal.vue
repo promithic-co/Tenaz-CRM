@@ -33,7 +33,7 @@ function close() {
 function confirmDelete() {
     if (!props.status) return;
 
-    router.delete(`/configuracoes/pipeline/statuses/${props.status.slug}`, {
+    router.delete(`/settings/pipeline/statuses/${props.status.slug}`, {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {

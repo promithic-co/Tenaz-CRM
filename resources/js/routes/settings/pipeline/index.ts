@@ -4,7 +4,7 @@ import transitions from './transitions'
 /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -13,13 +13,13 @@ export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 index.definition = {
     methods: ["get","head"],
-    url: '/configuracoes/pipeline',
+    url: '/settings/pipeline',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
@@ -28,7 +28,7 @@ index.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -37,7 +37,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
@@ -47,7 +47,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
         action: index.url(options),
@@ -57,7 +57,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: index.url(options),
@@ -66,7 +66,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: index.url({
@@ -82,7 +82,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
+ * @route '/settings/pipeline/reorder'
  */
 export const reorder = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reorder.url(options),
@@ -91,13 +91,13 @@ export const reorder = (options?: RouteQueryOptions): RouteDefinition<'post'> =>
 
 reorder.definition = {
     methods: ["post"],
-    url: '/configuracoes/pipeline/reorder',
+    url: '/settings/pipeline/reorder',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
+ * @route '/settings/pipeline/reorder'
  */
 reorder.url = (options?: RouteQueryOptions) => {
     return reorder.definition.url + queryParams(options)
@@ -106,7 +106,7 @@ reorder.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
+ * @route '/settings/pipeline/reorder'
  */
 reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reorder.url(options),
@@ -116,7 +116,7 @@ reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
+ * @route '/settings/pipeline/reorder'
  */
     const reorderForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: reorder.url(options),
@@ -126,7 +126,7 @@ reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
+ * @route '/settings/pipeline/reorder'
  */
         reorderForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: reorder.url(options),
@@ -137,7 +137,7 @@ reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
+ * @route '/settings/pipeline/reset'
  */
 export const reset = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reset.url(options),
@@ -146,13 +146,13 @@ export const reset = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
 
 reset.definition = {
     methods: ["post"],
-    url: '/configuracoes/pipeline/reset',
+    url: '/settings/pipeline/reset',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
+ * @route '/settings/pipeline/reset'
  */
 reset.url = (options?: RouteQueryOptions) => {
     return reset.definition.url + queryParams(options)
@@ -161,7 +161,7 @@ reset.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
+ * @route '/settings/pipeline/reset'
  */
 reset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reset.url(options),
@@ -171,7 +171,7 @@ reset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
+ * @route '/settings/pipeline/reset'
  */
     const resetForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: reset.url(options),
@@ -181,7 +181,7 @@ reset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
+ * @route '/settings/pipeline/reset'
  */
         resetForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: reset.url(options),

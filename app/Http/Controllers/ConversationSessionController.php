@@ -4,9 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CloseConversationSessionRequest;
 use App\Http\Requests\StoreConversationSessionRequest;
-use App\Http\Requests\UpdateConversationSessionValueRequest;
+use App\Http\Requests\UpdateConversationSessionInformationRequest;
 use App\Models\ConversationSession;
 use App\Models\Lead;
+use App\Services\ConversationSessionInformationService;
 use App\Services\ConversationSessionLifecycleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
@@ -50,28 +51,28 @@ class ConversationSessionController extends Controller
     }
 
     /**
-     * Price the atendimento: negotiated amount and forecast close date.
+     * Upsert or delete a free-form information entry on the open atendimento.
      *
-     * Only while the cycle is open. A closed atendimento has already been counted into the
-     * dashboard's won/lost totals, so editing its amount afterwards would silently restate a
-     * historical figure with no trail of who changed it or when.
+     * Only while the cycle is open: a closed atendimento is an archived record of what
+     * happened in that cycle, so its entries are frozen alongside its outcome.
      */
-    public function updateValue(
-        UpdateConversationSessionValueRequest $request,
+    public function updateInformation(
+        UpdateConversationSessionInformationRequest $request,
         Lead $lead,
         ConversationSession $session,
+        ConversationSessionInformationService $information,
     ): RedirectResponse {
         if (! $session->isOpen()) {
             throw ValidationException::withMessages([
-                'value_cents' => 'Este atendimento já foi encerrado e não pode mais ser alterado.',
+                'value' => 'Este atendimento já foi encerrado e não pode mais ser alterado.',
             ]);
         }
 
-        $session->update([
-            'value_cents' => $request->input('value_cents'),
-            'expected_close_at' => $request->input('expected_close_at'),
-        ]);
+        /** @var array{operation: 'upsert'|'delete', key?: string|null, label?: string|null, value?: string|null} $data */
+        $data = $request->validated();
 
-        return back()->with('flash', 'Valor do atendimento atualizado.');
+        $information->applyManual($session, $data);
+
+        return back()->with('flash', 'Informação do atendimento atualizada.');
     }
 }

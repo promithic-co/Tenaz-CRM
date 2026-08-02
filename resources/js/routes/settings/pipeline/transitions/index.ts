@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \App\Http\Controllers\StatusPipelineController::store
  * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
+ * @route '/settings/pipeline/transitions'
  */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
@@ -11,13 +11,13 @@ export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
 
 store.definition = {
     methods: ["post"],
-    url: '/configuracoes/pipeline/transitions',
+    url: '/settings/pipeline/transitions',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::store
  * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
+ * @route '/settings/pipeline/transitions'
  */
 store.url = (options?: RouteQueryOptions) => {
     return store.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ store.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StatusPipelineController::store
  * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
+ * @route '/settings/pipeline/transitions'
  */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
@@ -36,7 +36,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     /**
 * @see \App\Http\Controllers\StatusPipelineController::store
  * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
+ * @route '/settings/pipeline/transitions'
  */
     const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: store.url(options),
@@ -46,7 +46,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             /**
 * @see \App\Http\Controllers\StatusPipelineController::store
  * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
+ * @route '/settings/pipeline/transitions'
  */
         storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: store.url(options),
@@ -57,7 +57,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \App\Http\Controllers\StatusPipelineController::destroy
  * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
+ * @route '/settings/pipeline/transitions/{from}/{to}'
  */
 export const destroy = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
@@ -66,13 +66,13 @@ export const destroy = (args: { from: string | number, to: string | number } | [
 
 destroy.definition = {
     methods: ["delete"],
-    url: '/configuracoes/pipeline/transitions/{from}/{to}',
+    url: '/settings/pipeline/transitions/{from}/{to}',
 } satisfies RouteDefinition<["delete"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::destroy
  * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
+ * @route '/settings/pipeline/transitions/{from}/{to}'
  */
 destroy.url = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions) => {
     if (Array.isArray(args)) {
@@ -98,7 +98,7 @@ destroy.url = (args: { from: string | number, to: string | number } | [from: str
 /**
 * @see \App\Http\Controllers\StatusPipelineController::destroy
  * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
+ * @route '/settings/pipeline/transitions/{from}/{to}'
  */
 destroy.delete = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
@@ -108,7 +108,7 @@ destroy.delete = (args: { from: string | number, to: string | number } | [from: 
     /**
 * @see \App\Http\Controllers\StatusPipelineController::destroy
  * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
+ * @route '/settings/pipeline/transitions/{from}/{to}'
  */
     const destroyForm = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: destroy.url(args, {
@@ -123,7 +123,7 @@ destroy.delete = (args: { from: string | number, to: string | number } | [from: 
             /**
 * @see \App\Http\Controllers\StatusPipelineController::destroy
  * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
+ * @route '/settings/pipeline/transitions/{from}/{to}'
  */
         destroyForm.delete = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: destroy.url(args, {

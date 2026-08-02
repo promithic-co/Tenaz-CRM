@@ -188,8 +188,6 @@ test('characterization: show prop tree exposes activeConversation shape', functi
                 ->has('history.entries')
                 ->has('history.truncated')
                 ->has('history.event_retention_days')
-                ->has('canStartCampaign')
-                ->where('canStartCampaign', true)
                 ->has('active_handoff')
                 ->has('handoff_state')
                 ->has('handoff_actions')
