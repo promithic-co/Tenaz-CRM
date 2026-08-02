@@ -115,12 +115,18 @@ const laboratoryOpen = ref(
 
 // Configurações submenu. The pipeline editor shipped without a nav entry and was
 // reachable by URL only; the extra-fields CRUD gives it a home worth having.
-const configuracoesOpen = ref(currentPath.value.startsWith('/configuracoes'));
-
 const configuracoesSubItems = [
-    { title: 'Pipeline de status', href: '/configuracoes/pipeline' },
-    { title: 'Campos adicionais', href: '/configuracoes/campos' },
+    { title: 'Pipeline de status', href: '/settings/pipeline' },
+    { title: 'Campos adicionais', href: '/settings/campos' },
 ];
+
+// Only these two pages open the submenu: /settings also holds profile, password
+// and appearance, which belong to the account menu, not here.
+const configuracoesOpen = ref(
+    configuracoesSubItems.some((item) =>
+        currentPath.value.startsWith(item.href),
+    ),
+);
 
 const agentSubItems = [
     { title: 'Ver agentes', href: '/agentes' },

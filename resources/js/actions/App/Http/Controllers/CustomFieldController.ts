@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \App\Http\Controllers\CustomFieldController::index
  * @see app/Http/Controllers/CustomFieldController.php:28
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -11,13 +11,13 @@ export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 index.definition = {
     methods: ["get","head"],
-    url: '/configuracoes/campos',
+    url: '/settings/campos',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\CustomFieldController::index
  * @see app/Http/Controllers/CustomFieldController.php:28
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ index.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\CustomFieldController::index
  * @see app/Http/Controllers/CustomFieldController.php:28
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\CustomFieldController::index
  * @see app/Http/Controllers/CustomFieldController.php:28
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     /**
 * @see \App\Http\Controllers\CustomFieldController::index
  * @see app/Http/Controllers/CustomFieldController.php:28
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
         action: index.url(options),
@@ -55,7 +55,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\CustomFieldController::index
  * @see app/Http/Controllers/CustomFieldController.php:28
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: index.url(options),
@@ -64,7 +64,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\CustomFieldController::index
  * @see app/Http/Controllers/CustomFieldController.php:28
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: index.url({
@@ -80,7 +80,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \App\Http\Controllers\CustomFieldController::store
  * @see app/Http/Controllers/CustomFieldController.php:37
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
@@ -89,13 +89,13 @@ export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
 
 store.definition = {
     methods: ["post"],
-    url: '/configuracoes/campos',
+    url: '/settings/campos',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\CustomFieldController::store
  * @see app/Http/Controllers/CustomFieldController.php:37
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
 store.url = (options?: RouteQueryOptions) => {
     return store.definition.url + queryParams(options)
@@ -104,7 +104,7 @@ store.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\CustomFieldController::store
  * @see app/Http/Controllers/CustomFieldController.php:37
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
@@ -114,7 +114,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     /**
 * @see \App\Http\Controllers\CustomFieldController::store
  * @see app/Http/Controllers/CustomFieldController.php:37
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
     const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: store.url(options),
@@ -124,7 +124,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             /**
 * @see \App\Http\Controllers\CustomFieldController::store
  * @see app/Http/Controllers/CustomFieldController.php:37
- * @route '/configuracoes/campos'
+ * @route '/settings/campos'
  */
         storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: store.url(options),
@@ -135,7 +135,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \App\Http\Controllers\CustomFieldController::reorder
  * @see app/Http/Controllers/CustomFieldController.php:62
- * @route '/configuracoes/campos/reorder'
+ * @route '/settings/campos/reorder'
  */
 export const reorder = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reorder.url(options),
@@ -144,13 +144,13 @@ export const reorder = (options?: RouteQueryOptions): RouteDefinition<'post'> =>
 
 reorder.definition = {
     methods: ["post"],
-    url: '/configuracoes/campos/reorder',
+    url: '/settings/campos/reorder',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\CustomFieldController::reorder
  * @see app/Http/Controllers/CustomFieldController.php:62
- * @route '/configuracoes/campos/reorder'
+ * @route '/settings/campos/reorder'
  */
 reorder.url = (options?: RouteQueryOptions) => {
     return reorder.definition.url + queryParams(options)
@@ -159,7 +159,7 @@ reorder.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\CustomFieldController::reorder
  * @see app/Http/Controllers/CustomFieldController.php:62
- * @route '/configuracoes/campos/reorder'
+ * @route '/settings/campos/reorder'
  */
 reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reorder.url(options),
@@ -169,7 +169,7 @@ reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     /**
 * @see \App\Http\Controllers\CustomFieldController::reorder
  * @see app/Http/Controllers/CustomFieldController.php:62
- * @route '/configuracoes/campos/reorder'
+ * @route '/settings/campos/reorder'
  */
     const reorderForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: reorder.url(options),
@@ -179,7 +179,7 @@ reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             /**
 * @see \App\Http\Controllers\CustomFieldController::reorder
  * @see app/Http/Controllers/CustomFieldController.php:62
- * @route '/configuracoes/campos/reorder'
+ * @route '/settings/campos/reorder'
  */
         reorderForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: reorder.url(options),
@@ -190,7 +190,7 @@ reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \App\Http\Controllers\CustomFieldController::update
  * @see app/Http/Controllers/CustomFieldController.php:44
- * @route '/configuracoes/campos/{customField}'
+ * @route '/settings/campos/{customField}'
  */
 export const update = (args: { customField: number | { id: number } } | [customField: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     url: update.url(args, options),
@@ -199,13 +199,13 @@ export const update = (args: { customField: number | { id: number } } | [customF
 
 update.definition = {
     methods: ["patch"],
-    url: '/configuracoes/campos/{customField}',
+    url: '/settings/campos/{customField}',
 } satisfies RouteDefinition<["patch"]>
 
 /**
 * @see \App\Http\Controllers\CustomFieldController::update
  * @see app/Http/Controllers/CustomFieldController.php:44
- * @route '/configuracoes/campos/{customField}'
+ * @route '/settings/campos/{customField}'
  */
 update.url = (args: { customField: number | { id: number } } | [customField: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -238,7 +238,7 @@ update.url = (args: { customField: number | { id: number } } | [customField: num
 /**
 * @see \App\Http\Controllers\CustomFieldController::update
  * @see app/Http/Controllers/CustomFieldController.php:44
- * @route '/configuracoes/campos/{customField}'
+ * @route '/settings/campos/{customField}'
  */
 update.patch = (args: { customField: number | { id: number } } | [customField: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     url: update.url(args, options),
@@ -248,7 +248,7 @@ update.patch = (args: { customField: number | { id: number } } | [customField: n
     /**
 * @see \App\Http\Controllers\CustomFieldController::update
  * @see app/Http/Controllers/CustomFieldController.php:44
- * @route '/configuracoes/campos/{customField}'
+ * @route '/settings/campos/{customField}'
  */
     const updateForm = (args: { customField: number | { id: number } } | [customField: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: update.url(args, {
@@ -263,7 +263,7 @@ update.patch = (args: { customField: number | { id: number } } | [customField: n
             /**
 * @see \App\Http\Controllers\CustomFieldController::update
  * @see app/Http/Controllers/CustomFieldController.php:44
- * @route '/configuracoes/campos/{customField}'
+ * @route '/settings/campos/{customField}'
  */
         updateForm.patch = (args: { customField: number | { id: number } } | [customField: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: update.url(args, {
@@ -279,7 +279,7 @@ update.patch = (args: { customField: number | { id: number } } | [customField: n
 /**
 * @see \App\Http\Controllers\CustomFieldController::destroy
  * @see app/Http/Controllers/CustomFieldController.php:53
- * @route '/configuracoes/campos/{customField}'
+ * @route '/settings/campos/{customField}'
  */
 export const destroy = (args: { customField: number | { id: number } } | [customField: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
@@ -288,13 +288,13 @@ export const destroy = (args: { customField: number | { id: number } } | [custom
 
 destroy.definition = {
     methods: ["delete"],
-    url: '/configuracoes/campos/{customField}',
+    url: '/settings/campos/{customField}',
 } satisfies RouteDefinition<["delete"]>
 
 /**
 * @see \App\Http\Controllers\CustomFieldController::destroy
  * @see app/Http/Controllers/CustomFieldController.php:53
- * @route '/configuracoes/campos/{customField}'
+ * @route '/settings/campos/{customField}'
  */
 destroy.url = (args: { customField: number | { id: number } } | [customField: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -327,7 +327,7 @@ destroy.url = (args: { customField: number | { id: number } } | [customField: nu
 /**
 * @see \App\Http\Controllers\CustomFieldController::destroy
  * @see app/Http/Controllers/CustomFieldController.php:53
- * @route '/configuracoes/campos/{customField}'
+ * @route '/settings/campos/{customField}'
  */
 destroy.delete = (args: { customField: number | { id: number } } | [customField: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
@@ -337,7 +337,7 @@ destroy.delete = (args: { customField: number | { id: number } } | [customField:
     /**
 * @see \App\Http\Controllers\CustomFieldController::destroy
  * @see app/Http/Controllers/CustomFieldController.php:53
- * @route '/configuracoes/campos/{customField}'
+ * @route '/settings/campos/{customField}'
  */
     const destroyForm = (args: { customField: number | { id: number } } | [customField: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: destroy.url(args, {
@@ -352,7 +352,7 @@ destroy.delete = (args: { customField: number | { id: number } } | [customField:
             /**
 * @see \App\Http\Controllers\CustomFieldController::destroy
  * @see app/Http/Controllers/CustomFieldController.php:53
- * @route '/configuracoes/campos/{customField}'
+ * @route '/settings/campos/{customField}'
  */
         destroyForm.delete = (args: { customField: number | { id: number } } | [customField: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: destroy.url(args, {

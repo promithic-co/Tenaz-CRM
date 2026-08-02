@@ -11,10 +11,14 @@ const props = withDefaults(
         action: RouteDefinition<'patch'>;
         canEdit?: boolean;
         compact?: boolean;
+        title?: string;
+        hint?: string;
     }>(),
     {
         canEdit: false,
         compact: false,
+        title: 'Informações do atendimento',
+        hint: '',
     },
 );
 
@@ -70,22 +74,31 @@ function remove(item: CollectedInformationItem): void {
 
 <template>
     <div>
-        <div class="flex items-center justify-between gap-2">
-            <p
-                class="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
-            >
-                Informações do atendimento
-            </p>
+        <!-- The hint is a line of its own and the button never shrinks: inline, both
+             wrapped mid-phrase in the narrow sidebar ("Adicio/nar"). -->
+        <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+                <p
+                    class="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
+                >
+                    {{ title }}
+                </p>
+                <p v-if="hint" class="text-[10px] text-muted-foreground/70">
+                    {{ hint }}
+                </p>
+            </div>
             <button
                 v-if="canEdit && !editing"
                 type="button"
-                class="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary/10"
+                class="inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 text-[10px] font-medium whitespace-nowrap text-primary transition-colors hover:bg-primary/10"
                 @click="startCreate"
             >
                 <Plus class="h-3 w-3" />
                 Adicionar
             </button>
         </div>
+
+        <slot name="fields" />
 
         <form
             v-if="editing"

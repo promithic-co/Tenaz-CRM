@@ -13,7 +13,7 @@ import {
     reorder as reorderFields,
     store as storeField,
     update as updateField,
-} from '@/routes/configuracoes/campos';
+} from '@/routes/settings/campos';
 import type { BreadcrumbItem } from '@/types';
 import CustomFieldRow from './partials/CustomFieldRow.vue';
 import OptionsEditor from './partials/OptionsEditor.vue';
@@ -40,7 +40,7 @@ const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Configurações', href: '/configuracoes' },
-    { title: 'Campos adicionais', href: '/configuracoes/campos' },
+    { title: 'Campos adicionais', href: '/settings/campos' },
 ];
 
 const savingId = ref<number | null>(null);

@@ -41,7 +41,7 @@ test('the settings page lists the tenant fields in display order', function (): 
     ]);
 
     $this->actingAs($owner)
-        ->get(route('configuracoes.campos.index'))
+        ->get(route('settings.campos.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('configuracoes/campos/Index')
@@ -59,7 +59,7 @@ test('fields from another tenant are not listed', function (): void {
     CustomField::factory()->create(['tenant_id' => (string) $other->id]);
 
     $this->actingAs($owner)
-        ->get(route('configuracoes.campos.index'))
+        ->get(route('settings.campos.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->has('fields', 0));
 });
@@ -69,15 +69,15 @@ test('a restricted member cannot reach the settings page or mutate fields', func
 
     $field = CustomField::factory()->create(['tenant_id' => (string) $tenant->id]);
 
-    $this->actingAs($member)->get(route('configuracoes.campos.index'))->assertForbidden();
+    $this->actingAs($member)->get(route('settings.campos.index'))->assertForbidden();
     $this->actingAs($member)
-        ->post(route('configuracoes.campos.store'), ['label' => 'Renda', 'type' => 'text'])
+        ->post(route('settings.campos.store'), ['label' => 'Renda', 'type' => 'text'])
         ->assertForbidden();
     $this->actingAs($member)
-        ->patch(route('configuracoes.campos.update', $field), ['label' => 'Outro'])
+        ->patch(route('settings.campos.update', $field), ['label' => 'Outro'])
         ->assertForbidden();
     $this->actingAs($member)
-        ->delete(route('configuracoes.campos.destroy', $field))
+        ->delete(route('settings.campos.destroy', $field))
         ->assertForbidden();
 });
 
@@ -85,12 +85,12 @@ test('creating a field derives a filter-safe slug from the label', function (): 
     [$tenant, $owner] = customFieldSetup();
 
     $this->actingAs($owner)
-        ->from(route('configuracoes.campos.index'))
-        ->post(route('configuracoes.campos.store'), [
+        ->from(route('settings.campos.index'))
+        ->post(route('settings.campos.store'), [
             'label' => 'Renda Mensal Líquida!',
             'type' => 'number',
         ])
-        ->assertRedirect(route('configuracoes.campos.index'));
+        ->assertRedirect(route('settings.campos.index'));
 
     $field = CustomField::query()->where('tenant_id', (string) $tenant->id)->sole();
 
@@ -111,7 +111,7 @@ test('a second field with the same name is refused instead of silently suffixed'
     ]);
 
     $this->actingAs($owner)
-        ->post(route('configuracoes.campos.store'), ['label' => 'Renda', 'type' => 'text'])
+        ->post(route('settings.campos.store'), ['label' => 'Renda', 'type' => 'text'])
         ->assertSessionHasErrors('label');
 
     expect(CustomField::query()->where('tenant_id', (string) $tenant->id)->count())->toBe(1);
@@ -121,7 +121,7 @@ test('a label with no usable characters is rejected', function (): void {
     [$tenant, $owner] = customFieldSetup();
 
     $this->actingAs($owner)
-        ->post(route('configuracoes.campos.store'), ['label' => '!!!', 'type' => 'text'])
+        ->post(route('settings.campos.store'), ['label' => '!!!', 'type' => 'text'])
         ->assertSessionHasErrors('label');
 
     expect(CustomField::query()->where('tenant_id', (string) $tenant->id)->count())->toBe(0);
@@ -131,11 +131,11 @@ test('a select field requires options and stores them with derived values', func
     [$tenant, $owner] = customFieldSetup();
 
     $this->actingAs($owner)
-        ->post(route('configuracoes.campos.store'), ['label' => 'Faixa', 'type' => 'select'])
+        ->post(route('settings.campos.store'), ['label' => 'Faixa', 'type' => 'select'])
         ->assertSessionHasErrors('options');
 
     $this->actingAs($owner)
-        ->post(route('configuracoes.campos.store'), [
+        ->post(route('settings.campos.store'), [
             'label' => 'Faixa de Preço',
             'type' => 'select',
             'options' => [['label' => 'Até R$ 300k'], ['label' => 'Acima de R$ 300k']],
@@ -162,7 +162,7 @@ test('the field cap is enforced', function (): void {
     }
 
     $this->actingAs($owner)
-        ->post(route('configuracoes.campos.store'), ['label' => 'Um mais', 'type' => 'text'])
+        ->post(route('settings.campos.store'), ['label' => 'Um mais', 'type' => 'text'])
         ->assertSessionHasErrors('label');
 });
 
@@ -181,7 +181,7 @@ test('updating a field cannot change its slug or type', function (): void {
     ]);
 
     $this->actingAs($owner)
-        ->patch(route('configuracoes.campos.update', $field), [
+        ->patch(route('settings.campos.update', $field), [
             'label' => 'Renda mensal',
             'is_required' => true,
             'slug' => 'outro_slug',
@@ -209,7 +209,7 @@ test('deleting a field removes the values stored for it', function (): void {
     ]);
 
     $this->actingAs($owner)
-        ->delete(route('configuracoes.campos.destroy', $field))
+        ->delete(route('settings.campos.destroy', $field))
         ->assertRedirect();
 
     expect(CustomField::query()->find($field->id))->toBeNull()
@@ -230,7 +230,7 @@ test('the settings page reports how many leads already filled each field', funct
     }
 
     $this->actingAs($owner)
-        ->get(route('configuracoes.campos.index'))
+        ->get(route('settings.campos.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('fields.0.values_count', 2));
 });
@@ -247,10 +247,10 @@ test('a field belonging to another tenant is a 404, not a 403', function (): voi
     // custom_fields carries no global tenant scope, so the controller has to make
     // this call itself; a 403 would confirm the row exists.
     $this->actingAs($owner)
-        ->patch(route('configuracoes.campos.update', $foreign), ['label' => 'Roubado'])
+        ->patch(route('settings.campos.update', $foreign), ['label' => 'Roubado'])
         ->assertNotFound();
     $this->actingAs($owner)
-        ->delete(route('configuracoes.campos.destroy', $foreign))
+        ->delete(route('settings.campos.destroy', $foreign))
         ->assertNotFound();
 
     expect($foreign->fresh()->label)->toBe('Alheio');
@@ -277,7 +277,7 @@ test('reordering rewrites sort_order and ignores foreign ids', function (): void
     ]);
 
     $this->actingAs($owner)
-        ->post(route('configuracoes.campos.reorder'), [
+        ->post(route('settings.campos.reorder'), [
             'ids' => [$second->id, $foreign->id, $first->id],
         ])
         ->assertRedirect();

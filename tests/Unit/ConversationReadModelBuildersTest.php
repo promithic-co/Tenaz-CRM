@@ -106,7 +106,6 @@ test('panel builder preserves active conversation prop keys', function () {
         'followupStatus',
         'conversationWindow',
         'history',
-        'canStartCampaign',
         'active_handoff',
         'handoff_state',
         'handoff_actions',
@@ -119,6 +118,5 @@ test('panel builder preserves active conversation prop keys', function () {
             'label' => 'Objetivo',
             'value' => 'Refinanciamento',
             'source' => 'manual',
-        ]])
-        ->and($props['canStartCampaign'])->toBeTrue();
+        ]]);
 });

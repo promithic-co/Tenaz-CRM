@@ -37,7 +37,7 @@ const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Configurações', href: '/configuracoes' },
-    { title: 'Pipeline', href: '/configuracoes/pipeline' },
+    { title: 'Pipeline', href: '/settings/pipeline' },
 ];
 
 // ─── Local reactive state ─────────────────────────────────────────────────────

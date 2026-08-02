@@ -81,10 +81,9 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     Route::post('/conversas/{lead}/sessions/{session}/close', [ConversationSessionController::class, 'close'])
         ->scopeBindings()
         ->name('conversas.sessions.close');
-    Route::patch('/conversas/{lead}/sessions/{session}/valor', [ConversationSessionController::class, 'updateValue'])
+    Route::patch('/conversas/{lead}/sessions/{session}/informacoes', [ConversationSessionController::class, 'updateInformation'])
         ->scopeBindings()
-        ->name('conversas.sessions.value.update');
-    Route::post('/conversas/{lead}/prepare-campaign', [LeadManagementController::class, 'prepareCampaign'])->name('conversas.prepare-campaign');
+        ->name('conversas.sessions.information.update');
     Route::post('/conversas/{lead}/add-to-contacts', [LeadManagementController::class, 'addToContacts'])->name('conversas.add-to-contacts');
     Route::post('/leads/{lead}/status', [LeadStatusController::class, 'update'])->name('leads.status.update');
 
@@ -191,8 +190,12 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
     // Redirecionar rota antiga para a nova
     Route::redirect('/configuracoes', '/agente/follow-up')->name('configuracoes.index');
 
-    // Pipeline de status (admin/owner only)
-    Route::middleware('role:owner,administrator')->prefix('configuracoes/pipeline')->name('configuracoes.pipeline.')->group(function () {
+    // Pipeline de status (admin/owner only). Lives under /settings alongside the
+    // other administrative pages; the old /configuracoes URLs still redirect.
+    Route::redirect('/configuracoes/pipeline', '/settings/pipeline');
+    Route::redirect('/configuracoes/campos', '/settings/campos');
+
+    Route::middleware('role:owner,administrator')->prefix('settings/pipeline')->name('settings.pipeline.')->group(function () {
         Route::get('/', [StatusPipelineController::class, 'index'])->name('index');
         Route::post('/statuses', [StatusPipelineController::class, 'storeStatus'])->name('statuses.store');
         Route::put('/statuses/{slug}', [StatusPipelineController::class, 'updateStatus'])->name('statuses.update');
@@ -205,7 +208,7 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
 
     // Campos adicionais do lead (admin/owner only). Operators fill the values in
     // from the conversation panel; only admins define which fields exist.
-    Route::middleware('role:owner,administrator')->prefix('configuracoes/campos')->name('configuracoes.campos.')->group(function () {
+    Route::middleware('role:owner,administrator')->prefix('settings/campos')->name('settings.campos.')->group(function () {
         Route::get('/', [CustomFieldController::class, 'index'])->name('index');
         Route::post('/', [CustomFieldController::class, 'store'])->name('store');
         Route::post('/reorder', [CustomFieldController::class, 'reorder'])->name('reorder');

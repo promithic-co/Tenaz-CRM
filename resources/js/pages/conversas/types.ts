@@ -60,10 +60,10 @@ export type ConversationSessionSummary = {
     status: ConversationSessionStatus;
     open_reason: ConversationSessionOpenReason;
     outcome: ConversationSessionOutcome | null;
-    /** Negotiated amount in cents — never a float, and never pre-formatted by the server. */
+    /** Negotiated amount in cents — historical only, no longer editable from the panel. */
     value_cents: number | null;
-    /** Forecast close, date-only (YYYY-MM-DD). */
-    expected_close_at: string | null;
+    /** Free-form entries scoped to this atendimento; frozen when the cycle closes. */
+    collected_information: CollectedInformationItem[];
     opened_at: string | null;
     closed_at: string | null;
     last_message_at: string | null;
@@ -229,7 +229,6 @@ export type ActiveConversation = {
     followupStatus: string;
     followupState: FollowupState;
     history: ConversationHistory;
-    canStartCampaign: boolean;
     conversationWindow?: ConversationWindowStatus | null;
     whatsappTemplatesEnabled?: boolean;
     whatsappTemplates?: WhatsappTemplateOption[];

@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -11,13 +11,13 @@ export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 index.definition = {
     methods: ["get","head"],
-    url: '/configuracoes/pipeline',
+    url: '/settings/pipeline',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ index.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
         action: index.url(options),
@@ -55,7 +55,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: index.url(options),
@@ -64,7 +64,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
             /**
 * @see \App\Http\Controllers\StatusPipelineController::index
  * @see app/Http/Controllers/StatusPipelineController.php:41
- * @route '/configuracoes/pipeline'
+ * @route '/settings/pipeline'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: index.url({
@@ -80,7 +80,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \App\Http\Controllers\StatusPipelineController::storeStatus
  * @see app/Http/Controllers/StatusPipelineController.php:91
- * @route '/configuracoes/pipeline/statuses'
+ * @route '/settings/pipeline/statuses'
  */
 export const storeStatus = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: storeStatus.url(options),
@@ -89,13 +89,13 @@ export const storeStatus = (options?: RouteQueryOptions): RouteDefinition<'post'
 
 storeStatus.definition = {
     methods: ["post"],
-    url: '/configuracoes/pipeline/statuses',
+    url: '/settings/pipeline/statuses',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::storeStatus
  * @see app/Http/Controllers/StatusPipelineController.php:91
- * @route '/configuracoes/pipeline/statuses'
+ * @route '/settings/pipeline/statuses'
  */
 storeStatus.url = (options?: RouteQueryOptions) => {
     return storeStatus.definition.url + queryParams(options)
@@ -104,7 +104,7 @@ storeStatus.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StatusPipelineController::storeStatus
  * @see app/Http/Controllers/StatusPipelineController.php:91
- * @route '/configuracoes/pipeline/statuses'
+ * @route '/settings/pipeline/statuses'
  */
 storeStatus.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: storeStatus.url(options),
@@ -114,7 +114,7 @@ storeStatus.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     /**
 * @see \App\Http\Controllers\StatusPipelineController::storeStatus
  * @see app/Http/Controllers/StatusPipelineController.php:91
- * @route '/configuracoes/pipeline/statuses'
+ * @route '/settings/pipeline/statuses'
  */
     const storeStatusForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: storeStatus.url(options),
@@ -124,7 +124,7 @@ storeStatus.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             /**
 * @see \App\Http\Controllers\StatusPipelineController::storeStatus
  * @see app/Http/Controllers/StatusPipelineController.php:91
- * @route '/configuracoes/pipeline/statuses'
+ * @route '/settings/pipeline/statuses'
  */
         storeStatusForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: storeStatus.url(options),
@@ -135,7 +135,7 @@ storeStatus.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \App\Http\Controllers\StatusPipelineController::updateStatus
  * @see app/Http/Controllers/StatusPipelineController.php:68
- * @route '/configuracoes/pipeline/statuses/{slug}'
+ * @route '/settings/pipeline/statuses/{slug}'
  */
 export const updateStatus = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: updateStatus.url(args, options),
@@ -144,13 +144,13 @@ export const updateStatus = (args: { slug: string | number } | [slug: string | n
 
 updateStatus.definition = {
     methods: ["put"],
-    url: '/configuracoes/pipeline/statuses/{slug}',
+    url: '/settings/pipeline/statuses/{slug}',
 } satisfies RouteDefinition<["put"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::updateStatus
  * @see app/Http/Controllers/StatusPipelineController.php:68
- * @route '/configuracoes/pipeline/statuses/{slug}'
+ * @route '/settings/pipeline/statuses/{slug}'
  */
 updateStatus.url = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -178,7 +178,7 @@ updateStatus.url = (args: { slug: string | number } | [slug: string | number ] |
 /**
 * @see \App\Http\Controllers\StatusPipelineController::updateStatus
  * @see app/Http/Controllers/StatusPipelineController.php:68
- * @route '/configuracoes/pipeline/statuses/{slug}'
+ * @route '/settings/pipeline/statuses/{slug}'
  */
 updateStatus.put = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: updateStatus.url(args, options),
@@ -188,7 +188,7 @@ updateStatus.put = (args: { slug: string | number } | [slug: string | number ] |
     /**
 * @see \App\Http\Controllers\StatusPipelineController::updateStatus
  * @see app/Http/Controllers/StatusPipelineController.php:68
- * @route '/configuracoes/pipeline/statuses/{slug}'
+ * @route '/settings/pipeline/statuses/{slug}'
  */
     const updateStatusForm = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: updateStatus.url(args, {
@@ -203,7 +203,7 @@ updateStatus.put = (args: { slug: string | number } | [slug: string | number ] |
             /**
 * @see \App\Http\Controllers\StatusPipelineController::updateStatus
  * @see app/Http/Controllers/StatusPipelineController.php:68
- * @route '/configuracoes/pipeline/statuses/{slug}'
+ * @route '/settings/pipeline/statuses/{slug}'
  */
         updateStatusForm.put = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: updateStatus.url(args, {
@@ -219,7 +219,7 @@ updateStatus.put = (args: { slug: string | number } | [slug: string | number ] |
 /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyStatus
  * @see app/Http/Controllers/StatusPipelineController.php:108
- * @route '/configuracoes/pipeline/statuses/{slug}'
+ * @route '/settings/pipeline/statuses/{slug}'
  */
 export const destroyStatus = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroyStatus.url(args, options),
@@ -228,13 +228,13 @@ export const destroyStatus = (args: { slug: string | number } | [slug: string | 
 
 destroyStatus.definition = {
     methods: ["delete"],
-    url: '/configuracoes/pipeline/statuses/{slug}',
+    url: '/settings/pipeline/statuses/{slug}',
 } satisfies RouteDefinition<["delete"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyStatus
  * @see app/Http/Controllers/StatusPipelineController.php:108
- * @route '/configuracoes/pipeline/statuses/{slug}'
+ * @route '/settings/pipeline/statuses/{slug}'
  */
 destroyStatus.url = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -262,7 +262,7 @@ destroyStatus.url = (args: { slug: string | number } | [slug: string | number ] 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyStatus
  * @see app/Http/Controllers/StatusPipelineController.php:108
- * @route '/configuracoes/pipeline/statuses/{slug}'
+ * @route '/settings/pipeline/statuses/{slug}'
  */
 destroyStatus.delete = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroyStatus.url(args, options),
@@ -272,7 +272,7 @@ destroyStatus.delete = (args: { slug: string | number } | [slug: string | number
     /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyStatus
  * @see app/Http/Controllers/StatusPipelineController.php:108
- * @route '/configuracoes/pipeline/statuses/{slug}'
+ * @route '/settings/pipeline/statuses/{slug}'
  */
     const destroyStatusForm = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: destroyStatus.url(args, {
@@ -287,7 +287,7 @@ destroyStatus.delete = (args: { slug: string | number } | [slug: string | number
             /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyStatus
  * @see app/Http/Controllers/StatusPipelineController.php:108
- * @route '/configuracoes/pipeline/statuses/{slug}'
+ * @route '/settings/pipeline/statuses/{slug}'
  */
         destroyStatusForm.delete = (args: { slug: string | number } | [slug: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: destroyStatus.url(args, {
@@ -303,7 +303,7 @@ destroyStatus.delete = (args: { slug: string | number } | [slug: string | number
 /**
 * @see \App\Http\Controllers\StatusPipelineController::storeTransition
  * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
+ * @route '/settings/pipeline/transitions'
  */
 export const storeTransition = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: storeTransition.url(options),
@@ -312,13 +312,13 @@ export const storeTransition = (options?: RouteQueryOptions): RouteDefinition<'p
 
 storeTransition.definition = {
     methods: ["post"],
-    url: '/configuracoes/pipeline/transitions',
+    url: '/settings/pipeline/transitions',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::storeTransition
  * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
+ * @route '/settings/pipeline/transitions'
  */
 storeTransition.url = (options?: RouteQueryOptions) => {
     return storeTransition.definition.url + queryParams(options)
@@ -327,7 +327,7 @@ storeTransition.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StatusPipelineController::storeTransition
  * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
+ * @route '/settings/pipeline/transitions'
  */
 storeTransition.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: storeTransition.url(options),
@@ -337,7 +337,7 @@ storeTransition.post = (options?: RouteQueryOptions): RouteDefinition<'post'> =>
     /**
 * @see \App\Http\Controllers\StatusPipelineController::storeTransition
  * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
+ * @route '/settings/pipeline/transitions'
  */
     const storeTransitionForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: storeTransition.url(options),
@@ -347,7 +347,7 @@ storeTransition.post = (options?: RouteQueryOptions): RouteDefinition<'post'> =>
             /**
 * @see \App\Http\Controllers\StatusPipelineController::storeTransition
  * @see app/Http/Controllers/StatusPipelineController.php:141
- * @route '/configuracoes/pipeline/transitions'
+ * @route '/settings/pipeline/transitions'
  */
         storeTransitionForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: storeTransition.url(options),
@@ -358,7 +358,7 @@ storeTransition.post = (options?: RouteQueryOptions): RouteDefinition<'post'> =>
 /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyTransition
  * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
+ * @route '/settings/pipeline/transitions/{from}/{to}'
  */
 export const destroyTransition = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroyTransition.url(args, options),
@@ -367,13 +367,13 @@ export const destroyTransition = (args: { from: string | number, to: string | nu
 
 destroyTransition.definition = {
     methods: ["delete"],
-    url: '/configuracoes/pipeline/transitions/{from}/{to}',
+    url: '/settings/pipeline/transitions/{from}/{to}',
 } satisfies RouteDefinition<["delete"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyTransition
  * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
+ * @route '/settings/pipeline/transitions/{from}/{to}'
  */
 destroyTransition.url = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions) => {
     if (Array.isArray(args)) {
@@ -399,7 +399,7 @@ destroyTransition.url = (args: { from: string | number, to: string | number } | 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyTransition
  * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
+ * @route '/settings/pipeline/transitions/{from}/{to}'
  */
 destroyTransition.delete = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroyTransition.url(args, options),
@@ -409,7 +409,7 @@ destroyTransition.delete = (args: { from: string | number, to: string | number }
     /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyTransition
  * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
+ * @route '/settings/pipeline/transitions/{from}/{to}'
  */
     const destroyTransitionForm = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: destroyTransition.url(args, {
@@ -424,7 +424,7 @@ destroyTransition.delete = (args: { from: string | number, to: string | number }
             /**
 * @see \App\Http\Controllers\StatusPipelineController::destroyTransition
  * @see app/Http/Controllers/StatusPipelineController.php:160
- * @route '/configuracoes/pipeline/transitions/{from}/{to}'
+ * @route '/settings/pipeline/transitions/{from}/{to}'
  */
         destroyTransitionForm.delete = (args: { from: string | number, to: string | number } | [from: string | number, to: string | number ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: destroyTransition.url(args, {
@@ -440,7 +440,7 @@ destroyTransition.delete = (args: { from: string | number, to: string | number }
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
+ * @route '/settings/pipeline/reorder'
  */
 export const reorder = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reorder.url(options),
@@ -449,13 +449,13 @@ export const reorder = (options?: RouteQueryOptions): RouteDefinition<'post'> =>
 
 reorder.definition = {
     methods: ["post"],
-    url: '/configuracoes/pipeline/reorder',
+    url: '/settings/pipeline/reorder',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
+ * @route '/settings/pipeline/reorder'
  */
 reorder.url = (options?: RouteQueryOptions) => {
     return reorder.definition.url + queryParams(options)
@@ -464,7 +464,7 @@ reorder.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
+ * @route '/settings/pipeline/reorder'
  */
 reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reorder.url(options),
@@ -474,7 +474,7 @@ reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
+ * @route '/settings/pipeline/reorder'
  */
     const reorderForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: reorder.url(options),
@@ -484,7 +484,7 @@ reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             /**
 * @see \App\Http\Controllers\StatusPipelineController::reorder
  * @see app/Http/Controllers/StatusPipelineController.php:179
- * @route '/configuracoes/pipeline/reorder'
+ * @route '/settings/pipeline/reorder'
  */
         reorderForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: reorder.url(options),
@@ -495,7 +495,7 @@ reorder.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
+ * @route '/settings/pipeline/reset'
  */
 export const reset = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reset.url(options),
@@ -504,13 +504,13 @@ export const reset = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
 
 reset.definition = {
     methods: ["post"],
-    url: '/configuracoes/pipeline/reset',
+    url: '/settings/pipeline/reset',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
+ * @route '/settings/pipeline/reset'
  */
 reset.url = (options?: RouteQueryOptions) => {
     return reset.definition.url + queryParams(options)
@@ -519,7 +519,7 @@ reset.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
+ * @route '/settings/pipeline/reset'
  */
 reset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: reset.url(options),
@@ -529,7 +529,7 @@ reset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
+ * @route '/settings/pipeline/reset'
  */
     const resetForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: reset.url(options),
@@ -539,7 +539,7 @@ reset.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
             /**
 * @see \App\Http\Controllers\StatusPipelineController::reset
  * @see app/Http/Controllers/StatusPipelineController.php:203
- * @route '/configuracoes/pipeline/reset'
+ * @route '/settings/pipeline/reset'
  */
         resetForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: reset.url(options),

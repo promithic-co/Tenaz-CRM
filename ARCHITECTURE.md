@@ -185,7 +185,9 @@ Every inbound pipeline generates a UUID `interaction_id` via `AgentInteractionEv
 
 ### Route Naming
 
-Named routes use **plural Portuguese nouns**: `conversas.*`, `agentes.*`, `campanhas.*`, `listas-contato.*`, `atendimentos.*`, `configuracoes.pipeline.*`. Follow this pattern exactly for new routes.
+Named routes use **plural Portuguese nouns**: `conversas.*`, `agentes.*`, `campanhas.*`, `listas-contato.*`, `atendimentos.*`. Follow this pattern exactly for new routes.
+
+The administrative pages under `/settings` are the exception: they keep the English `settings.*` prefix the account pages already use (`settings.pipeline.*`, `settings.campos.*`), so the route name always mirrors the URL.
 
 ### Conversas Operator Routes
 

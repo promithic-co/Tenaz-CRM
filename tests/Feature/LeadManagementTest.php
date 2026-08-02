@@ -3,7 +3,6 @@
 use App\Models\Agent;
 use App\Models\AgentInteractionEvent;
 use App\Models\Contact;
-use App\Models\ContactList;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\WhatsappInstance;
@@ -422,44 +421,6 @@ describe('LeadManagementController@bulkAction', function () {
             ])
             ->assertRedirect()
             ->assertSessionHas('flash', 'Ação aplicada a 1 leads. 1 ignorados.');
-    });
-});
-
-describe('LeadManagementController@prepareCampaign', function () {
-    test('creates an individual contact list for owner and redirects to campaign create', function () {
-        [$user, $agent, $instance] = makeOwnerWithInstance();
-        $lead = Lead::factory()->create([
-            'tenant_id' => $user->tenantId,
-            'agent_id' => $agent->id,
-            'evolution_instance' => $instance->name,
-            'whatsapp' => '5511955554444',
-            'nome' => 'Cliente',
-        ]);
-
-        $this->actingAs($user)
-            ->post(route('conversas.prepare-campaign', $lead))
-            ->assertRedirect();
-
-        $list = ContactList::where('tenant_id', $user->tenantId)
-            ->where('source', 'individual')
-            ->first();
-
-        expect($list)->not->toBeNull()
-            ->and($list->entries()->where('lead_id', $lead->id)->exists())->toBeTrue();
-    });
-
-    test('reuses existing individual list for the same lead', function () {
-        [$user, $agent, $instance] = makeOwnerWithInstance();
-        $lead = Lead::factory()->create([
-            'tenant_id' => $user->tenantId,
-            'agent_id' => $agent->id,
-            'evolution_instance' => $instance->name,
-        ]);
-
-        $this->actingAs($user)->post(route('conversas.prepare-campaign', $lead))->assertRedirect();
-        $this->actingAs($user)->post(route('conversas.prepare-campaign', $lead))->assertRedirect();
-
-        expect(ContactList::where('tenant_id', $user->tenantId)->where('source', 'individual')->count())->toBe(1);
     });
 });
 

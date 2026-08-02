@@ -16,6 +16,8 @@ use App\Models\PromptExperiment;
 use App\Models\PromptTemplate;
 use App\Models\ToolDefinition;
 use App\Services\AgentConfigResolver;
+use App\Services\ContactCollectedInformationService;
+use App\Services\ConversationSessionInformationService;
 use App\Support\PromptLayerCache;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -384,7 +386,9 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
      */
     protected function buildLeadContext(): string
     {
-        if (! $this->lead->cpf && ! $this->lead->nome) {
+        $collectedContext = $this->buildCollectedInformationContext();
+
+        if (! $this->lead->cpf && ! $this->lead->nome && $collectedContext === '') {
             return '';
         }
 
@@ -401,7 +405,48 @@ abstract class BaseCustomerServiceAgent implements Agent, Conversational, HasMid
             $ctx .= " | Idade: {$this->lead->idade}";
         }
 
+        $ctx .= $collectedContext;
         $ctx .= $this->nicheLeadContext();
+
+        return $ctx;
+    }
+
+    /**
+     * Collected information the operator or the agent's own tools registered: durable
+     * contact facts first, then the entries scoped to the atendimento currently open.
+     * Closed sessions are archives — their entries never re-enter the prompt.
+     */
+    private function buildCollectedInformationContext(): string
+    {
+        $ctx = '';
+
+        $this->lead->loadMissing('contact');
+
+        if ($this->lead->contact !== null) {
+            $contactItems = app(ContactCollectedInformationService::class)
+                ->items($this->lead->contact);
+
+            if ($contactItems !== []) {
+                $ctx .= "\nInformações do contato:";
+                foreach ($contactItems as $item) {
+                    $ctx .= "\n- {$item['label']}: {$item['value']}";
+                }
+            }
+        }
+
+        $openSession = $this->lead->sessions()->open()->orderByDesc('number')->first();
+
+        if ($openSession !== null) {
+            $sessionItems = app(ConversationSessionInformationService::class)
+                ->items($openSession);
+
+            if ($sessionItems !== []) {
+                $ctx .= "\nInformações do atendimento atual:";
+                foreach ($sessionItems as $item) {
+                    $ctx .= "\n- {$item['label']}: {$item['value']}";
+                }
+            }
+        }
 
         return $ctx;
     }

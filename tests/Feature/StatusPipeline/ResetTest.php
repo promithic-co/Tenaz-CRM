@@ -10,7 +10,7 @@ it('reset without X-Confirm header returns 400', function (): void {
     $user = userWithTenant();
 
     $this->actingAs($user)
-        ->postJson('/configuracoes/pipeline/reset')
+        ->postJson('/settings/pipeline/reset')
         ->assertStatus(400);
 });
 
@@ -22,7 +22,7 @@ it('reset with X-Confirm: 1 header resets to defaults', function (): void {
     app(StatusMachineService::class)->addCustomStatus($machine, ['name' => 'Custom Status']);
 
     $this->actingAs($user)
-        ->postJson('/configuracoes/pipeline/reset', [], ['X-Confirm' => '1'])
+        ->postJson('/settings/pipeline/reset', [], ['X-Confirm' => '1'])
         ->assertOk()
         ->assertJsonStructure(['statuses', 'transitions']);
 
@@ -40,7 +40,7 @@ it('reset restores exactly 7 canonical statuses', function (): void {
     app(StatusMachineService::class)->addCustomStatus($machine->refresh(), ['name' => 'Extra B']);
 
     $this->actingAs($user)
-        ->postJson('/configuracoes/pipeline/reset', [], ['X-Confirm' => '1'])
+        ->postJson('/settings/pipeline/reset', [], ['X-Confirm' => '1'])
         ->assertOk();
 
     $machine->refresh();
@@ -60,6 +60,6 @@ it('reset with custom status in use returns 409', function (): void {
     ]);
 
     $this->actingAs($user)
-        ->postJson('/configuracoes/pipeline/reset', [], ['X-Confirm' => '1'])
+        ->postJson('/settings/pipeline/reset', [], ['X-Confirm' => '1'])
         ->assertStatus(409);
 });

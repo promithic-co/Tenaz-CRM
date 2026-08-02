@@ -6,10 +6,7 @@ use App\Actions\BulkLeadActions\ApplyBulkLeadAction;
 use App\Actions\CreateOrRestoreLeadAction;
 use App\Http\Requests\BulkLeadActionRequest;
 use App\Http\Requests\StoreLeadRequest;
-use App\Models\ContactList;
-use App\Models\ContactListEntry;
 use App\Models\Lead;
-use App\Models\WhatsappInstance;
 use App\Services\AgentInteractionEventService;
 use App\Services\ContactSyncService;
 use App\Services\PauseService;
@@ -127,66 +124,6 @@ class LeadManagementController extends Controller
         $skipped += max(0, $missing);
 
         return back()->with('flash', "Ação aplicada a {$applied} leads. {$skipped} ignorados.");
-    }
-
-    /**
-     * Build (or reuse) a one-contact list for a lead and redirect to the campaign
-     * creation page with the contact list and instance preselected. Lets an operator
-     * launch an outbound template message to a single lead via the standard campaign
-     * pipeline — no free-form direct send.
-     */
-    public function prepareCampaign(Lead $lead): RedirectResponse
-    {
-        $this->authorize('view', $lead);
-
-        $user = auth()->user();
-        if (! $user?->isOwnerOrAdmin()) {
-            abort(403, 'Apenas owner ou administrador pode iniciar campanha por aqui.');
-        }
-
-        $tenantId = (string) $lead->tenant_id;
-
-        $list = ContactList::query()
-            ->where('tenant_id', $tenantId)
-            ->where('source', 'individual')
-            ->whereHas('entries', fn ($q) => $q->where('lead_id', $lead->id))
-            ->first();
-
-        if (! $list) {
-            $list = ContactList::create([
-                'tenant_id' => $tenantId,
-                'name' => 'Individual: '.($lead->nome ?: $lead->whatsapp),
-                'description' => 'Lista gerada automaticamente para envio individual.',
-                'source' => 'individual',
-                'entries_count' => 0,
-            ]);
-        }
-
-        ContactListEntry::firstOrCreate(
-            ['contact_list_id' => $list->id, 'phone' => $lead->whatsapp],
-            [
-                'name' => $lead->nome,
-                'lead_id' => $lead->id,
-                'opt_in_status' => 'opted_in',
-                'opt_in_at' => now(),
-            ]
-        );
-
-        $list->refreshEntriesCount();
-
-        $instance = $lead->evolution_instance
-            ? WhatsappInstance::query()
-                ->where('tenant_id', $tenantId)
-                ->where('name', $lead->evolution_instance)
-                ->first()
-            : null;
-
-        $query = ['contact_list_id' => $list->id];
-        if ($instance) {
-            $query['whatsapp_instance_id'] = $instance->id;
-        }
-
-        return redirect()->route('campanhas.create', $query);
     }
 
     /**

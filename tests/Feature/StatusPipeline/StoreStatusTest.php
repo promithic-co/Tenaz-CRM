@@ -9,7 +9,7 @@ it('admin can create a custom status with safe default transitions', function ()
     app(StatusMachineService::class)->getOrCreateForTenant($tenantId);
 
     $this->actingAs($user)
-        ->postJson('/configuracoes/pipeline/statuses', [
+        ->postJson('/settings/pipeline/statuses', [
             'name' => 'Aguardando Documento',
             'color' => 'blue',
         ])

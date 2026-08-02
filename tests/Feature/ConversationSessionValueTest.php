@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Requests\UpdateConversationSessionValueRequest;
 use App\Models\Agent;
 use App\Models\ConversationSession;
 use App\Models\Lead;
@@ -24,176 +23,19 @@ function leadWithOpenSession(): array
     return [$user, $lead, $session];
 }
 
-test('update stores the amount and the forecast date', function () {
-    [$user, $lead, $session] = leadWithOpenSession();
-
-    $this->actingAs($user)
-        ->patch(route('conversas.sessions.value.update', [$lead, $session]), [
-            'value_cents' => 350_075,
-            'expected_close_at' => '2026-08-15',
-        ])
-        ->assertRedirect();
-
-    $session->refresh();
-
-    expect($session->value_cents)->toBe(350_075)
-        ->and($session->expected_close_at?->toDateString())->toBe('2026-08-15');
-});
-
-test('update clears both fields when they arrive null', function () {
-    [$user, $lead, $session] = leadWithOpenSession();
-    $session->update(['value_cents' => 1000, 'expected_close_at' => '2026-08-01']);
-
-    $this->actingAs($user)
-        ->patch(route('conversas.sessions.value.update', [$lead, $session]), [
-            'value_cents' => null,
-            'expected_close_at' => null,
-        ])
-        ->assertRedirect();
-
-    $session->refresh();
-
-    expect($session->value_cents)->toBeNull()
-        ->and($session->expected_close_at)->toBeNull();
-});
-
 /**
- * What the browser actually sends when the operator empties the fields: `<input type="date">`
- * and the masked text field both clear to '', not to null. If empty strings did not survive
- * the round trip, clearing a value in the UI would fail validation instead of unpricing it.
+ * The panel still displays historical amounts on archived cycles even though the
+ * manual pricing endpoint is gone — the payload must keep carrying them.
  */
-test('update clears both fields when they arrive as empty strings', function () {
+test('panel carries the amount on the session payload', function () {
     [$user, $lead, $session] = leadWithOpenSession();
-    $session->update(['value_cents' => 1000, 'expected_close_at' => '2026-08-01']);
-
-    $this->actingAs($user)
-        ->patch(route('conversas.sessions.value.update', [$lead, $session]), [
-            'value_cents' => '',
-            'expected_close_at' => '',
-        ])
-        ->assertRedirect()
-        ->assertSessionHasNoErrors();
-
-    $session->refresh();
-
-    expect($session->value_cents)->toBeNull()
-        ->and($session->expected_close_at)->toBeNull();
-});
-
-test('update rejects a negative amount', function () {
-    [$user, $lead, $session] = leadWithOpenSession();
-
-    $this->actingAs($user)
-        ->patch(route('conversas.sessions.value.update', [$lead, $session]), [
-            'value_cents' => -1,
-            'expected_close_at' => null,
-        ])
-        ->assertSessionHasErrors('value_cents');
-
-    expect($session->fresh()->value_cents)->toBeNull();
-});
-
-/**
- * The ceiling is what catches a mask bug: a stray multiplication turns R$ 5.000 into a
- * nine-figure amount that would then be summed into the dashboard as if it were real.
- */
-test('update rejects an amount above the ceiling', function () {
-    [$user, $lead, $session] = leadWithOpenSession();
-
-    $this->actingAs($user)
-        ->patch(route('conversas.sessions.value.update', [$lead, $session]), [
-            'value_cents' => UpdateConversationSessionValueRequest::MAX_VALUE_CENTS + 1,
-            'expected_close_at' => null,
-        ])
-        ->assertSessionHasErrors('value_cents');
-});
-
-test('update rejects a decimal amount', function () {
-    [$user, $lead, $session] = leadWithOpenSession();
-
-    $this->actingAs($user)
-        ->patch(route('conversas.sessions.value.update', [$lead, $session]), [
-            'value_cents' => 35.75,
-            'expected_close_at' => null,
-        ])
-        ->assertSessionHasErrors('value_cents');
-});
-
-test('update rejects a date that is not Y-m-d', function () {
-    [$user, $lead, $session] = leadWithOpenSession();
-
-    $this->actingAs($user)
-        ->patch(route('conversas.sessions.value.update', [$lead, $session]), [
-            'value_cents' => null,
-            'expected_close_at' => '15/08/2026',
-        ])
-        ->assertSessionHasErrors('expected_close_at');
-});
-
-/**
- * A closed atendimento has already been counted into the dashboard's won total. Editing its
- * amount afterwards would restate a historical figure with no record of the change.
- */
-test('update refuses a closed atendimento', function () {
-    $user = User::factory()->create();
-    $agent = Agent::factory()->create(['user_id' => $user->id, 'is_default' => true]);
-    $lead = Lead::factory()->forAgent($agent)->create();
-    $session = ConversationSession::factory()
-        ->forLead($lead)
-        ->closed(ConversationSession::OUTCOME_CONVERTED)
-        ->create(['number' => 1, 'value_cents' => 50_000]);
-
-    $this->actingAs($user)
-        ->patch(route('conversas.sessions.value.update', [$lead, $session]), [
-            'value_cents' => 999_999,
-            'expected_close_at' => null,
-        ])
-        ->assertSessionHasErrors('value_cents');
-
-    expect($session->fresh()->value_cents)->toBe(50_000);
-});
-
-test('update refuses a session that belongs to another lead', function () {
-    $user = User::factory()->create();
-    $agent = Agent::factory()->create(['user_id' => $user->id, 'is_default' => true]);
-    $lead = Lead::factory()->forAgent($agent)->create();
-    $otherLead = Lead::factory()->forAgent($agent)->create();
-    $session = ConversationSession::factory()->forLead($otherLead)->open()->create();
-
-    $this->actingAs($user)
-        ->patch(route('conversas.sessions.value.update', [$lead, $session]), [
-            'value_cents' => 1000,
-            'expected_close_at' => null,
-        ])
-        ->assertNotFound();
-
-    expect($session->fresh()->value_cents)->toBeNull();
-});
-
-test('update is forbidden for a lead in another tenant', function () {
-    [, $lead, $session] = leadWithOpenSession();
-    $intruder = User::factory()->create();
-
-    $this->actingAs($intruder)
-        ->patch(route('conversas.sessions.value.update', [$lead, $session]), [
-            'value_cents' => 1000,
-            'expected_close_at' => null,
-        ])
-        ->assertNotFound();
-
-    expect($session->fresh()->value_cents)->toBeNull();
-});
-
-test('panel carries the amount and forecast on the session payload', function () {
-    [$user, $lead, $session] = leadWithOpenSession();
-    $session->update(['value_cents' => 275_050, 'expected_close_at' => '2026-09-01']);
+    $session->update(['value_cents' => 275_050]);
 
     $this->actingAs($user)
         ->get(route('conversas.show', $lead))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('activeConversation.sessions.0.value_cents', 275_050)
-            ->where('activeConversation.sessions.0.expected_close_at', '2026-09-01')
         );
 });
 
@@ -205,7 +47,6 @@ test('panel reports a null amount for an unpriced atendimento', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('activeConversation.sessions.0.value_cents', null)
-            ->where('activeConversation.sessions.0.expected_close_at', null)
         );
 });
 

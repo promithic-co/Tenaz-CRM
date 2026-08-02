@@ -19,7 +19,7 @@ it('admin can access the pipeline index page', function (): void {
     $user = userWithTenant();
 
     $this->actingAs($user)
-        ->get('/configuracoes/pipeline')
+        ->get('/settings/pipeline')
         ->assertStatus(200);
 });
 
@@ -28,20 +28,33 @@ it('non-admin (user role) gets 403 on pipeline index', function (): void {
 
     $this->actingAs($user)
         ->withSession(['active_tenant_id' => $tenant->id])
-        ->get('/configuracoes/pipeline')
+        ->get('/settings/pipeline')
         ->assertStatus(403);
 });
 
 it('unauthenticated request is redirected to login', function (): void {
-    $this->get('/configuracoes/pipeline')
+    $this->get('/settings/pipeline')
         ->assertRedirect('/login');
 });
+
+/**
+ * Both pages moved out of /configuracoes; the old URLs stay reachable so bookmarks
+ * and the links already sent to tenants keep working.
+ */
+it('redirects the old configuracoes URLs to their settings home', function (string $from, string $to): void {
+    $this->actingAs(userWithTenant())
+        ->get($from)
+        ->assertRedirect($to);
+})->with([
+    ['/configuracoes/pipeline', '/settings/pipeline'],
+    ['/configuracoes/campos', '/settings/campos'],
+]);
 
 it('pipeline index returns statuses and canonical_slugs', function (): void {
     $user = userWithTenant();
 
     $response = $this->actingAs($user)
-        ->get('/configuracoes/pipeline');
+        ->get('/settings/pipeline');
 
     $response->assertStatus(200)
         ->assertInertia(fn ($page) => $page
@@ -57,7 +70,7 @@ it('pipeline index returns the 7 canonical statuses for a fresh tenant', functio
     $user = userWithTenant();
 
     $response = $this->actingAs($user)
-        ->get('/configuracoes/pipeline');
+        ->get('/settings/pipeline');
 
     $response->assertStatus(200)
         ->assertInertia(fn ($page) => $page

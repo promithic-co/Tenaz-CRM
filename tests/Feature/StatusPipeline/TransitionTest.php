@@ -10,7 +10,7 @@ it('admin can add a new transition', function (): void {
     app(StatusMachineService::class)->getOrCreateForTenant($tenantId);
 
     $this->actingAs($user)
-        ->postJson('/configuracoes/pipeline/transitions', ['from' => 'convertido', 'to' => 'novo'])
+        ->postJson('/settings/pipeline/transitions', ['from' => 'convertido', 'to' => 'novo'])
         ->assertOk()
         ->assertJsonStructure(['transitions']);
 });
@@ -21,7 +21,7 @@ it('removing a canonical transition returns 422', function (): void {
     app(StatusMachineService::class)->getOrCreateForTenant($tenantId);
 
     $this->actingAs($user)
-        ->deleteJson('/configuracoes/pipeline/transitions/novo/qualificado')
+        ->deleteJson('/settings/pipeline/transitions/novo/qualificado')
         ->assertStatus(422);
 });
 
@@ -32,7 +32,7 @@ it('admin can remove a non-canonical transition', function (): void {
     app(StatusMachineService::class)->addTransition($machine, 'convertido', 'novo');
 
     $this->actingAs($user)
-        ->deleteJson('/configuracoes/pipeline/transitions/convertido/novo')
+        ->deleteJson('/settings/pipeline/transitions/convertido/novo')
         ->assertOk();
 });
 
@@ -42,6 +42,6 @@ it('adding a transition with unknown slug returns 422', function (): void {
     app(StatusMachineService::class)->getOrCreateForTenant($tenantId);
 
     $this->actingAs($user)
-        ->postJson('/configuracoes/pipeline/transitions', ['from' => 'inexistente', 'to' => 'novo'])
+        ->postJson('/settings/pipeline/transitions', ['from' => 'inexistente', 'to' => 'novo'])
         ->assertStatus(422);
 });

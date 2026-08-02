@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\ConversationSessionController::store
- * @see app/Http/Controllers/ConversationSessionController.php:29
+ * @see app/Http/Controllers/ConversationSessionController.php:30
  * @route '/conversas/{lead}/sessions'
  */
 export const store = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversationSessionController::store
- * @see app/Http/Controllers/ConversationSessionController.php:29
+ * @see app/Http/Controllers/ConversationSessionController.php:30
  * @route '/conversas/{lead}/sessions'
  */
 store.url = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -49,7 +49,7 @@ store.url = (args: { lead: number | { id: number } } | [lead: number | { id: num
 
 /**
 * @see \App\Http\Controllers\ConversationSessionController::store
- * @see app/Http/Controllers/ConversationSessionController.php:29
+ * @see app/Http/Controllers/ConversationSessionController.php:30
  * @route '/conversas/{lead}/sessions'
  */
 store.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -59,7 +59,7 @@ store.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
 
     /**
 * @see \App\Http\Controllers\ConversationSessionController::store
- * @see app/Http/Controllers/ConversationSessionController.php:29
+ * @see app/Http/Controllers/ConversationSessionController.php:30
  * @route '/conversas/{lead}/sessions'
  */
     const storeForm = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -69,7 +69,7 @@ store.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
 
             /**
 * @see \App\Http\Controllers\ConversationSessionController::store
- * @see app/Http/Controllers/ConversationSessionController.php:29
+ * @see app/Http/Controllers/ConversationSessionController.php:30
  * @route '/conversas/{lead}/sessions'
  */
         storeForm.post = (args: { lead: number | { id: number } } | [lead: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -80,7 +80,7 @@ store.post = (args: { lead: number | { id: number } } | [lead: number | { id: nu
     store.form = storeForm
 /**
 * @see \App\Http\Controllers\ConversationSessionController::close
- * @see app/Http/Controllers/ConversationSessionController.php:42
+ * @see app/Http/Controllers/ConversationSessionController.php:43
  * @route '/conversas/{lead}/sessions/{session}/close'
  */
 export const close = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -95,7 +95,7 @@ close.definition = {
 
 /**
 * @see \App\Http\Controllers\ConversationSessionController::close
- * @see app/Http/Controllers/ConversationSessionController.php:42
+ * @see app/Http/Controllers/ConversationSessionController.php:43
  * @route '/conversas/{lead}/sessions/{session}/close'
  */
 close.url = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions) => {
@@ -125,7 +125,7 @@ close.url = (args: { lead: number | { id: number }, session: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\ConversationSessionController::close
- * @see app/Http/Controllers/ConversationSessionController.php:42
+ * @see app/Http/Controllers/ConversationSessionController.php:43
  * @route '/conversas/{lead}/sessions/{session}/close'
  */
 close.post = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -135,7 +135,7 @@ close.post = (args: { lead: number | { id: number }, session: number | { id: num
 
     /**
 * @see \App\Http\Controllers\ConversationSessionController::close
- * @see app/Http/Controllers/ConversationSessionController.php:42
+ * @see app/Http/Controllers/ConversationSessionController.php:43
  * @route '/conversas/{lead}/sessions/{session}/close'
  */
     const closeForm = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -145,7 +145,7 @@ close.post = (args: { lead: number | { id: number }, session: number | { id: num
 
             /**
 * @see \App\Http\Controllers\ConversationSessionController::close
- * @see app/Http/Controllers/ConversationSessionController.php:42
+ * @see app/Http/Controllers/ConversationSessionController.php:43
  * @route '/conversas/{lead}/sessions/{session}/close'
  */
         closeForm.post = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -155,26 +155,26 @@ close.post = (args: { lead: number | { id: number }, session: number | { id: num
     
     close.form = closeForm
 /**
-* @see \App\Http\Controllers\ConversationSessionController::updateValue
+* @see \App\Http\Controllers\ConversationSessionController::updateInformation
  * @see app/Http/Controllers/ConversationSessionController.php:59
- * @route '/conversas/{lead}/sessions/{session}/valor'
+ * @route '/conversas/{lead}/sessions/{session}/informacoes'
  */
-export const updateValue = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
-    url: updateValue.url(args, options),
+export const updateInformation = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: updateInformation.url(args, options),
     method: 'patch',
 })
 
-updateValue.definition = {
+updateInformation.definition = {
     methods: ["patch"],
-    url: '/conversas/{lead}/sessions/{session}/valor',
+    url: '/conversas/{lead}/sessions/{session}/informacoes',
 } satisfies RouteDefinition<["patch"]>
 
 /**
-* @see \App\Http\Controllers\ConversationSessionController::updateValue
+* @see \App\Http\Controllers\ConversationSessionController::updateInformation
  * @see app/Http/Controllers/ConversationSessionController.php:59
- * @route '/conversas/{lead}/sessions/{session}/valor'
+ * @route '/conversas/{lead}/sessions/{session}/informacoes'
  */
-updateValue.url = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions) => {
+updateInformation.url = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions) => {
     if (Array.isArray(args)) {
         args = {
                     lead: args[0],
@@ -193,29 +193,29 @@ updateValue.url = (args: { lead: number | { id: number }, session: number | { id
                 : args.session,
                 }
 
-    return updateValue.definition.url
+    return updateInformation.definition.url
             .replace('{lead}', parsedArgs.lead.toString())
             .replace('{session}', parsedArgs.session.toString())
             .replace(/\/+$/, '') + queryParams(options)
 }
 
 /**
-* @see \App\Http\Controllers\ConversationSessionController::updateValue
+* @see \App\Http\Controllers\ConversationSessionController::updateInformation
  * @see app/Http/Controllers/ConversationSessionController.php:59
- * @route '/conversas/{lead}/sessions/{session}/valor'
+ * @route '/conversas/{lead}/sessions/{session}/informacoes'
  */
-updateValue.patch = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
-    url: updateValue.url(args, options),
+updateInformation.patch = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: updateInformation.url(args, options),
     method: 'patch',
 })
 
     /**
-* @see \App\Http\Controllers\ConversationSessionController::updateValue
+* @see \App\Http\Controllers\ConversationSessionController::updateInformation
  * @see app/Http/Controllers/ConversationSessionController.php:59
- * @route '/conversas/{lead}/sessions/{session}/valor'
+ * @route '/conversas/{lead}/sessions/{session}/informacoes'
  */
-    const updateValueForm = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: updateValue.url(args, {
+    const updateInformationForm = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: updateInformation.url(args, {
                     [options?.mergeQuery ? 'mergeQuery' : 'query']: {
                         _method: 'PATCH',
                         ...(options?.query ?? options?.mergeQuery ?? {}),
@@ -225,12 +225,12 @@ updateValue.patch = (args: { lead: number | { id: number }, session: number | { 
     })
 
             /**
-* @see \App\Http\Controllers\ConversationSessionController::updateValue
+* @see \App\Http\Controllers\ConversationSessionController::updateInformation
  * @see app/Http/Controllers/ConversationSessionController.php:59
- * @route '/conversas/{lead}/sessions/{session}/valor'
+ * @route '/conversas/{lead}/sessions/{session}/informacoes'
  */
-        updateValueForm.patch = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: updateValue.url(args, {
+        updateInformationForm.patch = (args: { lead: number | { id: number }, session: number | { id: number } } | [lead: number | { id: number }, session: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: updateInformation.url(args, {
                         [options?.mergeQuery ? 'mergeQuery' : 'query']: {
                             _method: 'PATCH',
                             ...(options?.query ?? options?.mergeQuery ?? {}),
@@ -239,7 +239,7 @@ updateValue.patch = (args: { lead: number | { id: number }, session: number | { 
             method: 'post',
         })
     
-    updateValue.form = updateValueForm
-const ConversationSessionController = { store, close, updateValue }
+    updateInformation.form = updateInformationForm
+const ConversationSessionController = { store, close, updateInformation }
 
 export default ConversationSessionController
