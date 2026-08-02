@@ -34,27 +34,22 @@ jobs:
       # the framework — so it cannot run before there is an env and a key. The
       # Lint job only ever got past this because it passes --no-scripts. Install
       # without scripts, configure, then dump the autoloader for real.
+      # APP_ENV must come off production: .env.example ships that value so a fresh
+      # server starts safe, but AppServiceProvider::validateRequiredEnv() then
+      # demands real AI provider keys and real database credentials, and refuses
+      # to boot artisan at all without them. phpunit.xml pins the rest.
       - name: Copy environment
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          sed -i 's/^APP_ENV=.*/APP_ENV=testing/' .env
 
       - name: Install dependencies
         run: |
           composer install --no-interaction --prefer-dist --no-scripts
           npm ci
 
-      # --force because .env.example carries APP_ENV=production, and every
-      # confirmable command aborts rather than prompt when there is no TTY.
-      # The failure is echoed as an annotation so it is readable without a token.
       - name: Generate application key
-        run: |
-          set +e
-          php artisan key:generate --force -vvv > key.log 2>&1
-          code=$?
-          cat key.log
-          if [ $code -ne 0 ]; then
-            echo "::error::$(tr '\n' ' ' < key.log | tail -c 900)"
-          fi
-          exit $code
+        run: php artisan key:generate --force
 
       - name: Discover packages
         run: composer dump-autoload --optimize

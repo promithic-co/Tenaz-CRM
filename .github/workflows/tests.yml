@@ -37,8 +37,14 @@ jobs:
 
       # composer's post-autoload-dump runs `artisan package:discover`, which boots
       # the framework — so it cannot run before there is an env and a key.
+      # APP_ENV must come off production: .env.example ships that value so a fresh
+      # server starts safe, but AppServiceProvider::validateRequiredEnv() then
+      # demands real AI provider keys and real database credentials, and refuses
+      # to boot artisan at all without them. phpunit.xml pins the rest.
       - name: Copy Environment File
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          sed -i 's/^APP_ENV=.*/APP_ENV=testing/' .env
 
       - name: Install Node Dependencies
         run: npm i
