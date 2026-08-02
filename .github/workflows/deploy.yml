@@ -42,8 +42,10 @@ jobs:
           composer install --no-interaction --prefer-dist --no-scripts
           npm ci
 
+      # --force because .env.example carries APP_ENV=production, and every
+      # confirmable command aborts rather than prompt when there is no TTY.
       - name: Generate application key
-        run: php artisan key:generate
+        run: php artisan key:generate --force
 
       - name: Discover packages
         run: composer dump-autoload --optimize
