@@ -1,12 +1,8 @@
 name: tests
 
+# Pull requests only. A push to main runs deploy.yml, which gates the deploy on
+# its own test job — running this one there too would just double the checks.
 on:
-  push:
-    branches:
-      - develop
-      - main
-      - master
-      - workos
   pull_request:
     branches:
       - develop
@@ -17,18 +13,17 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        php-version: ['8.4', '8.5']
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      # Production runs 8.3 and composer.json pins the platform to 8.3.31, so
+      # that is the only version worth proving green here.
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php-version }}
+          php-version: '8.3'
           tools: composer:v2
           coverage: xdebug
 
