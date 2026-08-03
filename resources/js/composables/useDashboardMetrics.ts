@@ -1,5 +1,6 @@
 import { ref, onMounted, onBeforeUnmount  } from 'vue';
 import type {Ref} from 'vue';
+import type { MetaHealthStatus } from '@/composables/useMetaHealth';
 import echo from '@/echo';
 
 export type DashboardSnapshot = {
@@ -10,7 +11,16 @@ export type DashboardSnapshot = {
     campaigns_active: number;
     campaigns_paused: number;
     conversion_rate_7d: number;
-    instance_statuses: Array<{ id: number; provider: string; status: string; quality_rating: string | null }>;
+    instance_statuses: Array<{
+        id: number;
+        label: string;
+        provider: string;
+        status: string;
+        health_status: MetaHealthStatus;
+        health_reasons: string[];
+        health_checked_at: string | null;
+        quality_rating: string | null;
+    }>;
     follow_ups_pending: number;
     voice_calls_today: number;
 };

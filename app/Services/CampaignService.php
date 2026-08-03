@@ -37,6 +37,7 @@ class CampaignService
             }
 
             $this->validatedSendConfig($locked);
+            $this->assertInstanceHealthAllowsSending($locked);
 
             if (! $locked->whatsappTemplate?->isApproved()) {
                 throw new \RuntimeException('O template da campanha não está aprovado.');
@@ -93,6 +94,7 @@ class CampaignService
             }
 
             $this->validatedSendConfig($locked);
+            $this->assertInstanceHealthAllowsSending($locked);
 
             // Clear the explanation for a pause that is over. It renders on the campaign page
             // whatever the status, so leaving it makes a live campaign advertise why it once
@@ -115,6 +117,63 @@ class CampaignService
         Log::info('CampaignService.resume', ['campaign_id' => $campaign->id]);
 
         DispatchCampaignJob::dispatch($campaign);
+    }
+
+    /**
+     * Refuse to start or resume a campaign whose number Meta has reported as
+     * unable to message.
+     *
+     * Deliberately outside validatedSendConfig(): that runs per message off a
+     * cached CampaignSendConfig, and a stale or transiently failed health probe
+     * must never fail individual sends mid-flight. This is a start/resume gate
+     * reading the live instance row.
+     *
+     * Only BLOCKED and an active messaging restriction stop a campaign. LIMITED
+     * still delivers — Meta merely caps the volume (a number awaiting display
+     * name approval sits at TIER_50) — so it surfaces as a warning on the
+     * campaign screen instead of refusing a send that would have worked.
+     *
+     * UNKNOWN never blocks either: a Graph outage or a coexistence token without
+     * WABA visibility would otherwise stop every campaign in the account.
+     *
+     * @throws \RuntimeException when Meta reports the number as BLOCKED
+     */
+    private function assertInstanceHealthAllowsSending(Campaign $campaign): void
+    {
+        $instance = $campaign->whatsappInstance()->first();
+
+        if (! $instance) {
+            return;
+        }
+
+        $restrictions = $instance->activeMessagingRestrictions();
+
+        if ($restrictions !== []) {
+            throw new \RuntimeException(
+                'A Meta restringiu o envio de mensagens desta conta ('.implode(', ', $restrictions).'). '
+                .'Regularize a conta no WhatsApp Manager antes de iniciar a campanha.'
+            );
+        }
+
+        $health = $instance->healthStatus();
+
+        if (! $health->isBlocked()) {
+            return;
+        }
+
+        $reasons = $instance->healthReasons();
+        $detail = $reasons === [] ? '' : ' Motivo informado pela Meta: '.implode(' ', $reasons);
+
+        Log::warning('CampaignService.health_gate_blocked', [
+            'campaign_id' => $campaign->id,
+            'whatsapp_instance_id' => $instance->id,
+            'health_status' => $health->value,
+            'reasons' => $reasons,
+        ]);
+
+        throw new \RuntimeException(
+            "A Meta bloqueou o envio de mensagens para o número desta campanha.{$detail}"
+        );
     }
 
     public function validatedSendConfig(

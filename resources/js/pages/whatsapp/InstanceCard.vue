@@ -1,44 +1,37 @@
 <script setup lang="ts">
-import { Info, Trash2 } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { Info, RefreshCw, Trash2 } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import {
+    healthChip,
+    healthStatusOf,
+    portfolioLimitLabel,
+} from '@/composables/useMetaHealth';
+import type { WhatsappInstanceSummary } from '@/types';
 import InstanceDetailsDrawer from './InstanceDetailsDrawer.vue';
 
-type Instance = {
-    id: number;
-    name: string;
-    display_name: string | null;
-    label: string;
-    api_url: string;
-    phone_number: string | null;
-    provider: 'meta_cloud';
-
-    meta_waba_id: string | null;
-    meta_phone_number_id: string | null;
-    meta_quality_rating: string | null;
-    meta_token_permanent: boolean;
-    meta_token_expires_at: string | null;
-    meta_coexistence: boolean;
-
-    agent_id: number | null;
-    agent_name: string | null;
-    default_ai_mode: string | null;
-
-    leads_count: number;
-
-    has_proxy: boolean;
-    proxy_host: string | null;
-    proxy_port: number | null;
-};
-
 const props = defineProps<{
-    instance: Instance;
+    instance: WhatsappInstanceSummary;
     csrf: string;
+    refreshing?: boolean;
 }>();
 
-const emit = defineEmits<{ delete: [] }>();
+const emit = defineEmits<{ delete: []; refresh: [] }>();
 
 const showDetails = ref(false);
-const state = 'open';
+
+const status = computed(() => healthStatusOf(props.instance.health_status));
+const chip = computed(() => healthChip(props.instance.health_status));
+
+// The first reason Meta gave is the actionable one ("display name not approved
+// yet", "payment method required"); the drawer lists the rest.
+const headlineReason = computed<string | null>(
+    () => props.instance.health_reasons?.[0] ?? null,
+);
+
+const portfolioLimit = computed(() =>
+    portfolioLimitLabel(props.instance.meta_portfolio_messaging_limit),
+);
+
 const providerLabel = 'Meta Cloud';
 const providerClass = 'bg-blue-500/10 text-blue-400';
 </script>
@@ -65,12 +58,19 @@ const providerClass = 'bg-blue-500/10 text-blue-400';
                 </div>
             </div>
             <span
-                class="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400"
+                :class="[
+                    'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium',
+                    chip.class,
+                ]"
             >
                 <span
-                    class="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400"
+                    :class="[
+                        'h-1.5 w-1.5 shrink-0 rounded-full',
+                        chip.dot,
+                        status === 'BLOCKED' ? 'animate-pulse' : '',
+                    ]"
                 />
-                Conectado
+                {{ chip.label }}
             </span>
         </div>
 
@@ -84,6 +84,24 @@ const providerClass = 'bg-blue-500/10 text-blue-400';
             Número não disponível
         </p>
 
+        <p
+            v-if="portfolioLimit"
+            class="-mt-2 truncate text-[11px] text-muted-foreground"
+            title="Conversas iniciadas em 24h. Teto do portfólio empresarial, compartilhado por todos os números dele."
+        >
+            {{ portfolioLimit }}
+            <span class="opacity-70">· portfólio</span>
+        </p>
+
+        <p
+            v-if="headlineReason && status !== 'AVAILABLE'"
+            class="line-clamp-2 rounded-md border px-2 py-1.5 text-[11px] leading-snug"
+            :class="chip.class"
+            :title="headlineReason"
+        >
+            {{ headlineReason }}
+        </p>
+
         <div class="mt-auto flex items-center justify-between gap-2 pt-1">
             <button
                 class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-red-400"
@@ -92,21 +110,35 @@ const providerClass = 'bg-blue-500/10 text-blue-400';
             >
                 <Trash2 class="h-4 w-4" />
             </button>
-            <button
-                class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                @click="showDetails = true"
-            >
-                <Info class="h-3.5 w-3.5" />
-                Detalhes
-            </button>
+            <div class="flex items-center gap-1.5">
+                <button
+                    class="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+                    title="Atualizar status na Meta"
+                    :disabled="props.refreshing"
+                    @click="emit('refresh')"
+                >
+                    <RefreshCw
+                        class="h-4 w-4"
+                        :class="props.refreshing ? 'animate-spin' : ''"
+                    />
+                </button>
+                <button
+                    class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    @click="showDetails = true"
+                >
+                    <Info class="h-3.5 w-3.5" />
+                    Detalhes
+                </button>
+            </div>
         </div>
 
         <InstanceDetailsDrawer
             :instance="props.instance"
             :open="showDetails"
-            :state="state"
+            :refreshing="props.refreshing"
             @update:open="(v: boolean) => (showDetails = v)"
             @delete="emit('delete')"
+            @refresh="emit('refresh')"
         />
     </div>
 </template>

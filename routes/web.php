@@ -147,6 +147,7 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
         Route::post('/whatsapp', [WhatsAppInstanceController::class, 'store'])->name('whatsapp.store');
         Route::delete('/whatsapp/{instance}', [WhatsAppInstanceController::class, 'destroy'])->name('whatsapp.destroy');
         Route::get('/whatsapp/{instance}/status', [WhatsAppInstanceController::class, 'status'])->name('whatsapp.status');
+        Route::post('/whatsapp/{instance}/health', [WhatsAppInstanceController::class, 'health'])->name('whatsapp.health');
         Route::post('/whatsapp/{instance}/connect', [WhatsAppInstanceController::class, 'connect'])->name('whatsapp.connect');
         Route::post('/whatsapp/{instance}/disconnect', [WhatsAppInstanceController::class, 'disconnect'])->name('whatsapp.disconnect');
         Route::post('/whatsapp/meta/embedded-signup', [MetaEmbeddedSignupController::class, 'callback'])->name('whatsapp.meta.embedded-signup');

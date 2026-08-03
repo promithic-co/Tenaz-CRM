@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Copy, Users } from 'lucide-vue-next';
+import { AlertTriangle, Check, Copy, RefreshCw, Users } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,45 +10,27 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-
-type ConnectionState = 'open' | 'connecting' | 'close' | 'loading';
-
-type Instance = {
-    id: number;
-    name: string;
-    display_name: string | null;
-    label: string;
-    api_url: string;
-    phone_number: string | null;
-    provider: 'meta_cloud';
-
-    meta_waba_id: string | null;
-    meta_phone_number_id: string | null;
-    meta_quality_rating: string | null;
-    meta_token_permanent: boolean;
-    meta_token_expires_at: string | null;
-    meta_coexistence: boolean;
-
-    agent_id: number | null;
-    agent_name: string | null;
-    default_ai_mode: string | null;
-
-    leads_count: number;
-
-    has_proxy: boolean;
-    proxy_host: string | null;
-    proxy_port: number | null;
-};
+import {
+    checkedAtLabel,
+    entityLabel,
+    healthChip,
+    healthStatusOf,
+    nameStatusLabel,
+    portfolioLimitLabel,
+    restrictionLabel,
+} from '@/composables/useMetaHealth';
+import type { WhatsappInstanceSummary } from '@/types';
 
 const props = defineProps<{
-    instance: Instance;
+    instance: WhatsappInstanceSummary;
     open: boolean;
-    state: ConnectionState;
+    refreshing?: boolean;
 }>();
 
 const emit = defineEmits<{
     'update:open': [boolean];
     delete: [];
+    refresh: [];
 }>();
 
 const copiedKey = ref<string | null>(null);
@@ -170,33 +152,29 @@ const aiModeLabel = computed(() => {
     return mode ?? '-';
 });
 
-const statusLabel = computed(() => {
-    if (props.state === 'open') {
-        return 'Conectado';
-    }
+// ─── Meta health ──────────────────────────────────────────────────────────────
 
-    if (props.state === 'connecting') {
-        return 'Aguardando';
-    }
+const healthStatus = computed(() =>
+    healthStatusOf(props.instance.health_status),
+);
+const statusChip = computed(() => healthChip(props.instance.health_status));
 
-    if (props.state === 'loading') {
-        return '...';
-    }
+const entities = computed(() => props.instance.health_entities ?? []);
+const restrictions = computed(
+    () => props.instance.meta_account_restrictions ?? [],
+);
+const alerts = computed(() => props.instance.meta_account_alerts ?? []);
 
-    return 'Desconectado';
-});
+const lastChecked = computed(() =>
+    checkedAtLabel(props.instance.health_checked_at),
+);
 
-const statusClass = computed(() => {
-    if (props.state === 'open') {
-        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
-    }
-
-    if (props.state === 'connecting' || props.state === 'loading') {
-        return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
-    }
-
-    return 'bg-red-500/10 text-red-400 border-red-500/30';
-});
+const displayNameLabel = computed(() =>
+    nameStatusLabel(props.instance.meta_name_status),
+);
+const portfolioLimit = computed(() =>
+    portfolioLimitLabel(props.instance.meta_portfolio_messaging_limit),
+);
 
 const providerLabel = 'Meta Cloud';
 const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
@@ -223,15 +201,183 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                     <span
                         :class="[
                             'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                            statusClass,
+                            statusChip.class,
                         ]"
                     >
-                        {{ statusLabel }}
+                        {{ statusChip.label }}
                     </span>
                 </DialogDescription>
             </DialogHeader>
 
             <div class="space-y-5 py-2">
+                <!-- ── Saúde da conta ──────────────────────────────────────── -->
+                <section class="space-y-2">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <h4
+                            class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                        >
+                            Saúde da conta
+                        </h4>
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                            :disabled="refreshing"
+                            @click="emit('refresh')"
+                        >
+                            <RefreshCw
+                                class="h-3 w-3"
+                                :class="refreshing ? 'animate-spin' : ''"
+                            />
+                            {{
+                                lastChecked
+                                    ? `Verificado ${lastChecked}`
+                                    : 'Verificar'
+                            }}
+                        </button>
+                    </div>
+
+                    <p
+                        v-if="healthStatus === 'UNKNOWN'"
+                        class="rounded-md border border-border bg-muted/40 px-3 py-2 text-[11px] leading-snug text-muted-foreground"
+                    >
+                        A Meta ainda não respondeu sobre este número. Isso não
+                        significa que há um problema — apenas que não há
+                        confirmação recente.
+                    </p>
+
+                    <!-- Per-entity breakdown: Meta blocks messaging at the number,
+                         the WABA, the business portfolio or the app, and only one
+                         of them is usually at fault. -->
+                    <dl v-if="entities.length" class="space-y-1.5 text-xs">
+                        <div
+                            v-for="entity in entities"
+                            :key="`${entity.type}-${entity.id}`"
+                            class="space-y-1"
+                        >
+                            <div
+                                class="flex items-center justify-between gap-3"
+                            >
+                                <dt class="text-muted-foreground">
+                                    {{ entityLabel(entity.type) }}
+                                </dt>
+                                <dd>
+                                    <span
+                                        :class="[
+                                            'inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-medium',
+                                            healthChip(entity.status).class,
+                                        ]"
+                                    >
+                                        {{ healthChip(entity.status).label }}
+                                    </span>
+                                </dd>
+                            </div>
+                            <p
+                                v-for="reason in entity.reasons"
+                                :key="reason"
+                                class="pl-1 text-[11px] leading-snug text-muted-foreground"
+                            >
+                                {{ reason }}
+                            </p>
+                        </div>
+                    </dl>
+
+                    <!-- Active restrictions from the account_update webhook -->
+                    <div
+                        v-if="restrictions.length"
+                        class="space-y-1 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2"
+                    >
+                        <p
+                            class="flex items-center gap-1.5 text-[11px] font-semibold text-red-400"
+                        >
+                            <AlertTriangle class="h-3.5 w-3.5" />
+                            Restrições ativas
+                        </p>
+                        <p
+                            v-for="restriction in restrictions"
+                            :key="restriction.type"
+                            class="text-[11px] leading-snug text-red-400"
+                        >
+                            {{ restrictionLabel(restriction.type) }}
+                        </p>
+                    </div>
+
+                    <!-- Capability alerts from the account_alerts webhook -->
+                    <div
+                        v-if="alerts.length"
+                        class="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2"
+                    >
+                        <p
+                            v-for="alert in alerts"
+                            :key="alert.type ?? alert.description ?? ''"
+                            class="text-[11px] leading-snug text-amber-400"
+                        >
+                            {{ alert.description ?? alert.type }}
+                        </p>
+                    </div>
+
+                    <dl class="space-y-1.5 text-xs">
+                        <div
+                            v-if="displayNameLabel"
+                            class="flex items-baseline justify-between gap-3"
+                        >
+                            <dt class="text-muted-foreground">
+                                Nome de exibição
+                            </dt>
+                            <dd class="font-medium text-foreground">
+                                {{ displayNameLabel }}
+                            </dd>
+                        </div>
+                        <div
+                            v-if="portfolioLimit"
+                            class="flex items-baseline justify-between gap-3"
+                        >
+                            <dt class="text-muted-foreground">
+                                Limite de envio
+                            </dt>
+                            <dd class="text-right font-medium text-foreground">
+                                {{ portfolioLimit }}
+                                <span
+                                    class="block text-[11px] font-normal text-muted-foreground"
+                                >
+                                    teto do portfólio, compartilhado por todos
+                                    os números
+                                </span>
+                            </dd>
+                        </div>
+                        <div
+                            v-if="instance.meta_throughput_level"
+                            class="flex items-baseline justify-between gap-3"
+                        >
+                            <dt class="text-muted-foreground">Throughput</dt>
+                            <dd class="font-medium text-foreground">
+                                {{ instance.meta_throughput_level }}
+                            </dd>
+                        </div>
+                        <div
+                            v-if="instance.meta_account_review_status"
+                            class="flex items-baseline justify-between gap-3"
+                        >
+                            <dt class="text-muted-foreground">
+                                Revisão da conta
+                            </dt>
+                            <dd class="font-medium text-foreground">
+                                {{ instance.meta_account_review_status }}
+                            </dd>
+                        </div>
+                        <div
+                            v-if="instance.meta_ban_state"
+                            class="flex items-baseline justify-between gap-3"
+                        >
+                            <dt class="text-muted-foreground">
+                                Estado de banimento
+                            </dt>
+                            <dd class="font-medium text-red-400">
+                                {{ instance.meta_ban_state }}
+                            </dd>
+                        </div>
+                    </dl>
+                </section>
+
                 <section class="space-y-2">
                     <h4
                         class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
@@ -249,6 +395,26 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                             <dt class="text-muted-foreground">Nome interno</dt>
                             <dd class="truncate font-mono text-foreground">
                                 {{ instance.name }}
+                            </dd>
+                        </div>
+                        <div
+                            v-if="instance.meta_number_status"
+                            class="flex items-baseline justify-between gap-3"
+                        >
+                            <dt class="text-muted-foreground">
+                                Status do número
+                            </dt>
+                            <dd class="font-medium text-foreground">
+                                {{ instance.meta_number_status }}
+                            </dd>
+                        </div>
+                        <div
+                            v-if="instance.meta_code_verification_status"
+                            class="flex items-baseline justify-between gap-3"
+                        >
+                            <dt class="text-muted-foreground">Verificação</dt>
+                            <dd class="font-medium text-foreground">
+                                {{ instance.meta_code_verification_status }}
                             </dd>
                         </div>
                     </dl>

@@ -8,6 +8,7 @@ use App\Models\Campaign;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use App\Services\Dashboard\DashboardMetricsService;
+use App\Services\WhatsApp\MetaAccountHealthWebhookService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -38,12 +39,57 @@ class TemplateStatusUpdateService
                 'ONBOARDING' => 'GREEN',
                 default => (string) ($value['new_quality_score'] ?? $instance->meta_quality_rating ?? 'GREEN'),
             };
-            $instance->update(['meta_quality_rating' => $newRating]);
+            $patch = ['meta_quality_rating' => $newRating];
+
+            // Since the move to portfolio-based limits this webhook also carries the
+            // portfolio's ceiling. `current_limit` is deliberately ignored: Meta
+            // redefined it to mean either the portfolio limit or the number's
+            // throughput level, with nothing in the payload saying which.
+            // business_capability_update is what fans the value across the WABA.
+            $portfolioLimit = MetaAccountHealthWebhookService::portfolioLimitTier(
+                $value['max_daily_conversations_per_business'] ?? null
+            );
+
+            if ($portfolioLimit !== null) {
+                $patch['meta_portfolio_messaging_limit'] = $portfolioLimit;
+            }
+
+            $instance->update($patch);
             InstanceQualityRatingChanged::dispatch($instance->id, $newRating);
             app(DashboardMetricsService::class)->dispatchUpdate((string) $instance->tenant_id);
             Log::info('meta.quality_phone_update', ['instance' => $instance->name, 'rating' => $newRating, 'event' => $event]);
 
             if ($newRating === 'RED') {
+                DispatchMetaQualityAutoPauseJob::dispatch($instance->id);
+            }
+
+            return;
+        }
+
+        if ($field === 'message_template_quality_update') {
+            $templateName = $value['message_template_name'] ?? null;
+            $language = $value['message_template_language'] ?? null;
+            $score = (string) ($value['new_quality_score'] ?? '');
+
+            Log::info('meta.template_quality_update', [
+                'instance' => $instance->name,
+                'template' => $templateName,
+                'previous' => $value['previous_quality_score'] ?? null,
+                'score' => $score,
+            ]);
+
+            if ($templateName && $score !== '') {
+                WhatsappTemplate::withoutGlobalScope('tenant')
+                    ->where('whatsapp_instance_id', $instance->id)
+                    ->where('meta_template_name', (string) $templateName)
+                    ->when($language, fn ($query) => $query->where('language', (string) $language))
+                    ->update(['quality_score' => $score]);
+            }
+
+            // A template dropping to RED is the same account-level risk signal the
+            // status webhook already acts on, so it takes the same auto-pause path.
+            if (strtoupper($score) === 'RED') {
+                $instance->update(['meta_quality_rating' => 'RED']);
                 DispatchMetaQualityAutoPauseJob::dispatch($instance->id);
             }
 
