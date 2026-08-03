@@ -108,6 +108,21 @@ class MetaTokenExchangeService
      */
     public function registerPhoneNumber(string $phoneNumberId, string $accessToken, string $pin): bool
     {
+        return $this->registerPhoneNumberReason($phoneNumberId, $accessToken, $pin) === null;
+    }
+
+    /**
+     * Register a number for the Cloud API with its two-step verification PIN.
+     *
+     * The PIN is a secret the operator types: it is sent in the POST body,
+     * never placed on the query string, and never written to a log line — the
+     * `$pin` variable must not reach any of the `Log::` calls below.
+     *
+     * @return string|null Null on success; otherwise a pt-BR explanation of what
+     *                     went wrong, written for the person holding the PIN.
+     */
+    public function registerPhoneNumberReason(string $phoneNumberId, string $accessToken, string $pin): ?string
+    {
         try {
             $response = Http::withToken($accessToken)->timeout(15)->post(
                 "https://graph.facebook.com/{$this->graphApiVersion}/{$phoneNumberId}/register",
@@ -119,19 +134,36 @@ class MetaTokenExchangeService
                 'error' => $e->getMessage(),
             ]);
 
-            return false;
+            return 'Não foi possível falar com a Meta agora. Tente de novo em alguns minutos.';
         }
 
         if (! $response->successful()) {
             Log::warning('meta.token_exchange.register_phone_failed', [
                 'phone_number_id' => $phoneNumberId,
                 'status' => $response->status(),
+                'code' => $response->json('error.code'),
             ]);
 
-            return false;
+            return $this->registrationFailureReason((int) $response->json('error.code'));
         }
 
-        return true;
+        return null;
+    }
+
+    /**
+     * Meta answers in English, aimed at developers. The operator reading this is
+     * the person who has to act on it, so each known code becomes an instruction.
+     */
+    private function registrationFailureReason(int $errorCode): string
+    {
+        return match ($errorCode) {
+            133005 => 'PIN incorreto. Use os 6 dígitos da verificação em duas etapas deste número no WhatsApp.',
+            133006 => 'Este número precisa passar de novo pela verificação da Meta antes de ser ativado. Faça a verificação no Gerenciador do WhatsApp e volte aqui.',
+            133008 => 'A Meta bloqueou novas tentativas porque o PIN errado foi enviado várias vezes. Espere algumas horas antes de tentar outra vez.',
+            133010 => 'Este número ainda não foi adicionado à conta do WhatsApp na Meta.',
+            133016 => 'Este número foi removido há pouco tempo. Espere cerca de 5 minutos e tente de novo.',
+            default => 'A Meta recusou a ativação deste número. Confira no Gerenciador do WhatsApp se ele está verificado e sem pendências.',
+        };
     }
 
     public function isCoexistencePhone(string $phoneNumberId, string $accessToken): bool

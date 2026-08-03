@@ -21,6 +21,8 @@ export type WhatsappInstanceSummary = MetaHealthProps & {
     meta_token_permanent: boolean;
     meta_token_expires_at: string | null;
     meta_coexistence: boolean;
+    /** Whether a two-step PIN is on file. The PIN itself never leaves the server. */
+    has_registration_pin: boolean;
 
     agent_id: number | null;
     agent_name: string | null;

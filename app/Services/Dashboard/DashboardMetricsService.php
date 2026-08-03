@@ -9,12 +9,16 @@ use App\Models\Lead;
 use App\Models\VoiceCampaignCall;
 use App\Models\WhatsappInstance;
 use App\Services\BroadcastDebouncer;
+use App\Services\WhatsApp\MetaHealthReasonTranslator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardMetricsService
 {
-    public function __construct(private BroadcastDebouncer $debouncer) {}
+    public function __construct(
+        private BroadcastDebouncer $debouncer,
+        private MetaHealthReasonTranslator $reasons,
+    ) {}
 
     /**
      * Return a KPI snapshot for the given tenant, cached for 5 seconds.
@@ -89,7 +93,7 @@ class DashboardMetricsService
                     'provider' => $i->provider->value,
                     'status' => strtolower($i->healthStatus()->value),
                     'health_status' => $i->healthStatus()->value,
-                    'health_reasons' => $i->healthReasons(),
+                    'health_reasons' => $this->reasons->forInstance($i),
                     'health_checked_at' => $i->meta_health_checked_at?->toIso8601String(),
                     'quality_rating' => $i->meta_quality_rating,
                 ])

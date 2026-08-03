@@ -15,17 +15,22 @@ const props = defineProps<{
     refreshing?: boolean;
 }>();
 
-const emit = defineEmits<{ delete: []; refresh: [] }>();
+const emit = defineEmits<{
+    delete: [];
+    refresh: [];
+    updated: [Partial<WhatsappInstanceSummary>];
+}>();
 
 const showDetails = ref(false);
 
 const status = computed(() => healthStatusOf(props.instance.health_status));
 const chip = computed(() => healthChip(props.instance.health_status));
 
-// The first reason Meta gave is the actionable one ("display name not approved
-// yet", "payment method required"); the drawer lists the rest.
+// The first reason Meta gave is the actionable one ("nome de exibição em
+// análise", "falta forma de pagamento); the drawer lists the rest with the
+// detail and the fix.
 const headlineReason = computed<string | null>(
-    () => props.instance.health_reasons?.[0] ?? null,
+    () => props.instance.health_reasons?.[0]?.title ?? null,
 );
 
 const portfolioLimit = computed(() =>
@@ -135,10 +140,12 @@ const providerClass = 'bg-blue-500/10 text-blue-400';
         <InstanceDetailsDrawer
             :instance="props.instance"
             :open="showDetails"
+            :csrf="props.csrf"
             :refreshing="props.refreshing"
             @update:open="(v: boolean) => (showDetails = v)"
             @delete="emit('delete')"
             @refresh="emit('refresh')"
+            @updated="(payload) => emit('updated', payload)"
         />
     </div>
 </template>

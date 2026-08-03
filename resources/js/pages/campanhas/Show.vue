@@ -18,7 +18,10 @@ import {
     portfolioLimitLabel,
     restrictionLabel,
 } from '@/composables/useMetaHealth';
-import type { MetaHealthStatus } from '@/composables/useMetaHealth';
+import type {
+    MetaHealthReason,
+    MetaHealthStatus,
+} from '@/composables/useMetaHealth';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { formatDateTime } from '@/lib/datetime';
 import type { BreadcrumbItem } from '@/types';
@@ -32,7 +35,7 @@ type WhatsappInstance = {
 /** What Meta says about the number this campaign sends from. */
 type InstanceHealth = {
     status: MetaHealthStatus;
-    reasons: string[];
+    reasons: MetaHealthReason[];
     restrictions: string[];
     portfolio_messaging_limit: string | null;
 };
@@ -452,7 +455,9 @@ const healthWarnsOnly = computed(
 );
 const healthDetail = computed(() => [
     ...(props.instanceHealth?.restrictions ?? []).map(restrictionLabel),
-    ...(props.instanceHealth?.reasons ?? []),
+    ...(props.instanceHealth?.reasons ?? []).map((reason) =>
+        reason.action ? `${reason.title} — ${reason.action}` : reason.title,
+    ),
 ]);
 const healthLimitLabel = computed(() =>
     portfolioLimitLabel(props.instanceHealth?.portfolio_messaging_limit),

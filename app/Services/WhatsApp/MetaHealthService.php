@@ -5,6 +5,7 @@ namespace App\Services\WhatsApp;
 use App\Enums\MetaHealthStatus;
 use App\Models\WhatsappInstance;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -68,12 +69,14 @@ class MetaHealthService
      * must never read as blocked either: `MetaHealthStatus::isDegraded()` is
      * false for UNKNOWN precisely so a Graph outage cannot stop every campaign.
      */
-    public function refresh(WhatsappInstance $instance): MetaHealthStatus
+    public function refresh(WhatsappInstance $instance, bool $refreshAccountNames = false): MetaHealthStatus
     {
         $snapshot = $this->probe(
             (string) $instance->meta_phone_number_id,
             $instance->meta_access_token,
         );
+
+        $snapshot += $this->accountNamesPatch($instance, $refreshAccountNames);
 
         $instance->update($snapshot);
 
@@ -151,8 +154,72 @@ class MetaHealthService
                 is_array($payload['throughput'] ?? null) ? ($payload['throughput']['level'] ?? null) : null
             ),
             'meta_number_status' => $this->nullableString($payload['status'] ?? null),
+            'meta_verified_name' => $this->nullableString($payload['verified_name'] ?? null),
             'meta_health_checked_at' => now(),
         ] + $this->qualityRatingPatch($payload);
+    }
+
+    /**
+     * Names of the WhatsApp account and the business portfolio that owns it.
+     *
+     * The panel used to show bare IDs, which say nothing to the person reading
+     * them. One `GET /{waba_id}` returns both names, so this is a single extra
+     * call — and it only runs when a name is missing or the user pressed
+     * refresh, keeping the 15 minute scheduler at one request per instance.
+     *
+     * @return array<string, string|null>
+     */
+    private function accountNamesPatch(WhatsappInstance $instance, bool $force): array
+    {
+        $wabaId = (string) $instance->meta_waba_id;
+
+        if ($wabaId === '' || ! filled($instance->meta_access_token)) {
+            return [];
+        }
+
+        if (! $force && filled($instance->meta_waba_name)) {
+            return [];
+        }
+
+        // A coexistence token can read the phone number node without ever
+        // reaching the WABA node, so this lookup can fail permanently. Left
+        // ungated, the 15 minute scheduler would log the same warning ~96 times
+        // a day per instance and bury everything worth reading.
+        if (! $force && ! Cache::add("meta_account_names:{$instance->id}", true, now()->addHours(6))) {
+            return [];
+        }
+
+        try {
+            $response = Http::withToken((string) $instance->meta_access_token)
+                ->timeout(10)
+                ->get("https://graph.facebook.com/{$this->version()}/{$wabaId}", [
+                    'fields' => 'name,owner_business_info{name}',
+                ]);
+        } catch (Throwable $e) {
+            Log::warning('meta.health.account_names_exception', [
+                'waba_id' => $wabaId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+
+        if (! $response->successful()) {
+            Log::warning('meta.health.account_names_failed', [
+                'waba_id' => $wabaId,
+                'status' => $response->status(),
+                'error' => $response->json('error.message'),
+            ]);
+
+            return [];
+        }
+
+        // A coexistence token can read the phone number node without reaching the
+        // WABA node, so keep whatever name is already stored rather than blanking it.
+        return array_filter([
+            'meta_waba_name' => $this->nullableString($response->json('name')),
+            'meta_business_name' => $this->nullableString($response->json('owner_business_info.name')),
+        ], fn (?string $name): bool => $name !== null);
     }
 
     /**
