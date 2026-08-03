@@ -66,6 +66,7 @@ class CampaignPagePropsBuilder
      *     repliedCount: int,
      *     statusCounts: array<string, int>,
      *     dailyBudget: array{sent_today: int, daily_limit: int, remaining: int},
+     *     instanceHealth: array{status: string, reasons: list<string>, restrictions: list<string>, portfolio_messaging_limit: string|null}|null,
      *     filters: array{status: string|null, search: string|null}
      * }
      */
@@ -75,7 +76,9 @@ class CampaignPagePropsBuilder
             'contactList:id,name',
             // components_json backs the per-recipient message preview below.
             'whatsappTemplate:id,name,body,variables_count,components_json',
-            'whatsappInstance:id,name,display_name,meta_quality_rating',
+            // The health columns feed instanceHealth below: a LIMITED number still
+            // sends, so the page warns instead of the service refusing the start.
+            'whatsappInstance:id,name,display_name,meta_quality_rating,meta_health_status,meta_health_entities,meta_account_restrictions,meta_portfolio_messaging_limit',
         ]);
 
         return [
@@ -94,10 +97,34 @@ class CampaignPagePropsBuilder
                 ->count(),
             'statusCounts' => $this->statusCounts($campaign),
             'dailyBudget' => $this->dailyBudget($campaign),
+            'instanceHealth' => $this->instanceHealth($campaign->whatsappInstance),
             'filters' => [
                 'status' => $request->input('status'),
                 'search' => $request->input('search'),
             ],
+        ];
+    }
+
+    /**
+     * What Meta currently says about the number this campaign sends from.
+     *
+     * BLOCKED and an active messaging restriction are refused by
+     * CampaignService; LIMITED is not, because Meta still delivers on a limited
+     * number — it only caps the daily volume. The page renders the difference.
+     *
+     * @return array{status: string, reasons: list<string>, restrictions: list<string>, portfolio_messaging_limit: string|null}|null
+     */
+    private function instanceHealth(?WhatsappInstance $instance): ?array
+    {
+        if (! $instance) {
+            return null;
+        }
+
+        return [
+            'status' => $instance->healthStatus()->value,
+            'reasons' => $instance->healthReasons(),
+            'restrictions' => $instance->activeMessagingRestrictions(),
+            'portfolio_messaging_limit' => $instance->meta_portfolio_messaging_limit,
         ];
     }
 

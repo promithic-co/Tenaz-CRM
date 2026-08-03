@@ -73,11 +73,24 @@ class DashboardMetricsService
                 : 0.0;
 
             $instanceStatuses = WhatsappInstance::where('tenant_id', $tenantId)
-                ->get(['id', 'provider', 'meta_quality_rating'])
-                ->map(fn ($i) => [
+                ->get([
+                    'id',
+                    'name',
+                    'display_name',
+                    'provider',
+                    'meta_quality_rating',
+                    'meta_health_status',
+                    'meta_health_entities',
+                    'meta_health_checked_at',
+                ])
+                ->map(fn (WhatsappInstance $i) => [
                     'id' => $i->id,
+                    'label' => $i->label(),
                     'provider' => $i->provider->value,
-                    'status' => 'unknown',
+                    'status' => strtolower($i->healthStatus()->value),
+                    'health_status' => $i->healthStatus()->value,
+                    'health_reasons' => $i->healthReasons(),
+                    'health_checked_at' => $i->meta_health_checked_at?->toIso8601String(),
                     'quality_rating' => $i->meta_quality_rating,
                 ])
                 ->values()

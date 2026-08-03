@@ -4,6 +4,7 @@ use App\Console\Commands\AutoCloseIdleConversationSessionsCommand;
 use App\Console\Commands\CleanOldMediaFilesCommand;
 use App\Console\Commands\LaboratoryHealthCheckCommand;
 use App\Console\Commands\ProcessPendingRetriesCommand;
+use App\Console\Commands\SyncMetaHealthCommand;
 use App\Console\Commands\SyncTemplatesCommand;
 use App\Models\AgentInteractionEvent;
 use App\Models\AiRun;
@@ -40,6 +41,7 @@ Schedule::command('credflow:start-scheduled-campaigns')->everyMinute()->onOneSer
 Schedule::command('credflow:monitor-campaigns')->everyFiveMinutes()->onOneServer()->withoutOverlapping(10);
 Schedule::command('credflow:reconcile-outbox')->hourly()->onOneServer()->withoutOverlapping(60);
 Schedule::command(SyncTemplatesCommand::class)->daily()->onOneServer();
+Schedule::command(SyncMetaHealthCommand::class)->everyFifteenMinutes()->onOneServer()->withoutOverlapping(30);
 Schedule::command(AutoCloseIdleConversationSessionsCommand::class)->dailyAt('03:30')->onOneServer();
 
 // GROW-4: prune append-only observability tables (AgentInteractionEvent, AiRun)

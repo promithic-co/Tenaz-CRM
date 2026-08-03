@@ -6,8 +6,10 @@ use App\Enums\MetaOnboardingMode;
 use App\Enums\WhatsAppProvider;
 use App\Http\Requests\StoreWhatsappInstanceRequest;
 use App\Jobs\SyncMetaCoexistenceDataJob;
+use App\Jobs\SyncMetaHealthJob;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
+use App\Services\WhatsApp\MetaHealthService;
 use App\Services\WhatsApp\MetaTokenExchangeService;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use App\Support\RoleScope;
@@ -34,15 +36,22 @@ class WhatsAppInstanceController extends Controller
             ->get();
 
         foreach ($instances as $instance) {
-            $manager = $this->factory->makeInstanceManager($instance);
-            $data = $manager->status();
-            $state = $data['state'] ?? 'close';
+            // Only reaches the Graph API when the number was never resolved;
+            // fetchInstanceInfo() short-circuits on the stored phone_number.
+            if (blank($instance->phone_number)) {
+                $info = $this->factory->makeInstanceManager($instance)->fetchInstanceInfo();
 
-            if ($state === 'open') {
-                $info = $manager->fetchInstanceInfo();
-                if ($info && isset($info['phone_number']) && $instance->phone_number !== $info['phone_number']) {
+                if ($info && ! empty($info['phone_number'])) {
                     $instance->update(['phone_number' => $info['phone_number']]);
                 }
+            }
+
+            // Health is read from the persisted snapshot, never fetched inline: a
+            // blocking Graph call per row would put every instance's latency on the
+            // page load. Visiting the page only nudges a stale snapshot onto the
+            // queue; the scheduler refreshes every 15 minutes regardless.
+            if ($this->healthSnapshotIsStale($instance)) {
+                SyncMetaHealthJob::dispatch($instance->id);
             }
         }
 
@@ -72,6 +81,9 @@ class WhatsAppInstanceController extends Controller
             'meta_token_permanent' => (bool) $i->meta_token_permanent,
             'meta_token_expires_at' => $i->meta_token_expires_at?->toIso8601String(),
             'meta_coexistence' => (bool) $i->meta_coexistence,
+
+            // Real Meta account health (Graph `health_status` + WABA webhooks)
+            ...$this->healthPayload($i),
 
             // Agent + AI mode
             'agent_id' => $i->agent_id,
@@ -179,6 +191,11 @@ class WhatsAppInstanceController extends Controller
             if ($info && ! empty($info['phone_number'])) {
                 $instance->update(['phone_number' => $info['phone_number']]);
             }
+
+            // First health probe, so a number that onboarded already limited (display
+            // name pending, business unverified) says so on the very first render
+            // instead of after the next scheduler tick.
+            SyncMetaHealthJob::dispatch($instance->id)->afterResponse();
         }
 
         return back()->with('success', 'Instância criada com sucesso.');
@@ -204,6 +221,69 @@ class WhatsAppInstanceController extends Controller
             'state' => $state,
             'reason' => $data['reason'] ?? null,
         ]);
+    }
+
+    /**
+     * Re-probe Meta for this number's messaging health, on demand.
+     *
+     * Runs inline rather than queued: the user pressed a button and is waiting
+     * for the answer. It is one Graph call with a 10 second ceiling, and the
+     * service degrades to UNKNOWN instead of throwing when Meta is unreachable.
+     */
+    public function health(WhatsappInstance $instance, MetaHealthService $health): JsonResponse
+    {
+        $this->authorize('view', $instance);
+
+        if ($instance->provider !== WhatsAppProvider::MetaCloud) {
+            return response()->json(['message' => 'Instância não é Meta Cloud.'], 422);
+        }
+
+        $health->refresh($instance);
+
+        return response()->json($this->healthPayload($instance->refresh()));
+    }
+
+    /**
+     * Health props shared by the index page and the on-demand refresh endpoint,
+     * so the button can patch the card without a full Inertia reload.
+     *
+     * @return array<string, mixed>
+     */
+    private function healthPayload(WhatsappInstance $instance): array
+    {
+        return [
+            'health_status' => $instance->healthStatus()->value,
+            'health_reasons' => $instance->healthReasons(),
+            'health_entities' => array_values((array) ($instance->meta_health_entities ?? [])),
+            'health_checked_at' => $instance->meta_health_checked_at?->toIso8601String(),
+            'meta_name_status' => $instance->meta_name_status,
+            'meta_code_verification_status' => $instance->meta_code_verification_status,
+            'meta_portfolio_messaging_limit' => $instance->meta_portfolio_messaging_limit,
+            'meta_throughput_level' => $instance->meta_throughput_level,
+            'meta_number_status' => $instance->meta_number_status,
+            'meta_ban_state' => $instance->meta_ban_state,
+            'meta_account_review_status' => $instance->meta_account_review_status,
+            'meta_account_alerts' => array_values(
+                (array) (($instance->meta_account_restrictions ?? [])['alerts'] ?? [])
+            ),
+            'meta_account_restrictions' => array_values(
+                (array) (($instance->meta_account_restrictions ?? [])['restrictions'] ?? [])
+            ),
+        ];
+    }
+
+    /**
+     * A snapshot older than the 15 minute scheduler tick (or never taken) is
+     * worth nudging back onto the queue when someone opens the page.
+     */
+    private function healthSnapshotIsStale(WhatsappInstance $instance): bool
+    {
+        if ($instance->provider !== WhatsAppProvider::MetaCloud) {
+            return false;
+        }
+
+        return $instance->meta_health_checked_at === null
+            || $instance->meta_health_checked_at->lt(now()->subMinutes(15));
     }
 
     public function connect(WhatsappInstance $instance): JsonResponse

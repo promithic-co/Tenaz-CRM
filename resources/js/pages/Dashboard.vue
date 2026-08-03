@@ -10,10 +10,13 @@ import {
     MessageSquare,
     ArrowRight,
     Activity,
+    AlertTriangle,
 } from 'lucide-vue-next';
+import { computed } from 'vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import { useDashboardMetrics } from '@/composables/useDashboardMetrics';
 import type { DashboardSnapshot } from '@/composables/useDashboardMetrics';
+import { healthChip } from '@/composables/useMetaHealth';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
 import conversas from '@/routes/conversas';
@@ -85,6 +88,16 @@ const { metrics, isLive } = useDashboardMetrics(
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
 ];
+
+// UNKNOWN is excluded on purpose: a probe that has not run yet, or failed, is
+// not evidence of a problem and must not raise an alarm on the dashboard.
+const degradedInstances = computed(() =>
+    metrics.value.instance_statuses.filter(
+        (instance) =>
+            instance.health_status === 'LIMITED' ||
+            instance.health_status === 'BLOCKED',
+    ),
+);
 
 const statusLabels: Partial<Record<StatusKey, string>> = {
     novo: 'Novo',
@@ -330,6 +343,56 @@ function funnelHeight(count: number, total: number): string {
                         }}</span>
                     </div>
                 </div>
+            </div>
+
+            <!-- ── Saúde das Conexões WhatsApp ────────────────────────────────── -->
+            <!-- Only surfaces when Meta has actually reported a problem: a healthy
+                 account needs no panel, and an unprobed one is not news. -->
+            <div
+                v-if="degradedInstances.length"
+                class="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-6 py-4 shadow-sm"
+            >
+                <h2
+                    class="mb-3 flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground"
+                >
+                    <AlertTriangle class="h-4 w-4 text-amber-500" />
+                    Saúde das conexões WhatsApp
+                </h2>
+                <ul class="space-y-2">
+                    <li
+                        v-for="instance in degradedInstances"
+                        :key="instance.id"
+                        class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+                    >
+                        <div class="flex min-w-0 items-center gap-2">
+                            <span
+                                :class="[
+                                    'inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                                    healthChip(instance.health_status).class,
+                                ]"
+                            >
+                                {{ healthChip(instance.health_status).label }}
+                            </span>
+                            <span
+                                class="truncate text-sm font-medium text-foreground"
+                                >{{ instance.label }}</span
+                            >
+                        </div>
+                        <p
+                            v-if="instance.health_reasons.length"
+                            class="min-w-0 text-xs leading-snug text-muted-foreground sm:max-w-md sm:text-right"
+                        >
+                            {{ instance.health_reasons[0] }}
+                        </p>
+                    </li>
+                </ul>
+                <Link
+                    href="/whatsapp"
+                    class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                    Ver detalhes
+                    <ArrowRight class="h-3 w-3" />
+                </Link>
             </div>
 
             <!-- ── Body Area ──────────────────────────────────────────────────── -->

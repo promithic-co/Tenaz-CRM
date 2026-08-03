@@ -13,6 +13,7 @@ use App\Services\AgentContextResolver;
 use App\Services\AgentInteractionEventService;
 use App\Services\DebounceService;
 use App\Services\TemplateStatusUpdateService;
+use App\Services\WhatsApp\MetaAccountHealthWebhookService;
 use App\Services\WhatsApp\Providers\MetaCloudProvider;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
 use Illuminate\Http\Request;
@@ -28,6 +29,7 @@ class MetaWebhookController extends Controller
         private readonly DebounceService $debounce,
         private readonly AgentInteractionEventService $interactionEvents,
         private readonly TemplateStatusUpdateService $templateStatus,
+        private readonly MetaAccountHealthWebhookService $accountHealth,
     ) {}
 
     public function verify(Request $request): Response
@@ -101,8 +103,23 @@ class MetaWebhookController extends Controller
             return;
         }
 
-        if (in_array($changeField, ['message_template_status_update', 'phone_number_quality_update', 'template_category_update'], true)) {
+        if (in_array($changeField, [
+            'message_template_status_update',
+            'message_template_quality_update',
+            'phone_number_quality_update',
+            'template_category_update',
+        ], true)) {
             $this->templateStatus->handleValue($instance, $changeField, $value);
+
+            return;
+        }
+
+        // WABA-level account health: restrictions, violations, bans, review
+        // outcomes, capability alerts and display-name decisions. The app has
+        // been subscribed to these fields all along; until now they fell through
+        // every branch below and were discarded.
+        if ($this->accountHealth->handles($changeField)) {
+            $this->accountHealth->handle($instance, $changeField, $value);
 
             return;
         }

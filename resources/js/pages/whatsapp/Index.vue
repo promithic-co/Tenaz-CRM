@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,45 +19,64 @@ import {
     metaConfigIdForMode,
 } from '@/lib/metaEmbeddedSignup';
 import type { MetaOnboardingMode } from '@/lib/metaEmbeddedSignup';
-import type { BreadcrumbItem } from '@/types';
+import type { BreadcrumbItem, WhatsappInstanceSummary } from '@/types';
 import InstanceCard from './InstanceCard.vue';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Instance = {
-    id: number;
-    name: string;
-    display_name: string | null;
-    label: string;
-    api_url: string;
-    phone_number: string | null;
-    provider: 'meta_cloud';
-
-    meta_waba_id: string | null;
-    meta_phone_number_id: string | null;
-    meta_quality_rating: string | null;
-    meta_token_permanent: boolean;
-    meta_token_expires_at: string | null;
-    meta_coexistence: boolean;
-
-    agent_id: number | null;
-    agent_name: string | null;
-    default_ai_mode: string | null;
-
-    leads_count: number;
-
-    has_proxy: boolean;
-    proxy_host: string | null;
-    proxy_port: number | null;
-};
-
 type Props = {
-    instances: Instance[];
+    instances: WhatsappInstanceSummary[];
     flash: string | null;
     return_to: string | null;
 };
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+// ─── Meta health refresh ──────────────────────────────────────────────────────
+//
+// The page renders the persisted snapshot; this button re-probes the Graph API
+// on demand and patches the row in place, so checking an account after fixing it
+// in the WhatsApp Manager does not need a full page reload.
+
+const liveHealth = ref<Record<number, Partial<WhatsappInstanceSummary>>>({});
+const refreshingId = ref<number | null>(null);
+
+const instancesWithHealth = computed<WhatsappInstanceSummary[]>(() =>
+    props.instances.map((instance) => ({
+        ...instance,
+        ...(liveHealth.value[instance.id] ?? {}),
+    })),
+);
+
+async function refreshHealth(id: number): Promise<void> {
+    if (refreshingId.value !== null) {
+        return;
+    }
+
+    refreshingId.value = id;
+
+    try {
+        const res = await fetch(`/whatsapp/${id}/health`, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'X-XSRF-TOKEN': csrf(),
+            },
+        });
+
+        if (res.ok) {
+            liveHealth.value = {
+                ...liveHealth.value,
+                [id]: await res.json(),
+            };
+        }
+    } catch {
+        // Leave the last known snapshot on screen; a failed refresh must not
+        // blank out the status the user was looking at.
+    } finally {
+        refreshingId.value = null;
+    }
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'WhatsApp', href: '/whatsapp' },
@@ -455,11 +474,13 @@ function csrf(): string {
                 class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             >
                 <InstanceCard
-                    v-for="instance in instances"
+                    v-for="instance in instancesWithHealth"
                     :key="instance.id"
                     :instance="instance"
                     :csrf="csrf()"
+                    :refreshing="refreshingId === instance.id"
                     @delete="confirmDeleteId = instance.id"
+                    @refresh="refreshHealth(instance.id)"
                 />
             </div>
 

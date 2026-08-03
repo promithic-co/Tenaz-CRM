@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\MetaHealthStatus;
 use App\Enums\WhatsAppProvider;
 use App\Models\Concerns\BelongsToTenant;
+use App\Services\WhatsApp\MetaAccountHealthWebhookService;
 use Database\Factories\WhatsappInstanceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 class WhatsappInstance extends Model
@@ -49,6 +52,17 @@ class WhatsappInstance extends Model
         'meta_token_expires_at',
         'meta_quality_rating',
         'meta_coexistence',
+        'meta_health_status',
+        'meta_health_entities',
+        'meta_name_status',
+        'meta_code_verification_status',
+        'meta_portfolio_messaging_limit',
+        'meta_throughput_level',
+        'meta_number_status',
+        'meta_account_restrictions',
+        'meta_ban_state',
+        'meta_account_review_status',
+        'meta_health_checked_at',
     ];
 
     /**
@@ -77,7 +91,47 @@ class WhatsappInstance extends Model
             'meta_token_permanent' => 'boolean',
             'meta_token_expires_at' => 'datetime',
             'meta_coexistence' => 'boolean',
+            'meta_health_status' => MetaHealthStatus::class,
+            'meta_health_entities' => 'array',
+            'meta_account_restrictions' => 'array',
+            'meta_health_checked_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Meta's messaging health for this number. Falls back to `Unknown` while the
+     * column is still null (instance created before the first health sync).
+     */
+    public function healthStatus(): MetaHealthStatus
+    {
+        return $this->meta_health_status instanceof MetaHealthStatus
+            ? $this->meta_health_status
+            : MetaHealthStatus::Unknown;
+    }
+
+    /**
+     * Human-readable reasons Meta gave for a LIMITED or BLOCKED status, flattened
+     * across every entity (phone number, WABA, business portfolio, app).
+     *
+     * @return list<string>
+     */
+    public function healthReasons(): array
+    {
+        $reasons = [];
+
+        foreach ((array) ($this->meta_health_entities ?? []) as $entity) {
+            if (! is_array($entity)) {
+                continue;
+            }
+
+            foreach ((array) ($entity['reasons'] ?? []) as $reason) {
+                if (is_string($reason) && trim($reason) !== '') {
+                    $reasons[] = trim($reason);
+                }
+            }
+        }
+
+        return array_values(array_unique($reasons));
     }
 
     protected static function booted(): void
@@ -133,6 +187,40 @@ class WhatsappInstance extends Model
     public function hasProxy(): bool
     {
         return filled($this->proxy_host) && filled($this->proxy_port);
+    }
+
+    /**
+     * Restriction types Meta has placed on this WABA that stop business-initiated
+     * messaging, ignoring any whose expiry has already passed.
+     *
+     * @return list<string>
+     */
+    public function activeMessagingRestrictions(): array
+    {
+        $restrictions = (array) (($this->meta_account_restrictions ?? [])['restrictions'] ?? []);
+        $active = [];
+
+        foreach ($restrictions as $restriction) {
+            if (! is_array($restriction)) {
+                continue;
+            }
+
+            $type = strtoupper((string) ($restriction['type'] ?? ''));
+
+            if (! in_array($type, MetaAccountHealthWebhookService::MESSAGING_RESTRICTIONS, true)) {
+                continue;
+            }
+
+            $expiresAt = $restriction['expires_at'] ?? null;
+
+            if (is_string($expiresAt) && $expiresAt !== '' && Carbon::parse($expiresAt)->isPast()) {
+                continue;
+            }
+
+            $active[] = $type;
+        }
+
+        return array_values(array_unique($active));
     }
 
     public function hasExpiredMetaToken(): bool

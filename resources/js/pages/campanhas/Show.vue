@@ -14,6 +14,11 @@ import {
 } from 'lucide-vue-next';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import CampaignController from '@/actions/App/Http/Controllers/CampaignController';
+import {
+    portfolioLimitLabel,
+    restrictionLabel,
+} from '@/composables/useMetaHealth';
+import type { MetaHealthStatus } from '@/composables/useMetaHealth';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { formatDateTime } from '@/lib/datetime';
 import type { BreadcrumbItem } from '@/types';
@@ -23,6 +28,13 @@ type WhatsappInstance = {
     name: string;
     display_name: string | null;
     meta_quality_rating: string | null;
+};
+/** What Meta says about the number this campaign sends from. */
+type InstanceHealth = {
+    status: MetaHealthStatus;
+    reasons: string[];
+    restrictions: string[];
+    portfolio_messaging_limit: string | null;
 };
 type ContactList = { id: number; name: string };
 type WhatsappTemplate = {
@@ -86,6 +98,7 @@ type Props = {
     repliedCount: number;
     statusCounts: StatusCounts;
     dailyBudget: DailyBudget;
+    instanceHealth: InstanceHealth | null;
     filters: { status: string | null; search: string | null };
 };
 
@@ -423,6 +436,28 @@ const failureRate = computed(() =>
         props.campaign.total_sent + props.campaign.total_failed,
     ),
 );
+// Meta health, as reported by health_status. BLOCKED and an active messaging
+// restriction are what CampaignService refuses; LIMITED is not — Meta still
+// delivers on a limited number, it only caps the daily volume — so it warns.
+const healthBlocksSending = computed(
+    () =>
+        props.instanceHealth !== null &&
+        (props.instanceHealth.status === 'BLOCKED' ||
+            props.instanceHealth.restrictions.length > 0),
+);
+const healthWarnsOnly = computed(
+    () =>
+        props.instanceHealth?.status === 'LIMITED' &&
+        !healthBlocksSending.value,
+);
+const healthDetail = computed(() => [
+    ...(props.instanceHealth?.restrictions ?? []).map(restrictionLabel),
+    ...(props.instanceHealth?.reasons ?? []),
+]);
+const healthLimitLabel = computed(() =>
+    portfolioLimitLabel(props.instanceHealth?.portfolio_messaging_limit),
+);
+
 const hasMetaQualityRisk = computed(
     () => props.campaign.pause_reason_code === 'meta_quality_red_auto_pause',
 );
@@ -693,6 +728,54 @@ const templateExpanded = ref(false);
                             </p>
                             <p class="mt-1 leading-5">
                                 {{ metaAccountBlockDetail }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Meta health status of the sending number -->
+                <div
+                    v-if="healthBlocksSending || healthWarnsOnly"
+                    class="mx-4 mb-3 rounded-lg border px-4 py-3 text-sm"
+                    :class="
+                        healthBlocksSending
+                            ? 'border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200'
+                            : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200'
+                    "
+                >
+                    <div class="flex min-w-0 gap-3">
+                        <AlertTriangle class="mt-0.5 h-5 w-5 shrink-0" />
+                        <div class="min-w-0">
+                            <p class="font-semibold">
+                                {{
+                                    healthBlocksSending
+                                        ? 'A Meta bloqueou o envio deste número'
+                                        : 'A Meta limitou o envio deste número'
+                                }}
+                            </p>
+                            <p class="mt-1 leading-5">
+                                {{
+                                    healthBlocksSending
+                                        ? 'Iniciar ou retomar a campanha fica bloqueado até a conta ser regularizada no WhatsApp Manager.'
+                                        : 'A campanha continua enviando, com volume diário reduzido pela Meta.'
+                                }}
+                            </p>
+                            <ul
+                                v-if="healthDetail.length"
+                                class="mt-1 list-disc space-y-0.5 pl-4 text-xs"
+                            >
+                                <li
+                                    v-for="(reason, index) in healthDetail"
+                                    :key="index"
+                                >
+                                    {{ reason }}
+                                </li>
+                            </ul>
+                            <p
+                                v-if="healthLimitLabel"
+                                class="mt-1 text-xs opacity-80"
+                            >
+                                Teto do portfólio: {{ healthLimitLabel }}
                             </p>
                         </div>
                     </div>
