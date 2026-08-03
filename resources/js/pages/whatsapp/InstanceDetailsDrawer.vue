@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertTriangle, Check, Copy, RefreshCw, Users } from 'lucide-vue-next';
+import { AlertTriangle, Check, Copy, RefreshCw } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +18,6 @@ import {
     healthChip,
     healthStatusOf,
     nameStatusLabel,
-    numberStatusLabel,
     portfolioLimitLabel,
     restrictionLabel,
     throughputLabel,
@@ -60,40 +59,16 @@ async function copy(key: string, value: string | null): Promise<void> {
     }
 }
 
-const qualityChip = computed(() => {
-    const rating = (props.instance.meta_quality_rating ?? '').toUpperCase();
-
-    if (rating === 'GREEN') {
-        return {
-            label: 'Alta',
-            class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-        };
-    }
-
-    if (rating === 'YELLOW') {
-        return {
-            label: 'Média',
-            class: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
-        };
-    }
-
-    if (rating === 'RED') {
-        return {
-            label: 'Baixa',
-            class: 'bg-red-500/10 text-red-400 border-red-500/30',
-        };
-    }
-
-    return {
-        label: 'Sem dados',
-        class: 'bg-muted text-muted-foreground border-border',
-    };
-});
-
+/**
+ * The Meta access token, phrased as what it costs the operator: when it lapses
+ * the number stops sending and someone has to reconnect the account. "Token" is
+ * not a word an operator has to learn to understand that.
+ */
 const tokenInfo = computed(() => {
     if (props.instance.meta_token_permanent) {
         return {
-            label: 'Permanente',
+            label: 'Não expira',
+            hint: null,
             class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
         };
     }
@@ -101,6 +76,7 @@ const tokenInfo = computed(() => {
     if (!props.instance.meta_token_expires_at) {
         return {
             label: 'Temporário',
+            hint: 'Este acesso vai vencer e o número vai parar de enviar. Reconecte a conta pela Meta.',
             class: 'bg-muted text-muted-foreground border-border',
         };
     }
@@ -112,27 +88,31 @@ const tokenInfo = computed(() => {
 
     if (days < 0) {
         return {
-            label: 'Token expirado',
+            label: 'Vencido',
+            hint: 'O número não envia mais. Reconecte a conta pela Meta.',
             class: 'bg-red-500/10 text-red-400 border-red-500/30',
         };
     }
 
     if (days < 7) {
         return {
-            label: `Expira em ${days}d`,
+            label: `Vence em ${days} dia${days === 1 ? '' : 's'}`,
+            hint: 'Reconecte a conta pela Meta antes disso ou o número para de enviar.',
             class: 'bg-red-500/10 text-red-400 border-red-500/30',
         };
     }
 
     if (days < 30) {
         return {
-            label: `Expira em ${days}d`,
+            label: `Vence em ${days} dias`,
+            hint: 'Reconecte a conta pela Meta antes disso ou o número para de enviar.',
             class: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
         };
     }
 
     return {
-        label: `Expira em ${days}d`,
+        label: `Vence em ${days} dias`,
+        hint: null,
         class: 'bg-muted text-muted-foreground border-border',
     };
 });
@@ -194,12 +174,45 @@ const portfolioLimit = computed(() =>
 const throughput = computed(() =>
     throughputLabel(props.instance.meta_throughput_level),
 );
-const numberStatus = computed(() =>
-    numberStatusLabel(props.instance.meta_number_status),
-);
 const verification = computed(() =>
     verificationLabel(props.instance.meta_code_verification_status),
 );
+
+/**
+ * Meta's own scoring of how recipients react to this number. It is not
+ * decoration: RED auto-pauses every running campaign on the instance
+ * (`MetaQualityRiskService`), so the operator needs to see it drifting before
+ * the pause lands on them.
+ */
+const qualityChip = computed(() => {
+    const rating = (props.instance.meta_quality_rating ?? '').toUpperCase();
+
+    if (rating === 'GREEN') {
+        return {
+            label: 'Boa',
+            hint: 'Os clientes estão respondendo bem. Pode enviar normalmente.',
+            class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+        };
+    }
+
+    if (rating === 'YELLOW') {
+        return {
+            label: 'Em atenção',
+            hint: 'Clientes começaram a bloquear ou denunciar. Reduza o volume e revise as mensagens.',
+            class: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
+        };
+    }
+
+    if (rating === 'RED') {
+        return {
+            label: 'Ruim',
+            hint: 'Muitas denúncias. As campanhas deste número são pausadas automaticamente até melhorar.',
+            class: 'bg-red-500/10 text-red-400 border-red-500/30',
+        };
+    }
+
+    return null;
+});
 
 /**
  * A bare WABA/portfolio ID tells the reader nothing about which account they are
@@ -320,6 +333,12 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                         ]"
                     >
                         {{ statusChip.label }}
+                    </span>
+                    <span
+                        v-if="instance.meta_coexistence"
+                        class="inline-flex items-center rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-400"
+                    >
+                        Coexistência
                     </span>
                 </DialogDescription>
             </DialogHeader>
@@ -502,6 +521,50 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                             </dd>
                         </div>
                         <div
+                            v-if="qualityChip"
+                            class="flex items-baseline justify-between gap-3"
+                        >
+                            <dt class="text-muted-foreground">
+                                Reputação do número
+                            </dt>
+                            <dd class="text-right">
+                                <span
+                                    :class="[
+                                        'inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-medium',
+                                        qualityChip.class,
+                                    ]"
+                                >
+                                    {{ qualityChip.label }}
+                                </span>
+                                <span
+                                    class="mt-0.5 block text-[11px] leading-snug font-normal text-muted-foreground"
+                                >
+                                    {{ qualityChip.hint }}
+                                </span>
+                            </dd>
+                        </div>
+                        <div class="flex items-baseline justify-between gap-3">
+                            <dt class="text-muted-foreground">
+                                Acesso à conta
+                            </dt>
+                            <dd class="text-right">
+                                <span
+                                    :class="[
+                                        'inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-medium',
+                                        tokenInfo.class,
+                                    ]"
+                                >
+                                    {{ tokenInfo.label }}
+                                </span>
+                                <span
+                                    v-if="tokenInfo.hint"
+                                    class="mt-0.5 block text-[11px] leading-snug font-normal text-muted-foreground"
+                                >
+                                    {{ tokenInfo.hint }}
+                                </span>
+                            </dd>
+                        </div>
+                        <div
                             v-if="instance.meta_account_review_status"
                             class="flex items-baseline justify-between gap-3"
                         >
@@ -539,7 +602,7 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                             for="connection-name"
                             class="text-xs text-muted-foreground"
                         >
-                            Nome da conexão
+                            Nome da instância
                         </Label>
                         <Input
                             id="connection-name"
@@ -617,18 +680,15 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                                 {{ instance.phone_number ?? '-' }}
                             </dd>
                         </div>
-                        <div class="flex items-baseline justify-between gap-3">
-                            <dt class="text-muted-foreground">Nome interno</dt>
-                            <dd class="truncate font-mono text-foreground">
-                                {{ instance.name }}
-                            </dd>
-                        </div>
                         <div
                             v-if="instance.meta_verified_name"
                             class="flex items-baseline justify-between gap-3"
                         >
                             <dt class="text-muted-foreground">
-                                Nome que o cliente vê
+                                Nome da conta
+                                <span class="block text-[11px]"
+                                    >que o cliente vê</span
+                                >
                             </dt>
                             <dd
                                 class="truncate text-right font-medium text-foreground"
@@ -636,60 +696,33 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                                 {{ instance.meta_verified_name }}
                             </dd>
                         </div>
+
+                        <!-- The WABA is shown by name; its ID only matters when
+                             someone is pasting it into Meta support, so it lives
+                             behind the copy button instead of on screen. -->
                         <div
-                            v-if="numberStatus"
+                            v-if="instance.meta_waba_id"
                             class="flex items-baseline justify-between gap-3"
                         >
                             <dt class="text-muted-foreground">
-                                Status do número
+                                Conta WhatsApp Business
                             </dt>
-                            <dd class="text-right font-medium text-foreground">
-                                {{ numberStatus }}
-                            </dd>
-                        </div>
-                        <div
-                            v-if="verification"
-                            class="flex items-baseline justify-between gap-3"
-                        >
-                            <dt class="text-muted-foreground">Verificação</dt>
-                            <dd class="font-medium text-foreground">
-                                {{ verification }}
-                            </dd>
-                        </div>
-                    </dl>
-                </section>
-
-                <section class="space-y-2">
-                    <h4
-                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-                    >
-                        Meta Cloud
-                    </h4>
-
-                    <dl class="space-y-1.5 text-xs">
-                        <div class="flex items-center justify-between gap-3">
-                            <dt class="min-w-0 text-muted-foreground">
-                                WABA ID
+                            <dd class="flex min-w-0 items-baseline gap-1">
                                 <span
-                                    v-if="instance.meta_waba_name"
-                                    class="block truncate font-medium text-foreground"
+                                    class="truncate font-medium text-foreground"
                                 >
-                                    {{ instance.meta_waba_name }}
+                                    {{
+                                        instance.meta_waba_name ??
+                                        instance.meta_waba_id
+                                    }}
                                 </span>
-                            </dt>
-                            <dd class="flex min-w-0 items-center gap-1.5">
-                                <span
-                                    class="truncate font-mono text-foreground"
-                                    >{{ instance.meta_waba_id ?? '-' }}</span
-                                >
                                 <button
-                                    v-if="instance.meta_waba_id"
                                     type="button"
-                                    class="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    class="shrink-0 self-center rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                                     :title="
                                         copiedKey === 'waba'
                                             ? 'Copiado!'
-                                            : 'Copiar'
+                                            : 'Copiar identificador da conta'
                                     "
                                     @click="copy('waba', instance.meta_waba_id)"
                                 >
@@ -702,81 +735,24 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                             </dd>
                         </div>
 
-                        <div class="flex items-center justify-between gap-3">
-                            <dt class="text-muted-foreground">
-                                Phone Number ID
-                            </dt>
-                            <dd class="flex min-w-0 items-center gap-1.5">
-                                <span
-                                    class="truncate font-mono text-foreground"
-                                    >{{
-                                        instance.meta_phone_number_id ?? '-'
-                                    }}</span
-                                >
-                                <button
-                                    v-if="instance.meta_phone_number_id"
-                                    type="button"
-                                    class="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                    :title="
-                                        copiedKey === 'phone'
-                                            ? 'Copiado!'
-                                            : 'Copiar'
-                                    "
-                                    @click="
-                                        copy(
-                                            'phone',
-                                            instance.meta_phone_number_id,
-                                        )
-                                    "
-                                >
-                                    <Check
-                                        v-if="copiedKey === 'phone'"
-                                        class="h-3.5 w-3.5 text-emerald-400"
-                                    />
-                                    <Copy v-else class="h-3.5 w-3.5" />
-                                </button>
-                            </dd>
-                        </div>
-
-                        <div class="flex items-center justify-between gap-3">
-                            <dt class="text-muted-foreground">Qualidade</dt>
-                            <dd>
-                                <span
-                                    :class="[
-                                        'inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-medium',
-                                        qualityChip.class,
-                                    ]"
-                                >
-                                    {{ qualityChip.label }}
-                                </span>
-                            </dd>
-                        </div>
-
-                        <div class="flex items-center justify-between gap-3">
-                            <dt class="text-muted-foreground">Token</dt>
-                            <dd>
-                                <span
-                                    :class="[
-                                        'inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-medium',
-                                        tokenInfo.class,
-                                    ]"
-                                >
-                                    {{ tokenInfo.label }}
-                                </span>
-                            </dd>
-                        </div>
-
                         <div
-                            v-if="instance.meta_coexistence"
-                            class="flex items-center justify-between gap-3"
+                            v-if="verification"
+                            class="flex items-baseline justify-between gap-3"
                         >
-                            <dt class="text-muted-foreground">Modo</dt>
-                            <dd>
-                                <span
-                                    class="inline-flex items-center rounded border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-400"
-                                >
-                                    Coexistência
-                                </span>
+                            <dt class="text-muted-foreground">Verificação</dt>
+                            <dd class="font-medium text-foreground">
+                                {{ verification }}
+                            </dd>
+                        </div>
+
+                        <div class="flex items-baseline justify-between gap-3">
+                            <dt class="text-muted-foreground">
+                                Total de leads
+                            </dt>
+                            <dd
+                                class="font-medium text-foreground tabular-nums"
+                            >
+                                {{ instance.leads_count }}
                             </dd>
                         </div>
                     </dl>
@@ -786,7 +762,7 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                     <h4
                         class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                     >
-                        Configuração de IA
+                        Atendimento por IA
                     </h4>
                     <dl class="space-y-1.5 text-xs">
                         <div class="flex items-baseline justify-between gap-3">
@@ -805,29 +781,6 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                             </dd>
                         </div>
                     </dl>
-                </section>
-
-                <section class="space-y-2">
-                    <h4
-                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-                    >
-                        Estatísticas
-                    </h4>
-                    <div
-                        class="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2"
-                    >
-                        <Users class="h-4 w-4 text-muted-foreground" />
-                        <div class="flex-1">
-                            <p class="text-xs text-muted-foreground">
-                                Total de leads
-                            </p>
-                            <p
-                                class="text-lg font-semibold text-foreground tabular-nums"
-                            >
-                                {{ instance.leads_count }}
-                            </p>
-                        </div>
-                    </div>
                 </section>
             </div>
 
