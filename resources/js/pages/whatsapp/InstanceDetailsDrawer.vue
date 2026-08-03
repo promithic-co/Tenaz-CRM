@@ -545,7 +545,6 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                             id="connection-name"
                             v-model="connectionName"
                             maxlength="100"
-                            placeholder="Ex.: Amec Consignado"
                         />
                     </div>
 
