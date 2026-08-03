@@ -46,7 +46,11 @@ class WhatsappInstance extends Model
         'proxy_password',
         'meta_phone_number_id',
         'meta_waba_id',
+        'meta_waba_name',
+        'meta_business_name',
+        'meta_verified_name',
         'meta_access_token',
+        'meta_registration_pin',
         'meta_system_user_id',
         'meta_token_permanent',
         'meta_token_expires_at',
@@ -67,15 +71,16 @@ class WhatsappInstance extends Model
 
     /**
      * FE-SEC-01: never serialize instance secrets into Inertia props / JSON.
-     * meta_access_token is cast `encrypted`, so array/JSON serialization would
-     * otherwise emit it DECRYPTED. Backend send paths read these as properties,
-     * which $hidden does not affect.
+     * meta_access_token and meta_registration_pin are cast `encrypted`, so array
+     * / JSON serialization would otherwise emit them DECRYPTED. Backend send
+     * paths read these as properties, which $hidden does not affect.
      *
      * @var list<string>
      */
     protected $hidden = [
         'api_key',
         'meta_access_token',
+        'meta_registration_pin',
         'proxy_password',
         'proxy_username',
         'proxy_host',
@@ -88,6 +93,7 @@ class WhatsappInstance extends Model
         return [
             'provider' => WhatsAppProvider::class,
             'meta_access_token' => 'encrypted',
+            'meta_registration_pin' => 'encrypted',
             'meta_token_permanent' => 'boolean',
             'meta_token_expires_at' => 'datetime',
             'meta_coexistence' => 'boolean',

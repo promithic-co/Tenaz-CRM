@@ -493,6 +493,90 @@ it('never blocks a campaign on an UNKNOWN health probe', function (): void {
     expect($campaign->refresh()->status)->toBe('sending');
 });
 
+// ─── Account names ────────────────────────────────────────────────────────────
+
+it('stores the account names behind the WABA and portfolio IDs', function (): void {
+    $instance = WhatsappInstance::factory()->metaCloud()->healthUnknown()->create();
+
+    Http::fake(fn ($request) => str_contains($request->url(), (string) $instance->meta_waba_id)
+        ? Http::response(['name' => 'Amec Promotora', 'owner_business_info' => ['name' => 'Grupo Amec']])
+        : Http::response(metaHealthPayload('AVAILABLE', [
+            ['entity_type' => 'PHONE_NUMBER', 'id' => '1', 'can_send_message' => 'AVAILABLE'],
+        ], ['verified_name' => 'Amec Crédito Consignado'])));
+
+    app(MetaHealthService::class)->refresh($instance);
+
+    $instance->refresh();
+
+    expect($instance->meta_waba_name)->toBe('Amec Promotora')
+        ->and($instance->meta_business_name)->toBe('Grupo Amec')
+        // verified_name was already requested from Graph and then thrown away;
+        // it is the name customers actually see on the conversation.
+        ->and($instance->meta_verified_name)->toBe('Amec Crédito Consignado');
+});
+
+it('only fetches the account names once', function (): void {
+    // The scheduler probes every 15 minutes. A WABA rename is rare enough that
+    // paying a second Graph call per instance per tick would be a bad trade.
+    $instance = WhatsappInstance::factory()->metaCloud()->healthUnknown()->create([
+        'meta_waba_name' => 'Amec Promotora',
+    ]);
+
+    Http::fake(['graph.facebook.com/*' => Http::response(metaHealthPayload('AVAILABLE', []))]);
+
+    app(MetaHealthService::class)->refresh($instance);
+
+    Http::assertSentCount(1);
+});
+
+it('re-fetches the account names when the user presses refresh', function (): void {
+    $instance = WhatsappInstance::factory()->metaCloud()->healthUnknown()->create([
+        'meta_waba_name' => 'Nome antigo',
+    ]);
+
+    Http::fake(fn ($request) => str_contains($request->url(), (string) $instance->meta_waba_id)
+        ? Http::response(['name' => 'Nome novo'])
+        : Http::response(metaHealthPayload('AVAILABLE', [])));
+
+    app(MetaHealthService::class)->refresh($instance, refreshAccountNames: true);
+
+    expect($instance->refresh()->meta_waba_name)->toBe('Nome novo');
+});
+
+it('stops retrying the account names after the WABA node refuses once', function (): void {
+    // Otherwise a permanently unreadable WABA logs the same warning on every
+    // 15 minute tick, forever, for every instance in that state.
+    $instance = WhatsappInstance::factory()->metaCloud()->healthUnknown()->create();
+
+    Http::fake(fn ($request) => str_contains($request->url(), (string) $instance->meta_waba_id)
+        ? Http::response(['error' => ['message' => 'Unsupported get request.']], 400)
+        : Http::response(metaHealthPayload('AVAILABLE', [])));
+
+    $health = app(MetaHealthService::class);
+
+    $health->refresh($instance);
+    $health->refresh($instance->refresh());
+
+    // Two health probes, but only the first attempted the WABA node.
+    Http::assertSentCount(3);
+});
+
+it('keeps the stored account name when the WABA node is unreachable', function (): void {
+    // A coexistence token can read the phone number node without reaching the
+    // WABA node. Blanking the name there would lose data over a permission gap.
+    $instance = WhatsappInstance::factory()->metaCloud()->healthUnknown()->create([
+        'meta_waba_name' => 'Amec Promotora',
+    ]);
+
+    Http::fake(fn ($request) => str_contains($request->url(), (string) $instance->meta_waba_id)
+        ? Http::response(['error' => ['message' => 'Unsupported get request.']], 400)
+        : Http::response(metaHealthPayload('AVAILABLE', [])));
+
+    app(MetaHealthService::class)->refresh($instance, refreshAccountNames: true);
+
+    expect($instance->refresh()->meta_waba_name)->toBe('Amec Promotora');
+});
+
 // ─── Panel props ──────────────────────────────────────────────────────────────
 
 it('ships real health props to the WhatsApp page instead of a hardcoded state', function (): void {
@@ -511,7 +595,10 @@ it('ships real health props to the WhatsApp page instead of a hardcoded state', 
             ->component('whatsapp/Index')
             ->where('instances.0.id', $instance->id)
             ->where('instances.0.health_status', 'LIMITED')
-            ->where('instances.0.health_reasons.0', 'Your display name has not been approved yet.')
+            ->where(
+                'instances.0.health_reasons.0.title',
+                'O nome que seus clientes veem ainda está em análise'
+            )
         );
 });
 
@@ -532,7 +619,10 @@ it('warns on the campaign page when Meta has limited the number', function (): v
             ->component('campanhas/Show')
             ->where('instanceHealth.status', 'LIMITED')
             ->where('instanceHealth.portfolio_messaging_limit', 'TIER_2K')
-            ->where('instanceHealth.reasons.0', 'Your display name has not been approved yet.')
+            ->where(
+                'instanceHealth.reasons.0.title',
+                'O nome que seus clientes veem ainda está em análise'
+            )
         );
 });
 
@@ -562,5 +652,5 @@ it('re-probes Meta from the refresh endpoint', function (): void {
         ->postJson("/whatsapp/{$instance->id}/health")
         ->assertOk()
         ->assertJsonPath('health_status', 'BLOCKED')
-        ->assertJsonPath('health_reasons.0', 'Business account is restricted. Complete business verification.');
+        ->assertJsonPath('health_reasons.0.title', 'Sua empresa ainda não foi verificada pela Meta');
 });

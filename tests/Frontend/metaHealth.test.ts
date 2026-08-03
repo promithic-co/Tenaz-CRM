@@ -6,8 +6,11 @@ import {
     healthChip,
     healthStatusOf,
     nameStatusLabel,
+    numberStatusLabel,
     portfolioLimitLabel,
     restrictionLabel,
+    throughputLabel,
+    verificationLabel,
 } from '../../resources/js/composables/useMetaHealth.ts';
 
 test('unknown is the fallback for anything Meta did not report', () => {
@@ -64,6 +67,29 @@ test('the portfolio limit reads as a rate, not a Meta constant', () => {
 
 test('an unrecognised tier still renders rather than disappearing', () => {
     assert.equal(portfolioLimitLabel('TIER_FUTURE'), 'FUTURE conversas/24h');
+});
+
+test("Meta's own constants never reach the operator untranslated", () => {
+    assert.equal(throughputLabel('STANDARD'), 'Padrão');
+    assert.equal(
+        numberStatusLabel('CONNECTED'),
+        'Conectado e pronto para enviar',
+    );
+    assert.equal(verificationLabel('VERIFIED'), 'Concluída');
+    assert.equal(verificationLabel('NOT_VERIFIED'), 'Pendente');
+});
+
+test('an unmapped Meta constant passes through rather than vanishing', () => {
+    assert.equal(numberStatusLabel('SOMETHING_NEW'), 'SOMETHING_NEW');
+    assert.equal(throughputLabel(null), null);
+    assert.equal(verificationLabel(undefined), null);
+});
+
+test('the app entity is named for what it means to the user', () => {
+    // "Aplicativo" told a promotora operator nothing: they never configured an
+    // app, and the row is only ever about this platform's own connection.
+    assert.equal(entityLabel('APP'), 'Conexão com o Tenaz');
+    assert.equal(entityLabel('MESSAGE_TEMPLATE'), 'Modelo de mensagem');
 });
 
 test('display name statuses are translated', () => {

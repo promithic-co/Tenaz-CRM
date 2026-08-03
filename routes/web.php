@@ -148,6 +148,11 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
         Route::delete('/whatsapp/{instance}', [WhatsAppInstanceController::class, 'destroy'])->name('whatsapp.destroy');
         Route::get('/whatsapp/{instance}/status', [WhatsAppInstanceController::class, 'status'])->name('whatsapp.status');
         Route::post('/whatsapp/{instance}/health', [WhatsAppInstanceController::class, 'health'])->name('whatsapp.health');
+        // Throttled because the body carries the number's two-step PIN, and Meta
+        // locks the number out after a handful of wrong attempts (error 133008).
+        Route::post('/whatsapp/{instance}/connection', [WhatsAppInstanceController::class, 'updateConnection'])
+            ->middleware('throttle:10,1')
+            ->name('whatsapp.connection');
         Route::post('/whatsapp/{instance}/connect', [WhatsAppInstanceController::class, 'connect'])->name('whatsapp.connect');
         Route::post('/whatsapp/{instance}/disconnect', [WhatsAppInstanceController::class, 'disconnect'])->name('whatsapp.disconnect');
         Route::post('/whatsapp/meta/embedded-signup', [MetaEmbeddedSignupController::class, 'callback'])->name('whatsapp.meta.embedded-signup');

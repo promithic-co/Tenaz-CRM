@@ -11,7 +11,7 @@ export type MetaHealthEntity = {
     type: string;
     id: string;
     status: MetaHealthStatus;
-    reasons: string[];
+    reasons: MetaHealthReason[];
 };
 
 export type MetaAccountAlert = {
@@ -29,12 +29,28 @@ export type MetaAccountRestriction = {
     expires_at: string | null;
 };
 
+/**
+ * A reason already rewritten for a non-technical reader by
+ * MetaHealthReasonTranslator. `original` is only set when Meta used a phrasing
+ * the translator does not know yet, and the UI must label it as Meta's own text
+ * rather than passing it off as ours.
+ */
+export type MetaHealthReason = {
+    title: string;
+    detail: string | null;
+    action: string | null;
+    original: string | null;
+};
+
 /** Health props every instance payload carries, from WhatsAppInstanceController. */
 export type MetaHealthProps = {
     health_status: MetaHealthStatus;
-    health_reasons: string[];
+    health_reasons: MetaHealthReason[];
     health_entities: MetaHealthEntity[];
     health_checked_at: string | null;
+    meta_waba_name: string | null;
+    meta_business_name: string | null;
+    meta_verified_name: string | null;
     meta_name_status: string | null;
     meta_code_verification_status: string | null;
     meta_portfolio_messaging_limit: string | null;
@@ -81,8 +97,33 @@ const ENTITY_LABELS: Record<string, string> = {
     PHONE_NUMBER: 'Número',
     WABA: 'Conta WhatsApp (WABA)',
     BUSINESS: 'Portfólio empresarial',
-    APP: 'Aplicativo',
-    MESSAGE_TEMPLATE: 'Template',
+    APP: 'Conexão com o Tenaz',
+    MESSAGE_TEMPLATE: 'Modelo de mensagem',
+};
+
+const THROUGHPUT_LABELS: Record<string, string> = {
+    STANDARD: 'Padrão',
+    HIGH: 'Alta',
+    NOT_APPLICABLE: 'Não se aplica',
+};
+
+const NUMBER_STATUS_LABELS: Record<string, string> = {
+    CONNECTED: 'Conectado e pronto para enviar',
+    DISCONNECTED: 'Desconectado',
+    PENDING: 'Aguardando aprovação da Meta',
+    FLAGGED: 'Sinalizado pela Meta',
+    RESTRICTED: 'Com restrição da Meta',
+    RATE_LIMITED: 'Limite de envio atingido',
+    BANNED: 'Banido pela Meta',
+    MIGRATED: 'Migrado para outra conta',
+    DELETED: 'Removido da conta',
+    UNVERIFIED: 'Ainda não verificado',
+};
+
+const VERIFICATION_LABELS: Record<string, string> = {
+    VERIFIED: 'Concluída',
+    NOT_VERIFIED: 'Pendente',
+    EXPIRED: 'Expirada',
 };
 
 const NAME_STATUS_LABELS: Record<string, string> = {
@@ -139,6 +180,41 @@ export function nameStatusLabel(
 
 export function restrictionLabel(type: string): string {
     return RESTRICTION_LABELS[type.toUpperCase()] ?? type;
+}
+
+/**
+ * Meta's own constants (`STANDARD`, `CONNECTED`, `VERIFIED`) are shown to
+ * promotora operators, who have no reason to know them. Anything unmapped falls
+ * through unchanged rather than disappearing.
+ */
+export function throughputLabel(
+    value: string | null | undefined,
+): string | null {
+    if (!value) {
+        return null;
+    }
+
+    return THROUGHPUT_LABELS[value.toUpperCase()] ?? value;
+}
+
+export function numberStatusLabel(
+    value: string | null | undefined,
+): string | null {
+    if (!value) {
+        return null;
+    }
+
+    return NUMBER_STATUS_LABELS[value.toUpperCase()] ?? value;
+}
+
+export function verificationLabel(
+    value: string | null | undefined,
+): string | null {
+    if (!value) {
+        return null;
+    }
+
+    return VERIFICATION_LABELS[value.toUpperCase()] ?? value;
 }
 
 /**

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { AlertTriangle, Check, Copy, RefreshCw, Users } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -10,20 +10,26 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     checkedAtLabel,
     entityLabel,
     healthChip,
     healthStatusOf,
     nameStatusLabel,
+    numberStatusLabel,
     portfolioLimitLabel,
     restrictionLabel,
+    throughputLabel,
+    verificationLabel,
 } from '@/composables/useMetaHealth';
 import type { WhatsappInstanceSummary } from '@/types';
 
 const props = defineProps<{
     instance: WhatsappInstanceSummary;
     open: boolean;
+    csrf: string;
     refreshing?: boolean;
 }>();
 
@@ -31,6 +37,7 @@ const emit = defineEmits<{
     'update:open': [boolean];
     delete: [];
     refresh: [];
+    updated: [Partial<WhatsappInstanceSummary>];
 }>();
 
 const copiedKey = ref<string | null>(null);
@@ -159,7 +166,16 @@ const healthStatus = computed(() =>
 );
 const statusChip = computed(() => healthChip(props.instance.health_status));
 
-const entities = computed(() => props.instance.health_entities ?? []);
+// The "Conexão com o Tenaz" row only ever means something when it is the thing
+// blocking the send; healthy, it is one more line of noise for an operator who
+// never configured it in the first place.
+const entities = computed(() =>
+    (props.instance.health_entities ?? []).filter(
+        (entity) =>
+            entity.type.toUpperCase() !== 'APP' ||
+            healthStatusOf(entity.status) !== 'AVAILABLE',
+    ),
+);
 const restrictions = computed(
     () => props.instance.meta_account_restrictions ?? [],
 );
@@ -175,6 +191,105 @@ const displayNameLabel = computed(() =>
 const portfolioLimit = computed(() =>
     portfolioLimitLabel(props.instance.meta_portfolio_messaging_limit),
 );
+const throughput = computed(() =>
+    throughputLabel(props.instance.meta_throughput_level),
+);
+const numberStatus = computed(() =>
+    numberStatusLabel(props.instance.meta_number_status),
+);
+const verification = computed(() =>
+    verificationLabel(props.instance.meta_code_verification_status),
+);
+
+/**
+ * A bare WABA/portfolio ID tells the reader nothing about which account they are
+ * looking at, which matters as soon as a promotora runs more than one.
+ */
+function entityName(type: string): string | null {
+    if (type.toUpperCase() === 'WABA') {
+        return props.instance.meta_waba_name;
+    }
+
+    if (type.toUpperCase() === 'BUSINESS') {
+        return props.instance.meta_business_name;
+    }
+
+    return null;
+}
+
+// ─── Conexão: nome + ativação do número ───────────────────────────────────────
+//
+// Activating a Meta Cloud number takes a 6 digit two-step PIN. Until now that
+// only happened inside the signup flow, so a number that arrived unregistered
+// could only be fixed with a hand-written `curl` — which is not something a
+// promotora's operator can be asked to do.
+
+const connectionName = ref(props.instance.display_name ?? '');
+const pin = ref('');
+const savingConnection = ref(false);
+const connectionError = ref<string | null>(null);
+const connectionSaved = ref<string | null>(null);
+
+watch(
+    () => [props.open, props.instance.display_name] as const,
+    () => {
+        connectionName.value = props.instance.display_name ?? '';
+        // Never keep a typed secret around between openings of the drawer.
+        pin.value = '';
+        connectionError.value = null;
+        connectionSaved.value = null;
+    },
+);
+
+async function saveConnection(): Promise<void> {
+    if (savingConnection.value) {
+        return;
+    }
+
+    savingConnection.value = true;
+    connectionError.value = null;
+    connectionSaved.value = null;
+
+    const activating = pin.value !== '';
+
+    try {
+        const res = await fetch(`/whatsapp/${props.instance.id}/connection`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-XSRF-TOKEN': props.csrf,
+            },
+            body: JSON.stringify({
+                display_name: connectionName.value,
+                pin: pin.value || null,
+            }),
+        });
+
+        const body = await res.json();
+
+        if (!res.ok) {
+            connectionError.value =
+                body?.errors?.pin?.[0] ??
+                body?.errors?.display_name?.[0] ??
+                body?.message ??
+                'Não foi possível salvar. Tente de novo.';
+
+            return;
+        }
+
+        pin.value = '';
+        connectionSaved.value = activating
+            ? 'Número ativado na Meta.'
+            : 'Conexão atualizada.';
+        emit('updated', body);
+    } catch {
+        connectionError.value =
+            'Não foi possível falar com o servidor. Verifique sua conexão e tente de novo.';
+    } finally {
+        savingConnection.value = false;
+    }
+}
 
 const providerLabel = 'Meta Cloud';
 const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
@@ -257,8 +372,14 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                             <div
                                 class="flex items-center justify-between gap-3"
                             >
-                                <dt class="text-muted-foreground">
+                                <dt class="min-w-0 text-muted-foreground">
                                     {{ entityLabel(entity.type) }}
+                                    <span
+                                        v-if="entityName(entity.type)"
+                                        class="block truncate font-medium text-foreground"
+                                    >
+                                        {{ entityName(entity.type) }}
+                                    </span>
                                 </dt>
                                 <dd>
                                     <span
@@ -271,13 +392,38 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                                     </span>
                                 </dd>
                             </div>
-                            <p
+                            <div
                                 v-for="reason in entity.reasons"
-                                :key="reason"
-                                class="pl-1 text-[11px] leading-snug text-muted-foreground"
+                                :key="reason.title"
+                                class="space-y-0.5 pl-1"
                             >
-                                {{ reason }}
-                            </p>
+                                <p
+                                    class="text-[11px] leading-snug font-medium text-foreground"
+                                >
+                                    {{ reason.title }}
+                                </p>
+                                <p
+                                    v-if="reason.detail"
+                                    class="text-[11px] leading-snug text-muted-foreground"
+                                >
+                                    {{ reason.detail }}
+                                </p>
+                                <p
+                                    v-if="reason.action"
+                                    class="text-[11px] leading-snug text-foreground/80"
+                                >
+                                    <span class="font-medium"
+                                        >O que fazer:</span
+                                    >
+                                    {{ reason.action }}
+                                </p>
+                                <p
+                                    v-if="reason.original"
+                                    class="text-[10px] leading-snug text-muted-foreground italic"
+                                >
+                                    Texto original da Meta, ainda sem tradução.
+                                </p>
+                            </div>
                         </div>
                     </dl>
 
@@ -345,12 +491,14 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                             </dd>
                         </div>
                         <div
-                            v-if="instance.meta_throughput_level"
+                            v-if="throughput"
                             class="flex items-baseline justify-between gap-3"
                         >
-                            <dt class="text-muted-foreground">Throughput</dt>
+                            <dt class="text-muted-foreground">
+                                Velocidade de envio
+                            </dt>
                             <dd class="font-medium text-foreground">
-                                {{ instance.meta_throughput_level }}
+                                {{ throughput }}
                             </dd>
                         </div>
                         <div
@@ -378,6 +526,85 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                     </dl>
                 </section>
 
+                <!-- ── Conexão ─────────────────────────────────────────────── -->
+                <section class="space-y-2">
+                    <h4
+                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                    >
+                        Conexão
+                    </h4>
+
+                    <div class="space-y-1.5">
+                        <Label
+                            for="connection-name"
+                            class="text-xs text-muted-foreground"
+                        >
+                            Nome da conexão
+                        </Label>
+                        <Input
+                            id="connection-name"
+                            v-model="connectionName"
+                            maxlength="100"
+                            placeholder="Ex.: Amec Consignado"
+                        />
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <Label
+                            for="connection-pin"
+                            class="flex items-center gap-1.5 text-xs text-muted-foreground"
+                        >
+                            Código PIN
+                            <span
+                                v-if="instance.has_registration_pin"
+                                class="inline-flex items-center rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400"
+                            >
+                                salvo
+                            </span>
+                        </Label>
+                        <Input
+                            id="connection-pin"
+                            v-model="pin"
+                            type="password"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            maxlength="6"
+                            placeholder="••••••"
+                        />
+                        <p
+                            class="text-[11px] leading-snug text-muted-foreground"
+                        >
+                            São os 6 dígitos da verificação em duas etapas deste
+                            número no WhatsApp. Preencha apenas se precisar
+                            ativar o número na Meta — para só trocar o nome,
+                            deixe em branco.
+                        </p>
+                    </div>
+
+                    <p
+                        v-if="connectionError"
+                        class="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] leading-snug text-red-400"
+                    >
+                        {{ connectionError }}
+                    </p>
+                    <p
+                        v-else-if="connectionSaved"
+                        class="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] leading-snug text-emerald-400"
+                    >
+                        {{ connectionSaved }}
+                    </p>
+
+                    <Button
+                        type="button"
+                        size="sm"
+                        class="w-full"
+                        :disabled="savingConnection || !connectionName.trim()"
+                        @click="saveConnection"
+                    >
+                        {{ savingConnection ? 'Salvando…' : 'Salvar conexão' }}
+                    </Button>
+                </section>
+
                 <section class="space-y-2">
                     <h4
                         class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
@@ -398,23 +625,36 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                             </dd>
                         </div>
                         <div
-                            v-if="instance.meta_number_status"
+                            v-if="instance.meta_verified_name"
+                            class="flex items-baseline justify-between gap-3"
+                        >
+                            <dt class="text-muted-foreground">
+                                Nome que o cliente vê
+                            </dt>
+                            <dd
+                                class="truncate text-right font-medium text-foreground"
+                            >
+                                {{ instance.meta_verified_name }}
+                            </dd>
+                        </div>
+                        <div
+                            v-if="numberStatus"
                             class="flex items-baseline justify-between gap-3"
                         >
                             <dt class="text-muted-foreground">
                                 Status do número
                             </dt>
-                            <dd class="font-medium text-foreground">
-                                {{ instance.meta_number_status }}
+                            <dd class="text-right font-medium text-foreground">
+                                {{ numberStatus }}
                             </dd>
                         </div>
                         <div
-                            v-if="instance.meta_code_verification_status"
+                            v-if="verification"
                             class="flex items-baseline justify-between gap-3"
                         >
                             <dt class="text-muted-foreground">Verificação</dt>
                             <dd class="font-medium text-foreground">
-                                {{ instance.meta_code_verification_status }}
+                                {{ verification }}
                             </dd>
                         </div>
                     </dl>
@@ -429,7 +669,15 @@ const providerClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
 
                     <dl class="space-y-1.5 text-xs">
                         <div class="flex items-center justify-between gap-3">
-                            <dt class="text-muted-foreground">WABA ID</dt>
+                            <dt class="min-w-0 text-muted-foreground">
+                                WABA ID
+                                <span
+                                    v-if="instance.meta_waba_name"
+                                    class="block truncate font-medium text-foreground"
+                                >
+                                    {{ instance.meta_waba_name }}
+                                </span>
+                            </dt>
                             <dd class="flex min-w-0 items-center gap-1.5">
                                 <span
                                     class="truncate font-mono text-foreground"

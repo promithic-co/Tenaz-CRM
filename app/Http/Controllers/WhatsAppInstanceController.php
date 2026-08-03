@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Enums\MetaOnboardingMode;
 use App\Enums\WhatsAppProvider;
 use App\Http\Requests\StoreWhatsappInstanceRequest;
+use App\Http\Requests\UpdateWhatsappConnectionRequest;
 use App\Jobs\SyncMetaCoexistenceDataJob;
 use App\Jobs\SyncMetaHealthJob;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
+use App\Services\WhatsApp\MetaHealthReasonTranslator;
 use App\Services\WhatsApp\MetaHealthService;
 use App\Services\WhatsApp\MetaTokenExchangeService;
 use App\Services\WhatsApp\WhatsAppProviderFactory;
@@ -18,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,6 +29,7 @@ class WhatsAppInstanceController extends Controller
     public function __construct(
         private readonly WhatsAppProviderFactory $factory,
         private readonly MetaTokenExchangeService $metaTokenService,
+        private readonly MetaHealthReasonTranslator $reasons,
     ) {}
 
     public function index(Request $request): Response
@@ -81,6 +85,8 @@ class WhatsAppInstanceController extends Controller
             'meta_token_permanent' => (bool) $i->meta_token_permanent,
             'meta_token_expires_at' => $i->meta_token_expires_at?->toIso8601String(),
             'meta_coexistence' => (bool) $i->meta_coexistence,
+            // Whether a PIN is on file, never the PIN itself.
+            'has_registration_pin' => filled($i->meta_registration_pin),
 
             // Real Meta account health (Graph `health_status` + WABA webhooks)
             ...$this->healthPayload($i),
@@ -238,9 +244,64 @@ class WhatsAppInstanceController extends Controller
             return response()->json(['message' => 'Instância não é Meta Cloud.'], 422);
         }
 
-        $health->refresh($instance);
+        // The button is also how a renamed WABA gets picked up: the scheduled sync
+        // only fetches account names when they are missing.
+        $health->refresh($instance, refreshAccountNames: true);
 
         return response()->json($this->healthPayload($instance->refresh()));
+    }
+
+    /**
+     * Rename the connection and, when a PIN is supplied, activate the number.
+     *
+     * Activating a Meta Cloud number is a single Graph call, but until now it
+     * only existed inside the signup flow — a number that arrived unregistered
+     * could only be fixed with a hand-written `curl`. The PIN is the number's
+     * two-step verification secret: it comes in the POST body, is stored
+     * encrypted for a future re-registration, and is never logged or echoed
+     * back to the browser.
+     */
+    public function updateConnection(
+        UpdateWhatsappConnectionRequest $request,
+        WhatsappInstance $instance,
+        MetaHealthService $health,
+    ): JsonResponse {
+        $this->authorize('update', $instance);
+
+        if ($instance->provider !== WhatsAppProvider::MetaCloud) {
+            return response()->json(['message' => 'Instância não é Meta Cloud.'], 422);
+        }
+
+        $instance->update(['display_name' => $request->validated('display_name')]);
+
+        $pin = (string) ($request->validated('pin') ?? '');
+
+        if ($pin !== '') {
+            $failure = $this->metaTokenService->registerPhoneNumberReason(
+                (string) $instance->meta_phone_number_id,
+                (string) $instance->meta_access_token,
+                $pin,
+            );
+
+            if ($failure !== null) {
+                throw ValidationException::withMessages(['pin' => $failure]);
+            }
+
+            $instance->update(['meta_registration_pin' => $pin]);
+
+            // Registering flips the number's status at Meta, so the panel would
+            // otherwise keep showing the state that prompted the registration.
+            $health->refresh($instance, refreshAccountNames: true);
+        }
+
+        $instance->refresh();
+
+        return response()->json([
+            'display_name' => $instance->display_name,
+            'label' => $instance->label(),
+            'has_registration_pin' => filled($instance->meta_registration_pin),
+            ...$this->healthPayload($instance),
+        ]);
     }
 
     /**
@@ -253,9 +314,14 @@ class WhatsAppInstanceController extends Controller
     {
         return [
             'health_status' => $instance->healthStatus()->value,
-            'health_reasons' => $instance->healthReasons(),
-            'health_entities' => array_values((array) ($instance->meta_health_entities ?? [])),
+            'health_reasons' => $this->reasons->forInstance($instance),
+            'health_entities' => $this->reasons->translateEntities(
+                array_values((array) ($instance->meta_health_entities ?? []))
+            ),
             'health_checked_at' => $instance->meta_health_checked_at?->toIso8601String(),
+            'meta_waba_name' => $instance->meta_waba_name,
+            'meta_business_name' => $instance->meta_business_name,
+            'meta_verified_name' => $instance->meta_verified_name,
             'meta_name_status' => $instance->meta_name_status,
             'meta_code_verification_status' => $instance->meta_code_verification_status,
             'meta_portfolio_messaging_limit' => $instance->meta_portfolio_messaging_limit,

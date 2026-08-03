@@ -1,6 +1,9 @@
-import { ref, onMounted, onBeforeUnmount  } from 'vue';
-import type {Ref} from 'vue';
-import type { MetaHealthStatus } from '@/composables/useMetaHealth';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+import type { Ref } from 'vue';
+import type {
+    MetaHealthReason,
+    MetaHealthStatus,
+} from '@/composables/useMetaHealth';
 import echo from '@/echo';
 
 export type DashboardSnapshot = {
@@ -17,7 +20,7 @@ export type DashboardSnapshot = {
         provider: string;
         status: string;
         health_status: MetaHealthStatus;
-        health_reasons: string[];
+        health_reasons: MetaHealthReason[];
         health_checked_at: string | null;
         quality_rating: string | null;
     }>;
@@ -25,16 +28,21 @@ export type DashboardSnapshot = {
     voice_calls_today: number;
 };
 
-export function useDashboardMetrics(tenantId: string, initial: DashboardSnapshot) {
+export function useDashboardMetrics(
+    tenantId: string,
+    initial: DashboardSnapshot,
+) {
     const metrics: Ref<DashboardSnapshot> = ref(initial);
     const isLive = ref(false);
 
     onMounted(() => {
-        echo.private(`dashboard.${tenantId}`)
-            .listen('.dashboard.metrics.updated', (e: { snapshot: DashboardSnapshot }) => {
+        echo.private(`dashboard.${tenantId}`).listen(
+            '.dashboard.metrics.updated',
+            (e: { snapshot: DashboardSnapshot }) => {
                 metrics.value = e.snapshot;
                 isLive.value = true;
-            });
+            },
+        );
     });
 
     onBeforeUnmount(() => {

@@ -382,7 +382,7 @@ function funnelHeight(count: number, total: number): string {
                             v-if="instance.health_reasons.length"
                             class="min-w-0 text-xs leading-snug text-muted-foreground sm:max-w-md sm:text-right"
                         >
-                            {{ instance.health_reasons[0] }}
+                            {{ instance.health_reasons[0].title }}
                         </p>
                     </li>
                 </ul>

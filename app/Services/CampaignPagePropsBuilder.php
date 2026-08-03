@@ -9,6 +9,7 @@ use App\Models\ContactList;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
+use App\Services\WhatsApp\MetaHealthReasonTranslator;
 use App\Services\WhatsApp\WhatsappTemplateRenderer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -20,6 +21,7 @@ class CampaignPagePropsBuilder
 {
     public function __construct(
         private readonly WhatsappTemplateRenderer $renderer,
+        private readonly MetaHealthReasonTranslator $reasons,
     ) {}
 
     /**
@@ -66,7 +68,7 @@ class CampaignPagePropsBuilder
      *     repliedCount: int,
      *     statusCounts: array<string, int>,
      *     dailyBudget: array{sent_today: int, daily_limit: int, remaining: int},
-     *     instanceHealth: array{status: string, reasons: list<string>, restrictions: list<string>, portfolio_messaging_limit: string|null}|null,
+     *     instanceHealth: array{status: string, reasons: list<array{title: string, detail: string|null, action: string|null, original: string|null}>, restrictions: list<string>, portfolio_messaging_limit: string|null}|null,
      *     filters: array{status: string|null, search: string|null}
      * }
      */
@@ -112,7 +114,7 @@ class CampaignPagePropsBuilder
      * CampaignService; LIMITED is not, because Meta still delivers on a limited
      * number — it only caps the daily volume. The page renders the difference.
      *
-     * @return array{status: string, reasons: list<string>, restrictions: list<string>, portfolio_messaging_limit: string|null}|null
+     * @return array{status: string, reasons: list<array{title: string, detail: string|null, action: string|null, original: string|null}>, restrictions: list<string>, portfolio_messaging_limit: string|null}|null
      */
     private function instanceHealth(?WhatsappInstance $instance): ?array
     {
@@ -122,7 +124,7 @@ class CampaignPagePropsBuilder
 
         return [
             'status' => $instance->healthStatus()->value,
-            'reasons' => $instance->healthReasons(),
+            'reasons' => $this->reasons->forInstance($instance),
             'restrictions' => $instance->activeMessagingRestrictions(),
             'portfolio_messaging_limit' => $instance->meta_portfolio_messaging_limit,
         ];

@@ -78,6 +78,20 @@ async function refreshHealth(id: number): Promise<void> {
     }
 }
 
+/**
+ * Patch a card in place after the drawer saved it, so a rename or a freshly
+ * activated number shows up without a full Inertia reload.
+ */
+function patchInstance(
+    id: number,
+    payload: Partial<WhatsappInstanceSummary>,
+): void {
+    liveHealth.value = {
+        ...liveHealth.value,
+        [id]: { ...(liveHealth.value[id] ?? {}), ...payload },
+    };
+}
+
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'WhatsApp', href: '/whatsapp' },
 ];
@@ -481,6 +495,7 @@ function csrf(): string {
                     :refreshing="refreshingId === instance.id"
                     @delete="confirmDeleteId = instance.id"
                     @refresh="refreshHealth(instance.id)"
+                    @updated="(payload) => patchInstance(instance.id, payload)"
                 />
             </div>
 
