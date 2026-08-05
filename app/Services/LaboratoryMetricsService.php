@@ -12,7 +12,6 @@ use App\Models\FollowupMessage;
 use App\Models\Lead;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 
 class LaboratoryMetricsService
 {
@@ -264,9 +263,10 @@ class LaboratoryMetricsService
                 ->where('tenant_id', $tenantId)
                 ->whereDate('sent_at', today())
                 ->count(),
-            'failed_today' => DB::table('failed_jobs')
-                ->whereDate('failed_at', today())
-                ->where('payload', 'like', '%ProcessLeadFollowUpJob%')
+            'failed_today' => FollowupMessage::withoutGlobalScope('tenant')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'failed')
+                ->whereDate('sent_at', today())
                 ->count(),
             'converted_from_followup' => Lead::withoutGlobalScope('tenant')
                 ->where('is_sandbox', false)
