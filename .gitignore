@@ -48,7 +48,11 @@ debug.log
 
 # Planning & engineering artifacts (internal, not shipped)
 /.planning
-/.engineering
+# Phase 61's runtime-characterization dossiers are deliberately tracked because Phases 62 and 63
+# consume them as durable evidence; every other .engineering subdirectory (adr, audits, builds,
+# crew, phases, runs) stays local-only.
+/.engineering/*
+!/.engineering/runtime-characterization/
 
 # Scratch / one-off scripts
 /.scratch
