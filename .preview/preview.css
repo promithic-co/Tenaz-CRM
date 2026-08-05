@@ -1,0 +1,5 @@
+@import '../resources/css/app.css';
+
+/* Vite's root is .preview here, so Tailwind's automatic content detection never
+   reaches the components under test. Point it back at them. */
+@source '../resources/js';

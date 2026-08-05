@@ -122,6 +122,9 @@
         "resources/js/**/*.d.ts",
         "resources/js/**/*.tsx",
         "resources/js/**/*.vue",
-        "tests/Frontend/**/*.ts"
+        "tests/Frontend/**/*.ts",
+        ".preview/**/*.ts",
+        ".preview/**/*.vue",
+        "vite.preview.config.ts"
     ]
 }
