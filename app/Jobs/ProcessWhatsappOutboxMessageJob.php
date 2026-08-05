@@ -272,4 +272,57 @@ class ProcessWhatsappOutboxMessageJob implements ShouldQueue
 
         return base64_encode($contents);
     }
+
+    /**
+     * Terminal, tenant-attributable failure evidence once retries are exhausted.
+     *
+     * MUST NOT re-mark the row's status: handle()'s own catch blocks already call
+     * markFailed()/markInDoubt() and already emit the per-attempt outbound_failed/
+     * outbound_in_doubt events on every try. This handler's only job is to add ONE
+     * terminal marker after retries are exhausted, distinguishable from those
+     * per-attempt events — re-marking would destroy the in_doubt distinction the
+     * outbox exists to preserve.
+     */
+    public function failed(Throwable $exception): void
+    {
+        $outbox = WhatsappOutboxMessage::query()->find($this->outboxId);
+
+        if (! $outbox) {
+            return;
+        }
+
+        Log::error('whatsapp_outbox.permanently_failed', [
+            'outbox_id' => $outbox->id,
+            'tenant_id' => (string) $outbox->tenant_id,
+            'final_status' => $outbox->status,
+            'exception_class' => $exception::class,
+            'error' => mb_substr($exception->getMessage(), 0, 500),
+        ]);
+
+        try {
+            $interactionEvents = app(AgentInteractionEventService::class);
+
+            $interactionEvents->record(
+                interactionId: $outbox->interaction_id ?? $interactionEvents->newInteractionId(),
+                tenantId: (string) $outbox->tenant_id,
+                eventType: 'outbound_permanently_failed',
+                eventSource: 'process_whatsapp_outbox_message_job',
+                payload: [
+                    'outbox_id' => $outbox->id,
+                    'final_status' => $outbox->status,
+                    'provider_attempted' => $outbox->provider_attempted_at !== null,
+                    'attempts' => $this->attempts(),
+                    'exception_class' => $exception::class,
+                    'error' => mb_substr($exception->getMessage(), 0, 500),
+                ],
+                severity: 'error',
+                leadId: $outbox->lead_id,
+            );
+        } catch (Throwable $bookkeepingError) {
+            Log::error('whatsapp_outbox.failed_handler_bookkeeping_error', [
+                'outbox_id' => $outbox->id,
+                'error' => $bookkeepingError->getMessage(),
+            ]);
+        }
+    }
 }
