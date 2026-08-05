@@ -58,8 +58,10 @@ class AgentController extends Controller
         $agentId = $request->integer('agent_id') ?: null;
 
         $lead = Lead::query()
-            ->where('whatsapp', $request->whatsapp)
             ->where('tenant_id', $tenantId)
+            ->forPhoneVariants($request->whatsapp)
+            ->orderByPhoneMatch($request->whatsapp)
+            ->orderBy('id')
             ->first();
 
         if (! $lead) {

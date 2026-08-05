@@ -187,12 +187,15 @@ class ConversationInboxPropsBuilder
      */
     private function pauseMapFor(Collection $leads, string $tenantId): array
     {
-        $pauseKeys = $leads->map(fn (Lead $lead): string => "pause:{$tenantId}:{$lead->whatsapp}")->all();
+        // Through PauseService so the key is built the one way it is written — the cache
+        // side of a pause is keyed on the canonical spelling, and rebuilding it from the
+        // lead's raw whatsapp missed every row stored under the other 9th-digit form.
+        $pauseKeys = $leads->map(fn (Lead $lead): string => PauseService::cacheKey($tenantId, $lead->whatsapp))->all();
         $pauseCacheValues = $pauseKeys === [] ? [] : Cache::many($pauseKeys);
         $pauseMap = [];
 
         foreach ($leads as $lead) {
-            $cached = $pauseCacheValues["pause:{$tenantId}:{$lead->whatsapp}"] ?? null;
+            $cached = $pauseCacheValues[PauseService::cacheKey($tenantId, $lead->whatsapp)] ?? null;
             $pauseMap[$lead->whatsapp] = $cached !== null
                 || ($lead->ai_paused_until !== null && $lead->ai_paused_until->isFuture());
         }

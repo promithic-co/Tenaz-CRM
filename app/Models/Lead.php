@@ -7,6 +7,7 @@ use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasTags;
 use App\Services\Dashboard\DashboardMetricsService;
 use App\Services\FollowUpWindowService;
+use App\Services\WhatsApp\PhoneNumberValidator;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -181,6 +182,87 @@ class Lead extends Model
     public function scopeForTenant($query, string $tenantId): Builder
     {
         return $query->where('tenant_id', $tenantId);
+    }
+
+    /**
+     * Every lead that could be this subscriber, whichever 9th-digit spelling it was
+     * written under.
+     *
+     * Brazilian mobiles gained a mandatory 9th digit in 2012 and the sources feeding this
+     * system disagree about it — an inbound webhook writes 12 digits where a CSV import
+     * wrote 13. Matching the exact string is what split one person into two conversations:
+     * `leads_tenant_whatsapp_active_unique` compares strings, so it sees two subscribers
+     * and lets both in. Contacts have resolved across spellings since ContactSyncService;
+     * leads, which are what /conversas actually lists, did not.
+     *
+     * Callers that need one row want {@see scopeOrderByPhoneMatch} on top; callers that
+     * act on the person (pausing the AI, renaming) want all of them and should not order.
+     */
+    public function scopeForPhoneVariants($query, ?string $phone): Builder
+    {
+        $variants = PhoneNumberValidator::variants($phone);
+
+        // An empty variant set means the input carried no digits. Left to whereIn that is
+        // a false-y match, but stating it keeps a blank phone from ever reading as "any".
+        if ($variants === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('whatsapp', $variants);
+    }
+
+    /**
+     * Order the variant matches so ->first() returns the row the caller means: the exact
+     * spelling it asked for, then the canonical one, then the oldest.
+     *
+     * Same precedence as ContactSyncService::findAcrossPhoneVariants, and for the same
+     * reason: where history already holds both spellings, a lookup must keep returning
+     * whichever row its caller has been using. Consolidating the pair is the dedupe
+     * command's job, which merges the data instead of silently relinking it.
+     *
+     * Deliberately does not break the remaining tie — callers disagree about whether the
+     * oldest or the newest row wins, and this scope must not silently overrule them.
+     */
+    public function scopeOrderByPhoneMatch($query, ?string $phone): Builder
+    {
+        $exact = (string) $phone;
+        $canonical = PhoneNumberValidator::canonical($phone) ?? $exact;
+
+        return $query->orderByRaw(
+            'CASE WHEN whatsapp = ? THEN 0 WHEN whatsapp = ? THEN 1 ELSE 2 END',
+            [$exact, $canonical],
+        );
+    }
+
+    /**
+     * The lead for this subscriber, created under the canonical spelling when none exists.
+     *
+     * The `firstOrCreate(['whatsapp' => $phone])` this replaces matched the exact string,
+     * so an inbound that had already opened a conversation under the other 9th-digit form
+     * got a second one. Callers still own their own lock; key it on
+     * {@see PhoneNumberValidator::canonical()} or the two spellings take different locks
+     * and race right past this.
+     *
+     * @param  array<string, mixed>  $attributes  applied only when the row is created
+     */
+    public static function firstOrCreateForPhone(string $tenantId, string $phone, array $attributes = []): self
+    {
+        $existing = self::query()
+            ->where('tenant_id', $tenantId)
+            ->forPhoneVariants($phone)
+            ->orderByPhoneMatch($phone)
+            ->orderBy('id')
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        return self::create([
+            ...$attributes,
+            'tenant_id' => $tenantId,
+            'whatsapp' => PhoneNumberValidator::canonical($phone) ?? $phone,
+        ]);
     }
 
     /**

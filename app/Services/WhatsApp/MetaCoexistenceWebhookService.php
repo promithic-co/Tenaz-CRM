@@ -87,7 +87,7 @@ class MetaCoexistenceWebhookService
             if ($contact && filled($contact->name)) {
                 Lead::withoutGlobalScopes()
                     ->where('tenant_id', (string) $instance->tenant_id)
-                    ->where('whatsapp', $contact->phone)
+                    ->forPhoneVariants($contact->phone)
                     ->whereNull('deleted_at')
                     ->where(fn ($query) => $query->whereNull('nome')->orWhere('nome', ''))
                     ->update([
@@ -312,20 +312,26 @@ class MetaCoexistenceWebhookService
 
     private function resolveLead(WhatsappInstance $instance, string $phone): Lead
     {
-        $lockKey = 'meta_coexistence_lead:'.sha1((string) $instance->tenant_id.'|'.$phone);
+        // Keyed on the canonical spelling so the two 9th-digit forms of one mobile
+        // serialize against each other instead of each taking its own lock and creating
+        // its own lead.
+        $canonical = PhoneNumberValidator::canonical($phone) ?? $phone;
+        $lockKey = 'meta_coexistence_lead:'.sha1((string) $instance->tenant_id.'|'.$canonical);
 
-        return Cache::lock($lockKey, 10)->block(5, function () use ($instance, $phone): Lead {
+        return Cache::lock($lockKey, 10)->block(5, function () use ($instance, $phone, $canonical): Lead {
             $lead = Lead::withoutGlobalScopes()
                 ->withTrashed()
                 ->where('tenant_id', (string) $instance->tenant_id)
-                ->where('whatsapp', $phone)
+                ->forPhoneVariants($phone)
+                ->orderByPhoneMatch($phone)
+                ->orderBy('id')
                 ->first();
 
             if (! $lead) {
                 $lead = Lead::withoutGlobalScopes()->create([
                     'tenant_id' => (string) $instance->tenant_id,
                     'agent_id' => $instance->agent_id,
-                    'whatsapp' => $phone,
+                    'whatsapp' => $canonical,
                     'status' => 'novo',
                     'modo' => 'receptivo',
                     'ai_mode' => Lead::AI_MODE_MANUAL,

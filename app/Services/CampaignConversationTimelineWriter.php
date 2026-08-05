@@ -167,10 +167,14 @@ class CampaignConversationTimelineWriter
      */
     private function createSilentLead(Campaign $campaign, ContactListEntry $entry, string $destination): ?Lead
     {
+        // Canonical spelling, not the dialled one: the caller already looked across every
+        // 9th-digit variant, so reaching here means no lead exists yet and this row gets
+        // to set the form. firstOrCreate still guards the race — two staggered sends hit
+        // the same key and the unique index resolves the loser.
         $lead = Lead::withoutGlobalScopes()->firstOrCreate(
             [
                 'tenant_id' => $campaign->tenant_id,
-                'whatsapp' => $destination,
+                'whatsapp' => PhoneNumberValidator::canonical($destination) ?? $destination,
             ],
             [
                 'nome' => $entry->name ?: null,

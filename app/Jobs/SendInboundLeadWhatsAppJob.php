@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\VoiceInstance;
 use App\Services\AgentInteractionEventService;
 use App\Services\ContactSyncService;
+use App\Services\WhatsApp\PhoneNumberValidator;
 use App\Services\WhatsApp\TemplateTimelineRecorder;
 use App\Services\WhatsAppService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -55,21 +56,19 @@ class SendInboundLeadWhatsAppJob implements ShouldQueue
         }
 
         $normalizedPhone = ltrim($this->phone, '+');
+        $lockPhone = PhoneNumberValidator::canonical($normalizedPhone) ?? $normalizedPhone;
 
-        $lead = Cache::lock("lead_create_{$voiceInstance->tenant_id}_{$normalizedPhone}", 8)
-            ->block(5, function () use ($voiceInstance, $normalizedPhone, $whatsappInstance) {
-                $attributes = [
+        $lead = Cache::lock("lead_create_{$voiceInstance->tenant_id}_{$lockPhone}", 8)
+            ->block(5, fn (): Lead => Lead::firstOrCreateForPhone(
+                (string) $voiceInstance->tenant_id,
+                $normalizedPhone,
+                [
                     'nome' => $this->name,
                     'agent_id' => $whatsappInstance->agent_id,
                     'modo' => 'receptivo',
                     'evolution_instance' => $whatsappInstance->name,
-                ];
-
-                return Lead::firstOrCreate(
-                    ['tenant_id' => $voiceInstance->tenant_id, 'whatsapp' => $normalizedPhone],
-                    $attributes
-                );
-            });
+                ],
+            ));
 
         app(ContactSyncService::class)->syncFromLead($lead, Contact::SOURCE_URA);
         $lead->refresh();

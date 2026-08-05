@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\WhatsappInstance;
 use App\Services\AgentInteractionEventService;
 use App\Services\ContactSyncService;
+use App\Services\WhatsApp\PhoneNumberValidator;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -46,12 +47,15 @@ class CreateOrRestoreLeadAction
 
         // Active lead check uses tenant + WhatsApp as the practical duplicate key,
         // ignoring the DB-level per-agent unique index — operators expect "one phone =
-        // one conversation" inside a tenant.
+        // one conversation" inside a tenant. Spanning the 9th-digit spellings is part of
+        // honouring that: typing the number without the 9 must not mint a second row for
+        // someone the tenant is already talking to.
         $existing = Lead::query()
             ->withTrashed()
             ->where('tenant_id', $tenantId)
-            ->where('whatsapp', $data['whatsapp'])
+            ->forPhoneVariants($data['whatsapp'])
             ->orderByRaw('deleted_at IS NULL DESC')
+            ->orderByPhoneMatch($data['whatsapp'])
             ->orderByDesc('id')
             ->first();
 
@@ -65,7 +69,9 @@ class CreateOrRestoreLeadAction
             'evolution_instance' => $instance->name,
             'whatsapp_instance_id' => $instance->id,
             'nome' => $data['nome'],
-            'whatsapp' => $data['whatsapp'],
+            // Canonical, not as typed: an operator who leaves the 9 off must not create the
+            // spelling the lookup above exists to reconcile.
+            'whatsapp' => PhoneNumberValidator::canonical($data['whatsapp']) ?? $data['whatsapp'],
             'cpf' => $data['cpf'] ?? null,
             'status' => 'novo',
             'followup_status' => 'inactive',

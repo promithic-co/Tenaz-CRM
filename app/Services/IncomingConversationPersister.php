@@ -7,6 +7,7 @@ use App\Models\ConversationSession;
 use App\Models\ConversationTimelineMessage;
 use App\Models\Lead;
 use App\Models\WhatsappInstance;
+use App\Services\WhatsApp\PhoneNumberValidator;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
@@ -127,14 +128,21 @@ class IncomingConversationPersister
                 ->value('id')
             : null;
 
-        $lockKey = "lead_create_{$tenantId}_{$phone}";
+        // Locked per subscriber, not per digit form. Two spellings of the same BR mobile
+        // can arrive concurrently — a webhook without the 9th digit while a campaign
+        // mirror writes it with — and a lock keyed on the raw string lets both through to
+        // create a lead each. Same fix ContactSyncService already carries.
+        $canonicalPhone = PhoneNumberValidator::canonical($phone) ?? $phone;
+        $lockKey = "lead_create_{$tenantId}_{$canonicalPhone}";
 
         try {
-            $lead = Cache::lock($lockKey, 8)->block(5, function () use ($tenantId, $agentId, $phone, $name, $instanceName, $instanceId, $interactionId): Lead {
-                return DB::transaction(function () use ($tenantId, $agentId, $phone, $name, $instanceName, $instanceId, $interactionId): Lead {
+            $lead = Cache::lock($lockKey, 8)->block(5, function () use ($tenantId, $agentId, $phone, $canonicalPhone, $name, $instanceName, $instanceId, $interactionId): Lead {
+                return DB::transaction(function () use ($tenantId, $agentId, $phone, $canonicalPhone, $name, $instanceName, $instanceId, $interactionId): Lead {
                     $existing = Lead::query()
                         ->where('tenant_id', $tenantId)
-                        ->where('whatsapp', $phone)
+                        ->forPhoneVariants($phone)
+                        ->orderByPhoneMatch($phone)
+                        ->orderBy('id')
                         ->lockForUpdate()
                         ->first();
 
@@ -166,10 +174,14 @@ class IncomingConversationPersister
                         return $existing;
                     }
 
+                    // Written canonical, not as received: the provider echoes a BR mobile
+                    // with or without the 9th digit depending on the number, and storing
+                    // whichever form happened to arrive first is what left the table with
+                    // two spellings to reconcile. New rows land on one.
                     return Lead::create([
                         'tenant_id' => $tenantId,
                         'agent_id' => $agentId,
-                        'whatsapp' => $phone,
+                        'whatsapp' => $canonicalPhone,
                         'modo' => 'receptivo',
                         'nome' => $name ?: null,
                         'whatsapp_instance_id' => $instanceId,
