@@ -1,12 +1,17 @@
 <?php
 
 use App\Ai\Agents\BlindspotScannerAgent;
+use App\Ai\Agents\CredFlowAgent;
 use App\Ai\Agents\EvaluatorAgent;
 use App\Ai\Agents\ScenarioGeneratorAgent;
+use App\Models\AgentInteractionEvent;
+use App\Models\AiRun;
 use App\Models\Lead;
 use App\Models\User;
+use App\Models\WhatsappOutboxMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Ai\Ai;
 
@@ -25,6 +30,19 @@ uses(RefreshDatabase::class);
  * ['role','content','hora']; legacyMessages additively appends 'media' => null
  * for sandbox rows (which never carry attachments). Assertions check
  * role/content/hora VALUES exactly and do NOT assert array-exact-equality.
+ *
+ * PHASE 61 EXTENSION (RUNT-01, canonical path 6, success criterion SC3 in 61-VALIDATION.md).
+ * Two concerns now share this file, deliberately: 61-VALIDATION.md's Wave 0 note requires the
+ * existing {Subject}CharacterizationTest convention be EXTENDED rather than duplicated, and this
+ * file already characterizes the same controller under the same name. The tests appended under
+ * "Phase 61 — RUNT-01 path 6 evidence gap" below pin the CURRENT, UNDESIRABLE evidence shape of
+ * the Playground path as a receipt for Phase 62: audit finding F16 (AgentFactory bypassed by
+ * direct construction, still open) means a Playground turn is invisible to AiRunRecorder and to
+ * AgentInteractionEventService. Those assertions must not be "fixed" to describe desired
+ * behaviour — see the banner immediately above them. Nothing above this paragraph was changed
+ * by Phase 61; the Phase D refactor contract stated above still holds.
+ *
+ * @see .engineering/runtime-characterization/path-6-playground.md
  */
 /**
  * The playground now sits behind the `super_admin` gate, so the operator driving
@@ -362,4 +380,101 @@ test('index bounds the sandbox session list with a SQL limit (FE-05)', function 
     // The sidebar never hydrates the whole sandbox history — the query is capped at the source.
     expect($sessionQuery)->not->toBeNull()
         ->and($sessionQuery['query'])->toContain('limit 100');
+});
+
+// ─── Phase 61 — RUNT-01 path 6 evidence gap ──────────────────────────────────
+//
+// CHARACTERIZATION assertions for canonical path 6 (Phase 61 / RUNT-01, success criterion SC3).
+// They pin the CURRENT, UNDESIRABLE behaviour of UNMODIFIED production code as a receipt for
+// Phase 62.
+//
+// AUDIT FINDING F16 — "AgentFactory bypassed by 6+ direct `new`" — is STILL OPEN and is
+// deliberately LEFT UNFIXED in this phase. RunPlaygroundChatAction::execute() constructs
+// `new CredFlowAgent($lead, ...)` directly at app/Actions/RunPlaygroundChatAction.php:28 and
+// never reaches AgentService::process(). Two consequences are pinned below. AiRunRecorder::start()
+// is called from exactly one place in the codebase — app/Services/AgentService.php:112-117 — so a
+// Playground turn writes NO ai_runs row. And AgentInteractionEventService is never invoked from
+// this path at all, while AuditLogMiddleware's own event write is gated on an interaction id
+// (app/Ai/Middleware/AuditLogMiddleware.php:48) that only AgentService and ProcessLeadFollowUpJob
+// ever set — so NO agent_interaction_events row is written either.
+//
+// Routing Playground through AgentFactory/AgentService would change runtime behaviour, which a
+// characterization phase must not do. That is Phase 62/63's work.
+//
+// A FUTURE READER MUST NOT "FIX" THESE ASSERTIONS TO DESCRIBE DESIRED BEHAVIOUR. When Phase 62
+// closes F16 they are EXPECTED to fail, and must then be rewritten deliberately as part of that
+// change, never silently adjusted, which would erase the before/after this phase exists to create.
+
+test('characterization: a playground chat turn writes no ai_runs row and no agent_interaction_events row (F16)', function () {
+    Queue::fake();
+
+    $user = playgroundOperator();
+    $lead = playgroundSandboxLead($user);
+
+    // Stubbed at the narrowest available seam — the agent's own gateway — so the real controller,
+    // the real FormRequest, the real RunPlaygroundChatAction and the real `new CredFlowAgent`
+    // construction all execute. No production file was modified to make this possible, which is
+    // itself part of the receipt: the gap is reachable without introducing a seam for it.
+    Ai::fakeAgent(CredFlowAgent::class, ['Claro, posso te ajudar com isso.']);
+
+    $response = $this->actingAs($user)->postJson(route('backoffice.playground.chat', $lead), [
+        'message' => 'Bom dia, quero simular.',
+    ]);
+
+    // The turn definitely happened: the reply and the debug envelope came back.
+    $response->assertOk()
+        ->assertJsonPath('reply', 'Claro, posso te ajudar com isso.')
+        ->assertJsonStructure(['reply', 'messages', 'debug' => ['tokens_in', 'tokens_out', 'duration', 'steps', 'tool_calls', 'model']]);
+
+    // FINDING F16 (ledger half). THIS ABSENCE IS THE FINDING, NOT A TEST DEFECT.
+    // Per-turn duration, cost, token counts, model name and outcome are unrecoverable for every
+    // Playground turn: the returned `debug` JSON is the ONLY first-party per-turn evidence, and it
+    // is discarded the moment the operator closes the tab.
+    expect(AiRun::query()->doesntExist())->toBeTrue();
+
+    // FINDING F16 (trail half). THIS ABSENCE IS THE FINDING, NOT A TEST DEFECT.
+    // No interaction id is ever minted on this path, so there is no correlation key and no event
+    // trail — not even the `model_called` row that the follow-up path (F19) still gets, because
+    // that row is gated on the interaction context being set.
+    expect(AgentInteractionEvent::query()->doesntExist())->toBeTrue();
+});
+
+test('characterization: a playground chat turn creates no whatsapp_outbox_messages row (the sandbox boundary holds)', function () {
+    Queue::fake();
+
+    $user = playgroundOperator();
+    $lead = playgroundSandboxLead($user);
+
+    Ai::fakeAgent(CredFlowAgent::class, ['Claro, posso te ajudar com isso.']);
+
+    $this->actingAs($user)->postJson(route('backoffice.playground.chat', $lead), [
+        'message' => 'Bom dia, quero simular.',
+    ])->assertOk();
+
+    // THIS ABSENCE IS A STRENGTH, pinned so a regression is loud rather than silent.
+    // RunPlaygroundChatAction returns the reply as JSON and never touches WhatsappOutboxService,
+    // so no real send can escape the sandbox. Phase 62 must preserve this boundary when it wires
+    // Playground into the runtime: gaining an AiRun row must not also gain an outbox row.
+    expect(WhatsappOutboxMessage::query()->doesntExist())->toBeTrue();
+    expect($lead->fresh()->is_sandbox)->toBeTrue();
+});
+
+test('characterization: a non-super-admin is rejected before reaching the playground chat endpoint', function () {
+    // A perfectly ordinary tenant user — the difference from playgroundOperator() is exactly the
+    // is_super_admin flag.
+    $user = userWithTenant();
+    $lead = playgroundSandboxLead($user);
+
+    // The model must never be reached, so no fake is registered: a 200 here would fail loudly.
+    $this->actingAs($user)->postJson(route('backoffice.playground.chat', $lead), [
+        'message' => 'Bom dia, quero simular.',
+    ])->assertForbidden();
+
+    // The access-control boundary that makes this path acceptable at all (ASVS V4, threat
+    // T-61-23): every Playground route sits behind auth + super_admin + backoffice.context
+    // (routes/backoffice.php:22), and the five LLM-invoking ones additionally behind
+    // throttle:30,1 (routes/backoffice.php:90-96). Asserted as a regression guard so the gate
+    // cannot erode silently.
+    expect(AiRun::query()->doesntExist())->toBeTrue();
+    expect(AgentInteractionEvent::query()->doesntExist())->toBeTrue();
 });
