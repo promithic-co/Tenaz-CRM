@@ -4,6 +4,8 @@ import {
     AlertCircle,
     ArrowLeft,
     Bot,
+    Check,
+    CheckCheck,
     CheckCircle2,
     Clock,
     ExternalLink,
@@ -138,17 +140,29 @@ type ThreadItem =
           sessionId: number;
           session: ConversationSessionSummary | null;
       }
-    | { kind: 'message'; key: string | number; msg: Message };
+    | {
+          kind: 'message';
+          key: string | number;
+          msg: Message;
+          firstOfRun: boolean;
+          tick: DeliveryTick | null;
+      };
 
 // Interleave a session divider before the first message of each atendimento so the
 // operator can see where one service cycle ends and the next begins. Messages with no
 // session_id (pre-timeline history) never emit a divider.
+//
+// `firstOfRun` marks the message that opens a run of consecutive messages from the same
+// author. WhatsApp only draws the tail (and the author label) on that one and tightens the
+// gap between the rest, which is what makes a burst of replies read as a single turn.
 const threadItems = computed<ThreadItem[]>(() => {
     const items: ThreadItem[] = [];
     let lastSessionId: number | null = null;
+    let lastRole: Message['role'] | null = null;
 
     messages.value.forEach((msg, idx) => {
         const sessionId = msg.session_id ?? null;
+        let startsRun = msg.role !== lastRole;
 
         if (sessionId !== null && sessionId !== lastSessionId) {
             items.push({
@@ -157,10 +171,20 @@ const threadItems = computed<ThreadItem[]>(() => {
                 sessionId,
                 session: sessionMap.value.get(sessionId) ?? null,
             });
+
+            // A divider cuts the run: the first message after it always gets its tail back.
+            startsRun = true;
         }
 
         lastSessionId = sessionId;
-        items.push({ kind: 'message', key: msg.id ?? `idx-${idx}`, msg });
+        lastRole = msg.role;
+        items.push({
+            kind: 'message',
+            key: msg.id ?? `idx-${idx}`,
+            msg,
+            firstOfRun: startsRun,
+            tick: deliveryTick(msg),
+        });
     });
 
     return items;
@@ -185,18 +209,80 @@ function dividerReason(
 // Inbound stays neutral on the left; everything the tenant sent is accented on the right —
 // blue when a human wrote it, green when the AI did, so an operator can audit the agent's
 // replies without reading the author label.
-function bubbleClasses(msg: Message): string {
+//
+// The shape is WhatsApp's: an 8px radius with the tail corner squared off at the *top*, and
+// --wa-tail carrying the fill through to the ::after triangle in app.css.
+function bubbleClasses(msg: Message, firstOfRun: boolean): string[] {
+    const shared = 'rounded-lg shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]';
+
     if (msg.role === 'user') {
-        return 'rounded-bl-sm bg-muted text-foreground';
+        return [
+            shared,
+            'bg-muted text-foreground [--wa-tail:var(--muted)]',
+            firstOfRun ? 'rounded-tl-none wa-tail-in' : '',
+        ];
     }
 
-    return msg.role === 'operator'
-        ? 'rounded-br-sm bg-blue-600 text-white'
-        : 'rounded-br-sm bg-emerald-600/15 text-foreground';
+    const palette =
+        msg.role === 'operator'
+            ? 'bg-blue-600 text-white [--wa-tail:var(--color-blue-600)]'
+            : 'bg-emerald-600/15 text-foreground [--wa-tail:color-mix(in_oklab,var(--color-emerald-600)_15%,transparent)]';
+
+    return [shared, palette, firstOfRun ? 'rounded-tr-none wa-tail-out' : ''];
 }
 
 function bubbleMetaClasses(msg: Message): string {
     return msg.role === 'operator' ? 'text-blue-200' : 'text-muted-foreground';
+}
+
+/**
+ * Reserves inline room at the end of the last text line so the absolutely-positioned
+ * timestamp can sit beside it — WhatsApp's trick for keeping short messages on one line
+ * while long ones push the clock onto its own. `hora` is always `H:i`, so the width is a
+ * constant: the tick glyph is the only thing that varies.
+ */
+function metaSpacerClasses(msg: Message): string {
+    return msg.role === 'user' ? 'w-[38px]' : 'w-[54px]';
+}
+
+type TickTone = 'neutral' | 'read' | 'failed';
+
+type DeliveryTick = {
+    icon: typeof Check;
+    tone: TickTone;
+    label: string;
+};
+
+const DELIVERY_TICKS: Record<string, DeliveryTick> = {
+    pending: { icon: Clock, tone: 'neutral', label: 'Aguardando envio' },
+    queued: { icon: Clock, tone: 'neutral', label: 'Na fila de envio' },
+    sent: { icon: Check, tone: 'neutral', label: 'Enviada' },
+    delivered: { icon: CheckCheck, tone: 'neutral', label: 'Entregue' },
+    read: { icon: CheckCheck, tone: 'read', label: 'Lida' },
+    failed: { icon: AlertCircle, tone: 'failed', label: 'Falhou' },
+};
+
+/** Delivery ticks are an outbound-only signal — nothing to report about what the lead sent. */
+function deliveryTick(msg: Message): DeliveryTick | null {
+    if (msg.role === 'user' || !msg.status) {
+        return null;
+    }
+
+    return DELIVERY_TICKS[msg.status] ?? null;
+}
+
+// Read and failed have to stand out against two very different fills, so the shade is picked
+// per bubble: light tints on the solid blue, saturated ones on the pale AI green.
+function tickClasses(msg: Message, tone: TickTone): string {
+    if (tone === 'neutral') {
+        return '';
+    }
+
+    if (msg.role === 'operator') {
+        return tone === 'read' ? 'text-sky-300' : 'text-rose-300';
+    }
+
+    return tone === 'read' ? 'text-sky-600' : 'text-rose-600';
 }
 const messageText = ref('');
 const selectedFile = ref<File | null>(null);
@@ -737,7 +823,7 @@ function onKeydown(event: KeyboardEvent): void {
 
         <div
             ref="messagesContainer"
-            class="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-5"
+            class="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5"
         >
             <div
                 v-if="!messages.length"
@@ -746,10 +832,12 @@ function onKeydown(event: KeyboardEvent): void {
                 Nenhuma mensagem ainda.
             </div>
 
+            <!-- Vertical rhythm is per-item rather than a container `space-y`: consecutive
+                 messages from the same author sit 2px apart so the run reads as one turn. -->
             <template v-for="item in threadItems" :key="item.key">
                 <div
                     v-if="item.kind === 'divider'"
-                    class="flex items-center gap-2 py-1"
+                    class="mt-3 flex items-center gap-2 py-1"
                 >
                     <span class="h-px flex-1 bg-sidebar-border/70" />
                     <span
@@ -778,6 +866,7 @@ function onKeydown(event: KeyboardEvent): void {
                     v-else
                     :class="[
                         'flex',
+                        item.firstOfRun ? 'mt-3' : 'mt-0.5',
                         item.msg.role === 'user'
                             ? 'justify-start'
                             : 'justify-end',
@@ -791,12 +880,6 @@ function onKeydown(event: KeyboardEvent): void {
                                 : 'items-end',
                         ]"
                     >
-                        <span
-                            v-if="item.msg.role === 'operator'"
-                            class="px-1 text-xs font-medium text-blue-400"
-                            >Operador</span
-                        >
-
                         <div
                             v-if="item.msg.media"
                             class="flex items-center gap-1.5 rounded-full border border-sidebar-border/70 bg-muted/60 px-2.5 py-1 text-xs text-muted-foreground dark:border-sidebar-border"
@@ -822,44 +905,89 @@ function onKeydown(event: KeyboardEvent): void {
 
                         <div
                             :class="[
-                                'rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
-                                bubbleClasses(item.msg),
+                                'relative px-[9px] pt-[6px] pb-[8px] text-sm leading-snug',
+                                bubbleClasses(item.msg, item.firstOfRun),
                             ]"
                         >
-                            <template v-if="item.msg.template">
-                                <p
-                                    v-if="item.msg.template.header?.text"
-                                    class="mb-1 font-semibold whitespace-pre-wrap"
-                                >
-                                    {{ item.msg.template.header.text }}
+                            <p
+                                v-if="
+                                    item.msg.role === 'operator' &&
+                                    item.firstOfRun
+                                "
+                                class="mb-0.5 text-xs font-medium text-blue-100"
+                            >
+                                Operador
+                            </p>
+
+                            <!-- The clock is absolute against this wrapper, not the bubble, so on a
+                                 template it lands above the button divider instead of below it. -->
+                            <div class="relative">
+                                <template v-if="item.msg.template">
+                                    <p
+                                        v-if="item.msg.template.header?.text"
+                                        class="mb-1 font-semibold whitespace-pre-wrap"
+                                    >
+                                        {{ item.msg.template.header.text }}
+                                    </p>
+                                    <p class="whitespace-pre-wrap">
+                                        {{
+                                            item.msg.template.body ??
+                                            item.msg.content
+                                        }}<span
+                                            v-if="!item.msg.template.footer"
+                                            :class="[
+                                                'inline-block h-0 align-middle',
+                                                metaSpacerClasses(item.msg),
+                                            ]"
+                                        />
+                                    </p>
+                                    <p
+                                        v-if="item.msg.template.footer"
+                                        :class="[
+                                            'mt-1 text-xs',
+                                            bubbleMetaClasses(item.msg),
+                                        ]"
+                                    >
+                                        {{ item.msg.template.footer
+                                        }}<span
+                                            :class="[
+                                                'inline-block h-0 align-middle',
+                                                metaSpacerClasses(item.msg),
+                                            ]"
+                                        />
+                                    </p>
+                                </template>
+                                <p v-else class="whitespace-pre-wrap">
+                                    {{ item.msg.content
+                                    }}<span
+                                        :class="[
+                                            'inline-block h-0 align-middle',
+                                            metaSpacerClasses(item.msg),
+                                        ]"
+                                    />
                                 </p>
-                                <p class="whitespace-pre-wrap">
-                                    {{
-                                        item.msg.template.body ??
-                                        item.msg.content
-                                    }}
-                                </p>
-                                <p
-                                    v-if="item.msg.template.footer"
+
+                                <span
                                     :class="[
-                                        'mt-1 text-xs',
+                                        'absolute right-0 bottom-0 flex items-center gap-1 text-[11px] leading-none',
                                         bubbleMetaClasses(item.msg),
                                     ]"
                                 >
-                                    {{ item.msg.template.footer }}
-                                </p>
-                            </template>
-                            <p v-else class="whitespace-pre-wrap">
-                                {{ item.msg.content }}
-                            </p>
-                            <p
-                                :class="[
-                                    'mt-1 text-xs',
-                                    bubbleMetaClasses(item.msg),
-                                ]"
-                            >
-                                {{ item.msg.hora }}
-                            </p>
+                                    {{ item.msg.hora }}
+                                    <component
+                                        :is="item.tick.icon"
+                                        v-if="item.tick"
+                                        class="h-3.5 w-3.5 shrink-0"
+                                        :class="
+                                            tickClasses(
+                                                item.msg,
+                                                item.tick.tone,
+                                            )
+                                        "
+                                        :aria-label="item.tick.label"
+                                    />
+                                </span>
+                            </div>
 
                             <div
                                 v-if="item.msg.template?.buttons.length"

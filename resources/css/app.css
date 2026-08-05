@@ -119,6 +119,36 @@
             'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
             'Noto Color Emoji';
     }
+
+    /*
+      WhatsApp-style bubble tail. It hangs off the top corner of the first bubble
+      in a same-author run, so the thread reads like the app operators already use.
+
+      A clipped square rather than the classic border-triangle: two overlapping
+      borders would double the alpha of a translucent fill (the AI bubble is
+      emerald at 15%) and leave a visible seam down the diagonal.
+
+      Colour comes from --wa-tail, set per role on the bubble itself.
+    */
+    .wa-tail-in::after,
+    .wa-tail-out::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        width: 8px;
+        height: 8px;
+        background: var(--wa-tail);
+    }
+
+    .wa-tail-in::after {
+        left: -8px;
+        clip-path: polygon(0 0, 100% 0, 100% 100%);
+    }
+
+    .wa-tail-out::after {
+        right: -8px;
+        clip-path: polygon(0 0, 100% 0, 0 100%);
+    }
 }
 
 :root {
