@@ -220,6 +220,23 @@ class ConversationAutomationService
     }
 
     /**
+     * Stamp the clock the inbox sorts on when we send, not only when we receive.
+     *
+     * The sidebar orders by last_interaction_at, but until now only inbound and the
+     * agent's own turn wrote it, so a conversation the operator had just answered
+     * stayed wherever it was and the reply looked lost. Deliberately narrower than
+     * {@see markInbound}: an outbound neither opens a service window nor moves the
+     * operational stage, it only proves the conversation is alive.
+     *
+     * Not called from the campaign fan-out — a silent send is a record of what went
+     * out, and bumping 50k rows to now() would order the inbox by the blast.
+     */
+    public function markOutbound(Lead $lead): void
+    {
+        $lead->updateQuietly(['last_interaction_at' => now()]);
+    }
+
+    /**
      * @param  array<string, mixed>|null  $referral
      */
     private function freeEntryPointSource(?array $referral): ?string

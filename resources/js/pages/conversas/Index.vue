@@ -119,6 +119,15 @@ watch(flashMessage, (next) => {
 });
 
 let handoffChannel: ReturnType<typeof echo.private> | null = null;
+let inboxRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * One conversation can produce a burst — an inbound, the agent's reply split into
+ * three messages, a delivery receipt — and each one announces itself. Collapsing
+ * them into a single trailing refresh keeps a busy tenant from turning the sidebar
+ * into a reload loop.
+ */
+const INBOX_REFRESH_DEBOUNCE_MS = 1500;
 
 function reloadConversation(): void {
     router.reload({ only: ['activeConversation', 'leads'] });
@@ -126,6 +135,29 @@ function reloadConversation(): void {
 
 function reloadLeads(): void {
     router.reload({ only: ['leads'] });
+}
+
+function scheduleInboxRefresh(): void {
+    if (inboxRefreshTimer !== null) {
+        clearTimeout(inboxRefreshTimer);
+    }
+
+    inboxRefreshTimer = setTimeout(() => {
+        inboxRefreshTimer = null;
+
+        // `leads` is deep-merged for infinite scroll, so a plain reload folds page one
+        // back into the list matched on id: previews refresh, but every row keeps the
+        // position it already had and the conversation that just moved never rises.
+        // Resetting is what makes the new order land — and it also drops the pages the
+        // operator scrolled through, so it is reserved for the one still at the top.
+        if (props.leads.current_page > 1) {
+            reloadLeads();
+
+            return;
+        }
+
+        router.reload({ only: ['leads'], reset: ['leads'] });
+    }, INBOX_REFRESH_DEBOUNCE_MS);
 }
 
 function subscribeHandoffChannel(leadId: number | string): void {
@@ -150,10 +182,12 @@ onMounted(() => {
 
     const tid = tenantId.value;
     if (tid) {
-        echo.private(`conversations.${tid}`).listen(
-            '.conversation.assignment.changed',
-            reloadLeads,
-        );
+        echo.private(`conversations.${tid}`)
+            .listen('.conversation.assignment.changed', reloadLeads)
+            // Fires for any conversation in the tenant, including the ones the operator
+            // is not looking at — NewConversationMessage only reaches the open thread,
+            // which is why the sidebar used to sit still until a manual refresh.
+            .listen('.conversation.updated', scheduleInboxRefresh);
     }
 
     if (activeLeadId.value) {
@@ -173,6 +207,11 @@ watch(activeLeadId, (newId, oldId) => {
 
 onUnmounted(() => {
     desktopQuery?.removeEventListener('change', syncDesktop);
+
+    if (inboxRefreshTimer !== null) {
+        clearTimeout(inboxRefreshTimer);
+        inboxRefreshTimer = null;
+    }
 
     const tid = tenantId.value;
     if (tid) {

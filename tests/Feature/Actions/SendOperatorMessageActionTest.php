@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\SendOperatorMessageAction;
+use App\Events\ConversationUpdated;
 use App\Models\Agent;
 use App\Models\Lead;
 use App\Models\User;
@@ -9,6 +10,7 @@ use App\Models\WhatsappOutboxMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
@@ -173,4 +175,43 @@ test('a failing broadcast does not abort the send', function () {
 
     expect($result)->not->toBeNull()
         ->and($result['outbox_id'])->not->toBeNull();
+});
+
+test('sending bumps last_interaction_at so the conversation rises in the inbox', function () {
+    [$user, $lead] = sendActionFixture();
+    $this->actingAs($user);
+
+    $stale = now()->subDays(3);
+    $lead->forceFill(['last_interaction_at' => $stale])->saveQuietly();
+
+    app(SendOperatorMessageAction::class)->send(
+        lead: $lead,
+        content: 'respondendo agora',
+        file: null,
+        actor: $user,
+        broadcastToOthers: false,
+    );
+
+    expect($lead->fresh()->last_interaction_at->greaterThan($stale))->toBeTrue();
+});
+
+test('sending announces the conversation moved so every sidebar can catch up', function () {
+    Event::fake([ConversationUpdated::class]);
+
+    [$user, $lead] = sendActionFixture();
+    $this->actingAs($user);
+
+    app(SendOperatorMessageAction::class)->send(
+        lead: $lead,
+        content: 'avisa a lista',
+        file: null,
+        actor: $user,
+        broadcastToOthers: false,
+    );
+
+    Event::assertDispatched(
+        ConversationUpdated::class,
+        fn (ConversationUpdated $event): bool => $event->leadId === $lead->id
+            && $event->tenantId === (string) $lead->tenant_id,
+    );
 });

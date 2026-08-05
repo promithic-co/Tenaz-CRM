@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Events\ConversationUpdated;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\WhatsappInstance;
@@ -141,8 +142,14 @@ class SendOperatorMessageAction
 
         $timelineMessage = $timelineMessage->fresh();
         $this->timeline->broadcast($timelineMessage, $broadcastToOthers);
+        $this->automation->markOutbound($lead);
         $this->automation->pauseForHuman($lead, $actor, 'manual_message');
         $this->ticketLifecycle->markHumanResponse($lead, $actor);
+
+        // Nudges every operator's sidebar, not just the thread: NewConversationMessage
+        // only reaches whoever has this conversation open, so without this the row keeps
+        // showing the previous message until the page is reloaded by hand.
+        ConversationUpdated::announce($lead->id, (string) $lead->tenant_id, (string) $lead->status);
 
         return [
             'message' => $this->timeline->toFrontendMessage($timelineMessage),

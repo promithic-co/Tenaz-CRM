@@ -48,22 +48,20 @@ class InboxFilterRequest extends FormRequest
             'stage' => $this->query('stage', 'todos'),
             'assigned' => $this->query('assigned', 'todos'),
             'sort' => in_array($sort, self::SORT_COLUMNS, true) ? $sort : 'last_interaction_at',
-            'direction' => $this->defaultDirectionFor($group, is_string($direction) ? $direction : null),
+            'direction' => is_string($direction) ? $this->normalizeDirection($direction) : 'desc',
         ]);
     }
 
     /**
-     * The queue tab is a work queue, not a feed: the oldest unclaimed escalation
-     * has waited the longest and must be picked up first. Any other tab keeps the
-     * newest-first inbox order. An explicit ?direction always wins.
+     * Every tab is newest-first. The queue used to default to oldest-first on the
+     * theory that the longest-waiting escalation should be picked up first, but it
+     * put the tab out of step with the four beside it: the operator reads the inbox
+     * as a feed, and one tab silently running backwards reads as a bug, not as a
+     * priority rule. An explicit ?direction=asc still wins.
      */
-    private function defaultDirectionFor(string $group, ?string $direction): string
+    private function normalizeDirection(string $direction): string
     {
-        if ($direction === 'asc' || $direction === 'desc') {
-            return $direction;
-        }
-
-        return $group === Lead::INBOX_GROUP_QUEUE ? 'asc' : 'desc';
+        return $direction === 'asc' ? 'asc' : 'desc';
     }
 
     /**

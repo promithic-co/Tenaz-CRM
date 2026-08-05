@@ -155,7 +155,7 @@ class ProcessIncomingWhatsAppMessageJob implements ShouldQueue
             payload: ['channel' => 'frontend', 'message_role' => 'user'],
         );
 
-        ConversationUpdated::dispatch($lead->id, (string) $this->tenantId, (string) $lead->status);
+        ConversationUpdated::announce($lead->id, (string) $this->tenantId, (string) $lead->status);
 
         if ($lead->agent_id === null) {
             Log::info('whatsapp_job.automation_skipped_no_agent', [
@@ -263,6 +263,11 @@ class ProcessIncomingWhatsAppMessageJob implements ShouldQueue
                     $this->safeBroadcast($timeline, $outboxMessage->timelineMessage, $interactionId);
                 }
             }
+
+            // Second nudge for the sidebar. The one fired on the inbound landed seconds
+            // ago, before the agent had answered, so without this the row's preview keeps
+            // showing the customer's message while the thread already shows the reply.
+            ConversationUpdated::announce($lead->id, (string) $this->tenantId, (string) $lead->status);
 
             $interactionEvents->recordForLead(
                 interactionId: $interactionId,

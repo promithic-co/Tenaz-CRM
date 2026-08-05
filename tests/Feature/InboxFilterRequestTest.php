@@ -68,22 +68,29 @@ test('an unknown group falls back to todas instead of erroring the page', functi
         ->assertInertia(fn ($page) => $page->where('filters.group', 'todas'));
 });
 
-test('the queue tab defaults to oldest first and any other tab to newest first', function () {
+test('every tab defaults to newest first, the queue included', function () {
+    $user = User::factory()->create();
+    Agent::factory()->create(['user_id' => $user->id, 'is_default' => true]);
+
+    foreach (['todas', 'fila', 'minhas', 'ia', 'envios'] as $group) {
+        $this->actingAs($user)
+            ->get(route('conversas.index', ['group' => $group]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.group', $group)
+                ->where('filters.direction', 'desc')
+            );
+    }
+});
+
+test('an explicit ascending direction still wins on the queue tab', function () {
     $user = User::factory()->create();
     Agent::factory()->create(['user_id' => $user->id, 'is_default' => true]);
 
     $this->actingAs($user)
-        ->get(route('conversas.index', ['group' => 'fila']))
+        ->get(route('conversas.index', ['group' => 'fila', 'direction' => 'asc']))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->where('filters.group', 'fila')
-            ->where('filters.direction', 'asc')
-        );
-
-    $this->actingAs($user)
-        ->get(route('conversas.index', ['group' => 'minhas']))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('filters.direction', 'desc'));
+        ->assertInertia(fn ($page) => $page->where('filters.direction', 'asc'));
 });
 
 test('an explicit direction wins over the queue default', function () {

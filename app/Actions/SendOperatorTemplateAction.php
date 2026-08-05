@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Events\ConversationUpdated;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\WhatsappInstance;
@@ -139,8 +140,13 @@ class SendOperatorTemplateAction
 
         $timelineMessage = $timelineMessage->fresh();
         $this->timeline->broadcast($timelineMessage, $broadcastToOthers);
+        $this->automation->markOutbound($lead);
         $this->automation->pauseForHuman($lead, $actor, 'manual_template');
         $this->ticketLifecycle->markHumanResponse($lead, $actor);
+
+        // See SendOperatorMessageAction: the thread broadcast never reaches the sidebar
+        // of an operator who is looking at a different conversation.
+        ConversationUpdated::announce($lead->id, (string) $lead->tenant_id, (string) $lead->status);
 
         return [
             'message' => $this->timeline->toFrontendMessage($timelineMessage),

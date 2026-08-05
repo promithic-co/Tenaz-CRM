@@ -33,6 +33,10 @@ type Props = {
 const props = defineProps<Props>();
 
 const groupTabs: Array<{ key: InboxGroup; label: string; title: string }> = [
+    // First on purpose: it is the unfiltered view and the one an operator falls back to,
+    // so it reads as the home the other four narrow down from. "Tudo", not "Todas": the
+    // tabs beside it name a set of conversations and this one names their absence.
+    { key: 'todas', label: 'Tudo', title: 'Todas as conversas' },
     {
         key: 'fila',
         label: 'Fila',
@@ -40,9 +44,8 @@ const groupTabs: Array<{ key: InboxGroup; label: string; title: string }> = [
     },
     { key: 'minhas', label: 'Minhas', title: 'Atribuidas a voce' },
     { key: 'ia', label: 'IA', title: 'Sem atendente humano' },
-    { key: 'todas', label: 'Todas', title: 'Todas as conversas' },
     // Last on purpose: a send nobody answered is a record of what went out, not work
-    // waiting to be picked up, and it is excluded from every tab to its left.
+    // waiting to be picked up, and it is excluded from every other tab.
     //
     // "Envios", not "Disparos": the tabs are flex-1, so at five of them a label longer
     // than "Minhas" wraps mid-word. "Disparos" is also already the sidebar's name for
@@ -182,8 +185,9 @@ function filterHref(status: string): string {
 }
 
 /**
- * Switching tab drops sort/direction so the server can apply the ordering that
- * tab deserves — the queue is oldest-first, every other tab newest-first.
+ * Switching tab drops sort/direction so the tab lands on the server default —
+ * newest first, the same on every tab — instead of inheriting a manual sort the
+ * operator picked somewhere else.
  */
 function groupHref(group: InboxGroup): string {
     return index.url({

@@ -188,7 +188,7 @@ test('the counters never count a lead the seller cannot open', function () {
         ->assertInertia(fn ($page) => $page->where('group_counts.fila', 1));
 });
 
-test('the queue is ordered oldest first so the longest wait is picked up next', function () {
+test('the queue is ordered newest first, like every other tab', function () {
     [$tenant, $owner] = groupTenant();
     $tenantId = (string) $tenant->id;
 
@@ -202,7 +202,11 @@ test('the queue is ordered oldest first so the longest wait is picked up next', 
         escalationTicket($lead, ServiceTicket::STATUS_OPEN);
     }
 
-    expect(inboxNames($owner, ['group' => 'fila']))->toBe(['Esperou Mais', 'Esperou Menos']);
+    expect(inboxNames($owner, ['group' => 'fila']))->toBe(['Esperou Menos', 'Esperou Mais']);
+
+    // The oldest-first reading is still reachable, it just is not what the tab assumes.
+    expect(inboxNames($owner, ['group' => 'fila', 'direction' => 'asc']))
+        ->toBe(['Esperou Mais', 'Esperou Menos']);
 });
 
 test('the row carries the last timeline message and flags the ones waiting on us', function () {
