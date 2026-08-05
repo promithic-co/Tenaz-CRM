@@ -304,4 +304,52 @@ class ProcessIncomingWhatsAppMessageJob implements ShouldQueue
             ]);
         }
     }
+
+    /**
+     * Terminal, tenant-attributable failure evidence once retries are exhausted.
+     *
+     * Uses AgentInteractionEventService::record() rather than recordForLead(): when this
+     * fires, IncomingConversationPersister may never have run, so no hydrated Lead is
+     * guaranteed to exist — record() takes tenant/lead as scalars instead. Fail-open: a
+     * failure inside this bookkeeping write is logged and swallowed, never masking the
+     * original job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('incoming_message.permanently_failed', [
+            'tenant_id' => $this->tenantId,
+            'instance_name' => $this->instanceName,
+            'exception_class' => $exception::class,
+            'error' => mb_substr($exception->getMessage(), 0, 500),
+            'phone_hash' => hash('sha256', $this->phone),
+            'attempts' => $this->attempts(),
+        ]);
+
+        try {
+            $interactionEvents = app(AgentInteractionEventService::class);
+
+            $interactionEvents->record(
+                interactionId: $this->interactionId ?? $interactionEvents->newInteractionId(),
+                tenantId: (string) $this->tenantId,
+                eventType: 'inbound_processing_permanently_failed',
+                eventSource: 'process_incoming_whatsapp_message_job',
+                payload: [
+                    'attempts' => $this->attempts(),
+                    'queue' => 'messages',
+                    'instance_name' => $this->instanceName,
+                    'exception_class' => $exception::class,
+                    'error' => mb_substr($exception->getMessage(), 0, 500),
+                    'phone_hash' => hash('sha256', $this->phone),
+                    'has_media' => $this->mediaPayload !== null,
+                ],
+                severity: 'error',
+                agentId: $this->agentId,
+            );
+        } catch (\Throwable $bookkeepingError) {
+            Log::error('incoming_message.failed_handler_bookkeeping_error', [
+                'tenant_id' => $this->tenantId,
+                'error' => $bookkeepingError->getMessage(),
+            ]);
+        }
+    }
 }
