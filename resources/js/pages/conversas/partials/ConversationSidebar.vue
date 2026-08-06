@@ -144,9 +144,7 @@ const instanceLabel = computed(
 );
 
 function groupCount(group: InboxGroup): number | null {
-    return group === 'todas'
-        ? null
-        : (props.groupCounts?.[group] ?? null);
+    return props.groupCounts?.[group] ?? null;
 }
 
 // The count sits on its own line under the label, so a tab with nothing to show

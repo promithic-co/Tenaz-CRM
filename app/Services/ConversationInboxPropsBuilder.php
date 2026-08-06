@@ -151,12 +151,21 @@ class ConversationInboxPropsBuilder
     }
 
     /**
-     * Row counts for the inbox tabs.
+     * Badge counts for the inbox tabs.
+     *
+     * Counts conversations waiting on a reply, not rows. A badge that reports the size of
+     * a tab tells the operator nothing they cannot see by looking at it, and it never
+     * reaches zero — so it stops being read. Waiting-on-us is the number worth interrupting
+     * someone with, and it clears as the work gets done.
+     *
+     * "envios" is the exception, and by its own definition: a silent campaign send has no
+     * inbound at all, so an awaiting-reply count there is always zero. What that tab
+     * measures is how much went out, so it keeps reporting its size.
      *
      * Reuses buildInboxQuery so the counters inherit visibleTo: a restricted user
      * must never be told about leads they cannot open. Every filter except the
-     * group itself is kept, so a tab badge always matches the number of rows that
-     * tab actually renders.
+     * group itself is kept, so a tab badge always counts within the same population
+     * that tab actually renders.
      *
      * @param  array<string, mixed>  $filters
      * @return array<string, int>
@@ -170,12 +179,16 @@ class ConversationInboxPropsBuilder
         // silent campaign sends, and stacking the two produced a self-contradicting
         // query for "envios" (excluded by the base, required by the group) that
         // counted zero no matter how many had been sent.
-        foreach (Lead::INBOX_GROUPS as $group) {
-            $counts[$group] = $this->buildInboxQuery(
+        foreach ([Lead::INBOX_GROUP_ALL, ...Lead::INBOX_GROUPS] as $group) {
+            $query = $this->buildInboxQuery(
                 [...$filters, 'group' => $group],
                 $tenantId,
                 $actor,
-            )->count();
+            );
+
+            $counts[$group] = $group === Lead::INBOX_GROUP_SENDS
+                ? $query->count()
+                : $query->awaitingReply()->count();
         }
 
         return $counts;

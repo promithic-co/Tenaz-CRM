@@ -59,6 +59,15 @@ class Lead extends Model
         self::INBOX_GROUP_SENDS,
     ];
 
+    /**
+     * Columns the inbox is allowed to sort by. Owned here rather than by the FormRequest
+     * because scopeInboxFiltered interpolates the choice into raw SQL and must be able to
+     * vouch for it on its own, whatever built the filter array.
+     *
+     * @var list<string>
+     */
+    public const INBOX_SORT_COLUMNS = ['nome', 'status', 'followup_count', 'last_interaction_at', 'operational_stage'];
+
     public const STAGE_NEW_INBOUND = 'new_inbound';
 
     public const STAGE_AI_QUALIFYING = 'ai_qualifying';
@@ -337,6 +346,25 @@ class Lead extends Model
     }
 
     /**
+     * Conversations where the customer spoke last and nobody has answered.
+     *
+     * This is what the inbox tab badges count. There is no per-operator read state in the
+     * system — no table records who opened which conversation — so "unread" is defined by
+     * the conversation itself rather than by a viewer: the customer wrote, and neither a
+     * human nor the agent has replied since. It clears the moment anything goes out, which
+     * is the behaviour an operator actually wants from a badge: it means work is waiting,
+     * not that a row exists.
+     */
+    public function scopeAwaitingReply($query): Builder
+    {
+        return $query
+            ->whereNotNull('last_inbound_at')
+            ->where(fn ($q) => $q
+                ->whereNull('last_outbound_at')
+                ->orWhereColumn('last_inbound_at', '>', 'last_outbound_at'));
+    }
+
+    /**
      * A lead a campaign created that has never sent anything back.
      *
      * last_inbound_at is the discriminator rather than a dedicated flag: it is already
@@ -413,7 +441,33 @@ class Lead extends Model
             });
         }
 
-        return $query->orderBy($filters['sort'], $filters['direction']);
+        return $query->orderByInbox($filters['sort'] ?? null, $filters['direction'] ?? 'desc');
+    }
+
+    /**
+     * The inbox order, with the two ways a NULL used to break it closed.
+     *
+     * Postgres sorts NULLs FIRST on DESC, so every lead that had never been touched —
+     * a manual test send, an import nobody answered — pinned itself above the live
+     * conversations and stayed there. SQLite orders them the opposite way, which is why
+     * the whole test suite agreed the ordering was fine.
+     *
+     * last_interaction_at falls back to created_at rather than merely sinking, because
+     * that is already what the row label shows (ConversationInboxPropsBuilder builds
+     * `ultima_interacao` the same way): a row reading "há 6 dias" has to sort as six days
+     * old, not as an absence. NULLS LAST covers the remaining sortable columns, where
+     * there is no meaningful fallback and an empty value simply belongs at the bottom.
+     */
+    public function scopeOrderByInbox($query, ?string $sort, string $direction): Builder
+    {
+        $sort = in_array($sort, self::INBOX_SORT_COLUMNS, true) ? $sort : 'last_interaction_at';
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
+
+        $column = $sort === 'last_interaction_at'
+            ? 'COALESCE(leads.last_interaction_at, leads.created_at)'
+            : 'leads.'.$sort;
+
+        return $query->orderByRaw("{$column} {$direction} NULLS LAST");
     }
 
     protected $casts = [
@@ -421,6 +475,7 @@ class Lead extends Model
         'documentos_coletados' => 'array',
         'last_interaction_at' => 'datetime',
         'last_inbound_at' => 'datetime',
+        'last_outbound_at' => 'datetime',
         'last_auto_tag_at' => 'datetime',
         'service_window_expires_at' => 'datetime',
         'free_entry_point_started_at' => 'datetime',

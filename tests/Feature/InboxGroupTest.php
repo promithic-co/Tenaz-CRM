@@ -115,24 +115,73 @@ test('a resolved escalation returns the lead to the ia tab', function () {
     expect(inboxNames($owner, ['group' => 'ia']))->toBe(['Resolvido']);
 });
 
-test('the counters match the rows each tab renders', function () {
+test('the counters report what is waiting on us, not how big the tab is', function () {
     [$tenant, $owner] = groupTenant();
     $tenantId = (string) $tenant->id;
+    $waiting = ['last_inbound_at' => now(), 'last_outbound_at' => null];
 
-    $queued = Lead::factory()->create(['tenant_id' => $tenantId, 'assigned_user_id' => null]);
+    $queued = Lead::factory()->create([...$waiting, 'tenant_id' => $tenantId, 'assigned_user_id' => null]);
     escalationTicket($queued, ServiceTicket::STATUS_OPEN);
 
-    Lead::factory()->count(2)->create(['tenant_id' => $tenantId, 'assigned_user_id' => $owner->id]);
-    Lead::factory()->count(3)->create(['tenant_id' => $tenantId, 'assigned_user_id' => null]);
+    Lead::factory()->count(2)->create([...$waiting, 'tenant_id' => $tenantId, 'assigned_user_id' => $owner->id]);
+    Lead::factory()->count(3)->create([...$waiting, 'tenant_id' => $tenantId, 'assigned_user_id' => null]);
+
+    // Answered after the customer wrote, so it fills the ia tab but owes nothing. A badge
+    // that counted it would never reach zero, and a badge that never reaches zero stops
+    // being read.
+    Lead::factory()->create([
+        'tenant_id' => $tenantId,
+        'assigned_user_id' => null,
+        'last_inbound_at' => now()->subHour(),
+        'last_outbound_at' => now(),
+    ]);
 
     test()->actingAs($owner)
         ->get(route('conversas.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
+            ->where('group_counts.todas', 6)
             ->where('group_counts.fila', 1)
             ->where('group_counts.minhas', 2)
             ->where('group_counts.ia', 3)
+            // The tab itself still renders the answered one.
+            ->where('leads.total', 7)
         );
+});
+
+test('a lead nobody has ever written to is not waiting on anyone', function () {
+    [$tenant, $owner] = groupTenant();
+
+    Lead::factory()->create([
+        'tenant_id' => (string) $tenant->id,
+        'assigned_user_id' => null,
+        'last_inbound_at' => null,
+        'last_outbound_at' => null,
+    ]);
+
+    test()->actingAs($owner)
+        ->get(route('conversas.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('group_counts.todas', 0)
+            ->where('leads.total', 1)
+        );
+});
+
+test('the envios badge keeps reporting its size, having no inbound to wait on', function () {
+    [$tenant, $owner] = groupTenant();
+    $campaign = Campaign::factory()->create(['tenant_id' => (string) $tenant->id]);
+
+    Lead::factory()->count(3)->create([
+        'tenant_id' => (string) $tenant->id,
+        'campaign_id' => $campaign->id,
+        'last_inbound_at' => null,
+    ]);
+
+    test()->actingAs($owner)
+        ->get(route('conversas.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('group_counts.envios', 3));
 });
 
 test('the counters honour the active filters so a badge never promises rows the tab lacks', function () {
@@ -144,12 +193,14 @@ test('the counters honour the active filters so a badge never promises rows the 
         'assigned_user_id' => $owner->id,
         'nome' => 'Ana Qualificada',
         'status' => 'qualificado',
+        'last_inbound_at' => now(),
     ]);
     Lead::factory()->create([
         'tenant_id' => $tenantId,
         'assigned_user_id' => $owner->id,
         'nome' => 'Bruno Novo',
         'status' => 'novo',
+        'last_inbound_at' => now(),
     ]);
 
     test()->actingAs($owner)
@@ -167,13 +218,17 @@ test('the counters never count a lead the seller cannot open', function () {
 
     $ownerAgent = Agent::factory()->create(['user_id' => $owner->id, 'tenant_id' => $tenantId]);
 
-    $hidden = Lead::factory()->forAgent($ownerAgent)->create(['assigned_user_id' => null]);
+    $hidden = Lead::factory()->forAgent($ownerAgent)->create([
+        'assigned_user_id' => null,
+        'last_inbound_at' => now(),
+    ]);
     escalationTicket($hidden, ServiceTicket::STATUS_OPEN);
 
     $shared = Lead::factory()->create([
         'tenant_id' => $tenantId,
         'agent_id' => null,
         'assigned_user_id' => null,
+        'last_inbound_at' => now(),
     ]);
     escalationTicket($shared, ServiceTicket::STATUS_OPEN);
 
@@ -186,6 +241,48 @@ test('the counters never count a lead the seller cannot open', function () {
         ->get(route('conversas.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('group_counts.fila', 1));
+});
+
+test('a lead that was never interacted with sorts by when it was created, not to the top', function () {
+    [$tenant, $owner] = groupTenant();
+    $tenantId = (string) $tenant->id;
+
+    // Postgres sorts NULLs FIRST on DESC, so a lead with no last_interaction_at pinned
+    // itself above every live conversation and stayed there — while its row label, which
+    // falls back to created_at, read "há 6 dias". SQLite orders NULLs the other way, which
+    // is exactly why this went out undetected.
+    Lead::factory()->create([
+        'tenant_id' => $tenantId,
+        'nome' => 'Nunca Respondeu',
+        'last_interaction_at' => null,
+        'created_at' => now()->subDays(6),
+    ]);
+
+    Lead::factory()->create([
+        'tenant_id' => $tenantId,
+        'nome' => 'Falou Agora',
+        'last_interaction_at' => now()->subHours(5),
+    ]);
+
+    Lead::factory()->create([
+        'tenant_id' => $tenantId,
+        'nome' => 'Falou Ontem',
+        'last_interaction_at' => now()->subDay(),
+    ]);
+
+    expect(inboxNames($owner))->toBe(['Falou Agora', 'Falou Ontem', 'Nunca Respondeu']);
+});
+
+test('a null in any other sortable column sinks instead of floating', function () {
+    [$tenant, $owner] = groupTenant();
+    $tenantId = (string) $tenant->id;
+
+    Lead::factory()->create(['tenant_id' => $tenantId, 'nome' => null]);
+    Lead::factory()->create(['tenant_id' => $tenantId, 'nome' => 'Tem Nome']);
+
+    // nome falls back to the phone for display, but there is no meaningful sort fallback,
+    // so an empty one simply belongs at the bottom rather than at the top.
+    expect(inboxNames($owner, ['sort' => 'nome'])[0])->toBe('Tem Nome');
 });
 
 test('the queue is ordered newest first, like every other tab', function () {

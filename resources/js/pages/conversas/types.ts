@@ -94,7 +94,11 @@ export type InboxLead = {
 
 export type InboxGroup = 'todas' | 'fila' | 'minhas' | 'ia' | 'envios';
 
-export type InboxGroupCounts = Record<Exclude<InboxGroup, 'todas'>, number>;
+/**
+ * Conversations waiting on a reply per tab — not the size of the tab. "envios" is the one
+ * exception and reports its size, because a send nobody answered has no inbound to wait on.
+ */
+export type InboxGroupCounts = Record<InboxGroup, number>;
 
 export type ConversationLead = {
     id: number;

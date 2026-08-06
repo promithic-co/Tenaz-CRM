@@ -17,7 +17,7 @@ use Illuminate\Foundation\Http\FormRequest;
 class InboxFilterRequest extends FormRequest
 {
     /** @var list<string> */
-    public const SORT_COLUMNS = ['nome', 'status', 'followup_count', 'last_interaction_at', 'operational_stage'];
+    public const SORT_COLUMNS = Lead::INBOX_SORT_COLUMNS;
 
     /** @var list<string> */
     public const GROUPS = [Lead::INBOX_GROUP_ALL, ...Lead::INBOX_GROUPS];

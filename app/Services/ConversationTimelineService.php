@@ -78,7 +78,49 @@ class ConversationTimelineService
 
         $message->save();
 
+        $this->stampDirectionClock($lead, $message);
+
         return $message;
+    }
+
+    /**
+     * Keep leads.last_inbound_at / last_outbound_at level with the timeline.
+     *
+     * The inbox badges count "the customer spoke last and nobody answered", which has to
+     * be a column comparison — deriving it per row would mean a correlated subquery for
+     * every lead in every one of the five counters, on every page load. Every message row
+     * is born here, whichever path sent it, so this is the one place that can promise the
+     * columns never disagree with the messages they summarise.
+     *
+     * last_inbound_at is also written by ConversationAutomationService::markInbound, which
+     * owns the service window and the operational stage along with it. Writing it here too
+     * is deliberate: that path covers the main webhook, this one covers every path.
+     *
+     * Only ever moves forward. The campaign backfill records historic rows with their real
+     * created_at, and letting those drag the clock backwards would resurrect answered
+     * conversations as waiting.
+     */
+    private function stampDirectionClock(Lead $lead, ConversationTimelineMessage $message): void
+    {
+        $column = match ($message->direction) {
+            'inbound' => 'last_inbound_at',
+            'outbound' => 'last_outbound_at',
+            default => null,
+        };
+
+        if ($column === null) {
+            return;
+        }
+
+        $occurredAt = $message->created_at ?? now();
+        $current = $lead->{$column};
+
+        if ($current !== null && $current->greaterThanOrEqualTo($occurredAt)) {
+            return;
+        }
+
+        $lead->{$column} = $occurredAt;
+        $lead->updateQuietly([$column => $occurredAt]);
     }
 
     public function broadcast(ConversationTimelineMessage $message, bool $toOthers = false): void

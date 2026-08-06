@@ -49,6 +49,24 @@ test('the unfiltered tab is labelled Tudo', () => {
     );
 });
 
+test('every tab can carry a badge, the unfiltered one included', () => {
+    // It used to be hard-coded to null because the number was the tab's size, which for
+    // "everything" says nothing. Now it counts what is waiting on a reply, which is worth
+    // showing there more than anywhere else.
+    assert.doesNotMatch(
+        sidebar,
+        /group === 'todas'\s*\?\s*null/,
+        'the unfiltered tab no longer suppresses its count',
+    );
+    assert.match(sidebar, /return props\.groupCounts\?\.\[group\] \?\? null;/);
+});
+
+test('a zero badge renders as blank, not as a zero', () => {
+    // The whole point of counting unread is that the badge disappears when nothing is
+    // pending; printing "0" would put the noise straight back.
+    assert.match(sidebar, /return count \? String\(count\) : '\\u00A0';/);
+});
+
 test('the sidebar answers the tenant-wide conversation.updated broadcast', () => {
     // Without this the list only moved on assignment changes: a new message reached the
     // open thread through NewConversationMessage and nothing else, so every other row
