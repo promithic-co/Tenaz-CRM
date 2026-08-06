@@ -6,6 +6,7 @@ use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -304,7 +305,7 @@ test('update changes template fields', function () {
     expect($template->status)->toBe('PENDING');
 });
 
-test('update uploads an image header to Meta and stores a 30 day media configuration', function () {
+test('update uploads supported image headers and stores the preview as binary', function (string $filename, string $expectedMimeType) {
     [$user, $instance] = makeAuthUserWithMetaCloud();
     $template = WhatsappTemplate::factory()->create([
         'tenant_id' => $user->tenantId,
@@ -316,27 +317,50 @@ test('update uploads an image header to Meta and stores a 30 day media configura
     ]);
     Http::fake(['*' => Http::response(['id' => 'media-image-123'])]);
 
+    $previewWasBoundAsLob = false;
+    DB::listen(function ($query) use (&$previewWasBoundAsLob): void {
+        if (! str_contains($query->sql, 'header_media_preview')) {
+            return;
+        }
+
+        $previewWasBoundAsLob = collect($query->bindings)
+            ->contains(fn (mixed $binding): bool => is_resource($binding));
+    });
+
+    $preview = UploadedFile::fake()->image('preview.jpg', 640, 336);
+    $previewContents = $preview->get();
+
     $response = $this->actingAs($user)->post("/templates/{$template->id}", [
         '_method' => 'put',
         'name' => $template->name,
-        'header_image' => UploadedFile::fake()->image('cabecalho.png', 1200, 630),
-        'header_image_preview' => UploadedFile::fake()->image('preview.jpg', 640, 336),
+        'header_image' => UploadedFile::fake()->image($filename, 1200, 630),
+        'header_image_preview' => $preview,
     ]);
 
     $response->assertRedirect()->assertSessionHasNoErrors();
 
     Http::assertSent(fn ($request): bool => str_ends_with($request->url(), "/{$instance->meta_phone_number_id}/media")
         && str_contains($request->body(), 'messaging_product')
-        && str_contains($request->body(), 'image/png'));
+        && str_contains($request->body(), $expectedMimeType));
 
     $template->refresh();
     expect($template->header_media_id)->toBe('media-image-123')
-        ->and($template->header_media_mime_type)->toBe('image/png')
-        ->and($template->header_media_filename)->toBe('cabecalho.png')
+        ->and($template->header_media_mime_type)->toBe($expectedMimeType)
+        ->and($template->header_media_filename)->toBe($filename)
         ->and($template->header_media_preview)->not->toBeEmpty()
+        ->and($previewWasBoundAsLob)->toBeTrue()
         ->and($template->headerMediaState())->toBe('valid')
         ->and(abs($template->header_media_expires_at->diffInDays($template->header_media_uploaded_at)))->toBe(30.0);
-});
+
+    $this->actingAs($user)
+        ->get("/templates/{$template->id}/media-preview")
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'image/jpeg')
+        ->assertContent($previewContents);
+})->with([
+    'PNG' => ['cabecalho.png', 'image/png'],
+    'JPEG' => ['cabecalho.jpg', 'image/jpeg'],
+]);
 
 test('update refuses image upload for a template without an image header', function () {
     [$user, $instance] = makeAuthUserWithMetaCloud();

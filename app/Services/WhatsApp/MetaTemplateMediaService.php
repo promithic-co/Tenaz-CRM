@@ -7,6 +7,7 @@ use App\Models\WhatsappTemplate;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 final class MetaTemplateMediaService
 {
@@ -50,22 +51,48 @@ final class MetaTemplateMediaService
             ]);
         }
 
-        $filename = Str::limit(basename($image->getClientOriginalName()), 255, '');
-        $filename = $filename !== '' ? $filename : 'imagem-template.'.($image->guessExtension() ?: 'jpg');
-        $mediaId = $this->providers
-            ->makeProvider($instance)
-            ->uploadMedia($contents, $filename, $mimeType);
-        $uploadedAt = now();
+        $previewStream = $this->binaryStream($previewContents);
 
-        $template->update([
-            'header_media_id' => $mediaId,
-            'header_media_mime_type' => $mimeType,
-            'header_media_filename' => $filename,
-            'header_media_size_bytes' => strlen($contents),
-            'header_media_uploaded_at' => $uploadedAt,
-            'header_media_expires_at' => $uploadedAt->copy()->addDays(WhatsappTemplate::HEADER_MEDIA_TTL_DAYS),
-            'header_media_preview' => $previewContents,
-            'header_media_preview_mime_type' => $previewMimeType,
-        ]);
+        try {
+            $filename = Str::limit(basename($image->getClientOriginalName()), 255, '');
+            $filename = $filename !== '' ? $filename : 'imagem-template.'.($image->guessExtension() ?: 'jpg');
+            $mediaId = $this->providers
+                ->makeProvider($instance)
+                ->uploadMedia($contents, $filename, $mimeType);
+            $uploadedAt = now();
+
+            $template->update([
+                'header_media_id' => $mediaId,
+                'header_media_mime_type' => $mimeType,
+                'header_media_filename' => $filename,
+                'header_media_size_bytes' => strlen($contents),
+                'header_media_uploaded_at' => $uploadedAt,
+                'header_media_expires_at' => $uploadedAt->copy()->addDays(WhatsappTemplate::HEADER_MEDIA_TTL_DAYS),
+                'header_media_preview' => $previewStream,
+                'header_media_preview_mime_type' => $previewMimeType,
+            ]);
+        } finally {
+            fclose($previewStream);
+        }
+    }
+
+    /** @return resource */
+    private function binaryStream(string $contents)
+    {
+        $stream = fopen('php://memory', 'r+b');
+
+        if ($stream === false) {
+            throw new RuntimeException('Could not open the template preview stream.');
+        }
+
+        $writtenBytes = fwrite($stream, $contents);
+
+        if ($writtenBytes !== strlen($contents) || ! rewind($stream)) {
+            fclose($stream);
+
+            throw new RuntimeException('Could not prepare the template preview stream.');
+        }
+
+        return $stream;
     }
 }
