@@ -86,7 +86,7 @@ class TemplateParameterResolver
      */
     private function resolveField(Lead $lead, string $section, string $key, array $field): ?string
     {
-        // Media headers point at a hosted asset the CRM has no source for — always operator-supplied.
+        // Only text fields are operator-resolvable. Template media is configured server-side.
         if (($field['type'] ?? 'text') !== 'text') {
             return null;
         }

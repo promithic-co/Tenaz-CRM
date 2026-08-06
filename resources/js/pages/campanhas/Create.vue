@@ -1,13 +1,20 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import CampaignController from '@/actions/App/Http/Controllers/CampaignController';
 import { preview as previewAction } from '@/actions/App/Http/Controllers/ContactListController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import WhatsappTemplatePreview from '@/components/whatsapp/WhatsappTemplatePreview.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { formatRelative } from '@/lib/relative-time';
+import {
+    create as campanhasCreate,
+    index as campanhasIndex,
+} from '@/routes/campanhas';
+import { index as templatesIndex } from '@/routes/templates';
 import type { BreadcrumbItem } from '@/types';
+import type { WhatsappTemplateMedia } from '@/types/whatsapp-template';
 
 type WhatsappInstance = {
     id: number;
@@ -39,6 +46,9 @@ type WhatsappTemplate = {
     element_name: string | null;
     variables_count: number;
     whatsapp_instance_id: number;
+    media: WhatsappTemplateMedia;
+    sendable: boolean;
+    unavailable_reason: string | null;
 };
 
 type CampaignDefaults = {
@@ -52,16 +62,16 @@ type Props = {
     instances: WhatsappInstance[];
     // Deferred (FE-02): heavy per-row data fetched after the initial render.
     contactListFilters?: Record<number, ContactListFilters>;
-    templateBodies?: Record<number, string>;
+    templatePreviews?: Record<number, { text: string }>;
     defaults?: CampaignDefaults;
 };
 
 const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Disparos', href: '/campanhas' },
-    { title: 'Campanhas', href: '/campanhas' },
-    { title: 'Nova Campanha', href: '/campanhas/create' },
+    { title: 'Disparos', href: campanhasIndex().url },
+    { title: 'Campanhas', href: campanhasIndex().url },
+    { title: 'Nova Campanha', href: campanhasCreate().url },
 ];
 
 // ─── Provider-first: derive template kind from selected instance ──────────────
@@ -136,6 +146,10 @@ const step2Errors = computed(() => {
     }
     if (!form.whatsapp_template_id) {
         errors.whatsapp_template_id = 'O template é obrigatório.';
+    } else if (!selectedTemplate.value?.sendable) {
+        errors.whatsapp_template_id =
+            selectedTemplate.value?.unavailable_reason ??
+            'Este template não está disponível para envio.';
     }
     return errors;
 });
@@ -269,14 +283,28 @@ const selectedTemplate = computed(() => {
     );
 });
 
-// Deferred (FE-02): the selected template's body arrives in the templateBodies map
-// after the initial render; null until it loads.
-const selectedTemplateBody = computed<string | null>(() => {
+// Deferred (FE-02): the selected template preview arrives after the initial render.
+const selectedTemplatePreview = computed<{ text: string } | null>(() => {
     const template = selectedTemplate.value;
     if (!template) {
         return null;
     }
-    return props.templateBodies?.[template.id] ?? null;
+    return props.templatePreviews?.[template.id] ?? null;
+});
+
+const scheduleMediaError = computed<string | null>(() => {
+    if (
+        form.schedule_type !== 'schedule' ||
+        !form.scheduled_at ||
+        !selectedTemplate.value?.media.expires_at
+    ) {
+        return null;
+    }
+
+    return new Date(form.scheduled_at).getTime() >=
+        new Date(selectedTemplate.value.media.expires_at).getTime()
+        ? 'A imagem do template expira antes deste agendamento. Faça um novo upload em Templates WhatsApp.'
+        : null;
 });
 
 const selectedList = computed(() => {
@@ -388,12 +416,17 @@ function previewBody(body: string): string {
 // ─── Template label ───────────────────────────────────────────────────────────
 
 function templateLabel(tmpl: WhatsappTemplate): string {
-    return tmpl.name;
+    return tmpl.sendable ? tmpl.name : `${tmpl.name} — indisponível`;
 }
 
 // ─── Submit ───────────────────────────────────────────────────────────────────
 
 function submitForm(): void {
+    if (scheduleMediaError.value) {
+        form.setError('scheduled_at', scheduleMediaError.value);
+        return;
+    }
+
     form.scheduled_at =
         form.schedule_type === 'schedule' ? form.scheduled_at : '';
     form.post(CampaignController.store().url);
@@ -588,7 +621,6 @@ function submitForm(): void {
                                 </select>
                             </div>
                         </div>
-
                     </div>
 
                     <!-- Step 2: Lista e Template -->
@@ -813,6 +845,7 @@ function submitForm(): void {
                                     v-for="tmpl in filteredTemplates"
                                     :key="tmpl.id"
                                     :value="tmpl.id"
+                                    :disabled="!tmpl.sendable"
                                 >
                                     {{ templateLabel(tmpl) }}
                                 </option>
@@ -831,15 +864,18 @@ function submitForm(): void {
                                 class="mt-1 text-xs text-yellow-600 dark:text-yellow-400"
                             >
                                 Nenhum template compatível disponível.
-                                <a href="/templates" class="underline"
-                                    >Criar template</a
+                                <Link
+                                    :href="templatesIndex().url"
+                                    class="underline"
+                                >
+                                    Configurar templates </Link
                                 >.
                             </p>
                         </div>
 
                         <!-- Template preview -->
                         <div
-                            v-if="selectedTemplateBody"
+                            v-if="selectedTemplatePreview && selectedTemplate"
                             class="rounded-lg border border-sidebar-border/70 bg-muted/20 p-4 dark:border-sidebar-border"
                         >
                             <p
@@ -847,11 +883,11 @@ function submitForm(): void {
                             >
                                 Preview do Template
                             </p>
-                            <p
-                                class="text-sm whitespace-pre-wrap text-foreground"
-                            >
-                                {{ selectedTemplateBody }}
-                            </p>
+                            <WhatsappTemplatePreview
+                                :text="selectedTemplatePreview.text"
+                                :media="selectedTemplate.media"
+                                :image-alt="`Imagem do template ${selectedTemplate.name}`"
+                            />
                             <p
                                 v-if="variablesCount > 0"
                                 class="mt-2 text-xs text-muted-foreground"
@@ -918,7 +954,7 @@ function submitForm(): void {
 
                         <!-- Preview with replacements -->
                         <div
-                            v-if="selectedTemplateBody"
+                            v-if="selectedTemplatePreview && selectedTemplate"
                             class="rounded-lg border border-sidebar-border/70 bg-muted/20 p-4 dark:border-sidebar-border"
                         >
                             <p
@@ -926,11 +962,13 @@ function submitForm(): void {
                             >
                                 Preview com Mapeamento
                             </p>
-                            <p
-                                class="text-sm whitespace-pre-wrap text-foreground"
-                            >
-                                {{ previewBody(selectedTemplateBody ?? '') }}
-                            </p>
+                            <WhatsappTemplatePreview
+                                :text="
+                                    previewBody(selectedTemplatePreview.text)
+                                "
+                                :media="selectedTemplate.media"
+                                :image-alt="`Imagem do template ${selectedTemplate.name}`"
+                            />
                         </div>
                     </div>
 
@@ -1034,6 +1072,21 @@ function submitForm(): void {
                             </div>
                         </div>
 
+                        <div v-if="selectedTemplatePreview && selectedTemplate">
+                            <p
+                                class="mb-2 text-xs font-semibold text-muted-foreground uppercase"
+                            >
+                                Mensagem que será enviada
+                            </p>
+                            <WhatsappTemplatePreview
+                                :text="
+                                    previewBody(selectedTemplatePreview.text)
+                                "
+                                :media="selectedTemplate.media"
+                                :image-alt="`Imagem do template ${selectedTemplate.name}`"
+                            />
+                        </div>
+
                         <!-- Scheduling -->
                         <div class="flex flex-col gap-3">
                             <p class="text-sm font-medium text-foreground">
@@ -1069,6 +1122,18 @@ function submitForm(): void {
                                 type="datetime-local"
                                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                             />
+                            <p
+                                v-if="
+                                    scheduleMediaError ||
+                                    form.errors.scheduled_at
+                                "
+                                class="text-xs text-red-500"
+                            >
+                                {{
+                                    scheduleMediaError ??
+                                    form.errors.scheduled_at
+                                }}
+                            </p>
                         </div>
                     </div>
 
@@ -1097,7 +1162,9 @@ function submitForm(): void {
                         <button
                             v-else
                             type="button"
-                            :disabled="form.processing"
+                            :disabled="
+                                form.processing || Boolean(scheduleMediaError)
+                            "
                             class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                             @click="submitForm"
                         >

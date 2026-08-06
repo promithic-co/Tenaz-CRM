@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -301,6 +302,101 @@ test('update changes template fields', function () {
     expect($template->name)->toBe('Updated Name');
     expect($template->body)->toBe('Original body');
     expect($template->status)->toBe('PENDING');
+});
+
+test('update uploads an image header to Meta and stores a 30 day media configuration', function () {
+    [$user, $instance] = makeAuthUserWithMetaCloud();
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'components_json' => [
+            ['type' => 'HEADER', 'format' => 'IMAGE'],
+            ['type' => 'BODY', 'text' => 'Olá'],
+        ],
+    ]);
+    Http::fake(['*' => Http::response(['id' => 'media-image-123'])]);
+
+    $response = $this->actingAs($user)->post("/templates/{$template->id}", [
+        '_method' => 'put',
+        'name' => $template->name,
+        'header_image' => UploadedFile::fake()->image('cabecalho.png', 1200, 630),
+        'header_image_preview' => UploadedFile::fake()->image('preview.jpg', 640, 336),
+    ]);
+
+    $response->assertRedirect()->assertSessionHasNoErrors();
+
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), "/{$instance->meta_phone_number_id}/media")
+        && str_contains($request->body(), 'messaging_product')
+        && str_contains($request->body(), 'image/png'));
+
+    $template->refresh();
+    expect($template->header_media_id)->toBe('media-image-123')
+        ->and($template->header_media_mime_type)->toBe('image/png')
+        ->and($template->header_media_filename)->toBe('cabecalho.png')
+        ->and($template->header_media_preview)->not->toBeEmpty()
+        ->and($template->headerMediaState())->toBe('valid')
+        ->and(abs($template->header_media_expires_at->diffInDays($template->header_media_uploaded_at)))->toBe(30.0);
+});
+
+test('update refuses image upload for a template without an image header', function () {
+    [$user, $instance] = makeAuthUserWithMetaCloud();
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'components_json' => [['type' => 'BODY', 'text' => 'Olá']],
+    ]);
+    Http::fake();
+
+    $response = $this->actingAs($user)->post("/templates/{$template->id}", [
+        '_method' => 'put',
+        'header_image' => UploadedFile::fake()->image('cabecalho.png'),
+        'header_image_preview' => UploadedFile::fake()->image('preview.jpg'),
+    ]);
+
+    $response->assertInvalid(['header_image']);
+    Http::assertNothingSent();
+});
+
+test('failed replacement keeps the previous template image', function () {
+    [$user, $instance] = makeAuthUserWithMetaCloud();
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'components_json' => [['type' => 'HEADER', 'format' => 'IMAGE']],
+        'header_media_id' => 'media-original',
+        'header_media_expires_at' => now()->addDays(10),
+    ]);
+    Http::fake(['*' => Http::response(['error' => ['code' => 100, 'message' => 'invalid']], 400)]);
+
+    $response = $this->actingAs($user)->post("/templates/{$template->id}", [
+        '_method' => 'put',
+        'header_image' => UploadedFile::fake()->image('nova.png'),
+        'header_image_preview' => UploadedFile::fake()->image('preview.jpg'),
+    ]);
+
+    $response->assertInvalid(['header_image']);
+    expect($template->fresh()->header_media_id)->toBe('media-original');
+});
+
+test('authenticated tenant users can view only their template preview', function () {
+    [$user, $instance] = makeAuthUserWithMetaCloud();
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $user->tenantId,
+        'whatsapp_instance_id' => $instance->id,
+        'header_media_preview' => 'preview-binary',
+        'header_media_preview_mime_type' => 'image/jpeg',
+    ]);
+
+    $this->actingAs($user)
+        ->get("/templates/{$template->id}/media-preview")
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'image/jpeg')
+        ->assertContent('preview-binary');
+
+    [$otherUser] = makeAuthUserWithMetaCloud();
+    $this->actingAs($otherUser)
+        ->get("/templates/{$template->id}/media-preview")
+        ->assertNotFound();
 });
 
 test('update rejects synced meta fields', function () {

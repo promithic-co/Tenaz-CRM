@@ -408,7 +408,11 @@ class SendCampaignMessageJob implements ShouldQueue
                 phone: $destination,
                 templateName: (string) $sendConfig->templateName,
                 langCode: (string) $sendConfig->templateLanguage,
-                components: $this->buildMetaComponents($resolvedParams, $sendConfig->templateComponents),
+                components: $this->buildMetaComponents(
+                    $resolvedParams,
+                    $sendConfig->templateComponents,
+                    $sendConfig->templateHeaderMediaId,
+                ),
                 opaqueId: (string) $message->id,
             );
 
@@ -920,13 +924,16 @@ class SendCampaignMessageJob implements ShouldQueue
      * @param  array<string, string>  $resolved
      * @return list<array<string, mixed>>
      */
-    private function buildMetaComponents(array $resolved, ?array $components = null): array
-    {
-        if ($resolved === []) {
-            return [];
-        }
-
+    private function buildMetaComponents(
+        array $resolved,
+        ?array $components = null,
+        ?string $headerMediaId = null,
+    ): array {
         if (! is_array($components) || $components === []) {
+            if ($resolved === []) {
+                return [];
+            }
+
             uksort($resolved, fn (string $a, string $b): int => (int) $a <=> (int) $b);
 
             $parameters = array_map(fn (string $value): array => [
@@ -948,6 +955,20 @@ class SendCampaignMessageJob implements ShouldQueue
             $type = strtolower((string) ($component['type'] ?? ''));
 
             if ($type === 'header') {
+                $format = strtoupper((string) ($component['format'] ?? 'TEXT'));
+
+                if ($format === 'IMAGE') {
+                    $built[] = [
+                        'type' => 'header',
+                        'parameters' => [[
+                            'type' => 'image',
+                            'image' => ['id' => (string) $headerMediaId],
+                        ]],
+                    ];
+
+                    continue;
+                }
+
                 $parameters = $this->buildParametersForTemplateComponent($component, $resolved);
 
                 if ($parameters !== []) {

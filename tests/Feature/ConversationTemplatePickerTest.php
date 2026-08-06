@@ -100,6 +100,41 @@ it('previews the template with the lead data already substituted and marks the f
         ->and($template['fields'][0]['resolved'])->toBe('Marcos Vinicius');
 });
 
+it('exposes image previews and disables templates with missing image media', function () {
+    ['user' => $user, 'lead' => $lead, 'instance' => $instance] = pickerScenario();
+
+    pickerTemplate($lead, $instance, [
+        'name' => 'imagem_configurada',
+        'meta_template_name' => 'imagem_configurada',
+        'components_json' => [
+            ['type' => 'HEADER', 'format' => 'IMAGE'],
+            ['type' => 'BODY', 'text' => 'Olá {{1}}.', 'example' => ['body_text' => [['Maria']]]],
+        ],
+        'header_media_id' => 'private-media-id',
+        'header_media_expires_at' => now()->addDays(10),
+        'header_media_preview' => 'preview-bytes',
+        'header_media_preview_mime_type' => 'image/jpeg',
+    ]);
+    pickerTemplate($lead, $instance, [
+        'name' => 'imagem_sem_upload',
+        'meta_template_name' => 'imagem_sem_upload',
+        'components_json' => [['type' => 'HEADER', 'format' => 'IMAGE']],
+    ]);
+
+    $templates = collect(panelTemplates($user, $lead))->keyBy('name');
+    $configured = $templates['imagem_configurada'];
+    $missing = $templates['imagem_sem_upload'];
+
+    expect($configured['sendable'])->toBeTrue()
+        ->and($configured['media']['state'])->toBe('valid')
+        ->and($configured['media']['preview_url'])->toContain('/media-preview')
+        ->and($configured)->not->toHaveKey('header_media_id')
+        ->and(array_column($configured['fields'], 'path'))->not->toContain('header.media')
+        ->and($missing['sendable'])->toBeFalse()
+        ->and($missing['media']['state'])->toBe('missing')
+        ->and($missing['unavailable_reason'])->toContain('Configure a imagem');
+});
+
 it('leaves a field the CRM cannot answer unresolved for the operator', function () {
     ['user' => $user, 'lead' => $lead, 'instance' => $instance] = pickerScenario();
 

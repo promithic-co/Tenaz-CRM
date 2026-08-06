@@ -30,6 +30,11 @@ test('template index props preserve templates and instance projection', function
         'whatsapp_instance_id' => $instance->id,
         'status' => 'APPROVED',
         'name' => 'Template aprovado',
+        'components_json' => [['type' => 'HEADER', 'format' => 'IMAGE']],
+        'header_media_id' => 'private-media-id',
+        'header_media_expires_at' => now()->addDays(5),
+        'header_media_preview' => 'preview-bytes',
+        'header_media_preview_mime_type' => 'image/jpeg',
     ]);
     WhatsappTemplate::factory()->metaHsm()->create([
         'tenant_id' => $user->tenantId,
@@ -45,11 +50,15 @@ test('template index props preserve templates and instance projection', function
     $request = Request::create('/templates', 'GET', ['status' => 'APPROVED']);
 
     $props = app(WhatsappTemplateIndexPropsBuilder::class)->build($request, (string) $user->tenantId);
+    $serializedTemplate = $props['templates']->items()[0]->toArray();
 
     expect($props)->toHaveKeys(['templates', 'instances', 'currentKind', 'flash', 'error'])
         ->and($props['currentKind'])->toBe(TemplateKind::MetaHsm->value)
         ->and($props['templates']->total())->toBe(1)
         ->and($props['templates']->items()[0]->id)->toBe($approvedTemplate->id)
+        ->and($serializedTemplate['media']['state'])->toBe('valid')
+        ->and($serializedTemplate['media']['preview_url'])->toContain('/media-preview')
+        ->and($serializedTemplate)->not->toHaveKeys(['header_media_id', 'header_media_preview'])
         ->and($approvedTemplate->tenant)->toBeInstanceOf(Tenant::class)
         ->and($approvedTemplate->tenant->is($user->tenants()->first()))->toBeTrue()
         ->and($props['instances']->first())->toMatchArray([

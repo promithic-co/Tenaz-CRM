@@ -14,6 +14,8 @@ interface WhatsAppProviderInterface
 
     public function sendMedia(string $phone, string $mediaContent, string $mimeType, string $mediaType, ?string $fileName = null, ?string $caption = null, ?string $opaqueId = null): string;
 
+    public function uploadMedia(string $contents, string $filename, string $mimeType): string;
+
     public function parseWebhook(Request $request): ?IncomingMessageDTO;
 
     public function verifyWebhook(Request $request): bool;

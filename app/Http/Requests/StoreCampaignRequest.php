@@ -9,6 +9,7 @@ use App\Models\WhatsappTemplate;
 use App\Services\CampaignTemplateCompatibility;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -89,6 +90,21 @@ class StoreCampaignRequest extends FormRequest
 
             if (app(CampaignTemplateCompatibility::class)->violations($campaign, $instance, $template) !== []) {
                 $validator->errors()->add('whatsapp_template_id', $this->incompatibleTemplateMessage());
+
+                return;
+            }
+
+            if (
+                $template->headerDescriptor()['requires_configured_image']
+                && ! $validator->errors()->has('scheduled_at')
+                && $this->filled('scheduled_at')
+                && $template->header_media_expires_at !== null
+                && Carbon::parse((string) $this->input('scheduled_at'))->greaterThanOrEqualTo($template->header_media_expires_at)
+            ) {
+                $validator->errors()->add(
+                    'scheduled_at',
+                    'A imagem do template expira antes deste agendamento. Faça um novo upload em Templates WhatsApp.',
+                );
             }
         }];
     }

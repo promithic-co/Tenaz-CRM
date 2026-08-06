@@ -58,7 +58,7 @@ test('create props preserve campaign creation page contract', function () {
         ->and($props['templates']->pluck('name'))->not->toContain('Template rejeitado');
 });
 
-test('create props defer filters_json and template bodies out of the initial payload (FE-02)', function () {
+test('create props defer filters_json and template previews out of the initial payload (FE-02)', function () {
     $user = User::factory()->create();
     $instance = WhatsappInstance::factory()->create([
         'tenant_id' => $user->tenantId,
@@ -90,13 +90,13 @@ test('create props defer filters_json and template bodies out of the initial pay
 
     // They are deferred and only materialise when the frontend resolves them.
     expect($props['contactListFilters'])->toBeInstanceOf(DeferProp::class)
-        ->and($props['templateBodies'])->toBeInstanceOf(DeferProp::class);
+        ->and($props['templatePreviews'])->toBeInstanceOf(DeferProp::class);
 
     $resolvedFilters = ($props['contactListFilters'])();
-    $resolvedBodies = ($props['templateBodies'])();
+    $resolvedPreviews = ($props['templatePreviews'])();
 
     expect($resolvedFilters[$dynamicList->id])->toBe($filters)
-        ->and($resolvedBodies[$template->id])->toBe('Olá {{1}}, tudo bem?');
+        ->and($resolvedPreviews[$template->id])->toBe(['text' => 'Olá {{1}}, tudo bem?']);
 });
 
 test('create props expose only complete templates owned by their instance WABA', function () {
@@ -139,7 +139,7 @@ test('create props expose only complete templates owned by their instance WABA',
 
     $props = app(CampaignPagePropsBuilder::class)->create(Request::create('/campanhas/create', 'GET'));
     $templateIds = $props['templates']->pluck('id');
-    $bodyIds = collect(($props['templateBodies'])())->keys();
+    $bodyIds = collect(($props['templatePreviews'])())->keys();
 
     expect($templateIds)->toContain($validTemplate->id)
         ->and($templateIds)->not->toContain($invalidTemplate->id, $unboundTemplate->id, $incompleteTemplate->id)

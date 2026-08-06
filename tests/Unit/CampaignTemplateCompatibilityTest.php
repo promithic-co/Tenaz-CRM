@@ -104,6 +104,27 @@ it('returns one stable violation for each incompatible configuration', function 
         static fn (Campaign $campaign, WhatsappInstance $instance, WhatsappTemplate $template) => $template->meta_waba_id = 'waba-02',
         'TEMPLATE_WABA_MISMATCH',
     ],
+    'image header is missing media' => [
+        static fn (Campaign $campaign, WhatsappInstance $instance, WhatsappTemplate $template) => $template->components_json = [
+            ['type' => 'HEADER', 'format' => 'IMAGE'],
+            ['type' => 'BODY', 'text' => 'Olá'],
+        ],
+        'TEMPLATE_IMAGE_MISSING',
+    ],
+    'image header media is expired' => [
+        static function (Campaign $campaign, WhatsappInstance $instance, WhatsappTemplate $template): void {
+            $template->components_json = [['type' => 'HEADER', 'format' => 'IMAGE']];
+            $template->header_media_id = 'media-1';
+            $template->header_media_expires_at = now()->subMinute();
+        },
+        'TEMPLATE_MEDIA_EXPIRED',
+    ],
+    'video header is unsupported' => [
+        static fn (Campaign $campaign, WhatsappInstance $instance, WhatsappTemplate $template) => $template->components_json = [
+            ['type' => 'HEADER', 'format' => 'VIDEO'],
+        ],
+        'TEMPLATE_HEADER_UNSUPPORTED',
+    ],
 ]);
 
 it('returns violations in deterministic precedence without duplicate codes', function () use ($compatibleModels) {

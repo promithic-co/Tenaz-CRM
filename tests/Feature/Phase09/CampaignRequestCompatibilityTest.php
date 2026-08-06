@@ -71,6 +71,30 @@ test('store accepts a complete template owned by the submitted instance and WABA
     $response->assertRedirect(route('campanhas.show', $campaign));
 });
 
+test('store rejects an image template without valid media and scheduling beyond its expiry', function () {
+    $user = userWithTenant();
+    $instance = phase09CampaignInstance($user, 'waba-image-request');
+    $contactList = ContactList::factory()->create(['tenant_id' => $user->tenantId]);
+    $template = phase09CampaignTemplate($user, $instance, [
+        'components_json' => [['type' => 'HEADER', 'format' => 'IMAGE']],
+    ]);
+
+    $this->actingAs($user)
+        ->post('/campanhas', phase09StorePayload($instance, $contactList, $template))
+        ->assertInvalid(['whatsapp_template_id']);
+
+    $template->update([
+        'header_media_id' => 'media-request-1',
+        'header_media_expires_at' => now()->addDay(),
+    ]);
+    $payload = phase09StorePayload($instance, $contactList, $template);
+    $payload['scheduled_at'] = now()->addDays(2)->toDateTimeString();
+
+    $this->actingAs($user)
+        ->post('/campanhas', $payload)
+        ->assertInvalid(['scheduled_at']);
+});
+
 test('store rejects templates with invalid campaign send identity', function (string $violation) {
     $user = userWithTenant();
     $instance = phase09CampaignInstance($user, 'waba-primary');

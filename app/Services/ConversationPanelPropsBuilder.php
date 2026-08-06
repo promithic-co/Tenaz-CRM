@@ -37,6 +37,7 @@ class ConversationPanelPropsBuilder
         private readonly CustomFieldService $customFields,
         private readonly ConversationHistoryBuilder $history,
         private readonly ConversationSessionInformationService $sessionInformation,
+        private readonly WhatsappTemplateMediaPresenter $templateMedia,
     ) {}
 
     /**
@@ -204,20 +205,16 @@ class ConversationPanelPropsBuilder
             ->get();
 
         return $templates
-            ->map(function (WhatsappTemplate $template) use ($lead): ?array {
+            ->map(function (WhatsappTemplate $template) use ($lead): array {
                 $components = is_array($template->components_json) ? $template->components_json : [];
                 $description = $this->templateRenderer->describe($components);
-
-                if (! $description['supported']) {
-                    return null;
-                }
-
                 $resolution = $this->templateParameters->resolve($lead, $components);
+                $media = $this->templateMedia->present($template);
 
                 try {
                     $preview = $this->templateRenderer->preview($components, $resolution['parameters'])['text'];
                 } catch (\Throwable) {
-                    $preview = '';
+                    $preview = (string) $template->body;
                 }
 
                 return [
@@ -227,10 +224,14 @@ class ConversationPanelPropsBuilder
                     'category' => $template->category,
                     'fields' => $this->annotateResolvedFields($description['fields'], $resolution['parameters']),
                     'preview' => $preview,
+                    'media' => $media,
+                    'sendable' => $description['supported'] && $media['sendable'],
+                    'unavailable_reason' => $description['supported']
+                        ? $media['unavailable_reason']
+                        : $description['unsupported_reason'],
                     'last_synced_at' => $template->last_synced_at?->toIso8601String(),
                 ];
             })
-            ->filter()
             ->values()
             ->all();
     }

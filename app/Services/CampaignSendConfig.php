@@ -34,6 +34,9 @@ final readonly class CampaignSendConfig
         public ?string $templateLanguage,
         public ?string $templateWabaId,
         public ?array $templateComponents,
+        public ?string $templateHeaderFormat,
+        public ?string $templateHeaderMediaId,
+        public ?int $templateHeaderMediaExpiresAt,
     ) {}
 
     public static function fromModels(
@@ -78,6 +81,9 @@ final readonly class CampaignSendConfig
             templateComponents: is_array($template->components_json)
                 ? $template->components_json
                 : null,
+            templateHeaderFormat: $template->headerDescriptor()['format'],
+            templateHeaderMediaId: self::nullableString($template->header_media_id),
+            templateHeaderMediaExpiresAt: $template->header_media_expires_at?->getTimestamp(),
         );
     }
 

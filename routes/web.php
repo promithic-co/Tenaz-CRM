@@ -34,6 +34,7 @@ use App\Http\Controllers\VoiceInstanceController;
 use App\Http\Controllers\VoicePreviewController;
 use App\Http\Controllers\WhatsAppInstanceController;
 use App\Http\Controllers\WhatsappTemplateController;
+use App\Http\Controllers\WhatsappTemplateMediaPreviewController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/__version', VersionController::class)->name('meta.version');
@@ -229,6 +230,9 @@ Route::middleware(['auth', 'verified', 'onboarded'])->group(function () {
      */
 
     // Admin-only: campaigns, templates, contact lists
+    Route::get('templates/{template}/media-preview', WhatsappTemplateMediaPreviewController::class)
+        ->name('templates.media-preview');
+
     Route::middleware('role:owner,administrator')->group(function () {
         Route::resource('templates', WhatsappTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::post('templates/sync-meta', [WhatsappTemplateController::class, 'syncMeta'])->name('templates.sync-meta');

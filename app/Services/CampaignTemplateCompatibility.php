@@ -32,6 +32,12 @@ final class CampaignTemplateCompatibility
 
     public const string TEMPLATE_WABA_MISMATCH = 'TEMPLATE_WABA_MISMATCH';
 
+    public const string TEMPLATE_HEADER_UNSUPPORTED = 'TEMPLATE_HEADER_UNSUPPORTED';
+
+    public const string TEMPLATE_IMAGE_MISSING = 'TEMPLATE_IMAGE_MISSING';
+
+    public const string TEMPLATE_MEDIA_EXPIRED = 'TEMPLATE_MEDIA_EXPIRED';
+
     /**
      * @return list<string>
      */
@@ -105,6 +111,21 @@ final class CampaignTemplateCompatibility
                 && ! $this->sameIdentifier($config->instanceWabaId, $config->templateWabaId)
             ) {
                 $violations[] = self::TEMPLATE_WABA_MISMATCH;
+            }
+        }
+
+        if (
+            $config->templateHeaderFormat !== null
+            && ! in_array($config->templateHeaderFormat, ['TEXT', 'IMAGE'], true)
+        ) {
+            $violations[] = self::TEMPLATE_HEADER_UNSUPPORTED;
+        }
+
+        if ($config->templateHeaderFormat === 'IMAGE') {
+            if (! $this->hasValue($config->templateHeaderMediaId) || $config->templateHeaderMediaExpiresAt === null) {
+                $violations[] = self::TEMPLATE_IMAGE_MISSING;
+            } elseif ($config->templateHeaderMediaExpiresAt <= now()->timestamp) {
+                $violations[] = self::TEMPLATE_MEDIA_EXPIRED;
             }
         }
 

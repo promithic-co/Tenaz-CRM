@@ -1,5 +1,6 @@
 import type { LeadCustomField } from '@/lib/custom-fields';
 import type { CollectedInformationItem, FollowupState } from '@/types/models';
+import type { WhatsappTemplateMedia } from '@/types/whatsapp-template';
 
 export type { FollowupState };
 export type { LeadCustomField };
@@ -194,6 +195,9 @@ export type WhatsappTemplateOption = {
     category: string | null;
     fields: WhatsappTemplateField[];
     preview: string;
+    media: WhatsappTemplateMedia;
+    sendable: boolean;
+    unavailable_reason: string | null;
     last_synced_at: string | null;
 };
 

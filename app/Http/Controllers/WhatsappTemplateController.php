@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\MetaApiException;
+use App\Exceptions\MetaRetryableException;
 use App\Http\Requests\StoreWhatsappTemplateRequest;
 use App\Http\Requests\UpdateWhatsappTemplateRequest;
 use App\Jobs\SyncMetaTemplatesJob;
 use App\Models\Campaign;
 use App\Models\WhatsappInstance;
 use App\Models\WhatsappTemplate;
+use App\Services\WhatsApp\MetaTemplateMediaService;
 use App\Services\WhatsApp\MetaTemplateService;
 use App\Services\WhatsappTemplateIndexPropsBuilder;
 use Illuminate\Http\Client\RequestException;
@@ -21,6 +24,7 @@ class WhatsappTemplateController extends Controller
 {
     public function __construct(
         private readonly MetaTemplateService $metaTemplateService,
+        private readonly MetaTemplateMediaService $templateMedia,
         private readonly WhatsappTemplateIndexPropsBuilder $indexProps,
     ) {}
 
@@ -74,6 +78,20 @@ class WhatsappTemplateController extends Controller
 
     public function update(UpdateWhatsappTemplateRequest $request, WhatsappTemplate $template): RedirectResponse
     {
+        if ($request->hasFile('header_image')) {
+            try {
+                $this->templateMedia->uploadImage(
+                    $template,
+                    $request->file('header_image'),
+                    $request->file('header_image_preview'),
+                );
+            } catch (MetaApiException|MetaRetryableException) {
+                return back()->withErrors([
+                    'header_image' => 'A Meta não aceitou a imagem. Verifique a conexão da instância e tente novamente.',
+                ])->withInput();
+            }
+        }
+
         $template->update([
             'name' => $request->validated('name') ?? $template->name,
         ]);

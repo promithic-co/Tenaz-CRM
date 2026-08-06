@@ -81,6 +81,35 @@ class MetaCloudProvider implements WhatsAppProviderInterface
         ], $opaqueId);
     }
 
+    public function uploadMedia(string $contents, string $filename, string $mimeType): string
+    {
+        $url = "https://graph.facebook.com/{$this->graphApiVersion}/{$this->phoneNumberId}/media";
+
+        try {
+            $response = Http::withToken($this->accessToken)
+                ->timeout(45)
+                ->attach('file', $contents, $filename, ['Content-Type' => $mimeType])
+                ->post($url, [
+                    'messaging_product' => 'whatsapp',
+                    'type' => $mimeType,
+                ]);
+        } catch (ConnectionException $exception) {
+            throw new MetaRetryableException($exception->getMessage());
+        }
+
+        if (! $response->successful()) {
+            $this->handleErrorResponse($response);
+        }
+
+        $mediaId = (string) $response->json('id', '');
+
+        if ($mediaId === '') {
+            throw new MetaApiException('Meta returned no media id after the upload.');
+        }
+
+        return $mediaId;
+    }
+
     public function parseWebhook(Request $request): ?IncomingMessageDTO
     {
         $messages = $request->input('entry.0.changes.0.value.messages', []);

@@ -16,7 +16,7 @@ use InvalidArgumentException;
  *   - render(): strict immutable snapshot of the exact text a customer receives.
  *   - payload(): the Cloud API `components` array for the send call.
  *
- * Parameters are shaped as `['header' => ['1' => '…', 'media' => '…'], 'body' => ['1' => '…'],
+ * Parameters are shaped as `['header' => ['1' => '…', 'media_id' => '…'], 'body' => ['1' => '…'],
  * 'buttons' => ['0' => '…']]`.
  */
 class WhatsappTemplateRenderer
@@ -195,26 +195,11 @@ class WhatsappTemplateRenderer
             return;
         }
 
-        if (in_array($format, ['IMAGE', 'VIDEO', 'DOCUMENT'], true)) {
-            $labels = [
-                'IMAGE' => 'Imagem do cabeçalho',
-                'VIDEO' => 'Vídeo do cabeçalho',
-                'DOCUMENT' => 'Documento do cabeçalho',
-            ];
-
-            $fields[] = [
-                'path' => 'header.media',
-                'component' => 'header',
-                'type' => strtolower($format),
-                'label' => $labels[$format],
-                'example' => $this->firstString($component['example']['header_handle'] ?? null),
-                'required' => true,
-            ];
-
+        if ($format === 'IMAGE') {
             return;
         }
 
-        $unsupported[] = "HEADER {$format} não é suportado para envio.";
+        $unsupported[] = "Cabeçalho {$format} ainda não é suportado pelo Tenaz.";
     }
 
     /**
@@ -328,17 +313,7 @@ class WhatsappTemplateRenderer
                         'text' => $this->renderText((string) ($component['text'] ?? ''), $component, 'header', $parameters, $useExamples),
                     ];
                 } else {
-                    $mediaUrl = $this->value($parameters, 'header', 'media');
-
-                    if ($mediaUrl === null && $useExamples) {
-                        $mediaUrl = $this->firstString($component['example']['header_handle'] ?? null);
-                    }
-
-                    if ($mediaUrl === null) {
-                        throw new InvalidArgumentException('Parâmetro obrigatório ausente: header.media.');
-                    }
-
-                    $header = ['format' => $format, 'media_url' => $mediaUrl];
+                    $header = ['format' => $format];
                 }
 
                 continue;
@@ -444,18 +419,17 @@ class WhatsappTemplateRenderer
             ];
         }
 
-        $type = strtolower($format);
-        $url = $this->requiredValue($parameters, 'header', 'media');
-
-        if (! filter_var($url, FILTER_VALIDATE_URL) || ! in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)) {
-            throw new InvalidArgumentException('O parâmetro header.media deve ser uma URL HTTP válida.');
+        if ($format !== 'IMAGE') {
+            throw new InvalidArgumentException("Cabeçalho {$format} ainda não é suportado pelo Tenaz.");
         }
+
+        $mediaId = $this->requiredValue($parameters, 'header', 'media_id');
 
         return [
             'type' => 'header',
             'parameters' => [[
-                'type' => $type,
-                $type => ['link' => $url],
+                'type' => 'image',
+                'image' => ['id' => $mediaId],
             ]],
         ];
     }

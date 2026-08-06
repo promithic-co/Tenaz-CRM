@@ -14,6 +14,7 @@ use App\Services\WhatsApp\WhatsappTemplateRenderer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Throwable;
 
@@ -22,6 +23,7 @@ class CampaignPagePropsBuilder
     public function __construct(
         private readonly WhatsappTemplateRenderer $renderer,
         private readonly MetaHealthReasonTranslator $reasons,
+        private readonly WhatsappTemplateMediaPresenter $templateMedia,
     ) {}
 
     /**
@@ -36,7 +38,7 @@ class CampaignPagePropsBuilder
      *     templates: mixed,
      *     instances: mixed,
      *     contactListFilters: mixed,
-     *     templateBodies: mixed,
+     *     templatePreviews: mixed,
      *     defaults: array{contact_list_id: int|null, whatsapp_instance_id: int|null}
      * }
      */
@@ -45,15 +47,12 @@ class CampaignPagePropsBuilder
         return [
             'contactLists' => ContactList::query()
                 ->get(['id', 'name', 'is_dynamic', 'entries_count', 'last_resolved_count', 'last_resolved_at']),
-            'templates' => $this->selectableTemplates()
-                ->get(['id', 'name', 'kind', 'element_name', 'variables_count', 'whatsapp_instance_id']),
+            'templates' => $this->templateOptions(),
             'instances' => WhatsappInstance::query()->get(['id', 'name', 'display_name', 'provider']),
             'contactListFilters' => Inertia::defer(fn () => ContactList::query()
                 ->whereNotNull('filters_json')
                 ->pluck('filters_json', 'id')),
-            'templateBodies' => Inertia::defer(fn () => $this->selectableTemplates()
-                ->whereNotNull('body')
-                ->pluck('body', 'id')),
+            'templatePreviews' => Inertia::defer(fn (): array => $this->templatePreviews()),
             'defaults' => [
                 'contact_list_id' => $request->integer('contact_list_id') ?: null,
                 'whatsapp_instance_id' => $request->integer('whatsapp_instance_id') ?: null,
@@ -251,5 +250,67 @@ class CampaignPagePropsBuilder
             ->whereHas('whatsappInstance', fn (Builder $query): Builder => $query
                 ->whereRaw("TRIM(meta_waba_id) <> ''")
                 ->whereColumn('whatsapp_instances.meta_waba_id', 'whatsapp_templates.meta_waba_id'));
+    }
+
+    /** @return Collection<int, WhatsappTemplate> */
+    private function templateOptions(): Collection
+    {
+        return $this->selectableTemplates()
+            ->get([
+                'id',
+                'name',
+                'kind',
+                'element_name',
+                'variables_count',
+                'whatsapp_instance_id',
+                'components_json',
+                'header_media_filename',
+                'header_media_size_bytes',
+                'header_media_uploaded_at',
+                'header_media_expires_at',
+                'header_media_preview',
+                'header_media_preview_mime_type',
+                'header_media_id',
+            ])
+            ->map(function (WhatsappTemplate $template): WhatsappTemplate {
+                $media = $this->templateMedia->present($template);
+                $template->setRawAttributes([
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'kind' => $template->kind->value,
+                    'element_name' => $template->element_name,
+                    'variables_count' => $template->variables_count,
+                    'whatsapp_instance_id' => $template->whatsapp_instance_id,
+                ], true);
+                $template->setAttribute('media', $media);
+                $template->setAttribute('sendable', $media['sendable']);
+                $template->setAttribute('unavailable_reason', $media['unavailable_reason']);
+
+                return $template;
+            })
+            ->values();
+    }
+
+    /** @return array<int, array{text: string}> */
+    private function templatePreviews(): array
+    {
+        return $this->selectableTemplates()
+            ->get(['id', 'body', 'components_json'])
+            ->mapWithKeys(function (WhatsappTemplate $template): array {
+                try {
+                    $text = $this->renderer->preview(
+                        is_array($template->components_json) ? $template->components_json : [],
+                    )['text'];
+
+                    if (trim($text) === '') {
+                        $text = (string) $template->body;
+                    }
+                } catch (Throwable) {
+                    $text = (string) $template->body;
+                }
+
+                return [(int) $template->id => ['text' => $text]];
+            })
+            ->all();
     }
 }

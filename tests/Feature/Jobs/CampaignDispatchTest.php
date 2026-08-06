@@ -652,6 +652,63 @@ test('SendCampaignMessageJob builds Meta header body and button components from 
     expect($message->fresh()->provider_message_id)->toBe('wamid.schema');
 });
 
+test('SendCampaignMessageJob injects the configured image media id into the Meta header', function () {
+    $campaign = Campaign::factory()->sending()->create(['template_params_mapping' => []]);
+    $instance = WhatsappInstance::factory()->metaCloud()->create([
+        'user_id' => $campaign->tenant_id,
+        'tenant_id' => (string) $campaign->tenant_id,
+        'meta_waba_id' => 'waba-image-campaign',
+    ]);
+    $template = WhatsappTemplate::factory()->create([
+        'tenant_id' => $campaign->tenant_id,
+        'whatsapp_instance_id' => $instance->id,
+        'status' => 'APPROVED',
+        'meta_template_name' => 'image_campaign',
+        'meta_waba_id' => $instance->meta_waba_id,
+        'components_json' => [
+            ['type' => 'HEADER', 'format' => 'IMAGE'],
+            ['type' => 'BODY', 'text' => 'Oferta disponível'],
+        ],
+        'header_media_id' => 'media-campaign-123',
+        'header_media_expires_at' => now()->addDays(10),
+    ]);
+    $campaign->update([
+        'whatsapp_instance_id' => $instance->id,
+        'whatsapp_template_id' => $template->id,
+    ]);
+    $entry = ContactListEntry::factory()->create([
+        'contact_list_id' => $campaign->contact_list_id,
+        'phone' => '5511999990098',
+    ]);
+    $message = CampaignMessage::factory()->create([
+        'campaign_id' => $campaign->id,
+        'contact_list_entry_id' => $entry->id,
+        'status' => 'pending',
+    ]);
+
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldReceive('sendTemplate')
+        ->once()
+        ->withArgs(fn (string $phone, string $name, string $language, array $components): bool => $components === [[
+            'type' => 'header',
+            'parameters' => [[
+                'type' => 'image',
+                'image' => ['id' => 'media-campaign-123'],
+            ]],
+        ]])
+        ->andReturn('wamid.image');
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+
+    (new SendCampaignMessageJob($message))->handle(
+        app(CampaignService::class),
+        $factoryMock,
+        app(BroadcastDebouncer::class),
+    );
+
+    expect($message->fresh()->provider_message_id)->toBe('wamid.image');
+});
+
 test('SendCampaignMessageJob resolves the campaign instance + template once across the fan-out (SCALE-4)', function () {
     Cache::flush();
     // Suppress the async dashboard-metrics recompute so its snapshot aggregates don't pollute the log.

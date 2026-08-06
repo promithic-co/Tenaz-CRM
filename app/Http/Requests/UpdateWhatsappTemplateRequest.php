@@ -18,6 +18,8 @@ class UpdateWhatsappTemplateRequest extends FormRequest
     {
         return [
             'name' => ['nullable', 'string', 'max:255'],
+            'header_image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png', 'mimetypes:image/jpeg,image/png', 'max:5120'],
+            'header_image_preview' => ['required_with:header_image', 'file', 'image', 'mimes:jpg,jpeg', 'mimetypes:image/jpeg', 'max:300'],
             'whatsapp_instance_id' => ['prohibited'],
             'body' => ['prohibited'],
             'category' => ['prohibited'],
@@ -32,6 +34,17 @@ class UpdateWhatsappTemplateRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'header_image.file' => 'Envie um arquivo de imagem válido.',
+            'header_image.image' => 'Envie um arquivo de imagem válido.',
+            'header_image.mimes' => 'A imagem deve estar no formato JPEG ou PNG.',
+            'header_image.mimetypes' => 'A imagem deve estar no formato JPEG ou PNG.',
+            'header_image.max' => 'A imagem deve ter no máximo 5 MB.',
+            'header_image_preview.required_with' => 'Não foi possível gerar a pré-visualização da imagem.',
+            'header_image_preview.file' => 'A pré-visualização gerada não é válida.',
+            'header_image_preview.image' => 'A pré-visualização gerada não é válida.',
+            'header_image_preview.mimes' => 'A pré-visualização gerada não é válida.',
+            'header_image_preview.mimetypes' => 'A pré-visualização gerada não é válida.',
+            'header_image_preview.max' => 'A pré-visualização gerada é muito grande.',
             'whatsapp_instance_id.prohibited' => 'A instância do template é definida na criação e não pode ser alterada.',
             'body.prohibited' => 'O corpo sincronizado da Meta nao pode ser alterado neste fluxo.',
             'category.prohibited' => 'A categoria sincronizada da Meta nao pode ser alterada neste fluxo.',

@@ -95,7 +95,7 @@ it('never uses the Meta example as a value, leaving the field for the operator',
         ->and($resolved['unresolved'])->toBe(['body.2']);
 });
 
-it('leaves media headers to the operator', function () {
+it('does not expose configured image headers to the operator', function () {
     $lead = leadFor();
 
     $resolved = resolver()->resolve($lead, [
@@ -103,7 +103,7 @@ it('leaves media headers to the operator', function () {
         ['type' => 'BODY', 'text' => 'Olá {{1}}.', 'example' => ['body_text' => [['Maria']]]],
     ]);
 
-    expect($resolved['unresolved'])->toBe(['header.media'])
+    expect($resolved['unresolved'])->toBe([])
         ->and($resolved['parameters']['body']['1'])->not->toBeEmpty();
 });
 

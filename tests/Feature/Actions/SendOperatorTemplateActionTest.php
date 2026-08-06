@@ -169,3 +169,42 @@ it('sends a template even when the 24h window is closed', function () {
     expect($result)->not->toBeNull()
         ->and(ConversationTimelineMessage::where('lead_id', $lead->id)->where('source', 'manual_template')->count())->toBe(1);
 });
+
+it('injects the configured media id for an image header without exposing it as an operator parameter', function () {
+    [$lead, $template, $user] = templateScenario([
+        'components_json' => [
+            ['type' => 'HEADER', 'format' => 'IMAGE'],
+            ...templateBody(),
+        ],
+        'header_media_id' => 'media-image-456',
+        'header_media_expires_at' => now()->addDays(20),
+    ]);
+
+    templateAction()->send($lead, $template->id, ['body' => ['1' => 'João', '2' => '#42']], $user, false);
+
+    $outbox = WhatsappOutboxMessage::where('lead_id', $lead->id)->firstOrFail();
+    $header = collect($outbox->payload_json['components'])->firstWhere('type', 'header');
+    $timeline = ConversationTimelineMessage::where('lead_id', $lead->id)->firstOrFail();
+
+    expect($header['parameters'][0])->toBe([
+        'type' => 'image',
+        'image' => ['id' => 'media-image-456'],
+    ])->and($timeline->metadata['whatsapp_template']['parameters'])->not->toHaveKey('header');
+});
+
+it('rejects an expired image header before creating timeline or outbox side effects', function () {
+    [$lead, $template, $user] = templateScenario([
+        'components_json' => [['type' => 'HEADER', 'format' => 'IMAGE'], ...templateBody()],
+        'header_media_id' => 'expired-media',
+        'header_media_expires_at' => now()->subMinute(),
+    ]);
+
+    try {
+        templateAction()->send($lead, $template->id, ['body' => ['1' => 'João', '2' => '#42']], $user, false);
+        expect()->fail('Expected ValidationException');
+    } catch (ValidationException $exception) {
+        expect($exception->errors()['template_id'][0])->toContain('expirou')
+            ->and(ConversationTimelineMessage::where('lead_id', $lead->id)->count())->toBe(0)
+            ->and(WhatsappOutboxMessage::where('lead_id', $lead->id)->count())->toBe(0);
+    }
+});

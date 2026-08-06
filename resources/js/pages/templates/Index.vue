@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { Head, Link, useForm, usePoll } from '@inertiajs/vue3';
 import {
+    AlertTriangle,
+    CalendarClock,
     CheckCircle2,
     ChevronDown,
     ChevronRight,
     FileText,
+    ImageIcon,
     RefreshCw,
+    UploadCloud,
 } from 'lucide-vue-next';
 import { ref, computed, watch } from 'vue';
 import WhatsappTemplateController from '@/actions/App/Http/Controllers/WhatsappTemplateController';
@@ -17,8 +21,13 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
+import WhatsappTemplatePreview from '@/components/whatsapp/WhatsappTemplatePreview.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { createTemplateImagePreview } from '@/lib/template-image-preview';
+import { index as campanhasIndex } from '@/routes/campanhas';
+import { index as templatesIndex } from '@/routes/templates';
 import type { BreadcrumbItem } from '@/types';
+import type { WhatsappTemplateMedia } from '@/types/whatsapp-template';
 
 type WhatsappInstance = {
     id: number;
@@ -60,6 +69,7 @@ type WhatsappTemplate = {
     last_synced_at: string | null;
     created_at: string;
     whatsapp_instance: WhatsappInstance | null;
+    media: WhatsappTemplateMedia;
 };
 
 type Props = {
@@ -77,8 +87,8 @@ type Props = {
 const props = defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Disparos', href: '/campanhas' },
-    { title: 'Templates WhatsApp', href: '/templates' },
+    { title: 'Disparos', href: campanhasIndex().url },
+    { title: 'Templates WhatsApp', href: templatesIndex().url },
 ];
 
 // ─── Register dialog ──────────────────────────────────────────────────────────
@@ -174,27 +184,99 @@ const editingTemplate = ref<WhatsappTemplate | null>(null);
 
 const editForm = useForm({
     name: '',
+    header_image: null as File | null,
+    header_image_preview: null as File | null,
 });
+const localImagePreviewUrl = ref<string | null>(null);
+const generatingImagePreview = ref(false);
+let imagePreviewGeneration = 0;
 
 function openEdit(template: WhatsappTemplate): void {
+    clearLocalImagePreview();
+    editForm.reset();
+    editForm.clearErrors();
     editingTemplate.value = template;
     editForm.name = template.name;
     editOpen.value = true;
 }
 
-function submitEdit(): void {
-    if (!editingTemplate.value) {
+async function selectHeaderImage(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+
+    clearLocalImagePreview();
+    editForm.header_image = null;
+    editForm.header_image_preview = null;
+    editForm.clearErrors('header_image', 'header_image_preview');
+
+    if (!file) {
         return;
     }
-    editForm.put(
-        WhatsappTemplateController.update(editingTemplate.value.id).url,
-        {
+
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+        editForm.setError('header_image', 'Envie uma imagem JPEG ou PNG.');
+        input.value = '';
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        editForm.setError('header_image', 'A imagem deve ter no máximo 5 MB.');
+        input.value = '';
+        return;
+    }
+
+    const generation = ++imagePreviewGeneration;
+    generatingImagePreview.value = true;
+
+    try {
+        const preview = await createTemplateImagePreview(file);
+
+        if (generation !== imagePreviewGeneration || !editOpen.value) {
+            return;
+        }
+
+        editForm.header_image = file;
+        editForm.header_image_preview = preview;
+        localImagePreviewUrl.value = URL.createObjectURL(preview);
+    } catch {
+        if (generation !== imagePreviewGeneration || !editOpen.value) {
+            return;
+        }
+
+        editForm.setError(
+            'header_image',
+            'Não foi possível preparar esta imagem. Tente outro arquivo.',
+        );
+        input.value = '';
+    } finally {
+        if (generation === imagePreviewGeneration) {
+            generatingImagePreview.value = false;
+        }
+    }
+}
+
+function clearLocalImagePreview(): void {
+    if (localImagePreviewUrl.value) {
+        URL.revokeObjectURL(localImagePreviewUrl.value);
+        localImagePreviewUrl.value = null;
+    }
+}
+
+function submitEdit(): void {
+    if (!editingTemplate.value || generatingImagePreview.value) {
+        return;
+    }
+    editForm
+        .transform((data) => ({ ...data, _method: 'put' }))
+        .post(WhatsappTemplateController.update(editingTemplate.value.id).url, {
+            forceFormData: true,
             onSuccess: () => {
+                clearLocalImagePreview();
                 editOpen.value = false;
                 editingTemplate.value = null;
+                editForm.reset();
             },
-        },
-    );
+        });
 }
 
 // ─── Sync Meta Templates ─────────────────────────────────────────────────────
@@ -205,11 +287,22 @@ function submitSync(): void {
     if (!syncForm.whatsapp_instance_id) {
         return;
     }
-    syncForm.post('/templates/sync-meta', {
+    syncForm.post(WhatsappTemplateController.syncMeta().url, {
         onSuccess: () => {
             syncForm.reset();
         },
     });
+}
+
+function formatMediaDate(value: string | null): string {
+    if (!value) {
+        return '—';
+    }
+
+    return new Intl.DateTimeFormat('pt-BR', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+    }).format(new Date(value));
 }
 
 // ─── Delete ───────────────────────────────────────────────────────────────────
@@ -338,6 +431,17 @@ watch(bodyVariableCount, (count) => {
 watch(registerOpen, (open) => {
     if (!open) {
         resetRegisterForm();
+    }
+});
+
+watch(editOpen, (open) => {
+    if (!open) {
+        imagePreviewGeneration += 1;
+        generatingImagePreview.value = false;
+        clearLocalImagePreview();
+        editingTemplate.value = null;
+        editForm.reset();
+        editForm.clearErrors();
     }
 });
 
@@ -796,7 +900,7 @@ watch(
 
     <!-- Register Template Dialog -->
     <Dialog v-model:open="registerOpen">
-        <DialogContent class="max-h-[90svh] overflow-y-auto sm:max-w-lg">
+        <DialogContent class="max-h-[90svh] overflow-y-auto sm:max-w-xl">
             <DialogHeader>
                 <DialogTitle>Criar Template Meta</DialogTitle>
             </DialogHeader>
@@ -1333,6 +1437,141 @@ watch(
                     </p>
                 </div>
 
+                <section
+                    v-if="editingTemplate?.media.requires_image"
+                    class="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-foreground">
+                                Imagem do cabeçalho
+                            </h3>
+                            <p class="mt-0.5 text-xs text-muted-foreground">
+                                Esta imagem será usada em todos os envios deste
+                                template pelo Tenaz.
+                            </p>
+                        </div>
+                        <span
+                            class="shrink-0 rounded-full px-2 py-1 text-[0.65rem] font-semibold"
+                            :class="
+                                editingTemplate.media.state === 'valid'
+                                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                    : editingTemplate.media.state === 'expired'
+                                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                                      : 'bg-muted text-muted-foreground'
+                            "
+                        >
+                            {{
+                                editingTemplate.media.state === 'valid'
+                                    ? 'Pronta para envio'
+                                    : editingTemplate.media.state === 'expired'
+                                      ? 'Upload necessário'
+                                      : 'Não configurada'
+                            }}
+                        </span>
+                    </div>
+
+                    <WhatsappTemplatePreview
+                        :text="editingTemplate.body ?? ''"
+                        :media="editingTemplate.media"
+                        :image-url="localImagePreviewUrl"
+                        :image-alt="`Imagem do template ${editingTemplate.name}`"
+                    />
+
+                    <div
+                        v-if="editingTemplate.media.state === 'expired'"
+                        class="flex gap-2 rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200"
+                    >
+                        <AlertTriangle class="mt-0.5 h-4 w-4 shrink-0" />
+                        <p>
+                            O media ID venceu. Faça um novo upload para liberar
+                            o template novamente.
+                        </p>
+                    </div>
+
+                    <dl
+                        v-if="editingTemplate.media.filename"
+                        class="grid grid-cols-1 gap-2 rounded-lg bg-background p-3 text-xs sm:grid-cols-2"
+                    >
+                        <div class="flex items-center gap-2">
+                            <ImageIcon class="h-4 w-4 text-muted-foreground" />
+                            <div class="min-w-0">
+                                <dt class="text-muted-foreground">Arquivo</dt>
+                                <dd
+                                    class="truncate font-medium text-foreground"
+                                >
+                                    {{ editingTemplate.media.filename }}
+                                </dd>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <CalendarClock
+                                class="h-4 w-4 text-muted-foreground"
+                            />
+                            <div>
+                                <dt class="text-muted-foreground">
+                                    Válida até
+                                </dt>
+                                <dd class="font-medium text-foreground">
+                                    {{
+                                        formatMediaDate(
+                                            editingTemplate.media.expires_at,
+                                        )
+                                    }}
+                                </dd>
+                            </div>
+                        </div>
+                    </dl>
+
+                    <label
+                        class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-primary/45 bg-primary/5 px-4 py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                        :class="{
+                            'pointer-events-none opacity-60':
+                                generatingImagePreview || editForm.processing,
+                        }"
+                    >
+                        <UploadCloud class="h-4 w-4" />
+                        {{
+                            generatingImagePreview
+                                ? 'Preparando imagem...'
+                                : editingTemplate.media.state === 'missing'
+                                  ? 'Selecionar imagem'
+                                  : 'Substituir imagem'
+                        }}
+                        <input
+                            type="file"
+                            accept="image/jpeg,image/png"
+                            class="sr-only"
+                            :disabled="
+                                generatingImagePreview || editForm.processing
+                            "
+                            @change="selectHeaderImage"
+                        />
+                    </label>
+                    <p class="text-center text-[0.7rem] text-muted-foreground">
+                        JPEG ou PNG, até 5 MB. A validade será renovada por 30
+                        dias.
+                    </p>
+                    <p
+                        v-if="editForm.errors.header_image"
+                        class="text-xs text-red-500"
+                    >
+                        {{ editForm.errors.header_image }}
+                    </p>
+                </section>
+
+                <div
+                    v-else-if="editingTemplate?.media.state === 'unsupported'"
+                    class="flex gap-2 rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200"
+                >
+                    <AlertTriangle class="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>
+                        Cabeçalho {{ editingTemplate.media.format }} ainda não é
+                        suportado pelo Tenaz. Nesta versão, somente imagens
+                        podem ser configuradas.
+                    </p>
+                </div>
+
                 <!-- Status / Category / Language -->
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div>
@@ -1405,13 +1644,15 @@ watch(
                     </button>
                     <button
                         type="submit"
-                        :disabled="editForm.processing"
+                        :disabled="
+                            editForm.processing || generatingImagePreview
+                        "
                         class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                     >
                         {{
                             editForm.processing
                                 ? 'Salvando...'
-                                : 'Salvar nome interno'
+                                : 'Salvar template'
                         }}
                     </button>
                 </DialogFooter>

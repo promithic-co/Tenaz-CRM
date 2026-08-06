@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 
 class WhatsappTemplateIndexPropsBuilder
 {
+    public function __construct(private readonly WhatsappTemplateMediaPresenter $templateMedia) {}
+
     /**
      * @return array{
      *     templates: mixed,
@@ -26,6 +28,12 @@ class WhatsappTemplateIndexPropsBuilder
             ->when($request->query('status'), fn ($query, $status) => $query->where('status', $status))
             ->orderByDesc('created_at')
             ->paginate(20);
+
+        $templates->through(function (WhatsappTemplate $template): WhatsappTemplate {
+            $template->setAttribute('media', $this->templateMedia->present($template));
+
+            return $template;
+        });
 
         $instances = WhatsappInstance::where('tenant_id', $tenantId)
             ->get(['id', 'name', 'display_name', 'provider', 'meta_waba_id', 'meta_access_token'])

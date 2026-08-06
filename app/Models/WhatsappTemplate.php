@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\TemplateKind;
 use App\Models\Concerns\BelongsToTenant;
+use App\Services\WhatsApp\WhatsappTemplateHeaderInspector;
 use Database\Factories\WhatsappTemplateFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Cache;
 
 class WhatsappTemplate extends Model
 {
+    public const int HEADER_MEDIA_TTL_DAYS = 30;
+
     /** @use HasFactory<WhatsappTemplateFactory> */
     use BelongsToTenant, HasFactory, SoftDeletes;
 
@@ -47,6 +50,25 @@ class WhatsappTemplate extends Model
         'rejected_reason',
         'variables_count',
         'last_synced_at',
+        'header_media_id',
+        'header_media_mime_type',
+        'header_media_filename',
+        'header_media_size_bytes',
+        'header_media_uploaded_at',
+        'header_media_expires_at',
+        'header_media_preview',
+        'header_media_preview_mime_type',
+    ];
+
+    protected $hidden = [
+        'header_media_id',
+        'header_media_mime_type',
+        'header_media_filename',
+        'header_media_size_bytes',
+        'header_media_uploaded_at',
+        'header_media_expires_at',
+        'header_media_preview',
+        'header_media_preview_mime_type',
     ];
 
     protected function casts(): array
@@ -57,6 +79,9 @@ class WhatsappTemplate extends Model
             'components_json' => 'array',
             'last_synced_at' => 'datetime',
             'variables_count' => 'integer',
+            'header_media_size_bytes' => 'integer',
+            'header_media_uploaded_at' => 'datetime',
+            'header_media_expires_at' => 'datetime',
         ];
     }
 
@@ -88,6 +113,40 @@ class WhatsappTemplate extends Model
     public function isApproved(): bool
     {
         return $this->status === 'APPROVED';
+    }
+
+    /**
+     * @return array{has_header: bool, format: string|null, requires_configured_image: bool, supported_for_send: bool}
+     */
+    public function headerDescriptor(): array
+    {
+        return WhatsappTemplateHeaderInspector::inspect(
+            is_array($this->components_json) ? $this->components_json : [],
+        );
+    }
+
+    public function headerMediaState(): string
+    {
+        $descriptor = $this->headerDescriptor();
+
+        if (! $descriptor['supported_for_send']) {
+            return 'unsupported';
+        }
+
+        if (! $descriptor['requires_configured_image']) {
+            return 'not_applicable';
+        }
+
+        if (! filled($this->header_media_id) || $this->header_media_expires_at === null) {
+            return 'missing';
+        }
+
+        return $this->header_media_expires_at->isFuture() ? 'valid' : 'expired';
+    }
+
+    public function hasUsableHeaderImage(): bool
+    {
+        return $this->headerMediaState() === 'valid';
     }
 
     /**

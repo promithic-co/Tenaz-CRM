@@ -74,7 +74,13 @@ class SendOperatorTemplateAction
 
         try {
             $rendered = $this->renderer->render($components, $sections);
-            $providerComponents = $this->renderer->payload($components, $sections, (string) $template->id);
+            $payloadSections = $sections;
+
+            if ($template->headerDescriptor()['requires_configured_image']) {
+                $payloadSections['header']['media_id'] = (string) $template->header_media_id;
+            }
+
+            $providerComponents = $this->renderer->payload($components, $payloadSections, (string) $template->id);
         } catch (InvalidArgumentException $e) {
             throw ValidationException::withMessages(['template_parameters' => $e->getMessage()]);
         }
@@ -183,6 +189,14 @@ class SendOperatorTemplateAction
             throw ValidationException::withMessages([
                 'template_id' => (string) ($description['unsupported_reason'] ?? 'Template não suportado para envio.'),
             ]);
+        }
+
+        if ($template->headerDescriptor()['requires_configured_image'] && ! $template->hasUsableHeaderImage()) {
+            $message = $template->headerMediaState() === 'expired'
+                ? 'A imagem deste template expirou. Faça um novo upload em Templates WhatsApp.'
+                : 'Configure a imagem deste template em Templates WhatsApp antes de enviar.';
+
+            throw ValidationException::withMessages(['template_id' => $message]);
         }
     }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ChevronLeft, Loader2, RefreshCw, Search } from 'lucide-vue-next';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import WhatsappTemplatePreview from '@/components/whatsapp/WhatsappTemplatePreview.vue';
 import echo from '@/echo';
 import { send } from '@/routes/conversas';
 import { sync as syncTemplatesRoute } from '@/routes/conversas/templates';
@@ -205,7 +206,11 @@ async function syncTemplates(): Promise<void> {
 }
 
 async function submit(): Promise<void> {
-    if (!selectedTemplate.value || sending.value) {
+    if (
+        !selectedTemplate.value ||
+        !selectedTemplate.value.sendable ||
+        sending.value
+    ) {
         return;
     }
 
@@ -336,7 +341,8 @@ async function submit(): Promise<void> {
                 <li v-for="template in visibleTemplates" :key="template.id">
                     <button
                         type="button"
-                        class="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-muted"
+                        :disabled="!template.sendable"
+                        class="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:bg-transparent"
                         @click="selectedId = template.id"
                     >
                         <span class="min-w-0 flex-1">
@@ -349,6 +355,12 @@ async function submit(): Promise<void> {
                                 class="block text-[0.65rem] text-muted-foreground"
                                 >{{ template.language }}</span
                             >
+                            <span
+                                v-if="template.unavailable_reason"
+                                class="mt-0.5 block text-[0.62rem] text-amber-700 dark:text-amber-300"
+                            >
+                                {{ template.unavailable_reason }}
+                            </span>
                         </span>
                         <span
                             v-if="template.category"
@@ -362,11 +374,12 @@ async function submit(): Promise<void> {
             </ul>
 
             <div v-else class="space-y-3 p-3">
-                <p
-                    class="rounded-lg bg-muted/50 p-2.5 text-xs whitespace-pre-wrap text-foreground"
-                >
-                    {{ selectedTemplate.preview || 'Sem pré-visualização.' }}
-                </p>
+                <WhatsappTemplatePreview
+                    :text="selectedTemplate.preview"
+                    :media="selectedTemplate.media"
+                    :image-alt="`Imagem do template ${selectedTemplate.name}`"
+                    compact
+                />
 
                 <label
                     v-for="field in pendingFields"
@@ -410,7 +423,7 @@ async function submit(): Promise<void> {
         >
             <button
                 type="button"
-                :disabled="sending"
+                :disabled="sending || !selectedTemplate.sendable"
                 class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 @click="submit"
             >
