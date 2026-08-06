@@ -15,6 +15,8 @@ const conversationPicker = source(
     'resources/js/pages/conversas/partials/TemplatePickerPopover.vue',
 );
 const campaignCreate = source('resources/js/pages/campanhas/Create.vue');
+const nginxConfig = source('docker/nginx.conf');
+const phpConfig = source('docker/php.ini');
 
 test('image upload is available only in the template edit dialog', () => {
     const registerDialog = templatesPage.slice(
@@ -46,4 +48,10 @@ test('conversations and campaigns disable templates whose media is unavailable',
 test('template upload uses multipart method spoofing', () => {
     assert.match(templatesPage, /_method: 'put'/);
     assert.match(templatesPage, /forceFormData: true/);
+});
+
+test('the production request limits allow the validated template image upload', () => {
+    assert.match(nginxConfig, /client_max_body_size 10M;/);
+    assert.match(phpConfig, /upload_max_filesize = 10M/);
+    assert.match(phpConfig, /post_max_size = 10M/);
 });
