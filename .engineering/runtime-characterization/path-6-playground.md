@@ -117,8 +117,9 @@ One successful execution: a super-admin sends one message to a sandbox lead and 
 **Join key — there is none.** No `<interaction_id>` is minted anywhere on this path.
 `AgentInteractionEventService::newInteractionId()` is never called, and
 `AgentInteractionContext::set()` is called from exactly two places in the codebase —
-`app/Services/AgentService.php:35` (constructor-injected, set inside `process()`) and
-`app/Jobs/ProcessLeadFollowUpJob.php:70` — neither of which this path reaches. The only durable
+`app/Services/AgentService.php:94` (inside `process()`; the dependency is constructor-injected at
+`:35`) and `app/Jobs/ProcessLeadFollowUpJob.php:201` (the container resolves it at `:70`) — neither
+of which this path reaches. The only durable
 correlator is `<conversation_id>` on the `agent_conversations` / `agent_conversation_messages`
 tables, which is `laravel/ai`'s own storage, not this system's evidence layer.
 
