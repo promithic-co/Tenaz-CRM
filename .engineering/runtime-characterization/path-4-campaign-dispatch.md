@@ -54,7 +54,7 @@ fan-out.
 
 **No model call, and therefore no conversational latest-state concept.** This path sends a
 **pre-approved Meta template**, resolving positional parameters from a mapping
-(`app/Jobs/SendCampaignMessageJob.php:863-915`). `AgentService` is never called, `AgentFactory` is
+(`app/Jobs/SendCampaignMessageJob.php:867-919`). `AgentService` is never called, `AgentFactory` is
 never called, no agent is constructed and no LLM is invoked. Recorded as a **characterization fact,
 not a defect**: D-06/D-07/D-08 are written about "a response not yet sent" produced by reasoning over
 conversation state, and this path produces no such response. What *does* apply here is the
@@ -78,7 +78,7 @@ Stated explicitly so a future reader does not conclude the bridge was overlooked
 What the bridge actually does, in Path 1's code:
 
 1. `IncomingConversationPersister` calls `CampaignReplyDetector::detect()`
-   (`app/Services/IncomingConversationPersister.php:223`,
+   (`app/Services/IncomingConversationPersister.php:235`,
    `app/Services/CampaignReplyDetector.php:38-67`). It resolves the campaign that reached this
    phone/tenant, restricted to `LIVE_STATUSES = ['sending', 'paused']`
    (`app/Services/CampaignReplyDetector.php:21`), and stamps `leads.campaign_id`
@@ -87,7 +87,7 @@ What the bridge actually does, in Path 1's code:
 2. `CampaignConversationTimelineWriter::backfillForLead()`
    (`app/Services/CampaignConversationTimelineWriter.php:111`) is called once per lead per hour,
    guarded by `Cache::add("campaign_backfill:{<lead_id>}", …)`
-   (`app/Services/IncomingConversationPersister.php:326-329`), and backfills the campaign templates
+   (`app/Services/IncomingConversationPersister.php:338-341`), and backfills the campaign templates
    that preceded the reply into `conversation_timeline_messages`. This exists precisely **because**
    campaigns bypass the outbox and the timeline for scale — the writer's own class docblock says so
    (`app/Services/CampaignConversationTimelineWriter.php:15-30`).
@@ -207,18 +207,18 @@ timeline backfill.
 
 19. **Ownership-guarded terminal transitions** — every outcome is a compare-and-swap on the attempt
     token, so a late duplicate can never overwrite the winner:
-    `markSentIfOwned()` (`app/Jobs/SendCampaignMessageJob.php:420-422`,
+    `markSentIfOwned()` (`app/Jobs/SendCampaignMessageJob.php:424-426`,
     `app/Models/CampaignMessage.php:334-362`),
     `markInDoubtFromProviderIfOwned()` (`:544`, `app/Models/CampaignMessage.php:411-431`),
     `markFailedFromProviderIfOwned()` / `markFailedIfOwned()` (`:514-517`, `:568`,
     `app/Models/CampaignMessage.php:364-409`), and
     `releaseProviderAttemptForRetry()` for a proven-not-sent outcome (`:460`, `:600`,
     `app/Models/CampaignMessage.php:433-468`). `outbound_sent` is recorded at
-    `app/Jobs/SendCampaignMessageJob.php:442-453`.
+    `app/Jobs/SendCampaignMessageJob.php:446-457`.
 
 20. **Timeline mirror, best effort** —
     `CampaignConversationTimelineWriter::mirrorSentTemplate()`
-    (`app/Jobs/SendCampaignMessageJob.php:424-431`,
+    (`app/Jobs/SendCampaignMessageJob.php:428-435`,
     `app/Services/CampaignConversationTimelineWriter.php:47`) writes the sent template into
     `conversation_timeline_messages`, creating the `Lead` when the recipient has none. It never
     throws into its caller.
@@ -320,7 +320,7 @@ marked as such rather than omitted.
 | # | Collision point | Applicable? | Current outcome |
 |---|---|---|---|
 | 1 | **Arrival during collection** | **Not applicable** | This path has no collection window: it is not responding to a customer message. Its nearest analogue is the fan-out's opt-out pre-suppression (`app/Jobs/DispatchCampaignJob.php:162-164`), which is a one-shot eligibility decision, not a window. An inbound arriving at this moment is handled entirely by Path 1. |
-| 2 | **Arrival during model work** | **Not applicable — no model call on this path** | Neither `DispatchCampaignJob` nor `SendCampaignMessageJob` constructs an agent or calls `AgentService`; the message body is a pre-approved Meta template with positional parameters (`app/Jobs/SendCampaignMessageJob.php:863-915`). There is no reasoning interval for a message to arrive during. |
+| 2 | **Arrival during model work** | **Not applicable — no model call on this path** | Neither `DispatchCampaignJob` nor `SendCampaignMessageJob` constructs an agent or calls `AgentService`; the message body is a pre-approved Meta template with positional parameters (`app/Jobs/SendCampaignMessageJob.php:867-919`). There is no reasoning interval for a message to arrive during. |
 | 3 | **Arrival during internal work** | **Not applicable — no model call on this path** | The only "internal work" is parameter resolution and configuration lookup, both deterministic and sub-millisecond. No tool is invoked, no external interpretation is produced, and nothing could be invalidated by a newer message. |
 | 4 | **Arrival during external action** | **Applicable, partially covered** | The external action is the template POST. **Repetition is genuinely covered**: the atomic claim (`app/Models/CampaignMessage.php:198-243`) plus the ownership-guarded terminals (`:334-468`) plus the lease-expiry reconciliation (`:267-332`) implement D-21/D-22 on this path's own terms. **Relevance is not covered**: nothing consults the lead's conversation state before the POST (P4-F08), so a bulk template can land in the middle of a live agent conversation or an active human handoff. The one relevance-like check that does exist is consent (P4-F02), which is narrower than currency. |
 | 5 | **Arrival during response queueing** | **Not applicable** | There is no response to queue. The `queued` transition (`app/Jobs/SendCampaignMessageJob.php:220`) is a status flip on an already-existing row, not the construction of an answer, and it is immediately followed by the send in the same job invocation. |

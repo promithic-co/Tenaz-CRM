@@ -32,13 +32,13 @@ event:
 
 | Job | Trigger | Constructor identity |
 |---|---|---|
-| `SendPostCallWhatsAppJob` (`app/Jobs/SendPostCallWhatsAppJob.php`) | A Twilio IVR call completes with an interested outcome | `int $voiceCampaignCallId` (`app/Jobs/SendPostCallWhatsAppJob.php:33-37`) |
-| `SendInboundLeadWhatsAppJob` (`app/Jobs/SendInboundLeadWhatsAppJob.php`) | An inbound URA call identifies a lead | `int $voiceInstanceId, string $phone, ?string $name` (`app/Jobs/SendInboundLeadWhatsAppJob.php:33-39`) |
-| `SendUraTemplateJob` (`app/Jobs/SendUraTemplateJob.php`) | An external URA system calls the trigger API with a `UraApiKey` | `int $uraApiKeyId, string $phone, ?string $name, array $variables` (`app/Jobs/SendUraTemplateJob.php:36-43`) |
+| `SendPostCallWhatsAppJob` (`app/Jobs/SendPostCallWhatsAppJob.php`) | A Twilio IVR call completes with an interested outcome | `int $voiceCampaignCallId` (`app/Jobs/SendPostCallWhatsAppJob.php:34-38`) |
+| `SendInboundLeadWhatsAppJob` (`app/Jobs/SendInboundLeadWhatsAppJob.php`) | An inbound URA call identifies a lead | `int $voiceInstanceId, string $phone, ?string $name` (`app/Jobs/SendInboundLeadWhatsAppJob.php:34-40`) |
+| `SendUraTemplateJob` (`app/Jobs/SendUraTemplateJob.php`) | An external URA system calls the trigger API with a `UraApiKey` | `int $uraApiKeyId, string $phone, ?string $name, array $variables` (`app/Jobs/SendUraTemplateJob.php:37-44`) |
 
 All three declare identical queue posture — `tries = 3`, `timeout = 60`, `backoff() = [10, 30, 60]`,
-queue `messages` (`app/Jobs/SendPostCallWhatsAppJob.php:24-37`,
-`app/Jobs/SendInboundLeadWhatsAppJob.php:24-39`, `app/Jobs/SendUraTemplateJob.php:24-43`) — and all
+queue `messages` (`app/Jobs/SendPostCallWhatsAppJob.php:25-38`,
+`app/Jobs/SendInboundLeadWhatsAppJob.php:25-40`, `app/Jobs/SendUraTemplateJob.php:24-43`) — and all
 three follow the same five-step shape: resolve the WhatsApp instance, take a lead-creation lock,
 resolve and gate an `APPROVED` Meta template, take a bespoke cache send-claim, POST directly through
 `WhatsAppService`. **Per D-01, three copies are not "a shared mechanism characterized once."** They
@@ -57,7 +57,7 @@ lead-creation `firstOrCreate` filters explicitly on `tenant_id`
 (`app/Jobs/SendPostCallWhatsAppJob.php:53`, `app/Jobs/SendInboundLeadWhatsAppJob.php:59`,
 `app/Jobs/SendUraTemplateJob.php:105`). **Only `SendUraTemplateJob` additionally cross-checks that
 the agent, the template and the WhatsApp instance all belong to the API key's tenant**
-(`app/Jobs/SendUraTemplateJob.php:65-92`), comparing as strings and failing closed with a warning.
+(`app/Jobs/SendUraTemplateJob.php:66-93`), comparing as strings and failing closed with a warning.
 The other two copies have no equivalent gate — they trust the relationship graph. Recorded because a
 reader who characterizes one copy will assume the guard exists in all three.
 
@@ -79,11 +79,11 @@ diverge.
 1. **Resolve the call and the WhatsApp instance** — `handle()`
    (`app/Jobs/SendPostCallWhatsAppJob.php:39-128`) eager-loads
    `voiceCampaign.voiceInstance.whatsappInstance` and `…postCallMetaTemplate` at
-   `app/Jobs/SendPostCallWhatsAppJob.php:41`. A missing instance logs
+   `app/Jobs/SendPostCallWhatsAppJob.php:42`. A missing instance logs
    `ivr.no_whatsapp_instance` and returns (`:45-49`).
    **Divergence:** `SendInboundLeadWhatsAppJob` mints an `<interaction_id>` *before* this step
-   (`app/Jobs/SendInboundLeadWhatsAppJob.php:43-44`) and includes it in the warning
-   (`:49-52`); `SendUraTemplateJob` does the same (`app/Jobs/SendUraTemplateJob.php:47-48`,
+   (`app/Jobs/SendInboundLeadWhatsAppJob.php:44-45`) and includes it in the warning
+   (`:49-52`); `SendUraTemplateJob` does the same (`app/Jobs/SendUraTemplateJob.php:48-49`,
    `:95-98`) and runs its three tenant-mismatch gates first (`:65-92`). The post-call copy mints
    nothing.
 
@@ -96,13 +96,13 @@ diverge.
    the retired provider; Evolution itself is fully removed (D-03) and nothing on this path
    references an `Evolution*` class.
    **Divergence:** identical in all three, except the other two also set `nome`
-   (`app/Jobs/SendInboundLeadWhatsAppJob.php:62`, `app/Jobs/SendUraTemplateJob.php:108`).
+   (`app/Jobs/SendInboundLeadWhatsAppJob.php:66`, `app/Jobs/SendUraTemplateJob.php:112`).
 
 3. **Contact sync** — `ContactSyncService::syncFromLead($lead, Contact::SOURCE_URA)`
-   (`app/Jobs/SendPostCallWhatsAppJob.php:67`), then `$lead->refresh()` (`:68`). Identical in all
-   three (`app/Jobs/SendInboundLeadWhatsAppJob.php:74-75`, `app/Jobs/SendUraTemplateJob.php:120-121`).
+   (`app/Jobs/SendPostCallWhatsAppJob.php:66`), then `$lead->refresh()` (`:68`). Identical in all
+   three (`app/Jobs/SendInboundLeadWhatsAppJob.php:73-74`, `app/Jobs/SendUraTemplateJob.php:119-120`).
    **Divergence:** the two URA copies record `ura_inbound_received` immediately after
-   (`app/Jobs/SendInboundLeadWhatsAppJob.php:77-87`, `app/Jobs/SendUraTemplateJob.php:123-134`).
+   (`app/Jobs/SendInboundLeadWhatsAppJob.php:76-86`, `app/Jobs/SendUraTemplateJob.php:122-133`).
    The post-call copy records nothing.
 
 4. **A configured message is loaded and then never used** —
@@ -113,44 +113,44 @@ diverge.
    See [P5-F06](#p5-f06).
 
 5. **Template resolution and the `APPROVED` gate** —
-   `app/Jobs/SendPostCallWhatsAppJob.php:74-80`. A missing or non-`APPROVED` template logs
+   `app/Jobs/SendPostCallWhatsAppJob.php:73-79`. A missing or non-`APPROVED` template logs
    `ivr.meta_template_unavailable` and returns, **leaving the lead created** — CRM persistence is
    deliberately not blocked by the send failing.
    **Divergence:** the other two also record an `outbound_failed` interaction event on this branch
-   (`app/Jobs/SendInboundLeadWhatsAppJob.php:100-107`, `app/Jobs/SendUraTemplateJob.php:142-149`),
+   (`app/Jobs/SendInboundLeadWhatsAppJob.php:99-106`, `app/Jobs/SendUraTemplateJob.php:141-148`),
    and `SendUraTemplateJob` gates on `$template->isApproved()` rather than a literal string
-   comparison (`app/Jobs/SendUraTemplateJob.php:136`).
+   comparison (`app/Jobs/SendUraTemplateJob.php:135`).
 
 6. **The bespoke per-send claim** —
    `Cache::add("postcall_send:{<call_id>}", 1, now()->addMinutes(10))`
-   (`app/Jobs/SendPostCallWhatsAppJob.php:84-92`). A losing caller logs
+   (`app/Jobs/SendPostCallWhatsAppJob.php:83-91`). A losing caller logs
    `ivr.whatsapp_send_already_claimed` and returns. The inline comment says it mirrors
    `ProcessLeadFollowUpJob`'s F7 claim — it is a **copy of that pattern, not a call into it**.
    **Divergence — three different key shapes, therefore three different idempotency scopes:**
    per call id here; `ura_inbound_send:{<voice_instance_id>}:{<phone>}`
-   (`app/Jobs/SendInboundLeadWhatsAppJob.php:114`); and
+   (`app/Jobs/SendInboundLeadWhatsAppJob.php:113`); and
    `ura_template_send:{<ura_api_key_id>}:{<phone>}:{md5(variables)}`
-   (`app/Jobs/SendUraTemplateJob.php:158`), where varying the variables produces a different key
+   (`app/Jobs/SendUraTemplateJob.php:157`), where varying the variables produces a different key
    and therefore permits an immediate second send to the same phone.
 
 7. **The direct provider POST — no outbox** —
    `WhatsAppService::sendTemplateViaInstance($whatsappInstance, $phone, $templateName, $language)`
-   (`app/Jobs/SendPostCallWhatsAppJob.php:95-100`). `WhatsappOutboxService` is never called and no
+   (`app/Jobs/SendPostCallWhatsAppJob.php:94-99`). `WhatsappOutboxService` is never called and no
    `whatsapp_outbox_messages` row exists for this path.
    **Divergence:** `SendUraTemplateJob` passes a fifth argument, the built Meta components
-   (`app/Jobs/SendUraTemplateJob.php:169-175`, built at `:154`, `:217-232`).
+   (`app/Jobs/SendUraTemplateJob.php:168-174`, built at `:154`, `:217-232`).
 
 8. **The retry-safety decision — where the copies contradict each other** —
    `app/Jobs/SendPostCallWhatsAppJob.php:101-110` wraps the POST in `try/catch (Throwable)` and
    **unconditionally** `Cache::forget($sendClaimKey)` at
-   `app/Jobs/SendPostCallWhatsAppJob.php:107` before rethrowing.
+   `app/Jobs/SendPostCallWhatsAppJob.php:106` before rethrowing.
    **Divergence:** neither `SendInboundLeadWhatsAppJob` nor `SendUraTemplateJob` has a `try/catch`
-   at all (`app/Jobs/SendInboundLeadWhatsAppJob.php:125-130`,
-   `app/Jobs/SendUraTemplateJob.php:169-175`), so their claims survive the full 10-minute TTL.
+   at all (`app/Jobs/SendInboundLeadWhatsAppJob.php:124-129`,
+   `app/Jobs/SendUraTemplateJob.php:168-174`), so their claims survive the full 10-minute TTL.
    See [P5-F02](#p5-f02) — this single divergence inverts the failure mode.
 
 9. **Timeline mirror, best effort** — `TemplateTimelineRecorder::record()`
-   (`app/Jobs/SendPostCallWhatsAppJob.php:114-119`) writes one `outbound` row into
+   (`app/Jobs/SendPostCallWhatsAppJob.php:113-118`) writes one `outbound` row into
    `conversation_timeline_messages`, idempotent on `provider_message_id`, never throwing into its
    caller (`app/Services/WhatsApp/TemplateTimelineRecorder.php:43-90`).
    **Divergence:** the other two pass `interactionId: $interactionId`
@@ -159,18 +159,18 @@ diverge.
    by the characterization test.
 
 10. **Success logging and downstream fan-out** —
-    `Log::info('ivr.whatsapp_sent', …)` (`app/Jobs/SendPostCallWhatsAppJob.php:121-125`) then
+    `Log::info('ivr.whatsapp_sent', …)` (`app/Jobs/SendPostCallWhatsAppJob.php:120-124`) then
     `DashboardMetricsService::dispatchUpdate()` (`:127`).
     **Divergence:** the other two log `ura.inbound_whatsapp_sent` / `ura.trigger.sent`
-    (`app/Jobs/SendInboundLeadWhatsAppJob.php:142-147`, `app/Jobs/SendUraTemplateJob.php:188-194`)
+    (`app/Jobs/SendInboundLeadWhatsAppJob.php:141-146`, `app/Jobs/SendUraTemplateJob.php:187-193`)
     and record an `outbound_sent` interaction event
-    (`app/Jobs/SendInboundLeadWhatsAppJob.php:149-160`, `app/Jobs/SendUraTemplateJob.php:196-208`);
+    (`app/Jobs/SendInboundLeadWhatsAppJob.php:148-159`, `app/Jobs/SendUraTemplateJob.php:195-207`);
     neither dispatches the dashboard recompute.
 
 11. **Terminal failure — log only, on all three** — `failed()`
-    (`app/Jobs/SendPostCallWhatsAppJob.php:130-136`,
-    `app/Jobs/SendInboundLeadWhatsAppJob.php:163-170`,
-    `app/Jobs/SendUraTemplateJob.php:244-251`) writes a single `Log::error` and nothing else. No
+    (`app/Jobs/SendPostCallWhatsAppJob.php:129-135`,
+    `app/Jobs/SendInboundLeadWhatsAppJob.php:162-169`,
+    `app/Jobs/SendUraTemplateJob.php:243-250`) writes a single `Log::error` and nothing else. No
     row, no event, no status. This is the pattern Plan 61-01 deliberately replaced on the inbound
     and outbox jobs; **none of the three copies here received that treatment**. See
     [P5-F04](#p5-f04).
@@ -185,8 +185,8 @@ outcome, the lead is created, the `APPROVED` post-call template is accepted by M
 **Join key — there is none on the representative job.** `SendPostCallWhatsAppJob` never mints an
 `<interaction_id>`, so nothing on the successful path can be joined to anything else. The only
 durable correlators are `<call_id>` (in the log lines) and `<lead_id>`. The other two copies **do**
-mint one (`app/Jobs/SendInboundLeadWhatsAppJob.php:43-44`,
-`app/Jobs/SendUraTemplateJob.php:47-48`) and thread it into their events and their timeline row —
+mint one (`app/Jobs/SendInboundLeadWhatsAppJob.php:44-45`,
+`app/Jobs/SendUraTemplateJob.php:48-49`) and thread it into their events and their timeline row —
 so a trace of this path is only correlatable for two of its three entry points.
 
 **This section is the most consequential on this path.** State it plainly: **a golden trace for
@@ -201,12 +201,12 @@ why field 7 in § 7 is a `GAP` here while it is `EXISTS` on every other path.
 
 | Evidence table | Rows for one successful execution | Notes |
 |---|---|---|
-| `agent_interaction_events` | **`SendPostCallWhatsAppJob`: no row. `SendInboundLeadWhatsAppJob` and `SendUraTemplateJob`: two rows each.** | The divergence is [P5-F01](#p5-f01). The post-call copy contains no reference to `AgentInteractionEventService` anywhere — not on success, not on either skip branch, not in `failed()` — and its absence is pinned by a `doesntExist()` assertion. The two URA copies write `ura_inbound_received` (`app/Jobs/SendInboundLeadWhatsAppJob.php:77-87`, `app/Jobs/SendUraTemplateJob.php:123-134`) and `outbound_sent` (`:149-160`, `:196-208`), plus `outbound_failed` on the unavailable-template branch (`:100-107`, `:142-149`). Those rows carry `tenant_id` as a string **and** `lead_id`, because they go through `recordForLead()` — so they are strictly better correlated than Path 4's campaign events, which carry no lead. Measured: the characterization test asserts the post-call job's total absence and the URA copy's exact vocabulary in the same run. |
+| `agent_interaction_events` | **`SendPostCallWhatsAppJob`: no row. `SendInboundLeadWhatsAppJob` and `SendUraTemplateJob`: two rows each.** | The divergence is [P5-F01](#p5-f01). The post-call copy contains no reference to `AgentInteractionEventService` anywhere — not on success, not on either skip branch, not in `failed()` — and its absence is pinned by a `doesntExist()` assertion. The two URA copies write `ura_inbound_received` (`app/Jobs/SendInboundLeadWhatsAppJob.php:76-86`, `app/Jobs/SendUraTemplateJob.php:122-133`) and `outbound_sent` (`:149-160`, `:196-208`), plus `outbound_failed` on the unavailable-template branch (`:100-107`, `:142-149`). Those rows carry `tenant_id` as a string **and** `lead_id`, because they go through `recordForLead()` — so they are strictly better correlated than Path 4's campaign events, which carry no lead. Measured: the characterization test asserts the post-call job's total absence and the URA copy's exact vocabulary in the same run. |
 | `ai_runs` | **No row, on all three** | No agent is constructed and `AgentService::process()` — the only caller of `AiRunRecorder::start()` (`app/Services/AgentService.php:112-117`) — is never reached. As on Path 4 this is not a bypass of an expected runtime: there is no model turn to record. Pinned by a `doesntExist()` assertion. |
-| `whatsapp_outbox_messages` | **No row, on all three** | [P5-F03](#p5-f03). The POST goes straight through `WhatsAppService` (`app/Jobs/SendPostCallWhatsAppJob.php:95-100`). There is no durable row to carry `status`, `provider_attempted_at`, `idempotency_key` or `in_doubt`, so the entire send-boundary mechanism Paths 1 and 3 rely on, and the parallel one Path 4 implements, has **no counterpart here**. Pinned by a `doesntExist()` assertion. |
+| `whatsapp_outbox_messages` | **No row, on all three** | [P5-F03](#p5-f03). The POST goes straight through `WhatsAppService` (`app/Jobs/SendPostCallWhatsAppJob.php:94-99`). There is no durable row to carry `status`, `provider_attempted_at`, `idempotency_key` or `in_doubt`, so the entire send-boundary mechanism Paths 1 and 3 rely on, and the parallel one Path 4 implements, has **no counterpart here**. Pinned by a `doesntExist()` assertion. |
 | `campaign_messages` | **No row** | Written only by Path 4. A `VoiceCampaign` is a *voice* campaign and is unrelated to the WhatsApp `Campaign` model. |
 | `followup_messages` | **No row** | Written only by Path 3. A lead created here can later become follow-up-eligible, but this path writes nothing to that table. |
-| `voice_campaign_calls` | **No new row; the existing row is read, not written** | `SendPostCallWhatsAppJob` loads the call at `app/Jobs/SendPostCallWhatsAppJob.php:41` and never updates it — not on success, not on failure. The row's `status` was set by the upstream IVR outcome handler, so it records that the *call* was interesting, never that the *handoff* happened. The other two copies do not touch this table at all. |
+| `voice_campaign_calls` | **No new row; the existing row is read, not written** | `SendPostCallWhatsAppJob` loads the call at `app/Jobs/SendPostCallWhatsAppJob.php:42` and never updates it — not on success, not on failure. The row's `status` was set by the upstream IVR outcome handler, so it records that the *call* was interesting, never that the *handoff* happened. The other two copies do not touch this table at all. |
 
 **Supporting rows outside the six tables:** one `conversation_timeline_messages` row per confirmed
 send (`app/Services/WhatsApp/TemplateTimelineRecorder.php:43-90`), carrying `interaction_id = NULL`
@@ -226,14 +226,14 @@ row synced by `ContactSyncService::syncFromLead()`.
 
 | ID | Failure mode | Trigger | Current behaviour | Evidence produced | Labeled finding |
 |---|---|---|---|---|---|
-| P5-F02 | **D-21 and D-22 are not implemented on this path at all — and the three copies disagree about which way to fail** | Any exception from the provider call | There is no ambiguity state anywhere on this path: no `in_doubt` status, no `provider_attempted_at` stamp, no reconciliation, no probe. The only lever is a 10-minute cache claim, and the copies use it in **contradictory** ways. `SendPostCallWhatsAppJob` catches every `Throwable` and `Cache::forget()`s the claim **unconditionally** before rethrowing (`app/Jobs/SendPostCallWhatsAppJob.php:101-110`, the forget at `:107`), so **every failure is treated as safe-to-retry**: a timeout *after* Meta accepted the template is recorded as "proven not performed" and the retry **re-sends** — a duplicate the customer sees and nothing records. `SendInboundLeadWhatsAppJob` and `SendUraTemplateJob` have **no `try/catch` at all** (`app/Jobs/SendInboundLeadWhatsAppJob.php:125-130`, `app/Jobs/SendUraTemplateJob.php:169-175`), so their claims survive the full TTL and every retry inside it — `backoff() = [10, 30, 60]`, so all of them — short-circuits at the claim gate: a connection refused that provably sent nothing results in the message being **silently dropped**. **This is a genuinely less mature gap than Paths 1 and 4, not merely an undocumented one.** Path 1 has `in_doubt` + `provider_attempted_at` + `MetaAmbiguousSendException` (`app/Jobs/ProcessWhatsappOutboxMessageJob.php:68-72`, `:88`, `:145-149`); Path 4 has an atomic token lease with expiry-driven `in_doubt` reconciliation (`app/Models/CampaignMessage.php:198-332`). This path has **neither**, and cannot acquire one without a durable row to put it on. | Only `Log::error('ivr.whatsapp_failed' \| 'ura.inbound_whatsapp_failed' \| 'ura.trigger.failed')` from `failed()`. Nothing distinguishes a duplicate send from a first send, or a dropped message from a delivered one. Both halves are measured by `IvrHandoffCharacterizationTest`: the post-call retry is asserted to reach the provider a second time, and the URA copy's retry is asserted **not** to. | — (new; documented-not-fixed, Phase 62. Threat T-61-22) |
+| P5-F02 | **D-21 and D-22 are not implemented on this path at all — and the three copies disagree about which way to fail** | Any exception from the provider call | There is no ambiguity state anywhere on this path: no `in_doubt` status, no `provider_attempted_at` stamp, no reconciliation, no probe. The only lever is a 10-minute cache claim, and the copies use it in **contradictory** ways. `SendPostCallWhatsAppJob` catches every `Throwable` and `Cache::forget()`s the claim **unconditionally** before rethrowing (`app/Jobs/SendPostCallWhatsAppJob.php:101-110`, the forget at `:107`), so **every failure is treated as safe-to-retry**: a timeout *after* Meta accepted the template is recorded as "proven not performed" and the retry **re-sends** — a duplicate the customer sees and nothing records. `SendInboundLeadWhatsAppJob` and `SendUraTemplateJob` have **no `try/catch` at all** (`app/Jobs/SendInboundLeadWhatsAppJob.php:124-129`, `app/Jobs/SendUraTemplateJob.php:168-174`), so their claims survive the full TTL and every retry inside it — `backoff() = [10, 30, 60]`, so all of them — short-circuits at the claim gate: a connection refused that provably sent nothing results in the message being **silently dropped**. **This is a genuinely less mature gap than Paths 1 and 4, not merely an undocumented one.** Path 1 has `in_doubt` + `provider_attempted_at` + `MetaAmbiguousSendException` (`app/Jobs/ProcessWhatsappOutboxMessageJob.php:68-72`, `:88`, `:145-149`); Path 4 has an atomic token lease with expiry-driven `in_doubt` reconciliation (`app/Models/CampaignMessage.php:198-332`). This path has **neither**, and cannot acquire one without a durable row to put it on. | Only `Log::error('ivr.whatsapp_failed' \| 'ura.inbound_whatsapp_failed' \| 'ura.trigger.failed')` from `failed()`. Nothing distinguishes a duplicate send from a first send, or a dropped message from a delivered one. Both halves are measured by `IvrHandoffCharacterizationTest`: the post-call retry is asserted to reach the provider a second time, and the URA copy's retry is asserted **not** to. | — (new; documented-not-fixed, Phase 62. Threat T-61-22) |
 | P5-F01 | **The three copies have diverged in their evidence: one produces none at all** | Every execution of `SendPostCallWhatsAppJob` | `SendPostCallWhatsAppJob` contains no reference to `AgentInteractionEventService` on any branch, so a customer-visible message leaves the platform with **zero interaction-correlated evidence** and no `<interaction_id>` is ever minted for it. `SendInboundLeadWhatsAppJob` (`:43-44`, `:77-87`, `:100-107`, `:149-160`) and `SendUraTemplateJob` (`:47-48`, `:123-134`, `:142-149`, `:196-208`) do mint one and do record events, through `recordForLead()` so the rows carry both `tenant_id` and `lead_id`. **`61-RESEARCH.md`'s claim that a grep across all three files confirmed no such calls is stale and is corrected here.** Per D-01 the correct unit of characterization is the copy, not the path. **Disposition: documented, not fixed in Phase 61** — wiring events into the post-call copy changes runtime behaviour. | For the post-call copy: log lines only, plus a `conversation_timeline_messages` row whose `interaction_id` is `NULL`. Both the absence and its inverse are pinned in one test run. | — (new; documented-not-fixed, Phase 62. Threat T-61-21) |
-| P5-F03 | **The outbox is bypassed entirely, so there is no durable send record to reason about** | Every execution, all three copies | `WhatsAppService::sendTemplateViaInstance()` is called directly (`app/Jobs/SendPostCallWhatsAppJob.php:95-100`, `app/Jobs/SendInboundLeadWhatsAppJob.php:125-130`, `app/Jobs/SendUraTemplateJob.php:169-175`). No `whatsapp_outbox_messages` row is ever created, so there is no `idempotency_key`, no `status`, no `provider_attempted_at`, no `attempts` counter and nowhere for `in_doubt` to live — which is *why* P5-F02 cannot be fixed by a small change. The provider message id returned by the call is passed to the timeline recorder and then discarded; **it is not persisted in any queryable column**, so a delivery-status webhook echoing that id has nothing on this path to resolve against. | The absence itself, pinned by a `doesntExist()` assertion. | — (new) |
-| P5-F04 | **`failed()` is log-only on all three, so terminal failure is not tenant-attributable** | Retries exhausted on any of the three jobs | `app/Jobs/SendPostCallWhatsAppJob.php:130-136`, `app/Jobs/SendInboundLeadWhatsAppJob.php:163-170` and `app/Jobs/SendUraTemplateJob.php:244-251` each write one `Log::error` and return. No row, no interaction event, no status change. Contrast Plan 61-01, which added exactly this evidence to `ProcessIncomingWhatsAppMessageJob` (`app/Jobs/ProcessIncomingWhatsAppMessageJob.php:312-349`) and `ProcessWhatsappOutboxMessageJob` (`:286-327`), mirroring `ProcessLeadFollowUpJob::failed()` (`app/Jobs/ProcessLeadFollowUpJob.php:386-428`). These three were not in that plan's scope and still carry the old pattern, so a terminally failed IVR handoff is visible only in the tenant-less global `failed_jobs` table. | `failed_jobs` (no `tenant_id` column) plus an unstructured error log. Not queryable per tenant. | — (new; same class as SC1's original gap, on jobs SC1 did not cover) |
-| P5-F05 | **Three different claim-key shapes mean three different idempotency scopes, one of them trivially bypassable** | A repeat trigger for the same recipient | `postcall_send:{<call_id>}` (`app/Jobs/SendPostCallWhatsAppJob.php:84`) is per call — a second IVR call to the same person legitimately re-sends. `ura_inbound_send:{<voice_instance_id>}:{<phone>}` (`app/Jobs/SendInboundLeadWhatsAppJob.php:114`) is per instance+phone — a second URA call within ten minutes is suppressed. `ura_template_send:{<ura_api_key_id>}:{<phone>}:{md5(variables)}` (`app/Jobs/SendUraTemplateJob.php:158`) folds the **variables** into the key, so an external caller that changes any variable gets a fresh key and an immediate second template to the same phone inside the window. None of the three is wrong on its own terms; the point is that "the IVR path's idempotency window" is not a single, statable property. | None. A suppressed send logs `*_already_claimed`; a permitted one is indistinguishable from a first send. | — (new) |
-| P5-F06 | **The operator-configured `post_call_message` is loaded and then silently ignored** | Every execution of the two copies that read it | `app/Jobs/SendPostCallWhatsAppJob.php:70-72` resolves `voiceCampaign.post_call_message ?? voiceInstance.post_call_message ?? '<default>'` into a local variable that is never referenced again; `app/Jobs/SendInboundLeadWhatsAppJob.php:89-90` does the same. What actually reaches the customer is the `APPROVED` Meta template, whose body the operator edits elsewhere. Almost certainly a leftover from the pre-Meta free-text era, but the surface is still exposed: an operator who edits the post-call message sees no effect and receives no warning. `SendUraTemplateJob` no longer carries the dead local, and its unused private `interpolateVariables()` (`app/Jobs/SendUraTemplateJob.php:234-242`) is the matching residue in that copy. | None — the configured text simply never appears anywhere. | — (new; low severity, recorded so it is not mistaken for a live feature) |
-| P5-F07 | **No phone validation before the provider call** | A malformed number reaching any of the three jobs | Normalisation is `ltrim($phone, '+')` and nothing else (`app/Jobs/SendPostCallWhatsAppJob.php:51`, `app/Jobs/SendInboundLeadWhatsAppJob.php:57`, `app/Jobs/SendUraTemplateJob.php:103`). `PhoneNumberValidator::normalize()` — which Path 4 runs precisely to avoid burning Meta reputation on errors 131026/131027 (`app/Jobs/SendCampaignMessageJob.php:354-377`) — is not used here. A malformed IVR-supplied number is POSTed to Meta, fails, and consumes all three retries. | The provider exception, then the log-only `failed()`. Nothing marks the number as invalid, so the same number retries on the next call. | — (new) |
-| P5-F08 | **`voice_campaign_calls` is never updated by the handoff** | Every execution of `SendPostCallWhatsAppJob` | The call row is loaded (`app/Jobs/SendPostCallWhatsAppJob.php:41`) and never written. Its `status` reflects the *call's* outcome, set upstream, so nothing on the row distinguishes "handed off to WhatsApp successfully" from "handoff dropped because the template was unapproved" from "handoff never attempted". Combined with P5-F01, the entity that a production trace would most naturally be correlated by (`<call_id>`) carries no handoff state at all. | None. | — (new) |
+| P5-F03 | **The outbox is bypassed entirely, so there is no durable send record to reason about** | Every execution, all three copies | `WhatsAppService::sendTemplateViaInstance()` is called directly (`app/Jobs/SendPostCallWhatsAppJob.php:94-99`, `app/Jobs/SendInboundLeadWhatsAppJob.php:124-129`, `app/Jobs/SendUraTemplateJob.php:168-174`). No `whatsapp_outbox_messages` row is ever created, so there is no `idempotency_key`, no `status`, no `provider_attempted_at`, no `attempts` counter and nowhere for `in_doubt` to live — which is *why* P5-F02 cannot be fixed by a small change. The provider message id returned by the call is passed to the timeline recorder and then discarded; **it is not persisted in any queryable column**, so a delivery-status webhook echoing that id has nothing on this path to resolve against. | The absence itself, pinned by a `doesntExist()` assertion. | — (new) |
+| P5-F04 | **`failed()` is log-only on all three, so terminal failure is not tenant-attributable** | Retries exhausted on any of the three jobs | `app/Jobs/SendPostCallWhatsAppJob.php:129-135`, `app/Jobs/SendInboundLeadWhatsAppJob.php:162-169` and `app/Jobs/SendUraTemplateJob.php:243-250` each write one `Log::error` and return. No row, no interaction event, no status change. Contrast Plan 61-01, which added exactly this evidence to `ProcessIncomingWhatsAppMessageJob` (`app/Jobs/ProcessIncomingWhatsAppMessageJob.php:312-349`) and `ProcessWhatsappOutboxMessageJob` (`:286-327`), mirroring `ProcessLeadFollowUpJob::failed()` (`app/Jobs/ProcessLeadFollowUpJob.php:386-428`). These three were not in that plan's scope and still carry the old pattern, so a terminally failed IVR handoff is visible only in the tenant-less global `failed_jobs` table. | `failed_jobs` (no `tenant_id` column) plus an unstructured error log. Not queryable per tenant. | — (new; same class as SC1's original gap, on jobs SC1 did not cover) |
+| P5-F05 | **Three different claim-key shapes mean three different idempotency scopes, one of them trivially bypassable** | A repeat trigger for the same recipient | `postcall_send:{<call_id>}` (`app/Jobs/SendPostCallWhatsAppJob.php:83`) is per call — a second IVR call to the same person legitimately re-sends. `ura_inbound_send:{<voice_instance_id>}:{<phone>}` (`app/Jobs/SendInboundLeadWhatsAppJob.php:113`) is per instance+phone — a second URA call within ten minutes is suppressed. `ura_template_send:{<ura_api_key_id>}:{<phone>}:{md5(variables)}` (`app/Jobs/SendUraTemplateJob.php:157`) folds the **variables** into the key, so an external caller that changes any variable gets a fresh key and an immediate second template to the same phone inside the window. None of the three is wrong on its own terms; the point is that "the IVR path's idempotency window" is not a single, statable property. | None. A suppressed send logs `*_already_claimed`; a permitted one is indistinguishable from a first send. | — (new) |
+| P5-F06 | **The operator-configured `post_call_message` is loaded and then silently ignored** | Every execution of the two copies that read it | `app/Jobs/SendPostCallWhatsAppJob.php:70-72` resolves `voiceCampaign.post_call_message ?? voiceInstance.post_call_message ?? '<default>'` into a local variable that is never referenced again; `app/Jobs/SendInboundLeadWhatsAppJob.php:89-90` does the same. What actually reaches the customer is the `APPROVED` Meta template, whose body the operator edits elsewhere. Almost certainly a leftover from the pre-Meta free-text era, but the surface is still exposed: an operator who edits the post-call message sees no effect and receives no warning. `SendUraTemplateJob` no longer carries the dead local, and its unused private `interpolateVariables()` (`app/Jobs/SendUraTemplateJob.php:233-241`) is the matching residue in that copy. | None — the configured text simply never appears anywhere. | — (new; low severity, recorded so it is not mistaken for a live feature) |
+| P5-F07 | **No phone validation before the provider call** | A malformed number reaching any of the three jobs | Normalisation is `ltrim($phone, '+')` and nothing else (`app/Jobs/SendPostCallWhatsAppJob.php:52`, `app/Jobs/SendInboundLeadWhatsAppJob.php:58`, `app/Jobs/SendUraTemplateJob.php:104`). `PhoneNumberValidator::normalize()` — which Path 4 runs precisely to avoid burning Meta reputation on errors 131026/131027 (`app/Jobs/SendCampaignMessageJob.php:354-377`) — is not used here. A malformed IVR-supplied number is POSTed to Meta, fails, and consumes all three retries. | The provider exception, then the log-only `failed()`. Nothing marks the number as invalid, so the same number retries on the next call. | — (new) |
+| P5-F08 | **`voice_campaign_calls` is never updated by the handoff** | Every execution of `SendPostCallWhatsAppJob` | The call row is loaded (`app/Jobs/SendPostCallWhatsAppJob.php:42`) and never written. Its `status` reflects the *call's* outcome, set upstream, so nothing on the row distinguishes "handed off to WhatsApp successfully" from "handoff dropped because the template was unapproved" from "handoff never attempted". Combined with P5-F01, the entity that a production trace would most naturally be correlated by (`<call_id>`) carries no handoff state at all. | None. | — (new) |
 
 ---
 
@@ -270,7 +270,7 @@ conversational response this path never produces; the verdict is still stated wi
 | **D-08** — re-evaluate from the latest complete state; only the current execution answers | `absent` | Nothing is re-evaluated. The claim key establishes at-most-one-sender within a 10-minute window (with the caveats of P5-F05) but says nothing about which conversation state justified the send. |
 | **D-15** — one current execution authority per conversation, tied to the exact current state | `absent` | The cache claim is the nearest artefact and it is not an authority: it is keyed on a call id or a phone, not on conversation state; it is not renewable; and its expiry does not resolve the effect into any state — it simply permits the next attempt. Compare Path 4's attempt token, which at least resolves to `in_doubt` on expiry. |
 | **D-16** — authority is temporary and renewable; a new relevant message revokes it, a crash expires it | `absent` | The claim is temporary (10 min) but not renewable, and its expiry is the *problem*, not the mechanism: on the URA copies a crash means the claim outlives every retry and the message is lost (P5-F02). Nothing is revoked by a new message, because nothing observes messages. |
-| **D-17** — authority checked throughout the cycle **and again at the real send boundary** | `absent` | The claim is taken immediately before the POST (`app/Jobs/SendPostCallWhatsAppJob.php:84-92`), which is the right *placement*, but `Cache::add` answers "has anyone else claimed this key", not "am I entitled to send now". And unlike Path 4's `claimProviderAttempt()`, losing the claim writes nothing durable — the caller simply returns. |
+| **D-17** — authority checked throughout the cycle **and again at the real send boundary** | `absent` | The claim is taken immediately before the POST (`app/Jobs/SendPostCallWhatsAppJob.php:83-91`), which is the right *placement*, but `Cache::add` answers "has anyone else claimed this key", not "am I entitled to send now". And unlike Path 4's `claimProviderAttempt()`, losing the claim writes nothing durable — the caller simply returns. |
 | **D-18** — an outdated request must not return an old answer as if current | `absent` | D-18 is written for the direct API path. Its principle — supersession made explicit in the trace — has no implementation here, and on this path there is barely a trace to make it explicit in (§ 3). |
 | **D-23** — cancel every not-yet-sent part as soon as the response becomes obsolete | `absent` | There are no parts and no cancellation path of any kind. Unlike Path 4, there is not even a bulk pause that parks pending work: once the job is on the `messages` queue, nothing can stop it short of the template gate failing. |
 | **D-24** — an already-sent part stays canonical history; the next execution sees it and continues naturally | `partial` | The preservation half works and is exactly why `TemplateTimelineRecorder` exists: its class docblock (`app/Services/WhatsApp/TemplateTimelineRecorder.php:13-26`) records that a URA-opened conversation previously showed the customer's reply with nothing above it. The mirror is idempotent on `provider_message_id` (`:52-54`) and never throws (`:83-90`). The gap: because it never throws, a mirror failure silently produces a conversation with a reply and no visible trigger, and nothing marks that case — the same shape as Path 4's P4-F04 caveat, with less evidence to detect it. |
