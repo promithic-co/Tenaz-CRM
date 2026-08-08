@@ -1116,6 +1116,31 @@ test('a malformed number fails its own row without stopping the campaign', funct
         ->and($campaign->fresh()->status)->toBe('sending');
 });
 
+test('a Brazilian mobile stored without the 9th digit is repaired, not failed', function () {
+    // 553187720587 is a real recipient from the Promosys SIAPE campaign: 55 + DDD 31 + an
+    // 8-digit subscriber opening 6-9, i.e. a mobile written before the 2012 9th-digit
+    // mandate. normalize() alone rejects it — 8 digits is neither a valid mobile nor a valid
+    // landline (landlines open 2-5) — which silently discarded 27 of 445 reachable numbers.
+    // canonical() rewrites it to the 13-digit form before the provider ever sees it.
+    [, $message] = makeTenantSendable('553187720587');
+
+    $providerMock = Mockery::mock(WhatsAppProviderInterface::class);
+    $providerMock->shouldReceive('sendTemplate')
+        ->once()
+        ->withArgs(fn (string $phone, ...$rest): bool => $phone === '5531987720587')
+        ->andReturn('wamid.ninth.digit');
+
+    $factoryMock = Mockery::mock(WhatsAppProviderFactory::class);
+    $factoryMock->shouldReceive('makeProvider')->andReturn($providerMock);
+    app()->instance(WhatsAppProviderFactory::class, $factoryMock);
+
+    (new SendCampaignMessageJob($message))->handle(app(CampaignService::class), $factoryMock, app(BroadcastDebouncer::class));
+
+    $fresh = $message->fresh();
+    expect($fresh->status)->toBe('sent')
+        ->and($fresh->error_code)->toBeNull();
+});
+
 test('SendCampaignMessageJob.failed parks an expired unattempted message of a paused campaign (CAMP-01/02)', function () {
     [$campaign, $message] = makeTenantSendable();
     $campaign->update(['status' => 'paused']);

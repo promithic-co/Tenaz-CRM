@@ -355,7 +355,16 @@ class SendCampaignMessageJob implements ShouldQueue
         // (errors 131026/131027). Mark as failed without retry so the campaign moves on: the
         // row never reached Meta, so it carries no account signal and must not stop the run.
         // The operator finds it later via the failed-status CSV export and fixes the list.
-        $destination = PhoneNumberValidator::normalize((string) $entry->phone);
+        //
+        // canonical() first, then normalize(): imported lists carry Brazilian mobiles written
+        // without the mandatory 9th digit (5531 87720587), which normalize() alone rejects —
+        // an 8-digit subscriber opening 6-9 is neither a valid mobile nor a valid landline. On
+        // a 445-recipient production campaign that silently discarded 27 reachable numbers.
+        // canonical() rewrites those to the 13-digit form; anything it cannot map keeps its raw
+        // digits, which normalize() still rejects, so genuine garbage never reaches Meta.
+        $destination = PhoneNumberValidator::normalize(
+            PhoneNumberValidator::canonical((string) $entry->phone)
+        );
         if ($destination === null) {
             $message->markFailed('INVALID_PHONE', 'Invalid destination format.');
 
