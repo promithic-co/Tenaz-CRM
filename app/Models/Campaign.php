@@ -53,12 +53,21 @@ class Campaign extends Model
      *
      * @var list<string>
      */
-    protected $hidden = ['agg_sent', 'agg_delivered', 'agg_read', 'agg_failed', 'agg_skipped'];
+    protected $hidden = ['agg_sent', 'agg_delivered', 'agg_read', 'agg_failed', 'agg_skipped', 'agg_attempted'];
+
+    /**
+     * total_attempted has no backing column, so it only reaches the client through here.
+     * Both list paths hydrate it via scopeWithCounters(); a single read derives it in the
+     * same memoized aggregate as the other counters, so appending costs no extra query.
+     *
+     * @var list<string>
+     */
+    protected $appends = ['total_attempted'];
 
     /**
      * Memoized message-derived counters for this instance.
      *
-     * @var array{sent: int, delivered: int, read: int, failed: int, skipped: int}|null
+     * @var array{sent: int, delivered: int, read: int, failed: int, skipped: int, attempted: int}|null
      */
     private ?array $countersCache = null;
 
@@ -175,18 +184,22 @@ class Campaign extends Model
     /**
      * Share of ATTEMPTS that failed.
      *
-     * The denominator is sent + failed, not sent alone. total_sent counts sent_at, and a
-     * send-time failure never gets one (see the accessor note below), so dividing by
-     * total_sent leaves the failures out of their own denominator and overstates the rate:
-     * 2 failures against 18 successes reported 11.11% when the true attempt failure rate was
-     * 2/20 = 10%. That gap was enough to trip the old 10% auto-pause on a campaign that was
-     * delivering 95%.
+     * The denominator counts each attempted row once — total_sent + total_failed does not,
+     * because the two overlap. A message the provider accepted gets sent_at and can still
+     * fail later, when the delivery webhook reports 131026/131049/130472; markFailed() only
+     * moves the status and leaves sent_at standing, so that row lands in both terms. On a
+     * 445-recipient production campaign 57 of the 84 failures were webhook-side, inflating
+     * the denominator to 501 against 444 real attempts and understating the rate at 17%
+     * instead of 18.92%.
+     *
+     * Dividing by total_sent alone is the opposite error: a send-time failure (INVALID_PHONE,
+     * TEMPLATE_NOT_APPROVED) never gets sent_at, so it would sit outside its own denominator.
      *
      * Reporting only — nothing pauses on this value. See CampaignService for why.
      */
     public function failureRate(): float
     {
-        $attempted = $this->total_sent + $this->total_failed;
+        $attempted = $this->total_attempted;
 
         if ($attempted <= 0) {
             return 0.0;
@@ -203,6 +216,10 @@ class Campaign extends Model
      * truth: count(sent_at) etc. A status='failed' send-time failure has no sent_at, so it
      * counts toward failed but not sent — matching the old increment semantics exactly. Use
      * scopeWithCounters() for list views to avoid an N+1; single reads derive in one query.
+     *
+     * sent and failed OVERLAP: a webhook-side failure keeps the sent_at it earned when the
+     * provider accepted the POST. Never add the two to get an attempt count — read
+     * total_attempted, which counts each row once.
      */
     public function getTotalSentAttribute(): int
     {
@@ -234,6 +251,16 @@ class Campaign extends Model
     }
 
     /**
+     * Rows that reached a real attempt: the provider accepted the POST (sent_at) or the send
+     * failed outright (status='failed'). Counted once per row, so a message that was sent and
+     * later failed via webhook does not appear twice. Skipped opt-outs never attempted.
+     */
+    public function getTotalAttemptedAttribute(): int
+    {
+        return $this->resolveCounter('attempted');
+    }
+
+    /**
      * Eager-load the four message-derived counters as agg_* aliases in a single query of
      * correlated subqueries, so listing campaigns does not fire a per-row aggregate.
      */
@@ -245,6 +272,9 @@ class Campaign extends Model
             'messages as agg_read' => fn (Builder $q): Builder => $q->whereNotNull('read_at'),
             'messages as agg_failed' => fn (Builder $q): Builder => $q->where('status', 'failed'),
             'messages as agg_skipped' => fn (Builder $q): Builder => $q->where('status', 'skipped'),
+            'messages as agg_attempted' => fn (Builder $q): Builder => $q->where(
+                fn (Builder $inner): Builder => $inner->whereNotNull('sent_at')->orWhere('status', 'failed')
+            ),
         ]);
     }
 
@@ -260,7 +290,7 @@ class Campaign extends Model
     }
 
     /**
-     * @return array{sent: int, delivered: int, read: int, failed: int}
+     * @return array{sent: int, delivered: int, read: int, failed: int, skipped: int, attempted: int}
      */
     private function deriveCounters(): array
     {
@@ -269,11 +299,11 @@ class Campaign extends Model
         }
 
         if (! $this->exists) {
-            return $this->countersCache = ['sent' => 0, 'delivered' => 0, 'read' => 0, 'failed' => 0, 'skipped' => 0];
+            return $this->countersCache = ['sent' => 0, 'delivered' => 0, 'read' => 0, 'failed' => 0, 'skipped' => 0, 'attempted' => 0];
         }
 
         $row = $this->messages()
-            ->selectRaw('count(sent_at) as sent_count, count(delivered_at) as delivered_count, count(read_at) as read_count, count(case when status = ? then 1 end) as failed_count, count(case when status = ? then 1 end) as skipped_count', ['failed', 'skipped'])
+            ->selectRaw('count(sent_at) as sent_count, count(delivered_at) as delivered_count, count(read_at) as read_count, count(case when status = ? then 1 end) as failed_count, count(case when status = ? then 1 end) as skipped_count, count(case when sent_at is not null or status = ? then 1 end) as attempted_count', ['failed', 'skipped', 'failed'])
             ->first();
 
         return $this->countersCache = [
@@ -282,6 +312,7 @@ class Campaign extends Model
             'read' => (int) ($row->read_count ?? 0),
             'failed' => (int) ($row->failed_count ?? 0),
             'skipped' => (int) ($row->skipped_count ?? 0),
+            'attempted' => (int) ($row->attempted_count ?? 0),
         ];
     }
 }

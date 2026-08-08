@@ -161,6 +161,45 @@ test('campaign rate calculations are correct', function () {
     expect($campaign->failureRate())->toBe(4.76);
 });
 
+test('a webhook-side failure is counted once in the attempt denominator', function () {
+    // Production shape from a 445-recipient campaign: the provider accepted the POST, so the
+    // row earned a sent_at, and the delivery webhook later reported 131026/131049/130472.
+    // markFailed() moves the status and leaves sent_at standing, so the row sits in both
+    // count(sent_at) and count(status='failed') — total_sent + total_failed counts it twice.
+    $campaign = Campaign::factory()->create();
+
+    CampaignMessage::factory()->count(6)->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'delivered', 'sent_at' => now(), 'delivered_at' => now(),
+    ]);
+    CampaignMessage::factory()->count(3)->create([
+        'campaign_id' => $campaign->id,
+        'status' => 'failed', 'sent_at' => now(), 'failed_at' => now(), 'error_code' => '131026',
+    ]);
+    // Rejected before the provider call, so no sent_at — belongs in the denominator too.
+    CampaignMessage::factory()->failed()->count(1)->create([
+        'campaign_id' => $campaign->id, 'error_code' => 'INVALID_PHONE',
+    ]);
+    // Consent-suppressed: never attempted, never in either term.
+    CampaignMessage::factory()->count(2)->create([
+        'campaign_id' => $campaign->id, 'status' => 'skipped', 'error_code' => 'OPTED_OUT',
+    ]);
+
+    expect($campaign->total_sent)->toBe(9)
+        ->and($campaign->total_failed)->toBe(4)
+        ->and($campaign->total_skipped)->toBe(2)
+        // 9 rows with sent_at + the 1 that never got one. Not 13.
+        ->and($campaign->total_attempted)->toBe(10)
+        // 4/10. The old sent+failed denominator reported 30.77%.
+        ->and($campaign->failureRate())->toBe(40.0);
+
+    // The list path must agree with the single read, or a campaign's rate changes between
+    // the index and its own page.
+    $withCounters = Campaign::query()->withCounters()->find($campaign->id);
+    expect($withCounters->total_attempted)->toBe(10)
+        ->and($withCounters->failureRate())->toBe(40.0);
+});
+
 test('campaign counters derive live from message rows (SCALE-1b)', function () {
     // The total_* columns are no longer written on the hot path; reads derive from
     // campaign_messages. A status=sent message carries sent_at; a delivery-failed one

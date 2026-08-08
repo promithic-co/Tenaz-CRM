@@ -61,6 +61,7 @@ type Campaign = {
     total_delivered: number;
     total_read: number;
     total_failed: number;
+    total_attempted: number;
     daily_limit: number;
     delay_between_ms: number;
     started_at: string | null;
@@ -430,14 +431,13 @@ const deliveryRate = computed(() =>
 const readRate = computed(() =>
     safePercent(props.campaign.total_read, props.campaign.total_delivered),
 );
-// Denominator is attempts (sent + failed), matching Campaign::failureRate(). total_sent
-// counts sent_at, which a failed send never gets, so dividing by it alone leaves failures
-// out of their own denominator and overstates the rate.
+// Denominator is total_attempted, matching Campaign::failureRate(). Not total_sent +
+// total_failed: those overlap, because a message the provider accepted keeps its sent_at
+// when the delivery webhook later reports a failure, so it counts in both terms and
+// understates the rate. Dividing by total_sent alone is the opposite error — a send-time
+// failure never gets sent_at and would sit outside its own denominator.
 const failureRate = computed(() =>
-    safePercent(
-        props.campaign.total_failed,
-        props.campaign.total_sent + props.campaign.total_failed,
-    ),
+    safePercent(props.campaign.total_failed, props.campaign.total_attempted),
 );
 // Meta health, as reported by health_status. BLOCKED and an active messaging
 // restriction are what CampaignService refuses; LIMITED is not — Meta still
